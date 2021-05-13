@@ -1,6 +1,7 @@
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
+Require Import CpdtTactics.
 
 From stdpp Require Import gmap.
 
@@ -29,7 +30,7 @@ Class TPCM (M : Type) :=
   unit_dot : forall x , dot x unit = x ;
   comm : forall x y , dot x y = dot y x ;
   assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
-  refl : forall x , mov x x ;
+  reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
   mov_monotonic : forall x y z ,
       mov x y -> valid (dot x z) -> valid (dot y z) -> mov (dot x z) (dot y z)
@@ -88,8 +89,17 @@ Proof. solve_decision. Admitted.
 
 Instance countableloc : Countable Loc. Admitted.
 
-Definition change_type : forall i1 i2 , i1 = i2 -> tpcm_of_index i2 -> tpcm_of_index i1.
-Proof. intros. rewrite H. trivial. Defined.
+Definition change_type : forall i1 i2 , i1 = i2 -> tpcm_of_index i2 -> tpcm_of_index i1 :=
+  λ (i1 i2 : TPCMIndex) (H : i1 = i2) (X : tpcm_of_index i2),
+    eq_rect_r tpcm_of_index X H.
+
+
+Print change_type.
+(* change_type = 
+λ (i1 i2 : TPCMIndex) (H : i1 = i2) (X : tpcm_of_index i2),
+  (λ _evar_0_ : tpcm_of_index i2,
+     eq_rect_r (λ _pattern_value_ : TPCMIndex, tpcm_of_index _pattern_value_) _evar_0_ H) X
+*)
 
 Definition loc_entry_merge e1 e2 :=
   match e1, e2 with
@@ -118,10 +128,10 @@ apply set_ind.
  - exists 0. intro. unfold gset_elem_of.
  Abort.
  
-Print NoDup.
+(*Print NoDup.
 Inductive mymap K V :=
   | mymap_of_list : list (K * V) -> mymap K V
-. 
+. *)
 
 (*Print FinMap.
 Print gmap.
@@ -136,7 +146,7 @@ Instance mymap_finmap `{Countable K} : FinMap K (mymap K).
 
 Instance mymap_inst : FinMap K (mymap K).*)
  
-Inductive Node : Type :=
+(*Inductive Node : Type :=
   | MNode :
     forall i , tpcm_of_index i
         -> gmap Lifetime (tpcm_of_index i)
@@ -148,8 +158,96 @@ Lemma merge_node (n: Node) (m: Node)
   match e1, e2
     MFail, _ => MFail
     MNode _ _ _ _, MFail => MFail
-    MNode i1 m1 l1 children1, MNode i2 m2 l2 children2
+    MNode i1 m1 l1 children1, MNode i2 m2 l2 children2*)
 
+
+Inductive TaggedElement : Type :=
+  | Element : forall idx , tpcm_of_index idx -> TaggedElement
+  | TEFail : TaggedElement
+.
+
+Definition tagged_element_index (te : TaggedElement) : option TPCMIndex :=
+  match te with
+  | Element i _ => Some i
+  | TEFail => None
+  end
+. 
+
+(* make it total for convenience *)
+Definition tagged_element_get (te : TaggedElement) (i : TPCMIndex) : tpcm_of_index i :=
+  match te with
+  | TEFail => unit
+  | Element j m => match decide (i = j) with
+    | left ieq =>
+      change_type i j ieq m
+    | right _ => unit
+    end
+  end
+.
+
+Definition tagged_element_merge (te1 : TaggedElement) (te2 : TaggedElement) : TaggedElement :=
+  match tagged_element_index te1, tagged_element_index te2 with
+  | None, _ => TEFail
+  | Some _, None => TEFail
+  | Some i1, Some i2 =>
+      match decide (i1 = i2) with
+      | left ieq =>
+        Element i1 (dot (tagged_element_get te1 i1) (tagged_element_get te2 i1))
+      | right _ => TEFail
+      end
+  end
+.
+
+Lemma comm_tagged_element_merge (te1 : TaggedElement) (te2 : TaggedElement) : 
+    tagged_element_merge te1 te2 = tagged_element_merge te2 te1.
+Proof. 
+  unfold tagged_element_merge. destruct (tagged_element_index te1); destruct (tagged_element_index te2); trivial.
+  - case_decide.
+    + case_decide.
+      * rewrite H. rewrite comm. trivial.
+      * symmetry in H. contradiction.
+    + case_decide.
+      * symmetry in H0. contradiction.
+      * trivial.
+Qed. 
+
+Lemma tagged_element_get_of_element_helper (i : TPCMIndex) (H : i = i) : (match H in (_ = y) return (y = i) with
+    | eq_refl => eq_refl
+    end) = eq_refl.
+Proof using RefinementIndex TPCMIndex base_of_index ref_inst_f refinement_of_index.
+apply proof_irrel. Qed.
+
+Lemma tagged_element_get_of_element (i : TPCMIndex) (m : tpcm_of_index i) :
+    tagged_element_get (Element i m) i = m.
+Proof. 
+  unfold tagged_element_get. case_decide.
+    * unfold change_type. unfold eq_rect_r.
+      unfold eq_rect. unfold eq_sym. rewrite tagged_element_get_of_element_helper . trivial.
+    * contradiction. Qed.
+  
+
+Lemma assoc_tagged_element_merge (x : TaggedElement) (y : TaggedElement) (z : TaggedElement) :
+    tagged_element_merge (tagged_element_merge x y) z =
+    tagged_element_merge x (tagged_element_merge y z).
+Proof. 
+  unfold tagged_element_merge.
+    destruct (tagged_element_index x);
+    destruct (tagged_element_index y);
+    destruct (tagged_element_index z); trivial.
+  - case_decide.
+    + unfold tagged_element_index. case_decide.
+      * case_decide.
+        -- case_decide.
+          ++ rewrite <- H. repeat (rewrite tagged_element_get_of_element). rewrite assoc. trivial.
+          ++ contradiction.
+        -- rewrite <- H in H1. contradiction.
+      * case_decide; trivial. rewrite H1 in H. contradiction.
+    + unfold tagged_element_index. case_decide.
+      * case_decide; trivial. contradiction.
+      * trivial.
+  - case_decide; unfold tagged_element_index; trivial.
+Qed.
+    
 
 (*
 Inductive Loc M :=
