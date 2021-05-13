@@ -7,18 +7,7 @@ From stdpp Require Import gmap.
 
 Section stuff.
 
-(*Inductive Loc : Type :=
-  | LBase : nat -> Loc
-  | LExt : nat -> Loc -> Loc
- . *)
- 
-(*Global Instance loc_eq_dec : EqDecision Loc.
-Proof. solve_decision. Defined.
-
-Global Instance loc_countable : Countable Loc.
-Admitted.*)
-
-Class TPCM (M : Type) :=
+Class TPCM (M : Type) `{EqDecision M} :=
 {
   valid : M -> bool ;
   dot : M -> M -> M ;
@@ -49,6 +38,8 @@ Variables TPCMIndex : Type.
 Variables RefinementIndex : Type.
 
 Variables tpcm_of_index : TPCMIndex -> Type.
+Variables eqdec_inst_f : forall i , EqDecision (tpcm_of_index i).
+Instance eqdec_inst i : EqDecision (tpcm_of_index i) := eqdec_inst_f i.
 Variables tpcm_inst_f : forall i , TPCM (tpcm_of_index i).
 Instance tpcm_inst i : TPCM (tpcm_of_index i) := tpcm_inst_f i.
 
@@ -66,56 +57,23 @@ Instance ref_inst r :
       
 Definition L := nat.
       
-(*Inductive Loc i :=
-  | LBase : L -> Loc i
-  | LExt : forall r , L -> Loc (base_of_index r) -> refinement_of_index r = i -> Loc i
- . *)
- 
 Inductive Loc :=
   | LBase : L -> TPCMIndex -> Loc
   | LExt : L -> RefinementIndex -> Loc
  .
- 
-Inductive Entry :=
-  | LocEntry : forall i , Loc -> tpcm_of_index i -> Entry
-  | FailEntry
-.
+
 
 Instance eqindex : EqDecision TPCMIndex. Admitted.
 Instance eqrindex : EqDecision RefinementIndex. Admitted.
 
 Instance eqloc : EqDecision Loc.
-Proof. solve_decision. Admitted.
+solve_decision. Defined.
 
 Instance countableloc : Countable Loc. Admitted.
 
 Definition change_type : forall i1 i2 , i1 = i2 -> tpcm_of_index i2 -> tpcm_of_index i1 :=
   λ (i1 i2 : TPCMIndex) (H : i1 = i2) (X : tpcm_of_index i2),
     eq_rect_r tpcm_of_index X H.
-
-
-Print change_type.
-(* change_type = 
-λ (i1 i2 : TPCMIndex) (H : i1 = i2) (X : tpcm_of_index i2),
-  (λ _evar_0_ : tpcm_of_index i2,
-     eq_rect_r (λ _pattern_value_ : TPCMIndex, tpcm_of_index _pattern_value_) _evar_0_ H) X
-*)
-
-Definition loc_entry_merge e1 e2 :=
-  match e1, e2 with
-  | FailEntry, _ => FailEntry
-  | LocEntry _ _ _, FailEntry => FailEntry
-  | LocEntry i1 l1 m1, LocEntry i2 l2 m2 =>
-      match decide (i1 = i2) with
-      | left ieq =>
-        if decide (l1 = l2) then
-          LocEntry i1 l1 (dot m1 (change_type i1 i2 ieq m2))
-        else
-          FailEntry
-      | right _ => FailEntry
-      end
-  end
-.
 
 Definition Lifetime := gset nat.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
@@ -128,38 +86,6 @@ apply set_ind.
  - exists 0. intro. unfold gset_elem_of.
  Abort.
  
-(*Print NoDup.
-Inductive mymap K V :=
-  | mymap_of_list : list (K * V) -> mymap K V
-. *)
-
-(*Print FinMap.
-Print gmap.
-Instance gmap2_finmap `{Countable K} : FinMap K (gmap K).Admitted.
-
-Instance mymap_finmap `{Countable K} : FMap (mymap K).
-unfold FMap.
-
-
-
-Instance mymap_finmap `{Countable K} : FinMap K (mymap K).
-
-Instance mymap_inst : FinMap K (mymap K).*)
- 
-(*Inductive Node : Type :=
-  | MNode :
-    forall i , tpcm_of_index i
-        -> gmap Lifetime (tpcm_of_index i)
-        -> list ((L * RefinementIndex) * Node) -> Node
-  | MFail 
-.
-
-Lemma merge_node (n: Node) (m: Node)
-  match e1, e2
-    MFail, _ => MFail
-    MNode _ _ _ _, MFail => MFail
-    MNode i1 m1 l1 children1, MNode i2 m2 l2 children2*)
-
 
 Inductive TaggedElement : Type :=
   | Element : forall idx , tpcm_of_index idx -> TaggedElement
@@ -185,7 +111,7 @@ Definition tagged_element_get (te : TaggedElement) (i : TPCMIndex) : tpcm_of_ind
   end
 .
 
-Definition tagged_element_merge (te1 : TaggedElement) (te2 : TaggedElement) : TaggedElement :=
+Definition merge_tagged_element (te1 : TaggedElement) (te2 : TaggedElement) : TaggedElement :=
   match tagged_element_index te1, tagged_element_index te2 with
   | None, _ => TEFail
   | Some _, None => TEFail
@@ -198,10 +124,10 @@ Definition tagged_element_merge (te1 : TaggedElement) (te2 : TaggedElement) : Ta
   end
 .
 
-Lemma comm_tagged_element_merge (te1 : TaggedElement) (te2 : TaggedElement) : 
-    tagged_element_merge te1 te2 = tagged_element_merge te2 te1.
+Lemma comm_merge_tagged_element (te1 : TaggedElement) (te2 : TaggedElement) : 
+    merge_tagged_element te1 te2 = merge_tagged_element te2 te1.
 Proof. 
-  unfold tagged_element_merge. destruct (tagged_element_index te1); destruct (tagged_element_index te2); trivial.
+  unfold merge_tagged_element. destruct (tagged_element_index te1); destruct (tagged_element_index te2); trivial.
   - case_decide.
     + case_decide.
       * rewrite H. rewrite comm. trivial.
@@ -226,11 +152,11 @@ Proof.
     * contradiction. Qed.
   
 
-Lemma assoc_tagged_element_merge (x : TaggedElement) (y : TaggedElement) (z : TaggedElement) :
-    tagged_element_merge (tagged_element_merge x y) z =
-    tagged_element_merge x (tagged_element_merge y z).
+Lemma assoc_merge_tagged_element (x : TaggedElement) (y : TaggedElement) (z : TaggedElement) :
+    merge_tagged_element (merge_tagged_element x y) z =
+    merge_tagged_element x (merge_tagged_element y z).
 Proof. 
-  unfold tagged_element_merge.
+  unfold merge_tagged_element.
     destruct (tagged_element_index x);
     destruct (tagged_element_index y);
     destruct (tagged_element_index z); trivial.
@@ -247,47 +173,110 @@ Proof.
       * trivial.
   - case_decide; unfold tagged_element_index; trivial.
 Qed.
-    
 
-(*
-Inductive Loc M :=
-  | LBase : nat -> Loc M
-  | LExt : forall A `{ TPCM A, Refinement M A } , nat -> Loc A -> Loc M
-. 
+Inductive BorrowObject : Type :=
+  | BorrowO : Lifetime -> Loc -> TaggedElement -> BorrowObject
+.
 
-Inductive Entry :=
-  | LocEntry : forall M `{ TPCM M } , M -> Loc M -> Entry
-  | Fail : Entry
-. 
+Instance eqdec_te : EqDecision TaggedElement.
+  unfold EqDecision.
+  intros. unfold Decision. destruct x; destruct y.
+    - have h : Decision (idx = idx0).
+      + apply eqindex.
+      + unfold Decision in h. destruct h.
+        * have q : Decision (t = tagged_element_get (Element idx0 t0) idx).
+          ++ apply (eqdec_inst idx).
+          ++ destruct q.
+            ** left. rewrite e0.
+                have j : Element idx (tagged_element_get (Element idx0 t0) idx) 
+                      = Element idx0 (tagged_element_get (Element idx0 t0) idx0).
+                 --- rewrite e. trivial.
+                 --- rewrite j. rewrite tagged_element_get_of_element. trivial.
+            ** right. intro. rewrite <- H in n. rewrite tagged_element_get_of_element in n. contradiction.
+        * right. injection. trivial.
+   - right. intro. crush.
+   - right. intro. crush.
+   - left. trivial. Defined.
+   
+Instance countable_te : Countable TaggedElement. Admitted.
 
-Definition loc_entry_merge e1 e2 :=
-  match e1, e2 with
-  | Fail, _ => Fail
-  | LocEntry _ _ _, Fail => Fail
-  | LocEntry M m l, LocEntry M' m' l' => if M = M' then
-      (if l = l' then Fail else Fail) else Fail
+
+Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
+Instance countable_borrow_object : Countable BorrowObject. Admitted.
+
+Inductive LifetimeStatus := LSActive | LSFail.
+
+Record AllState : Type := {
+  active_lifetimes: gmap nat LifetimeStatus;
+  borrows: gset BorrowObject;
+  live_objects: gmap Loc TaggedElement;
+  reserved_objects: gset (Lifetime * Loc * TaggedElement);
+}.
+  
+Instance opt_tagged_instance : Equiv (option TaggedElement) := λ x y ,
+  match x, y with
+  | None, None => True
+  | None, Some TEFail => False
+  | None, Some (Element i m) => m = unit
+  | Some TEFail, None => False
+  | Some TEFail, Some TEFail => True
+  | Some TEFail, Some (Element _ _) => False
+  | Some (Element i m), None => m = unit
+  | Some (Element i m), Some TEFail => False
+  | Some (Element i1 m1), Some (Element i2 m2) => (m1 = unit /\ m2 = unit) \/ x = y
   end
- . 
+ .
  
-Definition Lifetime := Z.
+Instance opt_gmap_tagged_instance : Equiv (gmap Loc TaggedElement) :=
+    λ m1 m2, ∀ i, m1 !! i ≡ m2 !! i.
 
+Instance allstate_equiv : Equiv AllState := λ x y ,
+     (active_lifetimes x) = (active_lifetimes y)
+  /\ (borrows x) = (borrows y)
+  /\ (live_objects x) ≡ (live_objects y)
+  /\ (reserved_objects x) = (reserved_objects y).
 
+Print merge.
+Definition merge_opt_lifetime_status (x: option LifetimeStatus) (y: option LifetimeStatus) :=
+  match x, y with
+  | None, m => m
+  | Some l, None => Some l
+  | Some l, Some m => Some LSFail
+  end.
+Definition merge_active (x : gmap nat LifetimeStatus) (y : gmap nat LifetimeStatus) :=
+  merge merge_opt_lifetime_status x y.
+  
+Definition merge_borrows (x : gset BorrowObject) (y : gset BorrowObject) :=
+  union x y.
+  
+Definition merge_opt_tagged_element (x: option TaggedElement) (y: option TaggedElement) :=
+  match x, y with
+  | None, y => y
+  | Some t, None => Some t
+  | Some t, Some u => Some (merge_tagged_element t u)
+  end.
+  
+Definition merge_live_objects (x : gmap Loc TaggedElement) (y : gmap Loc TaggedElement) :=
+  merge merge_opt_tagged_element x y.
 
+Definition merge_reserved_objects
+    (x : gset (Lifetime * Loc * TaggedElement))
+    (y : gset (Lifetime * Loc * TaggedElement)) := union x y.
 
-Inductive MonoidElement :=
-  Element : forall M: Type, M -> MonoidElement
- . 
+Instance alls_op_instance : Op AllState := λ x y,
+  {|
+    active_liftimes: merge_active (active_lifetimes x) (active_lifetimes y);
+    borrows: merge_borrows (borrows x) (borrows y);
   
   
+Instance alls_valid_instance : Valid AllState := λ x, True.
+Instance alls_pcore_instance : PCore AllState := λ _, None.
+  
+Definition allstate_ra_mixin : RAMixin AllState.
+split. 
 
-Definition m := gmap Loc MonoidElement.
+Print Proper.
+Print relation.
 
-
-(*Local Instance frac_valid_instance : Valid frac := λ x, (x ≤ 1)%Qp.
-Local Instance frac_pcore_instance : PCore frac := λ _, None.
-Local Instance frac_op_instance : Op frac := λ x y, (x + y)%Qp.*)
-
-end.
-*)
 
 end.
