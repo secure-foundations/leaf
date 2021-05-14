@@ -276,9 +276,9 @@ Definition FoldProjectFancyView (u : InvState) (loc : Loc) (lt : Lifetime) :=
 Definition inv_loc_lt_view_identity
     (s : AllState) (u : InvState)
     (loc: Loc) (lt: Lifetime) : Prop :=
-  ∀ m , (view u loc lt) m <-> conjoin_umbrella
+  (view u loc lt) = conjoin_umbrella
     (umbrella (ReservedHereOver s u loc lt))
-    (FoldProjectFancyView u loc lt) m.
+    (FoldProjectFancyView u loc lt).
     
 Definition inv_loc_view_identity
     (s : AllState) (u : InvState)
@@ -335,7 +335,7 @@ Lemma set_fold_eq {X: Type} (fn1 fn2 : Loc -> X -> X) (a : X) (s : gset Loc) :
   intros. apply H0.*)
   Admitted.
 
-Lemma fold_project_total_change :
+Lemma fold_project_total_on_total_change :
     ∀ (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
     (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
     (locs_in_use u) = (locs_in_use u') ->
@@ -347,17 +347,19 @@ Proof.
   generalize H3. rewrite elem_of_filter. intro. destruct H4. intro. rewrite H6 in H4. contradiction.
 Qed.
 
-Lemma fold_project_fancy_view_change :
-    ∀ (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+(*
+Lemma fold_project_fancy_view_on_total_change :
+    ∀ (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc) (lt: Lifetime),
     (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
     (locs_in_use u) = (locs_in_use u') ->
+    (view u) = (view u') ->
     not (IsLocExt loc loc_changed) ->
-    FoldProjectFancyView u loc = FoldProjectFancyView u' loc.
+    FoldProjectFancyView u loc lt = FoldProjectFancyView u' loc lt.
 Proof.
-  intros. unfold FoldProjectFancyView. rewrite H1. apply equal_f.
+  intros. unfold FoldProjectFancyView. rewrite H1.
   apply set_fold_eq. intros. rewrite H0; trivial.
   generalize H3. rewrite elem_of_filter. intro. destruct H4. intro. rewrite H6 in H4. contradiction.
-Qed.
+Qed.*)
   
 Lemma inv_loc_view_sat_preserve_total_change :
     ∀ (s: AllState) (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
@@ -378,26 +380,24 @@ Proof.
     destruct u. destruct u'. simpl in *.
     replace (FoldProjectTotal {| locs_in_use := locs_in_use1; max_lt_index := max_lt_index1; ltotal := ltotal1; view := view1 |} loc) with (FoldProjectTotal {| locs_in_use := locs_in_use0; max_lt_index := max_lt_index0; ltotal := ltotal0; view := view0 |} loc).
       - rewrite <- H3. trivial.
-      - apply fold_project_total_change with (loc_changed := loc_changed).
+      - apply fold_project_total_on_total_change with (loc_changed := loc_changed).
         + simpl. apply H0; trivial.
         + simpl. trivial.
         + simpl. trivial.
 Qed. 
 
-Lemma conjoin_umbrella_equiv (a b c : M -> Prop) :
+(*Lemma conjoin_umbrella_equiv (a b c : M -> Prop) :
   (∀ x , b x <-> c x) -> (∀ x , conjoin_umbrella a b x <-> conjoin_umbrella a c x).
 Proof. intros. unfold conjoin_umbrella. split.
   - intro. destruct H1. destruct H1. exists x0. exists x1. rewrite <- H0. trivial.
   - intro. destruct H1. destruct H1. exists x0. exists x1. rewrite H0. trivial.
-Qed.
+Qed.*)
  
-Lemma inv_loc_view_identity_total_change :
-    ∀ (s: AllState) (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
-    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+Lemma inv_loc_view_identity_on_total_change :
+    ∀ (s: AllState) (u: InvState) (u': InvState) (loc: Loc),
     locs_in_use u = locs_in_use u' ->
     max_lt_index u = max_lt_index u' ->
     view u = view u' ->
-    not (IsLocExt loc loc_changed) ->
     inv_loc_view_identity s u loc ->
     inv_loc_view_identity s u' loc.
 Proof.
@@ -405,9 +405,30 @@ Proof.
     unfold inv_loc_view_identity in *.
     unfold inv_loc_lt_view_identity in *.
     unfold ReservedHereOver in *.
-    intros. rewrite <- H3. rewrite H5.
-    apply conjoin_umbrella_equiv.
+    intros. rewrite <- H2. rewrite H3.
+    unfold FoldProjectFancyView.
+    rewrite H0. rewrite H2. trivial.
 Qed. 
+ 
+Lemma inv_loc_total_identity_on_total_change :
+    ∀ (s: AllState) (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+    locs_in_use u = locs_in_use u' ->
+    max_lt_index u = max_lt_index u' ->
+    view u = view u' ->
+    not (IsLocExt loc loc_changed) ->
+    inv_loc_total_identity s u loc ->
+    inv_loc_total_identity s u' loc.
+Proof.
+  intros.
+    unfold inv_loc_view_identity in *.
+    unfold inv_loc_lt_view_identity in *.
+    unfold ReservedHereOver in *.
+    intros. rewrite <- H3. rewrite H5.
+    unfold FoldProjectFancyView.
+    rewrite H1. rewrite H3. trivial.
+Qed. 
+
 
 Lemma do_update_total : ∀ (s: AllState) (u: InvState) (loc: Loc) (new_value: M) ,
     inv s u -> ∃ u' ,
@@ -433,6 +454,11 @@ induction loc.
         apply inv_loc_view_sat_preserve_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
           * simpl. intros. case_decide; trivial. contradiction.
           * unfold IsLocExt. omega.
+    + destruct (H0 l0).
+        apply inv_loc_view_identity_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
+          * simpl. intros. case_decide; trivial. contradiction.
+          * intro. trivial.
+          * destruct H3. destruct H4. trivial.
     + destruct (H0 l0).
 
 Lemma live_update_preserve_inv : ∀ (s: AllState) (s': AllState) (u: InvState) (loc: Loc)
