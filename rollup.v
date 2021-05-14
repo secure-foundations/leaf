@@ -27,11 +27,18 @@ Class TPCM (M : Type) `{EqDecision M} :=
 
 Class Refinement R M `{ TPCM R , TPCM M } :=
 {
-  rel : R -> M -> bool ;
+  (*rel : R -> M -> bool ;
   
+  rel_valid : forall r m , rel r m -> valid r /\ valid m ;
   rel_unit : rel unit unit ;
   mov_refines : forall b b' q , mov b b' -> rel b q -> exists q' , rel b' q' /\ mov q q' ;
-  rel_self : forall b q q' , rel b q -> rel b q' -> mov q q' ;
+  rel_self : forall b q q' , rel b q -> rel b q' -> mov q q' ;*)
+  
+  rel : R -> option M ;
+  rel_valid_left : forall r m , rel r = Some m -> valid r ;
+  rel_valid_right : forall r m , rel r = Some m -> valid m ;
+  rel_unit : rel unit = Some unit ;
+  mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
 }.
 
 Variables TPCMIndex : Type.
@@ -59,7 +66,7 @@ Definition L := nat.
       
 Inductive Loc :=
   | LBase : L -> TPCMIndex -> Loc
-  | LExt : L -> RefinementIndex -> Loc
+  | LExt : L -> RefinementIndex -> Loc -> Loc
  .
 
 
@@ -89,7 +96,6 @@ apply set_ind.
 Inductive BorrowObject i : Type :=
   | BorrowO : Lifetime -> Loc -> (tpcm_of_index i) -> BorrowObject i
 .
-
 Instance eqdec_borrow_object i : EqDecision (BorrowObject i). solve_decision. Defined.
 Instance countable_borrow_object i : Countable (BorrowObject i). Admitted.
 
@@ -99,7 +105,7 @@ Record AllState : Type := {
   active_lifetimes: nat -> LifetimeStatus;
   borrows: forall i, BorrowObject i -> bool;
   live_objects: forall i, Loc -> tpcm_of_index i;
-  reserved_objects: forall i , Lifetime -> Loc -> tpcm_of_index i -> bool;
+  reserved_objects: forall i, gset (BorrowObject i);
 }.
 
 Record InvState : Type := {
@@ -134,9 +140,9 @@ Definition merge_live_objects (x : forall i, Loc -> tpcm_of_index i)
   λ i lo , dot (x i lo) (y i lo).
 
 Definition merge_reserved_objects
-    (x : forall i, Lifetime -> Loc -> tpcm_of_index i -> bool)
-    (y : forall i, Lifetime -> Loc -> tpcm_of_index i -> bool) :=
-  λ i l lo m , orb (x i l lo m) (y i l lo m).
+    (x : forall i, (gset (BorrowObject i)))
+    (y : forall i, (gset (BorrowObject i))) :=
+  λ i , union (x i) (y i).
 
 Instance alls_op_instance : Op AllState := λ x y,
   {|
@@ -156,9 +162,65 @@ Instance alls_pcore_instance : PCore AllState := λ x,
   
 Definition Live (i: TPCMIndex) (s: AllState) (loc: Loc) :=
     live_objects s i loc.
+
+Definition borrow_object_has_loc (i: TPCMIndex) (loc: Loc) (bo: BorrowObject i) :=
+  match bo with
+  BorrowO _ _ loc1 _ => loc = loc1
+  end
+.
+Definition borrow_object_has_loc_dec i loc : ∀ l, Decision (borrow_object_has_loc i loc l). intro. unfold borrow_object_has_loc. destruct l. solve_decision. Defined.
     
 Definition ReservedHere (i: TPCMIndex) (s: AllState) (u: InvState) (loc: Loc) :=
-    set_fold (λ l m , dot m (
+    set_fold (λ reserveObject m, (match reserveObject with BorrowO _ _ _ k => dot m k end))
+    unit
+    (
+      set_filter
+          (borrow_object_has_loc i loc)
+          (borrow_object_has_loc_dec i loc)
+          (reserved_objects s i)
+    ).
+    
+Fixpoint LocValidFor (l: Loc) (i: TPCMIndex) : Prop :=
+  match l with
+  | LBase _ j => i = j
+  | LExt _ ri subl =>
+      i = refinement_of_index ri /\ LocValidFor subl (base_of_index ri)
+  end.
+
+Definition IsLocExt (l: Loc) (lext: Loc) : Prop :=
+  match lext with
+  | LBase _ _ => False
+  | LExt _ _ subl => l = subl
+  end.
+  
+Definition rel_total `{Refinement R M} (r: R) := match rel r with | Some t => t | None => unit end.
+
+Definition get_ref_idx (loc: Loc) (extloc: Loc) (ile: IsLocExt loc extloc) : RefinementIndex.
+unfold IsLocExt in ile. destruct extloc in ile.
+  - contradiction.
+  - apply r.
+Defined.
+
+Print False_rect.
+Print get_ref_idx.
+Print rel_total.
+
+Definition Project
+    (i: TPCMIndex) (j: TPCMIndex) (loc: Loc) (extloc: Loc)
+    (m: tpcm_of_index j) :
+    LocValidFor loc i -> LocValidFor extloc j -> IsLocExt loc extloc -> (tpcm_of_index i) :=
+  λ lvf1 lvf2 ile ,
+    (*change_type (lemma_project_indices_eq loc extloc ile)*)
+    let ri := (get_ref_idx loc extloc ile) in
+    @rel_total (tpcm_of_index (refinement_of_index ri))
+               (tpcm_of_index (base_of_index ri))
+               (ref_inst_f ri)
+               m.
+(*intros. unfold IsLocExt in H1. destruct extloc.
+  - contradiction.
+  - rename extloc into loc'. unfold LocValidFor in H0. destruct H0.*)
+  
+  
     
 Instance alls_valid_instance : Valid AllState := λ x, True.
   
