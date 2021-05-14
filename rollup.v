@@ -4,6 +4,9 @@ From iris.prelude Require Import options.
 Require Import CpdtTactics.
 
 From stdpp Require Import gmap.
+From stdpp Require Import mapset.
+From stdpp Require Import sets.
+From stdpp Require Import list.
 
 Section stuff.
 
@@ -145,20 +148,46 @@ Definition borrow_object_has_loc (loc: Loc) (bo: BorrowObject) :=
 .
 Definition borrow_object_has_loc_dec loc : ∀ bo, Decision (borrow_object_has_loc loc bo). intro. unfold borrow_object_has_loc. destruct bo. solve_decision. Defined.
 
-Definition borrow_object_has_loc_over_lt (loc: Loc) (borrow_lt: Lifetime) (reserve_object: BorrowObject) :=
+Definition borrow_object_has_loc_over_lt
+    (loc: Loc) (borrow_lt: Lifetime)
+    (reserve_object: BorrowObject) :=
   match reserve_object with
   BorrowO reserve_lt loc1 _ => loc = loc1 /\ lifetime_included borrow_lt reserve_lt
   end
 .
-Definition borrow_object_has_loc_over_lt_dec loc borrow_lt : ∀ reserve_object , Decision (borrow_object_has_loc_over_lt loc borrow_lt reserve_object). intro. unfold borrow_object_has_loc_over_lt. destruct reserve_object. solve_decision. Defined.
+Definition borrow_object_has_loc_over_lt_dec loc borrow_lt : ∀ reserve_object ,
+    Decision (borrow_object_has_loc_over_lt loc borrow_lt reserve_object).
+intro. unfold borrow_object_has_loc_over_lt.
+destruct reserve_object. solve_decision.
+Defined.
 
-Definition ReservedHere (s: AllState) (u: InvState) (loc: Loc) :=
+Definition lifetime_included_in_active (lt: Lifetime) (active: nat -> LifetimeStatus) :=
+  ∀ n , n ∈ lt -> active n = LSActive.
+
+Definition borrow_object_has_loc_over_active
+    (loc: Loc) (active: nat -> LifetimeStatus)
+    (reserve_object: BorrowObject) :=
+  match reserve_object with
+  BorrowO reserve_lt loc1 _ => loc = loc1 /\ lifetime_included_in_active reserve_lt active
+  end
+.
+
+Definition lifetime_included_in_active_dec lt active :
+    Decision (lifetime_included_in_active lt active).
+unfold lifetime_included_in_active. Admitted.
+
+Definition borrow_object_has_loc_over_active_dec loc active :
+    ∀ reserve_object , Decision (borrow_object_has_loc_over_active loc active reserve_object). 
+intro. unfold borrow_object_has_loc_over_active. destruct reserve_object.  Admitted.
+
+
+Definition ReservedHere (s: AllState) (u: InvState) (loc: Loc) (active: nat -> LifetimeStatus) :=
     set_fold (λ reserveObject m, (match reserveObject with BorrowO _ _ k => dot m k end))
     unit
     (
       set_filter
-          (borrow_object_has_loc loc)
-          (borrow_object_has_loc_dec loc)
+          (borrow_object_has_loc_over_active loc active)
+          (borrow_object_has_loc_over_active_dec loc active)
           (reserved_objects s)
     ).
     
@@ -211,7 +240,11 @@ Definition FoldProjectTotal (u : InvState) (loc : Loc) :=
   fold_over_locs (λ lext , ltotal u lext) dot unit (locs_in_use u) loc.
 
 Definition Unlive (s: AllState) (u: InvState) (loc: Loc) :=
-  dot (ReservedHere s u loc) (FoldProjectTotal u loc).
+  dot (ReservedHere s u loc (active_lifetimes s))
+      (FoldProjectTotal u loc).
+  
+Definition UnliveOver (s: AllState) (u: InvState) (loc: Loc) (lt: Lifetime) :=
+  dot (ReservedHereOver s u loc lt) (FoldProjectTotal u loc).
 
 Definition inv_loc_total_identity (s : AllState) (u : InvState) (loc: Loc) : Prop :=
   (ltotal u loc) = dot (Live s loc) (Unlive s u loc).
@@ -240,12 +273,176 @@ Definition ProjectFancy (extloc : Loc) (umbrella : M -> Prop) : (M -> Prop) :=
 Definition FoldProjectFancyView (u : InvState) (loc : Loc) (lt : Lifetime) :=
   fold_over_locs (λ lext , view u loc lt) conjoin_umbrella umbrella_unit (locs_in_use u) loc.
 
-Definition inv_loc_lt_view_identity (s : AllState) (u : InvState)
+Definition inv_loc_lt_view_identity
+    (s : AllState) (u : InvState)
     (loc: Loc) (lt: Lifetime) : Prop :=
-  (view u loc lt)
+  ∀ m , (view u loc lt) m <-> conjoin_umbrella
+    (umbrella (ReservedHereOver s u loc lt))
+    (FoldProjectFancyView u loc lt) m.
+    
+Definition inv_loc_view_identity
+    (s : AllState) (u : InvState)
+    (loc: Loc) : Prop := ∀ lt , inv_loc_lt_view_identity s u loc lt.
 
+Definition view_sat (umbrella : M -> Prop) (m : M) := umbrella m.
 
+Definition inv_loc_lt_view_sat (s: AllState) (u: InvState) (loc: Loc) (lt: Lifetime) :=
+  view_sat (view u loc lt) (UnliveOver s u loc lt).
   
+Definition inv_loc_view_sat (s: AllState) (u: InvState) (loc: Loc) :=
+  ∀ lt , inv_loc_lt_view_sat s u loc lt.
+  
+Definition inv_loc_valid (s: AllState) (u: InvState) (loc: Loc) :=
+  valid (live_objects s loc).
+  
+Definition inv_loc_borrow_sound (s: AllState) (u: InvState) (loc: Loc) :=
+  ∀ lt m y , (BorrowO lt loc m) ∈ (reserved_objects s) -> view u loc lt y -> tpcm_le m y.
+  
+Definition inv_loc (s: AllState) (u: InvState) (loc: Loc) :=
+     inv_loc_view_sat s u loc
+  /\ inv_loc_view_identity s u loc
+  /\ inv_loc_total_identity s u loc
+  /\ inv_loc_valid s u loc
+  /\ inv_loc_borrow_sound s u loc.
+
+Definition inv (s: AllState) (u: InvState) :=
+  ∀ l , inv_loc s u l.
+
+Print set_equiv.
+Lemma set_filter_eq  fn1 fn2 (fn1_dec : ∀ x , Decision (fn1 x)) (fn2_dec : ∀ x , Decision (fn2 x)) (s : gset Loc) :
+    (∀ x , x ∈ s -> fn1 x = fn2 x) ->
+    set_filter fn1 fn1_dec s = set_filter fn2 fn2_dec s.
+  Proof. intro. apply set_eq. intros. split.
+    - rewrite elem_of_filter. rewrite elem_of_filter. intro. destruct H1. rewrite <- H0.
+      * split; trivial. * trivial.
+    - rewrite elem_of_filter. rewrite elem_of_filter. intro. destruct H1. rewrite H0.
+      * split; trivial. * trivial.
+Qed.
+
+(*Lemma foldr_ext_2 {A B} (f1 f2 : B → A → A) x1 x2 l : 
+  (∀ b a, b ∈ l -> f1 b a = f2 b a) → x1 = x2 → foldr f1 x1 l = foldr f2 x2 l.
+Proof. induction l.
+    - intros. unfold foldr. trivial.
+    - intros. unfold foldr. 
+   - unfold foldr. trivial.
+   - unfold foldr. *)
+
+Print foldr_permutation.
+Lemma set_fold_eq {X: Type} (fn1 fn2 : Loc -> X -> X) (a : X) (s : gset Loc) :
+  (∀ x y , y ∈ s -> fn1 y x = fn2 y x) ->
+  set_fold fn1 a s = set_fold fn2 a s.
+(*Proof. intro. unfold set_fold. unfold "∘". apply foldr_ext; auto. 
+  intros. apply H0.*)
+  Admitted.
+
+Lemma fold_project_total_change :
+    ∀ (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+    (locs_in_use u) = (locs_in_use u') ->
+    not (IsLocExt loc loc_changed) ->
+    FoldProjectTotal u loc = FoldProjectTotal u' loc.
+Proof.
+  intros. unfold FoldProjectTotal. rewrite H1. unfold fold_over_locs.
+  apply set_fold_eq. intros. rewrite H0; trivial.
+  generalize H3. rewrite elem_of_filter. intro. destruct H4. intro. rewrite H6 in H4. contradiction.
+Qed.
+
+Lemma fold_project_fancy_view_change :
+    ∀ (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+    (locs_in_use u) = (locs_in_use u') ->
+    not (IsLocExt loc loc_changed) ->
+    FoldProjectFancyView u loc = FoldProjectFancyView u' loc.
+Proof.
+  intros. unfold FoldProjectFancyView. rewrite H1. apply equal_f.
+  apply set_fold_eq. intros. rewrite H0; trivial.
+  generalize H3. rewrite elem_of_filter. intro. destruct H4. intro. rewrite H6 in H4. contradiction.
+Qed.
+  
+Lemma inv_loc_view_sat_preserve_total_change :
+    ∀ (s: AllState) (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+    locs_in_use u = locs_in_use u' ->
+    max_lt_index u = max_lt_index u' ->
+    view u = view u' ->
+    not (IsLocExt loc loc_changed) ->
+    inv_loc_view_sat s u loc ->
+    inv_loc_view_sat s u' loc.
+Proof.
+  intros.
+    unfold inv_loc_view_sat in *.
+    unfold inv_loc_lt_view_sat in *.
+    unfold view_sat in *.
+    unfold view in *.
+    unfold UnliveOver in *.
+    destruct u. destruct u'. simpl in *.
+    replace (FoldProjectTotal {| locs_in_use := locs_in_use1; max_lt_index := max_lt_index1; ltotal := ltotal1; view := view1 |} loc) with (FoldProjectTotal {| locs_in_use := locs_in_use0; max_lt_index := max_lt_index0; ltotal := ltotal0; view := view0 |} loc).
+      - rewrite <- H3. trivial.
+      - apply fold_project_total_change with (loc_changed := loc_changed).
+        + simpl. apply H0; trivial.
+        + simpl. trivial.
+        + simpl. trivial.
+Qed. 
+
+Lemma conjoin_umbrella_equiv (a b c : M -> Prop) :
+  (∀ x , b x <-> c x) -> (∀ x , conjoin_umbrella a b x <-> conjoin_umbrella a c x).
+Proof. intros. unfold conjoin_umbrella. split.
+  - intro. destruct H1. destruct H1. exists x0. exists x1. rewrite <- H0. trivial.
+  - intro. destruct H1. destruct H1. exists x0. exists x1. rewrite H0. trivial.
+Qed.
+ 
+Lemma inv_loc_view_identity_total_change :
+    ∀ (s: AllState) (u: InvState) (u': InvState) (loc_changed: Loc) (loc: Loc),
+    (∀ r , r <> loc_changed -> ltotal u r = ltotal u' r) ->
+    locs_in_use u = locs_in_use u' ->
+    max_lt_index u = max_lt_index u' ->
+    view u = view u' ->
+    not (IsLocExt loc loc_changed) ->
+    inv_loc_view_identity s u loc ->
+    inv_loc_view_identity s u' loc.
+Proof.
+  intros.
+    unfold inv_loc_view_identity in *.
+    unfold inv_loc_lt_view_identity in *.
+    unfold ReservedHereOver in *.
+    intros. rewrite <- H3. rewrite H5.
+    apply conjoin_umbrella_equiv.
+Qed. 
+
+Lemma do_update_total : ∀ (s: AllState) (u: InvState) (loc: Loc) (new_value: M) ,
+    inv s u -> ∃ u' ,
+         (∀ l , l <> loc -> inv_loc s u' l)
+          /\ inv_loc_view_sat s u' loc
+          /\ inv_loc_view_identity s u' loc
+          /\ inv_loc_valid s u' loc
+          /\ inv_loc_borrow_sound s u' loc
+          /\ (ltotal u loc) = dot (Live s loc) (Unlive s u' loc)
+          /\ (ltotal u' loc) = new_value.
+induction loc.
+  - intros. unfold inv in H0. unfold inv_loc in H0.
+      exists (
+        let new_total := (λ z , if decide (z = LBase l) then new_value else ltotal u z) in
+        {|
+          locs_in_use := locs_in_use u;
+          max_lt_index := max_lt_index u;
+          ltotal := new_total;
+          view := view u;
+        |}).
+      repeat (split).
+    + destruct (H0 l0).
+        apply inv_loc_view_sat_preserve_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
+          * simpl. intros. case_decide; trivial. contradiction.
+          * unfold IsLocExt. omega.
+    + destruct (H0 l0).
+
+Lemma live_update_preserve_inv : ∀ (s: AllState) (s': AllState) (u: InvState) (loc: Loc)
+    (al_eq : active_lifetimes s = active_lifetimes s')
+    (b_eq : borrows s = borrows s')
+    (l_eq : ∀ l , l <> loc -> live_objects s l = live_objects s' loc)
+    (r_eq : reserved_objects s = reserved_objects s')
+    (va : valid (live_objects s' loc)) ,
+    inv s u -> ∃ u' , inv s' u'.
+intros.
     
 Instance alls_valid_instance : Valid AllState := λ x, True.
   
