@@ -25,7 +25,9 @@ Class TPCM (M : Type) `{EqDecision M} :=
       mov x y -> valid (dot x z) -> valid (dot y z) -> mov (dot x z) (dot y z)
 }.
 
-Class Refinement R M `{ TPCM R , TPCM M } :=
+Definition tpcm_le `{TPCM M} (a : M) (b : M) := ∃ c , dot a c = b.
+
+Record Refinement R M `{ TPCM R , TPCM M } :=
 {
   (*rel : R -> M -> bool ;
   
@@ -41,79 +43,56 @@ Class Refinement R M `{ TPCM R , TPCM M } :=
   mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
 }.
 
-Variables TPCMIndex : Type.
-Variables RefinementIndex : Type.
+Context `{TPCM M}.
 
-Variables tpcm_of_index : TPCMIndex -> Type.
-Variables eqdec_inst_f : forall i , EqDecision (tpcm_of_index i).
-Instance eqdec_inst i : EqDecision (tpcm_of_index i) := eqdec_inst_f i.
-Variables tpcm_inst_f : forall i , TPCM (tpcm_of_index i).
-Instance tpcm_inst i : TPCM (tpcm_of_index i) := tpcm_inst_f i.
+Context `{EqDecision RefinementIndex}.
+Variables refinement_of_index : RefinementIndex -> Refinement M M.
 
-Variables refinement_of_index : RefinementIndex -> TPCMIndex.
-Variables base_of_index : RefinementIndex -> TPCMIndex.
-Variables ref_inst_f : forall r ,
-    Refinement
-      (tpcm_of_index (refinement_of_index r))
-      (tpcm_of_index (base_of_index r)).
-      
-Instance ref_inst r : 
-    Refinement
-      (tpcm_of_index (refinement_of_index r))
-      (tpcm_of_index (base_of_index r)) := ref_inst_f r.
-      
 Definition L := nat.
       
 Inductive Loc :=
-  | LBase : L -> TPCMIndex -> Loc
+  | LBase : L -> Loc
   | LExt : L -> RefinementIndex -> Loc -> Loc
  .
 
-
-Instance eqindex : EqDecision TPCMIndex. Admitted.
-Instance eqrindex : EqDecision RefinementIndex. Admitted.
-
-Instance eqloc : EqDecision Loc.
-solve_decision. Defined.
+Instance eqloc : EqDecision Loc. solve_decision. Defined.
 
 Instance countableloc : Countable Loc. Admitted.
-
-Definition change_type : forall i1 i2 , i1 = i2 -> tpcm_of_index i2 -> tpcm_of_index i1 :=
-  λ (i1 i2 : TPCMIndex) (H : i1 = i2) (X : tpcm_of_index i2),
-    eq_rect_r tpcm_of_index X H.
 
 Definition Lifetime := gset nat.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := subseteq m l.
 
-Lemma fresh_borrow_inst : ∀ (l : Lifetime) , ∃ b , ∀ t, gset_elem_of t l -> t < b.
+Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.
+
+(*Lemma fresh_borrow_inst : ∀ (l : Lifetime) , ∃ b , ∀ t, gset_elem_of t l -> t < b.
 Proof.
 apply set_ind.
  - by intros ?? ->%leibniz_equiv_iff.
  - exists 0. intro. unfold gset_elem_of.
- Abort.
+ Abort.*)
  
-Inductive BorrowObject i : Type :=
-  | BorrowO : Lifetime -> Loc -> (tpcm_of_index i) -> BorrowObject i
+Inductive BorrowObject : Type :=
+  | BorrowO : Lifetime -> Loc -> M -> BorrowObject
 .
-Instance eqdec_borrow_object i : EqDecision (BorrowObject i). solve_decision. Defined.
-Instance countable_borrow_object i : Countable (BorrowObject i). Admitted.
+Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
+Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 Inductive LifetimeStatus := LSNone | LSActive | LSFail.
 
 Record AllState : Type := {
   active_lifetimes: nat -> LifetimeStatus;
-  borrows: forall i, BorrowObject i -> bool;
-  live_objects: forall i, Loc -> tpcm_of_index i;
-  reserved_objects: forall i, gset (BorrowObject i);
+  borrows: BorrowObject -> bool;
+  live_objects: Loc -> M;
+  reserved_objects: gset BorrowObject;
 }.
 
 Record InvState : Type := {
   locs_in_use: gset Loc;
   max_lt_index: nat; 
   
-  ltotal : forall i, Loc -> tpcm_of_index i;
-  view: forall i, Loc -> Lifetime -> tpcm_of_index i -> bool ;
+  ltotal : Loc -> M;
+  view: Loc -> Lifetime -> M -> Prop ;
 }.
   
 Instance allstate_equiv : Equiv AllState := λ x y , x = y.
@@ -131,18 +110,14 @@ Definition merge_lifetime_status (x: LifetimeStatus) (y: LifetimeStatus) :=
 Definition merge_active (x : nat -> LifetimeStatus) (y : nat -> LifetimeStatus) :=
   λ n, merge_lifetime_status (x n) (y n).
   
-Definition merge_borrows (x : forall i, BorrowObject i -> bool)
-                         (y : forall i, BorrowObject i -> bool) :=
-  λ i bo, orb (x i bo) (y i bo).
+Definition merge_borrows (x y : BorrowObject -> bool) :=
+  λ bo, orb (x bo) (y bo).
   
-Definition merge_live_objects (x : forall i, Loc -> tpcm_of_index i)
-                              (y : forall i, Loc -> tpcm_of_index i) :=
-  λ i lo , dot (x i lo) (y i lo).
+Definition merge_live_objects (x y : Loc -> M) :=
+  λ lo , dot (x lo) (y lo).
 
-Definition merge_reserved_objects
-    (x : forall i, (gset (BorrowObject i)))
-    (y : forall i, (gset (BorrowObject i))) :=
-  λ i , union (x i) (y i).
+Definition merge_reserved_objects (x y : (gset (BorrowObject))) :=
+  union x y.
 
 Instance alls_op_instance : Op AllState := λ x y,
   {|
@@ -156,44 +131,56 @@ Instance alls_pcore_instance : PCore AllState := λ x,
   Some({|
     active_lifetimes := λ _ , LSNone;
     borrows := borrows x;
-    live_objects := λ _ _ , unit;
+    live_objects := λ _ , unit;
     reserved_objects := reserved_objects x
   |}) .
   
-Definition Live (i: TPCMIndex) (s: AllState) (loc: Loc) :=
-    live_objects s i loc.
+Definition Live (s: AllState) (loc: Loc) :=
+    live_objects s loc.
 
-Definition borrow_object_has_loc (i: TPCMIndex) (loc: Loc) (bo: BorrowObject i) :=
+Definition borrow_object_has_loc (loc: Loc) (bo: BorrowObject) :=
   match bo with
-  BorrowO _ _ loc1 _ => loc = loc1
+  BorrowO _ loc1 _ => loc = loc1
   end
 .
-Definition borrow_object_has_loc_dec i loc : ∀ l, Decision (borrow_object_has_loc i loc l). intro. unfold borrow_object_has_loc. destruct l. solve_decision. Defined.
-    
-Definition ReservedHere (i: TPCMIndex) (s: AllState) (u: InvState) (loc: Loc) :=
-    set_fold (λ reserveObject m, (match reserveObject with BorrowO _ _ _ k => dot m k end))
+Definition borrow_object_has_loc_dec loc : ∀ bo, Decision (borrow_object_has_loc loc bo). intro. unfold borrow_object_has_loc. destruct bo. solve_decision. Defined.
+
+Definition borrow_object_has_loc_over_lt (loc: Loc) (borrow_lt: Lifetime) (reserve_object: BorrowObject) :=
+  match reserve_object with
+  BorrowO reserve_lt loc1 _ => loc = loc1 /\ lifetime_included borrow_lt reserve_lt
+  end
+.
+Definition borrow_object_has_loc_over_lt_dec loc borrow_lt : ∀ reserve_object , Decision (borrow_object_has_loc_over_lt loc borrow_lt reserve_object). intro. unfold borrow_object_has_loc_over_lt. destruct reserve_object. solve_decision. Defined.
+
+Definition ReservedHere (s: AllState) (u: InvState) (loc: Loc) :=
+    set_fold (λ reserveObject m, (match reserveObject with BorrowO _ _ k => dot m k end))
     unit
     (
       set_filter
-          (borrow_object_has_loc i loc)
-          (borrow_object_has_loc_dec i loc)
-          (reserved_objects s i)
+          (borrow_object_has_loc loc)
+          (borrow_object_has_loc_dec loc)
+          (reserved_objects s)
     ).
     
-Fixpoint LocValidFor (l: Loc) (i: TPCMIndex) : Prop :=
-  match l with
-  | LBase _ j => i = j
-  | LExt _ ri subl =>
-      i = refinement_of_index ri /\ LocValidFor subl (base_of_index ri)
-  end.
-
+Definition ReservedHereOver (s: AllState) (u: InvState) (loc: Loc) (lt: Lifetime) :=
+    set_fold (λ reserveObject m, (match reserveObject with BorrowO _ _ k => dot m k end))
+    unit
+    (
+      set_filter
+          (borrow_object_has_loc_over_lt loc lt)
+          (borrow_object_has_loc_over_lt_dec loc lt)
+          (reserved_objects s)
+    ).
+    
 Definition IsLocExt (l: Loc) (lext: Loc) : Prop :=
   match lext with
-  | LBase _ _ => False
+  | LBase _ => False
   | LExt _ _ subl => l = subl
   end.
   
-Definition rel_total `{Refinement R M} (r: R) := match rel r with | Some t => t | None => unit end.
+Definition is_loc_ext_dec loc : ∀ lext, Decision (IsLocExt loc lext). intro. unfold IsLocExt. destruct lext; solve_decision. Defined.
+  
+Definition rel_total `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) := match (rel R M ref) r with | Some t => t | None => unit end.
 
 Definition get_ref_idx (loc: Loc) (extloc: Loc) (ile: IsLocExt loc extloc) : RefinementIndex.
 unfold IsLocExt in ile. destruct extloc in ile.
@@ -201,25 +188,63 @@ unfold IsLocExt in ile. destruct extloc in ile.
   - apply r.
 Defined.
 
-Print False_rect.
-Print get_ref_idx.
-Print rel_total.
+Definition Project (extloc: Loc) (m: M) : M :=
+  match extloc with
+  | LBase _ => m (* for totality *)
+  | LExt _ ri _ => rel_total (refinement_of_index ri) m
+  end
+.
 
-Definition Project
-    (i: TPCMIndex) (j: TPCMIndex) (loc: Loc) (extloc: Loc)
-    (m: tpcm_of_index j) :
-    LocValidFor loc i -> LocValidFor extloc j -> IsLocExt loc extloc -> (tpcm_of_index i) :=
-  λ lvf1 lvf2 ile ,
-    (*change_type (lemma_project_indices_eq loc extloc ile)*)
-    let ri := (get_ref_idx loc extloc ile) in
-    @rel_total (tpcm_of_index (refinement_of_index ri))
-               (tpcm_of_index (base_of_index ri))
-               (ref_inst_f ri)
-               m.
-(*intros. unfold IsLocExt in H1. destruct extloc.
-  - contradiction.
-  - rename extloc into loc'. unfold LocValidFor in H0. destruct H0.*)
+Definition fold_over_locs {A}
+    (map_fn: Loc -> A)
+    (reduce_fn: A -> A -> A)
+    (unit_a: A)
+    (loc_domain: gset Loc) 
+    (base_loc: Loc) : A :=
+   set_fold (λ extloc a , reduce_fn a (map_fn extloc))
+    unit_a
+    (
+      set_filter (IsLocExt base_loc) (is_loc_ext_dec base_loc) loc_domain
+    ).
+
+Definition FoldProjectTotal (u : InvState) (loc : Loc) :=
+  fold_over_locs (λ lext , ltotal u lext) dot unit (locs_in_use u) loc.
+
+Definition Unlive (s: AllState) (u: InvState) (loc: Loc) :=
+  dot (ReservedHere s u loc) (FoldProjectTotal u loc).
+
+Definition inv_loc_total_identity (s : AllState) (u : InvState) (loc: Loc) : Prop :=
+  (ltotal u loc) = dot (Live s loc) (Unlive s u loc).
+
+Definition umbrella : M -> (M -> Prop) := tpcm_le.
+
+Definition umbrella_unit : (M -> Prop) := λ _ , True.
+
+Definition intersect_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
+  λ m , a m /\ b m.
+
+Definition conjoin_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
+  λ m , ∃ x y , a x /\ b y /\ dot x y = m.
+
+Definition project_umbrella
+    (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
+    λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
   
+Definition ProjectFancy (extloc : Loc) (umbrella : M -> Prop) : (M -> Prop) :=
+  match extloc with
+  | LBase _ => umbrella (* for totality *)
+  | LExt _ ri _ => project_umbrella (refinement_of_index ri) umbrella
+  end
+.
+
+Definition FoldProjectFancyView (u : InvState) (loc : Loc) (lt : Lifetime) :=
+  fold_over_locs (λ lext , view u loc lt) conjoin_umbrella umbrella_unit (locs_in_use u) loc.
+
+Definition inv_loc_lt_view_identity (s : AllState) (u : InvState)
+    (loc: Loc) (lt: Lifetime) : Prop :=
+  (view u loc lt)
+
+
   
     
 Instance alls_valid_instance : Valid AllState := λ x, True.
@@ -228,7 +253,5 @@ Definition allstate_ra_mixin : RAMixin AllState.
 split. 
 
 Print Proper.
-Print relation.
+Print relation.*)
 
-
-end.
