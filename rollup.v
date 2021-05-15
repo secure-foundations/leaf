@@ -473,7 +473,7 @@ Lemma update_total_preserves_most_stuff : ∀ (s: AllState) (u: InvState) (loc: 
        let u' := update_total_at_loc s u loc in
             (∀ l, (not (IsLocExt l loc)) -> inv_loc_view_sat s u' l)
         /\ (∀ l, inv_loc_view_identity s u' l)
-        /\ (∀ l, (not (IsLocExt l loc)) -> inv_loc_valid u' l)
+        /\ (∀ l, IsLocExt l loc -> inv_loc_valid u' l)
         /\ (∀ l, inv_loc_borrow_sound s u' l)
         /\ (∀ l, (not (IsLocExt l loc)) -> inv_loc_total_identity s u' l).
 Proof.
@@ -525,6 +525,11 @@ induction loc.
       + apply H2. auto.
       + apply H3.
   - intros.
+    have ninv := update_total_preserves_most_stuff s u (LExt l r loc) inv_vs inv_vi inv_lv
+                        inv_bs inv_ti_almost is_mov.
+    destruct ninv.  destruct H1. destruct H2. destruct H3.
+    apply IHloc with (u := update_total_at_loc s u (LExt l r loc)).
+      + intro. apply H0.
 
 Lemma live_update_preserve_inv : ∀ (s: AllState) (s': AllState) (u: InvState) (loc: Loc)
     (al_eq : active_lifetimes s = active_lifetimes s')
