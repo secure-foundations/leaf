@@ -12,9 +12,9 @@ Section stuff.
 
 Class TPCM (M : Type) `{EqDecision M} :=
 {
-  valid : M -> bool ;
+  valid : M -> Prop ;
   dot : M -> M -> M ;
-  mov : M -> M -> bool ;
+  mov : M -> M -> Prop ;
   unit : M ;
   
   valid_monotonic : forall x y , valid (dot x y) -> valid x ;
@@ -25,7 +25,7 @@ Class TPCM (M : Type) `{EqDecision M} :=
   reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
   mov_monotonic : forall x y z ,
-      mov x y -> valid (dot x z) -> valid (dot y z) -> mov (dot x z) (dot y z)
+      mov x y -> valid (dot x z) -> valid (dot y z) /\ mov (dot x z) (dot y z)
 }.
 
 Definition tpcm_le `{TPCM M} (a : M) (b : M) := ∃ c , dot a c = b.
@@ -448,102 +448,83 @@ Proof.
       - apply fold_project_total_on_total_change with (loc_changed := loc_changed); trivial.
 Qed.
 
+Definition update_total_at_loc (s: AllState) (u: InvState) (loc_changed: Loc) :=
+  let new_value := (dot (Live s loc_changed) (Unlive s u loc_changed)) in
+  {|
+    locs_in_use := locs_in_use u;
+    max_lt_index := max_lt_index u;
+    ltotal := (λ z , if decide (z = loc_changed) then new_value else ltotal u z);
+    view := view u;
+  |}.
 
-Lemma do_update_total : ∀ (s: AllState) (u: InvState) (loc: Loc) (new_value: M) ,
-    inv s u -> valid new_value -> ∃ u' ,
-             (∀ l, inv_loc_view_sat s u' l)
-          /\ (∀ l, inv_loc_view_identity s u' l)
-          /\ (∀ l, inv_loc_valid u' l)
-          /\ (∀ l, inv_loc_borrow_sound s u' l)
-          /\ (∀ l, l <> loc -> inv_loc_total_identity s u' l)
-          /\ (ltotal u loc) = dot (Live s loc) (Unlive s u' loc)
-          /\ (ltotal u' loc) = new_value.
-induction loc.
-  - intros. unfold inv in H0. unfold inv_loc in H0.
-      exists (
-        let new_total := (λ z , if decide (z = LBase l) then new_value else ltotal u z) in
-        {|
-          locs_in_use := locs_in_use u;
-          max_lt_index := max_lt_index u;
-          ltotal := new_total;
-          view := view u;
-        |}).
-      repeat (split).
-      
-    + intro. destruct (H0 l0).
-        apply inv_loc_view_sat_preserve_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
+Lemma result_of_mov_is_valid (m: M) (m': M) : mov m m' -> valid m -> valid m'.
+Proof. intros. have h := mov_monotonic m m' unit.
+    rewrite <- unit_dot. apply h; trivial. rewrite unit_dot. trivial. Qed.
+  
+Lemma update_total_preserves_most_stuff : ∀ (s: AllState) (u: InvState) (loc: Loc)
+        (inv_vs: ∀ l, inv_loc_view_sat s u l)
+        (inv_vi: ∀ l, inv_loc_view_identity s u l)
+        (inv_lv: ∀ l, inv_loc_valid u l)
+        (inv_bs: ∀ l, inv_loc_borrow_sound s u l)
+        (inv_ti_almost: ∀ l, l <> loc -> inv_loc_total_identity s u l)
+        (is_mov: mov (ltotal u loc)
+                     (dot (Live s loc) (Unlive s u loc))) ,
+                     
+       let u' := update_total_at_loc s u loc in
+            (∀ l, (not (IsLocExt l loc)) -> inv_loc_view_sat s u' l)
+        /\ (∀ l, inv_loc_view_identity s u' l)
+        /\ (∀ l, (not (IsLocExt l loc)) -> inv_loc_valid u' l)
+        /\ (∀ l, inv_loc_borrow_sound s u' l)
+        /\ (∀ l, (not (IsLocExt l loc)) -> inv_loc_total_identity s u' l).
+Proof.
+  intros. repeat split.
+    + intros.
+        apply inv_loc_view_sat_preserve_total_change with (u := u) (loc_changed := loc); simpl; trivial.
           * simpl. intros. case_decide; trivial. contradiction.
-          * unfold IsLocExt. omega.
-    + intro. destruct (H0 l0).
+    + intros.
         apply inv_loc_view_identity_on_total_change with (u := u); simpl; trivial.
-          * simpl. intros. destruct H3. trivial.
-    + intro. destruct (H0 l0). unfold inv_loc_valid. unfold ltotal. case_decide; trivial.
-          destruct H3. destruct H5. destruct H6. unfold inv_loc_valid in H6. destruct u. unfold ltotal in H6. trivial.
-    + intro. destruct (H0 l0). destruct H3. destruct H4. destruct H5. unfold inv_loc_borrow_sound in *. unfold view in *. trivial.
-    + intro. destruct (H0 l0). intro.
-        apply inv_loc_total_identity_on_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
-          * intros. case_decide; trivial. contradiction.
-          * intro. trivial.
-          * destruct H3. destruct H5. trivial.
-    + simpl. destruct (H0 (LBase l)). destruct H3. destruct H4.
-        replace (Unlive s {| locs_in_use := locs_in_use u; max_lt_index := max_lt_index u; ltotal := λ z : Loc, if decide (z = LBase l) then new_value else ltotal u z; view := view u |} (LBase l)) with (Unlive s u (LBase l)).
-          * unfold inv_loc_total_identity in H4. trivial.
-          * apply Unlive_on_total_change with (loc_changed := LBase l).
-            -- simpl. intros. case_decide; trivial. contradiction.
-            -- simpl. trivial.
-            -- simpl. intro. trivial.
-    + simpl. case_decide; trivial. contradiction.
- - intros.
-      have IH := IHloc new_value H0 H1. clear IHloc.
-      destruct IH. rename x into u0.
-      
-      exists (
-        let new_total := (λ z , if decide (z = LExt l r loc) then new_value else ltotal u0 z) in
-        {|
-          locs_in_use := locs_in_use u0;
-          max_lt_index := max_lt_index u0;
-          ltotal := new_total;
-          view := view u0;
-        |}).
-      repeat (split).
-       
-    + intro.
-        apply inv_loc_view_sat_preserve_total_change with (u := u0) (loc_changed := LExt l r loc); trivial.
-          * intros. simpl. case_decide; trivial. contradiction.
-          * unfold IsLocExt.
-          * destruct H2. apply H2.
-    + intro.
-        apply inv_loc_view_identity_on_total_change with (u := u0); simpl; trivial.
-          * simpl. intros. destruct H2. destruct H3. trivial.
-    + intro. unfold inv_loc_valid. unfold ltotal. case_decide; trivial.
-          destruct H2. destruct H4. destruct H5. unfold inv_loc_valid in H5. destruct u. unfold ltotal in H6. trivial.
-    + intro. destruct H2. destruct H3. destruct H4. destruct H5. unfold inv_loc_borrow_sound in *. unfold view in *. apply H5.
-    + intro. 
-        apply inv_loc_total_identity_on_total_change with (u := u0) (loc_changed := LBase l); simpl; trivial.
-          * intros. case_decide; trivial. contradiction.
-          * intro. trivial.
-          * destruct H3. destruct H5. trivial.
-    + simpl. destruct (H0 (LBase l)). destruct H3. destruct H4.
-        replace (Unlive s {| locs_in_use := locs_in_use u; max_lt_index := max_lt_index u; ltotal := λ z : Loc, if decide (z = LBase l) then new_value else ltotal u z; view := view u |} (LBase l)) with (Unlive s u (LBase l)).
-          * unfold inv_loc_total_identity in H4. trivial.
-          * apply Unlive_on_total_change with (loc_changed := LBase l).
-            -- simpl. intros. case_decide; trivial. contradiction.
-            -- simpl. trivial.
-            -- simpl. intro. trivial.
-    + simpl. case_decide; trivial. contradiction.
+    + intros. unfold inv_loc_valid in *. unfold ltotal. unfold update_total_at_loc in u'.
+        simpl. case_decide; trivial.
+            apply result_of_mov_is_valid with (m := ltotal u loc); trivial.
+    + unfold inv_loc_borrow_sound in *. unfold view in *. trivial.
+    
+    + intros. have eqcase : Decision (l = loc).
+      * solve_decision.
+      * destruct eqcase.
+        -- rewrite e. unfold update_total_at_loc in u'. unfold inv_loc_total_identity.
+            unfold ltotal. simpl. case_decide; trivial. 
+            ** f_equal. apply Unlive_on_total_change with (loc_changed := loc).
+              ++ intros. unfold ltotal. simpl. case_decide; trivial. contradiction.
+              ++ simpl. trivial.
+              ++ rewrite e in H0. trivial.
+            ** contradiction.
+        -- apply inv_loc_total_identity_on_total_change with (u := u) (loc_changed := loc); simpl; trivial.
+          ** intros. case_decide; trivial. contradiction.
+          ** apply inv_ti_almost. trivial.
+Qed.
 
-      
-      
-
-    
-    
-    
-    (*+ destruct (H0 (LBase l)).
-        apply inv_loc_view_sat_preserve_total_change with (u := u) (loc_changed := LBase l); simpl; trivial.
-          * simpl. intros. case_decide; trivial. contradiction.
-          * unfold IsLocExt. omega.
-    + *)
-      
+Lemma recursive_update_total : ∀ (s: AllState) (loc: Loc) (u: InvState)
+        (inv_vs: ∀ l, inv_loc_view_sat s u l)
+        (inv_vi: ∀ l, inv_loc_view_identity s u l)
+        (inv_lv: ∀ l, inv_loc_valid u l)
+        (inv_bs: ∀ l, inv_loc_borrow_sound s u l)
+        (inv_ti_almost: ∀ l, l <> loc -> inv_loc_total_identity s u l)
+        (is_mov: mov (ltotal u loc)
+                     (dot (Live s loc) (Unlive s u loc))) ,
+        ∃ u' , inv s u'.
+induction loc.
+  - intros.
+    exists (update_total_at_loc s u (LBase l)).
+    have ninv := update_total_preserves_most_stuff s u (LBase l) inv_vs inv_vi inv_lv
+                        inv_bs inv_ti_almost is_mov.
+    destruct ninv. destruct H1. destruct H2. destruct H3.
+    unfold inv. intros. unfold inv_loc. repeat split.
+      + apply H0. auto.
+      + apply H1.
+      + apply H4. auto.
+      + apply H2. auto.
+      + apply H3.
+  - intros.
 
 Lemma live_update_preserve_inv : ∀ (s: AllState) (s': AllState) (u: InvState) (loc: Loc)
     (al_eq : active_lifetimes s = active_lifetimes s')
