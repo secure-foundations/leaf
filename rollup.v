@@ -66,19 +66,30 @@ Instance countableloc : Countable Loc. Admitted.*)
 Inductive PathId :=
   | NormalId : nat -> PathId.
 
-Definition id_lt (p1: PathId) (p2: PathId) : Prop :=
+Definition id_lt (p1: PathId) (p2: PathId) : bool :=
   match p1, p2 with
-  | NormalId id1, NormalId id2 => id1 < id2
+  | NormalId id1, NormalId id2 => id1 <? id2
   end.
 
-Lemma path_id_trichotomy (p1: PathId) (p2: PathId) :
+Inductive Trichotomy :=
+  | TrichFirstLtSecond : Trichotomy
+  | TrichSecondLtFirst : Trichotomy
+  | TrichEq : Trichotomy
+.
+
+Definition path_id_trichotomy (p1: PathId) (p2: PathId) : Trichotomy :=
+  if id_lt p1 p2 then TrichFirstLtSecond
+  else if id_lt p2 p1 then TrichSecondLtFirst
+  else TrichEq.
+
+(*Definition path_id_trichotomy (p1: PathId) (p2: PathId) :
     (id_lt p1 p2 \/ id_lt p2 p1) \/ p1 = p2.
 Proof.
   destruct p1, p2. unfold id_lt.
   have j : (NormalId n = NormalId n0) <-> n = n0.
    - split; crush.
    - rewrite j. lia.
-Qed.
+Defined.*)
 
 Definition Lifetime := gset nat.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
@@ -447,14 +458,6 @@ Inductive State :=
 
 Instance alls_valid_instance : Valid State := λ x, True.
 
-Instance state_equiv : Equiv State := λ x y ,
-  match x, y with
-  | StateFail, StateFail => True
-  | StateFail, StateCon _ _ => False
-  | StateCon _ _, StateFail => False
-  | StateCon lt1 node1, StateCon lt2 node2 => lt1 = lt2 /\ node1 ≡ node2
-  end.
-
 Instance state_pcore : PCore State := λ state , 
   match state with
   | StateFail => Some StateFail
@@ -485,9 +488,9 @@ with branch_op (branch1: Branch) : Branch -> Branch :=
     | BranchCons _ _ _, BranchNil => branch1
     | BranchCons id1 n1 subbranch1 , BranchCons id2 n2 subbranch2 =>
         match path_id_trichotomy id1 id2 with
-        | or_introl (or_introl _)  => BranchCons id1 n1 (branch_op subbranch1 branch2)
-        | or_introl (or_intror _) => BranchCons id2 n2 (inner_branch_op subbranch2)
-        | or_intror _ =>
+        | TrichFirstLtSecond  => BranchCons id1 n1 (branch_op subbranch1 branch2)
+        | TrichSecondLtFirst => BranchCons id2 n2 (inner_branch_op subbranch2)
+        | TrichEq =>
             BranchCons id1 (node_op n1 n2) (branch_op subbranch1 subbranch2)
         end
     end
@@ -504,7 +507,7 @@ Instance state_op : Op State := λ x y ,
     end
   end.
   
-Definition branches_ordered (id1: PathId) (branch2: Branch) :=
+Definition branches_ordered (id1: PathId) (branch2: Branch) : Prop :=
   match branch2 with
   | BranchNil => True
   | BranchCons id2 _ _ => id_lt id1 id2
@@ -519,10 +522,98 @@ Fixpoint node_ordered (node: Node) : Prop :=
 with branch_ordered (branch: Branch) : Prop :=
   match branch with
   | BranchNil => True
-  | BranchCons id1 node branch2 => branches_ordered id1 branch2 /\ branch_ordered branch2
+  | BranchCons id1 node branch2 =>
+      branches_ordered id1 branch2 /\ branch_ordered branch2
+        /\ node_ordered node
   end
 .
- 
+
+Instance state_equiv : Equiv State := λ x y ,
+  match x, y with
+  | StateFail, StateFail => True
+  | StateFail, StateCon _ _ => False
+  | StateCon _ _, StateFail => False
+  | StateCon lt1 node1, StateCon lt2 node2 =>
+      (lt1 = lt2 /\ node1 ≡ node2)
+      \/ (not (node_ordered node1) /\ not (node_ordered node2))
+      
+  end.
+
+
+(*Fixpoint node_structural_equiv (node1: Node) (node2: Node) :=
+  match node1, node2 with
+    | FailNode, FailNode => True
+    | FailNode, CellNode _ _ => False
+    | CellNode _ _, FailNode => False
+    | CellNode cell1 branch1, CellNode cell2 branch2 =>
+           cell1 = cell2
+        /\ branch_structural_equiv branch1 branch2
+  end
+with branch_structural_equiv (branch1: Branch) (branch2: Branch) : Prop :=
+  match branch1, branch2 with
+    | BranchNil, BranchNil => True
+    | BranchNil, BranchCons _ _ _ => False
+    | BranchCons _ _ _, BranchNil => False
+    | BranchCons id1 n1 br1, BranchCons id2 n2 br2 => 
+          ((id1 = id2) /\ node_equiv n1 n2 /\ branch_equiv br1 br2)
+  end 
+.*)
+
+
+
+(*
+Lemma branch_equiv_induction
+  (R : BranchNode -> BranchNode -> Prop)
+  (triv_holds: R BranchNil BranchNil)
+  (trivial_append_left: ∀ a b , R a b -> node_trivial n -> R (BranchCons id n a) b)
+  (trivial_append_right: ∀ a b , R a b -> node_trivial n -> R a (BranchCons id n b))
+  (trivial_append_right: ∀ a b , R a b -> *)
   
+Lemma destruct_branch_equiv_cons_cons
+  (pid1: PathId) (node1: Node) (br1: Branch)
+  (pid2: PathId) (node2: Node) (br2: Branch)
+  (equ: branch_equiv (BranchCons pid1 node1 br1) (BranchCons pid2 node2 br2))
+    : (branch_equiv br1 br2 /\ node_equiv node1 node2 /\ pid1 = pid2)
+    \/ (branch_equiv br1 (BranchCons pid2 node2 br2) /\ node_trivial node1)
+    \/ (branch_equiv (BranchCons pid1 node1 br1) br2 /\ node_trivial node2).
+Proof. destruct equ; crush. Qed.
+
+Lemma threeway_induction : ∀
+  (R : Node -> Node -> Node -> Prop)
+  (Q : Branch -> Branch -> Branch -> Prop)
+  (∀ b1 b2 b3 c1 c2 c3 , Q b1 b2 b3 -> R (CellNode c1 b1) (CellNode c2 b2) (CellNode c3 b3))
+  (∀ n2 n3 , FailNode n2 n3)
+
+
+Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
+    (node_eq: node_equiv nodeRight1 nodeRight2)
+    : (node_equiv (node_op nodeLeft nodeRight1) (node_op nodeLeft nodeRight2))
+with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchRight2: Branch)
+    (branch_eq: branch_equiv branchRight1 branchRight2) ,
+    (branch_equiv (branch_op branchLeft branchRight1) (branch_op branchLeft branchRight2)).
+ - destruct nodeLeft, nodeRight1, nodeRight2.
+    + have ind_hyp := branch_op_equiv b b0 b1. clear node_op_equiv. clear branch_op_equiv.
+        crush.
+        destruct c. destruct c1. case_decide; crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. destruct c. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+ - destruct branchLeft.
+  + have ind_hyp_branch := branch_op_equiv branchLeft. clear branch_op_equiv.
+    have ind_hyp_node := node_op_equiv n. clear node_op_equiv.
+    induction branchRight1; induction branchRight2.
+    * intro.
+      have q := destruct_branch_equiv_cons_cons p0 n0 branchRight1 p1 n1 branchRight2 branch_eq.
+      destruct q.
+      -- unfold branch_op. case_match; case_match; fold branch_op; fold node_op.
+        ** unfold branch_equiv.  left. split; trivial. apply ind_hyp_branch.
+          case_match.
+ 
+
 Definition allstate_ra_mixin : RAMixin State.
 Proof. split.
+  - unfold Proper, "==>".
