@@ -536,9 +536,9 @@ with op_trivial_branch (branch1: Branch) (branch2: Branch)
 Proof.
   - destruct node1; destruct node2.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
-    unfold node_op. fold branch_op. destruct c. destruct c0. case_decide.
-      * crush.
+    unfold node_op. fold branch_op. destruct c. destruct c0. crush.
         -- apply unit_dot.
+        -- split.
         -- unfold equiv_func, bool_or_func. crush.
         -- apply equiv_rmerge_emptyset.
       * case_decide.
