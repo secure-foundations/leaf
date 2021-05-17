@@ -11,6 +11,20 @@ From stdpp Require Import sets.
 From stdpp Require Import fin_sets.
 From stdpp Require Import list.
 
+Lemma gset_easy_induct `{EqDecision A, Countable A} {B}
+  (R : B -> Prop)
+  (s: gset A)
+  (fn : A -> B -> B)
+  (u : B)
+  (R_u : R u)
+  (ind: ∀ a b , R b -> R (fn a b))
+  : R (set_fold fn u s).
+Proof.
+  unfold set_fold. unfold "∘". induction (elements s).
+  - unfold foldr. trivial.
+  - unfold foldr. apply ind. apply IHl.
+Qed.
+
 Lemma gset_relate `{EqDecision A, Countable A} {B} {C}
   (R : B -> C -> Prop)
   (s: gset A)
@@ -166,3 +180,18 @@ Proof.
         * rewrite k. trivial.
 Qed.
 
+Lemma gset_nat_upper_bound (s: gset nat)
+    : ∃ n , ∀ m , m ∈ s -> m < n.
+Proof.
+  generalize s.
+  apply set_ind with (P := λ t : (gset nat), ∃ n , ∀ m , m ∈ t -> m < n).
+  - unfold Proper, equiv, "==>", iff.  unfold set_equiv_instance. intros. split; intros; destruct H0.
+    + exists x0. intros. apply H0. unfold set_equiv_instance in H. rewrite H. trivial.
+    + exists x0. intros. apply H0. unfold set_equiv_instance in H. rewrite <- H. trivial.
+  - exists 0. intro. rewrite elem_of_empty. contradiction.
+  - intros. destruct H0. exists (max x0 (x + 1)). intro. rewrite elem_of_union.
+        rewrite elem_of_singleton.
+      intros. destruct H1.
+        + lia.
+        + have ineq := H0 m H1. lia.
+Qed.
