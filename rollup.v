@@ -118,17 +118,23 @@ Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 (*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
 
+Inductive RI :=
+  | TrivialRI : RI
+  | NormalRI : RefinementIndex -> RI
+  | ConflictRI : RI.
+  
+Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
+
 Inductive Cell : Type :=
   | CellCon :
       M ->
-      option RefinementIndex ->
+      RI ->
       (BorrowObject -> bool) ->
       gmap nat M ->
           Cell.
 
 Inductive Node: Type :=
   | CellNode : Cell -> Branch -> Node
-  | FailNode : Node
 with Branch: Type :=
   | BranchCons : Node -> Branch -> Branch
   | BranchNil : Branch.
@@ -150,19 +156,17 @@ Definition cell_total (cell: Cell) (lifetime: Lifetime) :=
 Definition rel_project `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) :=
     match (rel R M ref) r with | Some t => t | None => unit end.
 
-Definition get_ref (ri: option RefinementIndex) : Refinement M M. Admitted.
+Definition get_ref (ri: RI) : Refinement M M. Admitted.
  
 Definition project (node: Node) (m: M) : M :=
   match node with
   | CellNode (CellCon _ ref _ _) _ => rel_project (get_ref ref) m
-  | FailNode => unit
   end
 .
 
 Fixpoint node_total (node: Node) (lifetime: Lifetime) : M :=
   match node with
   | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
-  | FailNode => unit
   end
 with branch_total (branch: Branch) (lifetime: Lifetime) : M :=
   match branch with
@@ -202,14 +206,12 @@ Definition rel_project_fancy (ref : Refinement M M) (um: M -> Prop) :=
 Definition project_fancy (node: Node) (um: M -> Prop) : (M -> Prop) :=
   match node with
   | CellNode (CellCon _ ref _ _) _ => rel_project_fancy (get_ref ref) um
-  | FailNode => umbrella_unit
   end
 .
 
 Fixpoint node_view (node: Node) (lifetime: Lifetime) : (M -> Prop) :=
   match node with
   | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
-  | FailNode => umbrella_unit
   end
 with branch_view (branch: Branch) (lifetime: Lifetime) : (M -> Prop) :=
   match branch with
@@ -324,7 +326,6 @@ Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) :
   | CellNode (CellCon _ ref _ _) branch =>
          in_refinement_domain (get_ref ref) (node_total node lifetime)
       /\ branch_all_total_in_refinement_domain branch lifetime
-  | FailNode => false
   end
 with branch_all_total_in_refinement_domain (branch: Branch) (lifetime: Lifetime) : Prop :=
   match branch with
@@ -369,7 +370,6 @@ Proof.
           unfold node_all_total_in_refinement_domain in ird.
               fold branch_all_total_in_refinement_domain in ird.
               destruct c in ird. destruct ird. trivial.
-      + unfold node_view. unfold node_total. apply unit_view_sat_unit.
  - destruct branch.
       + unfold branch_view. unfold branch_total. apply view_sat_conjoin.
         * fold node_view. fold node_total.
@@ -384,7 +384,6 @@ Proof.
                   destruct H0. trivial.
               ++ apply ind_node; trivial. 
                   unfold branch_all_total_in_refinement_domain in ird. crush.
-          -- apply unit_view_sat_unit.
         * apply branch_view_le_total; trivial.
             unfold branch_all_total_in_refinement_domain in ird. crush.
       + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
@@ -399,7 +398,6 @@ Definition cell_trivial (cell: Cell) :=
 Fixpoint node_trivial (node: Node) :=
   match node with
   | CellNode cell branch => cell_trivial cell /\ branch_trivial branch
-  | FailNode => False
   end
 with branch_trivial (branch: Branch) :=
   match branch with
@@ -422,9 +420,6 @@ Definition cell_equiv (cell1: Cell) (cell2: Cell) :=
 
 Fixpoint node_equiv (node1: Node) (node2: Node) :=
   match node1, node2 with
-    | FailNode, FailNode => True
-    | FailNode, CellNode _ _ => False
-    | CellNode _ _, FailNode => False
     | CellNode cell1 branch1, CellNode cell2 branch2 =>
            cell_equiv cell1 cell2
         /\ branch_equiv branch1 branch2
@@ -446,7 +441,6 @@ Definition cell_core (cell: Cell) : Cell :=
 Fixpoint node_core (node: Node) : Node :=
   match node with
   | CellNode cell branch => CellNode (cell_core cell) (branch_core branch)
-  | FailNode => FailNode
   end
 with branch_core (branch: Branch) : Branch :=
   match branch with
@@ -484,46 +478,21 @@ Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmer
 Definition rmerge (f: gmap nat M) (g: gmap nat M) :=
   merge rmerge_one f g.
 
-Definition is_map_all_unit (f: gmap nat M) : Prop :=
-    ∀ x , gmap_get_or_unit f x = unit. 
+Definition op_ri (a: RI) (b: RI) := if decide (a = b) then a else ConflictRI.
 
-Instance dec_is_map_all_unit f : Decision (is_map_all_unit f). Admitted.
-
-Definition cell_op (x: Cell) (y: Cell) : option Cell :=
-  match x y with
-  | CellCon m1 ref1 borrows1 reserved1
-    CellCon m2 ref2 borrows2 reserved2
-      match decide (ref1 = ref2) with
-       | left _ => CellNode (CellCon (dot m1 m2) ref1
-                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
-                    (branch_op branch1 branch2)
-       | right _ =>
-         match decide (m1 = unit /\ equiv_reserved reserved1  ) with
+Definition cell_op (x: Cell) (y: Cell) : Cell :=
+  match x, y with
+  | CellCon m1 ref1 borrows1 reserved1,
+    CellCon m2 ref2 borrows2 reserved2 =>
+      CellCon (dot m1 m2) (op_ri ref1 ref2) 
+                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2)
+  end
+.
 
 Fixpoint node_op (x: Node) (y: Node) : Node :=
   match x, y with
-  | FailNode, _ => FailNode
-  | CellNode _ _, FailNode => FailNode
-  | CellNode (CellCon m1 ref1 borrows1 reserved1) branch1,
-    CellNode (CellCon m2 ref2 borrows2 reserved2) branch2 =>
-       match decide (ref1 = ref2) with
-       | left _ => CellNode (CellCon (dot m1 m2) ref1
-                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
-                    (branch_op branch1 branch2)
-       | right _ =>
-         match decide ((m1 = unit) /\ is_map_all_unit reserved1) with
-         | left _ => CellNode (CellCon m2 ref2
-                      (bool_or_func borrows1 borrows2) reserved2)
-                    (branch_op branch1 branch2)
-         | right _ =>
-            match decide ((m2 = unit) /\ is_map_all_unit reserved2) with
-            | left _ => CellNode (CellCon m1 ref2
-                          (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
-                        (branch_op branch1 branch2)
-            | right _ => FailNode
-            end
-         end
-       end
+  | CellNode cell1 branch1, CellNode cell2 branch2 =>
+      CellNode (cell_op cell1 cell2) (branch_op branch1 branch2)
   end 
 with branch_op (branch1: Branch) (branch2: Branch) : Branch :=
     match branch1, branch2 with
