@@ -63,7 +63,7 @@ Instance eqloc : EqDecision Loc. solve_decision. Defined.
 
 Instance countableloc : Countable Loc. Admitted.*)
 
-Inductive PathId :=
+(*Inductive PathId :=
   | NormalId : nat -> PathId.
 
 Definition id_lt (p1: PathId) (p2: PathId) : bool :=
@@ -80,7 +80,7 @@ Inductive Trichotomy :=
 Definition path_id_trichotomy (p1: PathId) (p2: PathId) : Trichotomy :=
   if id_lt p1 p2 then TrichFirstLtSecond
   else if id_lt p2 p1 then TrichSecondLtFirst
-  else TrichEq.
+  else TrichEq.*)
 
 (*Definition path_id_trichotomy (p1: PathId) (p2: PathId) :
     (id_lt p1 p2 \/ id_lt p2 p1) \/ p1 = p2.
@@ -130,7 +130,7 @@ Inductive Node: Type :=
   | CellNode : Cell -> Branch -> Node
   | FailNode : Node
 with Branch: Type :=
-  | BranchCons : PathId -> Node -> Branch -> Branch
+  | BranchCons : Node -> Branch -> Branch
   | BranchNil : Branch.
 
 Definition gmap_get_or_unit (reserved: gmap nat M) (lu: nat) :=
@@ -167,7 +167,7 @@ Fixpoint node_total (node: Node) (lifetime: Lifetime) : M :=
 with branch_total (branch: Branch) (lifetime: Lifetime) : M :=
   match branch with
   | BranchNil => unit
-  | BranchCons _ node branch => dot (project node (node_total node lifetime)) (branch_total branch lifetime)
+  | BranchCons node branch => dot (project node (node_total node lifetime)) (branch_total branch lifetime)
   end
 .
  
@@ -214,7 +214,7 @@ Fixpoint node_view (node: Node) (lifetime: Lifetime) : (M -> Prop) :=
 with branch_view (branch: Branch) (lifetime: Lifetime) : (M -> Prop) :=
   match branch with
   | BranchNil => umbrella_unit
-  | BranchCons _ node branch => conjoin_umbrella (project_fancy node (node_view node lifetime)) (branch_view branch lifetime)
+  | BranchCons node branch => conjoin_umbrella (project_fancy node (node_view node lifetime)) (branch_view branch lifetime)
   end
 .
 
@@ -329,7 +329,7 @@ Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) :
 with branch_all_total_in_refinement_domain (branch: Branch) (lifetime: Lifetime) : Prop :=
   match branch with
   | BranchNil => True
-  | BranchCons _ node branch =>
+  | BranchCons node branch =>
          node_all_total_in_refinement_domain node lifetime
       /\ branch_all_total_in_refinement_domain branch lifetime
   end
@@ -404,7 +404,7 @@ Fixpoint node_trivial (node: Node) :=
 with branch_trivial (branch: Branch) :=
   match branch with
   | BranchNil => True
-  | BranchCons _ node branch => node_trivial node /\ branch_trivial branch
+  | BranchCons node branch => node_trivial node /\ branch_trivial branch
   end
 .
 
@@ -417,19 +417,13 @@ Fixpoint node_equiv (node1: Node) (node2: Node) :=
            cell1 = cell2
         /\ branch_equiv branch1 branch2
   end
-with branch_equiv (branch1: Branch) : Branch -> Prop :=
-  fix inner_branch_equiv (branch2: Branch) :=
-    match branch1 with
-      | BranchNil => branch_trivial branch2
-      | BranchCons id1 n1 br1 =>
-          match branch2 with
-          | BranchNil => branch_trivial branch1
-          | BranchCons id2 n2 br2 =>
-               ((id1 = id2) /\ node_equiv n1 n2 /\ branch_equiv br1 br2)
-            \/ (node_trivial n1 /\ branch_equiv br1 branch2)
-            \/ (node_trivial n2 /\ inner_branch_equiv br2)
-          end
-    end
+with branch_equiv (branch1: Branch) (branch2: Branch) :=
+    match branch1, branch2 with
+      | BranchNil, _ => branch_trivial branch2
+      | BranchCons _ _, BranchNil => branch_trivial branch1
+      | BranchCons n1 b1, BranchCons n2 b2 =>
+          node_equiv n1 n2 /\ branch_equiv b1 b2
+  end 
 .
 
 Definition cell_core (cell: Cell) : Cell :=
@@ -445,7 +439,7 @@ Fixpoint node_core (node: Node) : Node :=
 with branch_core (branch: Branch) : Branch :=
   match branch with
   | BranchNil => BranchNil
-  | BranchCons id node branch => BranchCons id (node_core node) (branch_core branch)
+  | BranchCons node branch => BranchCons (node_core node) (branch_core branch)
   end
 .
 
@@ -481,18 +475,12 @@ Fixpoint node_op (x: Node) (y: Node) : Node :=
        | right _ => FailNode 
        end
   end 
-with branch_op (branch1: Branch) : Branch -> Branch :=
-  fix inner_branch_op (branch2: Branch) :=
+with branch_op (branch1: Branch) (branch2: Branch) : Branch :=
     match branch1, branch2 with
     | BranchNil, _ => branch2
-    | BranchCons _ _ _, BranchNil => branch1
-    | BranchCons id1 n1 subbranch1 , BranchCons id2 n2 subbranch2 =>
-        match path_id_trichotomy id1 id2 with
-        | TrichFirstLtSecond  => BranchCons id1 n1 (branch_op subbranch1 branch2)
-        | TrichSecondLtFirst => BranchCons id2 n2 (inner_branch_op subbranch2)
-        | TrichEq =>
-            BranchCons id1 (node_op n1 n2) (branch_op subbranch1 subbranch2)
-        end
+    | BranchCons _ _, BranchNil => branch1
+    | BranchCons n1 subbranch1 , BranchCons n2 subbranch2 =>
+        BranchCons (node_op n1 n2) (branch_op subbranch1 subbranch2)
     end
 .
 
@@ -507,27 +495,6 @@ Instance state_op : Op State := λ x y ,
     end
   end.
   
-Definition branches_ordered (id1: PathId) (branch2: Branch) : Prop :=
-  match branch2 with
-  | BranchNil => True
-  | BranchCons id2 _ _ => id_lt id1 id2
-  end
-.
-  
-Fixpoint node_ordered (node: Node) : Prop :=
-  match node with
-  | CellNode _ branch => (branch_ordered branch)
-  | FailNode => True
-  end
-with branch_ordered (branch: Branch) : Prop :=
-  match branch with
-  | BranchNil => True
-  | BranchCons id1 node branch2 =>
-      branches_ordered id1 branch2 /\ branch_ordered branch2
-        /\ node_ordered node
-  end
-.
-
 Instance state_equiv : Equiv State := λ x y ,
   match x, y with
   | StateFail, StateFail => True
@@ -535,9 +502,44 @@ Instance state_equiv : Equiv State := λ x y ,
   | StateCon _ _, StateFail => False
   | StateCon lt1 node1, StateCon lt2 node2 =>
       (lt1 = lt2 /\ node1 ≡ node2)
-      \/ (not (node_ordered node1) /\ not (node_ordered node2))
-      
   end.
+
+Lemma op_trivial_node (node1: Node) (node2: Node)
+  (istriv: node_trivial node2) : (node_equiv (node_op node1 node2) node1)
+with op_trivial_branch (branch1: Branch) (branch2: Branch)
+  (istriv: branch_trivial branch2) : (branch_equiv (branch_op branch1 branch2) branch1).
+Proof.
+  - destruct node1; destruct node2.
+    + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
+        crush. 
+
+Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
+    (node_eq: node_equiv nodeRight1 nodeRight2)
+    : (node_equiv (node_op nodeLeft nodeRight1) (node_op nodeLeft nodeRight2))
+with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchRight2: Branch)
+    (branch_eq: branch_equiv branchRight1 branchRight2) ,
+    (branch_equiv (branch_op branchLeft branchRight1) (branch_op branchLeft branchRight2)).
+  - destruct nodeLeft, nodeRight1, nodeRight2.
+    + have ind_hyp := branch_op_equiv b b0 b1. clear node_op_equiv. clear branch_op_equiv.
+        crush.
+        destruct c. destruct c1. case_decide; crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. destruct c. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+    + clear node_op_equiv. clear branch_op_equiv. crush.
+  - intros. destruct branchRight1.
+    + destruct branchRight2.
+      * destruct branchLeft.
+        -- have hyp_node := node_op_equiv n1 n n0. clear node_op_equiv.
+           have hyp_branch := branch_op_equiv branchLeft branchRight1 branchRight2.
+           clear branch_op_equiv. crush.
+        -- clear node_op_equiv. clear branch_op_equiv. crush.
+      * destruct branchLeft.
+        -- clear node_op_equiv. clear branch_op_equiv. unfold branch_op. fold branch_op. fold node_op. unfold branch_equiv. fold branch_equiv. fold node_equiv. split.
+          ++ unfold branch_equiv in branch_eq. unfold branch_trivial in branch_eq. fold node_trivial in branch_eq.
 
 
 (*Fixpoint node_structural_equiv (node1: Node) (node2: Node) :=
@@ -569,7 +571,7 @@ Lemma branch_equiv_induction
   (trivial_append_right: ∀ a b , R a b -> node_trivial n -> R a (BranchCons id n b))
   (trivial_append_right: ∀ a b , R a b -> *)
   
-Lemma destruct_branch_equiv_cons_cons
+(*Lemma destruct_branch_equiv_cons_cons
   (pid1: PathId) (node1: Node) (br1: Branch)
   (pid2: PathId) (node2: Node) (br2: Branch)
   (equ: branch_equiv (BranchCons pid1 node1 br1) (BranchCons pid2 node2 br2))
@@ -582,9 +584,16 @@ Lemma threeway_induction : ∀
   (R : Node -> Node -> Node -> Prop)
   (Q : Branch -> Branch -> Branch -> Prop)
   (∀ b1 b2 b3 c1 c2 c3 , Q b1 b2 b3 -> R (CellNode c1 b1) (CellNode c2 b2) (CellNode c3 b3))
-  (∀ n2 n3 , FailNode n2 n3)
+  (∀ n2 n3 , R FailNode n2 n3)
+  (∀ n1 n3 , R n1 FailNode n3)
+  (∀ n1 n2 , R n1 n2 FailNode)
+  (Q BranchNil BranchNil BranchNil)
+  (∀ b , Q b BranchNil BranchNil -> Q (BranchCons id n b) BranchNil BranchNil)
+  (∀ b , Q BranchNil b BranchNil -> Q BranchNil (BranchCons id n b) BranchNil)
+  (∀ b , Q BranchNil BranchNil b -> Q BranchNil BranchNil (BranchCons id n b))
+*)
 
-
+(*
 Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
     (node_eq: node_equiv nodeRight1 nodeRight2)
     : (node_equiv (node_op nodeLeft nodeRight1) (node_op nodeLeft nodeRight2))
@@ -612,7 +621,7 @@ with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchR
       -- unfold branch_op. case_match; case_match; fold branch_op; fold node_op.
         ** unfold branch_equiv.  left. split; trivial. apply ind_hyp_branch.
           case_match.
- 
+*) 
 
 Definition allstate_ra_mixin : RAMixin State.
 Proof. split.
