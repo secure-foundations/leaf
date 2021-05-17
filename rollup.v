@@ -472,7 +472,19 @@ Fixpoint node_op (x: Node) (y: Node) : Node :=
        | left _ => CellNode (CellCon (dot m1 m2) ref1
                       (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
                     (branch_op branch1 branch2)
-       | right _ => FailNode 
+       | right _ =>
+         match decide (m1 = unit) with
+         | left _ => CellNode (CellCon m2 ref2
+                      (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                    (branch_op branch1 branch2)
+         | right _ =>
+            match decide (m2 = unit) with
+            | left _ => CellNode (CellCon m1 ref2
+                          (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                        (branch_op branch1 branch2)
+            | right _ => FailNode
+            end
+         end
        end
   end 
 with branch_op (branch1: Branch) (branch2: Branch) : Branch :=
@@ -511,7 +523,8 @@ with op_trivial_branch (branch1: Branch) (branch2: Branch)
 Proof.
   - destruct node1; destruct node2.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
-        crush. 
+    unfold node_op. fold branch_op. destruct c. destruct c0. case_decide.
+      * crush. rewrite unit_dot.
 
 Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
     (node_eq: node_equiv nodeRight1 nodeRight2)
