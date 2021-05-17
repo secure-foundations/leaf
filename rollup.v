@@ -7,6 +7,7 @@ From stdpp Require Import gmap.
 From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
+Import gmap_utils.
 
 Section stuff.
 
@@ -75,13 +76,122 @@ apply set_ind.
  - exists 0. intro. unfold gset_elem_of.
  Abort.*)
  
-Inductive BorrowObject : Type :=
+(*Inductive BorrowObject : Type :=
   | BorrowO : Lifetime -> Loc -> M -> BorrowObject
+.
+Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
+Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
+ 
+Inductive BorrowObject : Type :=
+  | BorrowO : Lifetime -> M -> BorrowObject
 .
 Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
 Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 Inductive LifetimeStatus := LSNone | LSActive | LSFail.
+
+Inductive Cell : Type :=
+  | CellCon : M
+      -> option RefinementIndex
+      -> (BorrowObject -> bool)
+      -> gmap nat M
+      -> Cell.
+
+Inductive Node: Type :=
+  | CellNode : Cell -> Branch -> Node
+  | FailNode : Node
+with Branch: Type :=
+  | BranchCons : nat -> Node -> Branch -> Branch
+  | BranchNil : Branch.
+
+Definition gmap_get_or_unit (reserved: gmap nat M) (lu: nat) :=
+  match reserved !! lu with
+  | Some m => m
+  | None => unit
+  end.
+
+Definition sum_reserved_over_lifetime (reserved: gmap nat M) (lifetime: Lifetime) :=
+  set_fold (λ lu m , dot m (gmap_get_or_unit reserved lu)) unit lifetime.
+  
+Definition cell_total (cell: Cell) (lifetime: Lifetime) :=
+  match cell with
+  | CellCon m _ _ reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
+  end.
+
+Fixpoint node_total (node: Node) (lifetime: Lifetime) : M :=
+  match node with
+  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
+  | FailNode => unit
+  end
+with branch_total (branch: Branch) (lifetime: Lifetime) : M :=
+  match branch with
+  | BranchNil => unit
+  | BranchCons _ node branch => dot (project (node_total node lifetime)) (branch_total branch lifetime)
+  end
+.
+
+Definition umbrella : M -> (M -> Prop) := tpcm_le.
+
+Definition umbrella_unit : (M -> Prop) := λ _ , True.
+
+Definition intersect_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
+  λ m , a m /\ b m.
+
+Definition conjoin_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
+  λ m , ∃ x y , a x /\ b y /\ dot x y = m.
+
+Definition project_umbrella
+    (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
+    λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
+    
+Definition conjoin_reserved_over_lifetime (reserved: gmap nat M) (lifetime: Lifetime) : (M -> Prop) :=
+  set_fold (λ lu um , conjoin_umbrella um (umbrella (gmap_get_or_unit reserved lu)))
+      umbrella_unit lifetime.
+
+Definition cell_view (cell: Cell) (lifetime: Lifetime) : (M -> Prop) :=
+  match cell with
+  | CellCon m _ _ reserved => conjoin_reserved_over_lifetime reserved lifetime
+  end.
+
+Fixpoint node_view (node: Node) (lifetime: Lifetime) : (M -> Prop) :=
+  match node with
+  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
+  | FailNode => umbrella_unit
+  end
+with branch_view (branch: Branch) (lifetime: Lifetime) : (M -> Prop) :=
+  match branch with
+  | BranchNil => umbrella_unit
+  | BranchCons _ node branch => conjoin_umbrella (node_view node lifetime) (branch_view branch lifetime)
+  end
+.
+
+Definition view_sat (umbrella : M -> Prop) (m : M) := umbrella m.
+
+Lemma sum_reserved_over_lifetime_monotonic (g: gmap nat M) (lt1: Lifetime) (lt2: Lifetime)
+  (lt1_le_lt2 : subseteq lt1 lt2)
+  : tpcm_le
+        (sum_reserved_over_lifetime g lt1)
+        (sum_reserved_over_lifetime g lt2). Admitted.
+
+Lemma view_sat_reserved_over_lifetime (g: gmap nat M) (lt: Lifetime)
+  : view_sat (conjoin_reserved_over_lifetime g lt)
+             (sum_reserved_over_lifetime g lt). Admitted.
+
+
+Lemma cell_view_le_total (cell: Cell) (lt: Lifetime) (active: Lifetime)
+    (lt_is_active : lifetime_included active lt)
+    : view_sat (cell_view cell lt) (cell_total cell active).
+Proof.
+  unfold cell_view. destruct cell. unfold cell_total.
+    have sub : subseteq lt active.
+       - unfold lifetime_included in lt_is_active. trivial.
+  - have ineq1 := sum_reserved_over_lifetime_monotonic g lt active sub.
+    have ineq2 := view_sat_reserved_over_lifetime g lt.
+
+
+
+
+
 
 Record AllState : Type := {
   active_lifetimes: nat -> LifetimeStatus;
@@ -460,6 +570,21 @@ Definition update_total_at_loc (s: AllState) (u: InvState) (loc_changed: Loc) :=
 Lemma result_of_mov_is_valid (m: M) (m': M) : mov m m' -> valid m -> valid m'.
 Proof. intros. have h := mov_monotonic m m' unit.
     rewrite <- unit_dot. apply h; trivial. rewrite unit_dot. trivial. Qed.
+
+Lemma view_sat_maintained : ∀ (s: AllState) (u: InvState)
+    (loc: Loc)
+    (inv_vi: inv_loc_view_identity s u loc)
+    (inv_vs: ∀ l, l <> loc -> inv_loc_view_sat s u loc)
+    (inv_vs: ∀ l, l <> loc -> inv_loc_total_identity s u loc)
+    , inv_loc_view_sat s u loc.
+Proof.
+  intros. unfold inv_loc_view_identity in inv_vi.
+      unfold inv_loc_lt_view_identity in inv_vi.
+      unfold ReservedHereOver in inv_vi.
+      unfold inv_loc_view_sat.
+      unfold inv_loc_lt_view_sat.
+      unfold UnliveOver.
+
   
 Lemma update_total_preserves_most_stuff : ∀ (s: AllState) (u: InvState) (loc: Loc)
         (inv_vs: ∀ l, inv_loc_view_sat s u l)

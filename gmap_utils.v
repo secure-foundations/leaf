@@ -1,0 +1,168 @@
+From iris.algebra Require Export cmra.
+From iris.algebra Require Import proofmode_classes.
+From iris.prelude Require Import options.
+
+From stdpp Require Import gmap.
+Require Import CpdtTactics.
+
+From stdpp Require Import gmap.
+From stdpp Require Import mapset.
+From stdpp Require Import sets.
+From stdpp Require Import fin_sets.
+From stdpp Require Import list.
+
+Lemma gset_relate `{EqDecision A, Countable A} {B} {C}
+  (R : B -> C -> Prop)
+  (s: gset A)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (u1 : B)
+  (u2: C)
+  (R_u1_u2 : R u1 u2)
+  (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
+  : R (set_fold fn1 u1 s) (set_fold fn2 u2 s).
+Proof.
+  unfold set_fold. unfold "∘". induction (elements s).
+  - unfold foldr. trivial.
+  - unfold foldr. apply pro. apply IHl.
+Qed.
+
+(*Lemma set_fold_rearrange `{EqDecision A, Countable A}
+  (x: A)
+  (Y: gset A)
+  (u: A)
+  (fn : A -> A -> A)
+  (assoc : ∀ a b c , fn a (fn b c) = fn (fn a b) c)
+  (is_unit : ∀ a , fn u a = a)
+  : set_fold fn x Y = fn (set_fold fn u Y) x.
+Proof.
+  unfold set_fold. unfold "∘". induction (elements Y).
+     - unfold foldr. symmetry. apply is_unit.
+     - unfold foldr. rewrite <- assoc. f_equal.*)
+  
+
+Lemma minus_union_eq  `{EqDecision A, Countable A}
+  (s1: gset A)
+  (s2: gset A)
+  (sub : s1 ⊆ s2)
+  : (s2 ∖ s1) ∪ s1 = s2.
+Proof. apply set_eq. split.
+  - rewrite elem_of_union. rewrite elem_of_difference. intros. destruct H0.
+    + destruct H0. trivial.
+    + unfold "⊆" in sub. unfold set_subseteq_instance in sub. apply sub. trivial.
+  - rewrite elem_of_union. rewrite elem_of_difference. intros. 
+    destruct (decide (x ∈ s1)).
+    + right. trivial.
+    + left. split; trivial.
+Qed.
+ 
+(*Lemma gset_subset_assoc `{EqDecision A, Countable A}
+  (s1: gset A)
+  (s2: gset A)
+  (fn : A -> A -> A)
+  (u : A)
+  (sub : s1 ⊆ s2)
+  (assoc : ∀ a b c , fn a (fn b c) = fn (fn a b) c)
+  (comm : ∀ a b , fn a b = fn b a)
+  (is_unit : ∀ a , fn a u = a)
+  : exists k , set_fold fn u s2 = fn (set_fold fn u s1) k.
+Proof.
+  exists (set_fold fn u (s2 ∖ s1)). (* not normal backslash *)
+  rewrite <- set_fold_rearrange.
+    - replace (set_fold fn u s2) with (set_fold fn u 
+        ((s2 ∖ s1) ∪ s1)).
+        + apply set_fold_disj_union.
+          * unfold Comm. apply comm.
+          * unfold Assoc. apply assoc.
+          * apply disjoint_difference_l1. unfold "⊆". unfold set_subseteq_instance. intros. trivial.
+        + rewrite minus_union_eq; trivial.
+   - apply assoc.
+   - apply is_unit.
+Qed.*)
+
+(*Lemma gset_subset_relate `{EqDecision A, Countable A} {B} {C}
+  (R : B -> C -> Prop)
+  (s1: gset A)
+  (s2: gset A)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (u1 : B)
+  (u2: C)
+  (R_u1_u1 : R u1 u2)
+  (sub: s1 ⊆ s2)
+  (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
+  (pro_single: ∀ a b c , R b c -> R b (fn2 a c))
+  : R (set_fold fn1 u1 s1) (set_fold fn2 u2 s2).
+Proof.
+  replace (set_fold fn2 u2 s2) with (set_fold fn2 u2 ((s2 ∖ s1) ∪ s1)).
+  - replace (set_fold fn2 u2 (s2 ∖ s1 ∪ s1)) with 
+              (set_fold fn2 (set_fold fn2 u2 (s2 ∖ s1) ) s1).
+              Focus 2.
+              symmetry. apply set_fold_disj_union.
+Qed.*)
+
+(*Lemma gset_subset_relate `{EqDecision A, Countable A} {B} {C}
+  (R : B -> C -> Prop)
+  (s1: gset A)
+  (s2: gset A)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (u1 : B)
+  (u2: C)
+  (R_u1_u1 : R u1 u2)
+  (sub: s1 ⊆ s2)
+  (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
+  (pro_single: ∀ a b c , R b c -> R b (fn2 a c))
+  : R (set_fold fn1 u1 s1) (set_fold fn2 u2 s2).
+Proof.
+  generalize sub. clear sub. generalize s2. clear s2.
+  have h := (P := λ foldRes X , s1 ⊆ X -> R (set_fold fn1 u1 s1) foldRes).
+Qed.
+*)
+
+(*Print elements_disj_union.
+Lemma set_fold_disj_union `{EqDecision A, Countable A} {B}
+    (f : A → B → B) (b : B) (X Y : gset A) : 
+  (*Comm (=) f →
+  Assoc (=) f →*)
+  X ## Y →
+  set_fold f b (X ∪ Y) = set_fold f (set_fold f b X) Y.                                              
+Proof.
+  intros Hdisj. unfold set_fold; simpl.
+  apply foldr_permutation.
+  rewrite elements_disj_union.
+  by rewrite elements_disj_union. <- foldr_app, (comm (++)).
+Qed.
+*)
+
+Lemma gset_subset_relate `{EqDecision A, Countable A} {B} {C}
+  (R : B -> C -> Prop)
+  (s1: gset A)
+  (s2: gset A)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (u1 : B)
+  (u2: C)
+  (R_u1_u2 : R u1 u2)
+  (sub: s1 ⊆ s2)
+  (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
+  (pro_single: ∀ a b c , R b c -> R b (fn2 a c))
+  (comm: ∀ (a1 a2 : A) (c : C), fn2 a1 (fn2 a2 c) = fn2 a2 (fn2 a1 c))
+  : R (set_fold fn1 u1 s1) (set_fold fn2 u2 s2).
+Proof.
+  (*generalize sub. clear sub. generalize s2. clear s2.
+  have h := (P := λ foldRes X , s1 ⊆ X -> R (set_fold fn1 u1 s1) foldRes).*)
+  have t := foldr_permutation_proper (=) fn2 u2 comm (elements s2)
+      (elements (s2 ∖ s1) ++ elements s1).
+  unfold set_fold. simpl. rewrite t.
+    - induction (elements (s2 ∖ s1)).
+      + simpl.
+        have l := gset_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l. apply EqDecision0.
+      + simpl. apply pro_single. trivial.
+    - have k := minus_union_eq s1 s2 sub.
+      replace (elements s2) with (elements (s2 ∖ s1 ∪ s1)).
+        * apply elements_disj_union. unfold "##". unfold set_disjoint_instance.
+          intro. rewrite elem_of_difference. intros. destruct H0. contradiction.
+        * rewrite k. trivial.
+Qed.
+
