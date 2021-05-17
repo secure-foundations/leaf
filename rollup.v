@@ -408,13 +408,25 @@ with branch_trivial (branch: Branch) :=
   end
 .
 
+Definition equiv_func {A} {B} (f g: A -> B) := ∀ x , f x = g x.
+
+Definition equiv_reserved (f g : gmap nat M) :=
+  ∀ n , gmap_get_or_unit f n = gmap_get_or_unit g n.
+
+Definition cell_equiv (cell1: Cell) (cell2: Cell) :=
+  match cell1, cell2 with
+  | CellCon m1 ref1 b1 g1, CellCon m2 ref2 b2 g2 =>
+      (m1 = m2) /\ (ref1 = ref2 \/ m1 = unit) /\ equiv_func b1 b2 /\ equiv_reserved g1 g2
+  end
+.
+
 Fixpoint node_equiv (node1: Node) (node2: Node) :=
   match node1, node2 with
     | FailNode, FailNode => True
     | FailNode, CellNode _ _ => False
     | CellNode _ _, FailNode => False
     | CellNode cell1 branch1, CellNode cell2 branch2 =>
-           cell1 = cell2
+           cell_equiv cell1 cell2
         /\ branch_equiv branch1 branch2
   end
 with branch_equiv (branch1: Branch) (branch2: Branch) :=
@@ -462,6 +474,32 @@ Instance state_pcore : PCore State := λ state ,
 Definition bool_or_func {A} (x y : A -> bool) : (A -> bool) :=
   λ b , orb (x b) (y b).
 
+Definition rmerge_one (a: option M) (b: option M) :=
+  match a, b with
+  | None, _ => b
+  | Some m, None => Some m
+  | Some m, Some k => Some (dot m k)
+  end.
+Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmerge_one. trivial. Defined.
+Definition rmerge (f: gmap nat M) (g: gmap nat M) :=
+  merge rmerge_one f g.
+
+Definition is_map_all_unit (f: gmap nat M) : Prop :=
+    ∀ x , gmap_get_or_unit f x = unit. 
+
+Instance dec_is_map_all_unit f : Decision (is_map_all_unit f). Admitted.
+
+Definition cell_op (x: Cell) (y: Cell) : option Cell :=
+  match x y with
+  | CellCon m1 ref1 borrows1 reserved1
+    CellCon m2 ref2 borrows2 reserved2
+      match decide (ref1 = ref2) with
+       | left _ => CellNode (CellCon (dot m1 m2) ref1
+                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
+                    (branch_op branch1 branch2)
+       | right _ =>
+         match decide (m1 = unit /\ equiv_reserved reserved1  ) with
+
 Fixpoint node_op (x: Node) (y: Node) : Node :=
   match x, y with
   | FailNode, _ => FailNode
@@ -470,17 +508,17 @@ Fixpoint node_op (x: Node) (y: Node) : Node :=
     CellNode (CellCon m2 ref2 borrows2 reserved2) branch2 =>
        match decide (ref1 = ref2) with
        | left _ => CellNode (CellCon (dot m1 m2) ref1
-                      (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
                     (branch_op branch1 branch2)
        | right _ =>
-         match decide (m1 = unit) with
+         match decide ((m1 = unit) /\ is_map_all_unit reserved1) with
          | left _ => CellNode (CellCon m2 ref2
-                      (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                      (bool_or_func borrows1 borrows2) reserved2)
                     (branch_op branch1 branch2)
          | right _ =>
-            match decide (m2 = unit) with
+            match decide ((m2 = unit) /\ is_map_all_unit reserved2) with
             | left _ => CellNode (CellCon m1 ref2
-                          (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                          (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2))
                         (branch_op branch1 branch2)
             | right _ => FailNode
             end
@@ -515,6 +553,12 @@ Instance state_equiv : Equiv State := λ x y ,
   | StateCon lt1 node1, StateCon lt2 node2 =>
       (lt1 = lt2 /\ node1 ≡ node2)
   end.
+  
+Lemma equiv_rmerge_emptyset (g: gmap nat M) :
+     equiv_reserved (rmerge g ∅) g.
+Proof. unfold equiv_reserved. intro. unfold gmap_get_or_unit. unfold rmerge.
+    rewrite lookup_merge. unfold rmerge_one. rewrite lookup_empty. destruct (g !! n); trivial.
+    Qed.
 
 Lemma op_trivial_node (node1: Node) (node2: Node)
   (istriv: node_trivial node2) : (node_equiv (node_op node1 node2) node1)
@@ -524,7 +568,16 @@ Proof.
   - destruct node1; destruct node2.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
     unfold node_op. fold branch_op. destruct c. destruct c0. case_decide.
-      * crush. rewrite unit_dot.
+      * crush.
+        -- apply unit_dot.
+        -- unfold equiv_func, bool_or_func. crush.
+        -- apply equiv_rmerge_emptyset.
+      * case_decide.
+        -- crush.
+          ++ unfold equiv_func, bool_or_func. crush.
+          ++ apply equiv_rmerge_emptyset.
+        -- case_decide.
+          ** 
 
 Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
     (node_eq: node_equiv nodeRight1 nodeRight2)
