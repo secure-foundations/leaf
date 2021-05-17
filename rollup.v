@@ -54,14 +54,31 @@ Variables refinement_of_index : RefinementIndex -> Refinement M M.
 
 Definition L := nat.
       
-Inductive Loc :=
+(*Inductive Loc :=
   | LBase : L -> Loc
   | LExt : L -> RefinementIndex -> Loc -> Loc
  .
 
 Instance eqloc : EqDecision Loc. solve_decision. Defined.
 
-Instance countableloc : Countable Loc. Admitted.
+Instance countableloc : Countable Loc. Admitted.*)
+
+Inductive PathId :=
+  | NormalId : nat -> PathId.
+
+Definition id_lt (p1: PathId) (p2: PathId) : Prop :=
+  match p1, p2 with
+  | NormalId id1, NormalId id2 => id1 < id2
+  end.
+
+Lemma path_id_trichotomy (p1: PathId) (p2: PathId) :
+    (id_lt p1 p2 \/ id_lt p2 p1) \/ p1 = p2.
+Proof.
+  destruct p1, p2. unfold id_lt.
+  have j : (NormalId n = NormalId n0) <-> n = n0.
+   - split; crush.
+   - rewrite j. lia.
+Qed.
 
 Definition Lifetime := gset nat.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
@@ -88,20 +105,21 @@ Inductive BorrowObject : Type :=
 Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
 Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
-Inductive LifetimeStatus := LSNone | LSActive | LSFail.
+(*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
 
 Inductive Cell : Type :=
-  | CellCon : M
-      -> option RefinementIndex
-      -> (BorrowObject -> bool)
-      -> gmap nat M
-      -> Cell.
+  | CellCon :
+      M ->
+      option RefinementIndex ->
+      (BorrowObject -> bool) ->
+      gmap nat M ->
+          Cell.
 
 Inductive Node: Type :=
   | CellNode : Cell -> Branch -> Node
   | FailNode : Node
 with Branch: Type :=
-  | BranchCons : nat -> Node -> Branch -> Branch
+  | BranchCons : PathId -> Node -> Branch -> Branch
   | BranchNil : Branch.
 
 Definition gmap_get_or_unit (reserved: gmap nat M) (lu: nat) :=
@@ -347,9 +365,9 @@ Proof.
             unfold project_fancy. unfold project.
             (* instantiate inductive hypotheses here, so the prover can 
                infer decreasing arguments *)
-            have ind_node := node_view_le_total n0. clear node_view_le_total.
+            have ind_node := node_view_le_total n. clear node_view_le_total.
             have ind_branch := branch_view_le_total branch. clear branch_view_le_total.
-            destruct n0.
+            destruct n.
           -- destruct c. apply view_sat_projections.
               ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
                   destruct H0. trivial.
@@ -403,6 +421,23 @@ with branch_equiv (branch1: Branch) : Branch -> Prop :=
     end
 .
 
+Definition cell_core (cell: Cell) : Cell :=
+  match cell with
+  | CellCon m ref borrows reserved => CellCon unit ref borrows reserved
+  end.
+
+Fixpoint node_core (node: Node) : Node :=
+  match node with
+  | CellNode cell branch => CellNode (cell_core cell) (branch_core branch)
+  | FailNode => FailNode
+  end
+with branch_core (branch: Branch) : Branch :=
+  match branch with
+  | BranchNil => BranchNil
+  | BranchCons id node branch => BranchCons id (node_core node) (branch_core branch)
+  end
+.
+
 Instance inst_node_equiv : Equiv Node := node_equiv.
 
 Inductive State :=
@@ -410,3 +445,84 @@ Inductive State :=
   | StateFail
 .
 
+Instance alls_valid_instance : Valid State := λ x, True.
+
+Instance state_equiv : Equiv State := λ x y ,
+  match x, y with
+  | StateFail, StateFail => True
+  | StateFail, StateCon _ _ => False
+  | StateCon _ _, StateFail => False
+  | StateCon lt1 node1, StateCon lt2 node2 => lt1 = lt2 /\ node1 ≡ node2
+  end.
+
+Instance state_pcore : PCore State := λ state , 
+  match state with
+  | StateFail => Some StateFail
+  | StateCon lt node => Some (StateCon empty (node_core node))
+  end
+.
+
+Definition bool_or_func {A} (x y : A -> bool) : (A -> bool) :=
+  λ b , orb (x b) (y b).
+
+Fixpoint node_op (x: Node) (y: Node) : Node :=
+  match x, y with
+  | FailNode, _ => FailNode
+  | CellNode _ _, FailNode => FailNode
+  | CellNode (CellCon m1 ref1 borrows1 reserved1) branch1,
+    CellNode (CellCon m2 ref2 borrows2 reserved2) branch2 =>
+       match decide (ref1 = ref2) with
+       | left _ => CellNode (CellCon (dot m1 m2) ref1
+                      (bool_or_func borrows1 borrows2) (reserved1 ∪ reserved2))
+                    (branch_op branch1 branch2)
+       | right _ => FailNode 
+       end
+  end 
+with branch_op (branch1: Branch) : Branch -> Branch :=
+  fix inner_branch_op (branch2: Branch) :=
+    match branch1, branch2 with
+    | BranchNil, _ => branch2
+    | BranchCons _ _ _, BranchNil => branch1
+    | BranchCons id1 n1 subbranch1 , BranchCons id2 n2 subbranch2 =>
+        match path_id_trichotomy id1 id2 with
+        | or_introl (or_introl _)  => BranchCons id1 n1 (branch_op subbranch1 branch2)
+        | or_introl (or_intror _) => BranchCons id2 n2 (inner_branch_op subbranch2)
+        | or_intror _ =>
+            BranchCons id1 (node_op n1 n2) (branch_op subbranch1 subbranch2)
+        end
+    end
+.
+
+Instance state_op : Op State := λ x y ,
+  match x, y with
+  | StateFail, _ => StateFail
+  | StateCon _ _, StateFail => StateFail
+  | StateCon active1 node1, StateCon active2 node2 =>
+    match decide (active1 ∩ active2 = empty) with
+      | left _ => StateCon (active1 ∪ active2) (node_op node1 node2)
+      | right _ => StateFail
+    end
+  end.
+  
+Definition branches_ordered (id1: PathId) (branch2: Branch) :=
+  match branch2 with
+  | BranchNil => True
+  | BranchCons id2 _ _ => id_lt id1 id2
+  end
+.
+  
+Fixpoint node_ordered (node: Node) : Prop :=
+  match node with
+  | CellNode _ branch => (branch_ordered branch)
+  | FailNode => True
+  end
+with branch_ordered (branch: Branch) : Prop :=
+  match branch with
+  | BranchNil => True
+  | BranchCons id1 node branch2 => branches_ordered id1 branch2 /\ branch_ordered branch2
+  end
+.
+ 
+  
+Definition allstate_ra_mixin : RAMixin State.
+Proof. split.
