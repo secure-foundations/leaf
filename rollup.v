@@ -472,7 +472,7 @@ Definition rmerge_one (a: option (option M)) (b: option (option M)) :=
   | Some m, None => Some m
   | Some None, Some _ => Some None
   | Some (Some _), Some None => Some None
-  | Some (Some m), Some (Some p) => if decide (m = p) then Some (Some m) else None
+  | Some (Some m), Some (Some p) => if decide (m = p) then Some (Some m) else Some None
   end.
 Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmerge_one. trivial. Defined.
 Definition rmerge (f: gmap nat (option M)) (g: gmap nat (option M)) :=
@@ -550,10 +550,14 @@ with op_trivial_branch (branch1: Branch) (branch2: Branch)
 Proof.
   - destruct node1; destruct node2.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
-    unfold node_op. fold branch_op. destruct c. destruct c0. crush.
-        -- apply unit_dot.
+    unfold node_op. fold branch_op. destruct c. destruct c0.
+        unfold node_equiv. fold branch_equiv. unfold cell_op. unfold cell_equiv.
+            unfold node_trivial in istriv. fold branch_trivial in istriv.
+            destruct istriv. unfold cell_trivial in *. destruct H0. destruct H2. repeat split.
+        -- rewrite H3. apply unit_dot.
         -- unfold equiv_func, bool_or_func. crush.
-        -- apply equiv_rmerge_emptyset.
+        -- rewrite H2. apply equiv_rmerge_emptyset.
+        -- apply hyp; trivial.
   - destruct branch1; destruct branch2.
     + have hyp_branch := op_trivial_branch branch1 branch2. clear hyp_branch.
       have hyp_node := op_trivial_node n n0. clear hyp_node.
@@ -644,6 +648,118 @@ Proof. unfold state_op. unfold state_equiv in *. destruct stateLeft, stateRight1
     * trivial.
   + contradiction. + contradiction.
   + trivial. + trivial. + trivial. + trivial. + trivial.
+Qed.
+
+Lemma rmerge_comm (f: gmap nat (option M)) (g: gmap nat (option M)) :
+  rmerge f g = rmerge g f.
+Proof. 
+  unfold rmerge. apply map_eq. intro. rewrite lookup_merge. rewrite lookup_merge.
+      unfold rmerge_one. destruct (f !! i), (g !! i).
+    * destruct o; destruct o0.
+      -- repeat case_decide.
+        ** rewrite H0. trivial.
+        ** symmetry in H0; contradiction.
+        ** symmetry in H1; contradiction.
+        ** trivial.
+      -- trivial.
+      -- trivial.
+      -- trivial.
+    * destruct o; trivial.
+    * destruct o; trivial.
+    * trivial.
+Qed.
+
+Lemma cell_op_comm (cell1: Cell) (cell2: Cell)
+  : cell_equiv (cell_op cell1 cell2) (cell_op cell2 cell1).
+Proof.
+  destruct cell1, cell2; unfold cell_op. unfold cell_equiv. repeat split.
+    - apply comm.
+    - unfold bool_or_func. unfold equiv_func. crush.
+    - apply rmerge_comm.
+Qed.
+
+Lemma node_op_comm (node1: Node) (node2: Node)
+  : node_equiv (node_op node1 node2) (node_op node2 node1)
+with branch_op_comm (branch1: Branch) (branch2: Branch)
+  : branch_equiv (branch_op branch1 branch2) (branch_op branch2 branch1).
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_op_comm b b0. clear node_op_comm. clear branch_op_comm.
+      crush. apply cell_op_comm.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_op_comm branch1 branch2.
+      have ind_hyp_node := node_op_comm n n0.
+      clear node_op_comm. clear branch_op_comm.
+      crush.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + apply equiv_refl_branch.
+Qed.
+
+Lemma rmerge_one_assoc (f g h: option (option M)) :
+  rmerge_one f (rmerge_one g h) = rmerge_one (rmerge_one f g) h.
+Proof. unfold rmerge_one.
+  * destruct f; trivial.
+    + destruct o; trivial.
+      - destruct g; trivial.
+        ** destruct o; trivial.
+          ++ destruct h; trivial.
+            -- destruct o; trivial.
+              *** repeat case_decide; trivial.
+                --- rewrite H0 in H1. contradiction.
+                --- rewrite H1 in H2. contradiction.
+              *** case_decide; trivial.
+            -- case_decide; trivial.
+          ++ destruct h; trivial.
+      - destruct g; trivial.
+        ** destruct o; trivial.
+          ++ destruct h; trivial.
+           -- destruct o; trivial.
+            *** case_decide; trivial.
+          ++ destruct h; trivial.
+Qed.
+
+Lemma rmerge_assoc (f: gmap nat (option M)) (g: gmap nat (option M)) (h: gmap nat (option M)) :
+  rmerge f (rmerge g h) = rmerge (rmerge f g) h.
+Proof. 
+  unfold rmerge. apply map_eq. intro.
+      rewrite lookup_merge. rewrite lookup_merge.
+      rewrite lookup_merge. rewrite lookup_merge.
+      apply rmerge_one_assoc.
+Qed.
+
+Lemma cell_op_assoc (cell1: Cell) (cell2: Cell) (cell3: Cell)
+  : cell_equiv (cell_op cell1 (cell_op cell2 cell3))
+               (cell_op (cell_op cell1 cell2) cell3).
+Proof.
+  destruct cell1, cell2, cell3; unfold cell_op. unfold cell_equiv. repeat split.
+    - apply assoc.
+    - unfold bool_or_func. unfold equiv_func. crush.
+    - apply rmerge_assoc.
+Qed.
+
+Lemma node_op_assoc (node1: Node) (node2: Node) (node3: Node)
+  : node_equiv (node_op node1 (node_op node2 node3))
+               (node_op (node_op node1 node2) node3)
+with branch_op_assoc (branch1: Branch) (branch2: Branch) (branch3: Branch)
+  : branch_equiv (branch_op branch1 (branch_op branch2 branch3))
+                 (branch_op (branch_op branch1 branch2) branch3).
+Proof.
+  - destruct node1, node2, node3.
+    + have ind_hyp := branch_op_assoc b b0 b1. clear node_op_assoc. clear branch_op_assoc.
+      crush. apply cell_op_assoc.
+  - destruct branch1, branch2, branch3.
+    + have ind_hyp_branch := branch_op_assoc branch1 branch2 branch3.
+      have ind_hyp_node := node_op_assoc n n0 n1.
+      clear node_op_assoc. clear branch_op_assoc.
+      crush.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + unfold branch_op. apply equiv_refl_branch.
+    + apply equiv_refl_branch.
 Qed.
 
 Definition allstate_ra_mixin : RAMixin State.
