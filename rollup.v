@@ -120,15 +120,16 @@ Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 Inductive RI :=
   | TrivialRI : RI
-  | NormalRI : RefinementIndex -> RI
-  | ConflictRI : RI.
+  | NormalRI : RefinementIndex -> RI.
+
+Definition nat_to_ref: nat -> Refinement M M. Admitted.
   
 Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
 
 Inductive Cell : Type :=
   | CellCon :
       M ->
-      RI ->
+      (*RI ->*)
       (BorrowObject -> bool) ->
       gmap nat M ->
           Cell.
@@ -150,7 +151,7 @@ Definition sum_reserved_over_lifetime (reserved: gmap nat M) (lifetime: Lifetime
   
 Definition cell_total (cell: Cell) (lifetime: Lifetime) :=
   match cell with
-  | CellCon m _ _ reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
+  | CellCon m _ reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
   end.
   
 Definition rel_project `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) :=
@@ -158,20 +159,19 @@ Definition rel_project `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) :=
 
 Definition get_ref (ri: RI) : Refinement M M. Admitted.
  
-Definition project (node: Node) (m: M) : M :=
-  match node with
-  | CellNode (CellCon _ ref _ _) _ => rel_project (get_ref ref) m
-  end
+Definition project (idx: nat) (m: M) : M :=
+  rel_project (nat_to_ref idx) m
 .
 
 Fixpoint node_total (node: Node) (lifetime: Lifetime) : M :=
   match node with
-  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
+  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime 0)
   end
-with branch_total (branch: Branch) (lifetime: Lifetime) : M :=
+with branch_total (branch: Branch) (lifetime: Lifetime) (idx: nat) : M :=
   match branch with
   | BranchNil => unit
-  | BranchCons node branch => dot (project node (node_total node lifetime)) (branch_total branch lifetime)
+  | BranchCons node branch => dot (project idx (node_total node lifetime))
+      (branch_total branch lifetime (S idx))
   end
 .
  
@@ -197,26 +197,24 @@ Definition conjoin_reserved_over_lifetime (reserved: gmap nat M) (lifetime: Life
 
 Definition cell_view (cell: Cell) (lifetime: Lifetime) : (M -> Prop) :=
   match cell with
-  | CellCon m _ _ reserved => conjoin_reserved_over_lifetime reserved lifetime
+  | CellCon m _ reserved => conjoin_reserved_over_lifetime reserved lifetime
   end.
 
 Definition rel_project_fancy (ref : Refinement M M) (um: M -> Prop) :=
     λ x , ∃ a b , tpcm_le a x /\ rel M M ref b = Some a /\ um b.
   
-Definition project_fancy (node: Node) (um: M -> Prop) : (M -> Prop) :=
-  match node with
-  | CellNode (CellCon _ ref _ _) _ => rel_project_fancy (get_ref ref) um
-  end
+Definition project_fancy (idx: nat) (um: M -> Prop) : (M -> Prop) :=
+  rel_project_fancy (nat_to_ref idx) um
 .
 
 Fixpoint node_view (node: Node) (lifetime: Lifetime) : (M -> Prop) :=
   match node with
-  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
+  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime 0)
   end
-with branch_view (branch: Branch) (lifetime: Lifetime) : (M -> Prop) :=
+with branch_view (branch: Branch) (lifetime: Lifetime) (idx: nat) : (M -> Prop) :=
   match branch with
   | BranchNil => umbrella_unit
-  | BranchCons node branch => conjoin_umbrella (project_fancy node (node_view node lifetime)) (branch_view branch lifetime)
+  | BranchCons node branch => conjoin_umbrella (project_fancy idx (node_view node lifetime)) (branch_view branch lifetime (S idx))
   end
 .
 
@@ -321,18 +319,18 @@ Proof. unfold view_sat in *. unfold conjoin_umbrella. exists m1. exists m2. repe
 Definition in_refinement_domain (ref: Refinement M M) (m : M) :=
   match rel M M ref m with | Some _ => True | None => False end.
 
-Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) : Prop :=
+Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) (idx: nat) : Prop :=
   match node with
-  | CellNode (CellCon _ ref _ _) branch =>
-         in_refinement_domain (get_ref ref) (node_total node lifetime)
-      /\ branch_all_total_in_refinement_domain branch lifetime
+  | CellNode (CellCon _ _ _) branch =>
+         in_refinement_domain (nat_to_ref idx) (node_total node lifetime)
+      /\ branch_all_total_in_refinement_domain branch lifetime 0
   end
-with branch_all_total_in_refinement_domain (branch: Branch) (lifetime: Lifetime) : Prop :=
+with branch_all_total_in_refinement_domain (branch: Branch) (lifetime: Lifetime) (idx: nat) : Prop :=
   match branch with
   | BranchNil => True
   | BranchCons node branch =>
-         node_all_total_in_refinement_domain node lifetime
-      /\ branch_all_total_in_refinement_domain branch lifetime
+         node_all_total_in_refinement_domain node lifetime idx
+      /\ branch_all_total_in_refinement_domain branch lifetime (S idx)
   end
 .
 
@@ -354,14 +352,14 @@ Proof.
   - unfold view_sat in vs. trivial.
 Qed.
 
-Lemma node_view_le_total (node: Node) (lt: Lifetime) (active: Lifetime)
+Lemma node_view_le_total (node: Node) (lt: Lifetime) (active: Lifetime) (idx: nat)
     (lt_is_active : lifetime_included active lt)
-    (ird: node_all_total_in_refinement_domain node active)
+    (ird: node_all_total_in_refinement_domain node active idx)
     : view_sat (node_view node lt) (node_total node active)
-with branch_view_le_total (branch: Branch) (lt: Lifetime) (active: Lifetime)
+with branch_view_le_total (branch: Branch) (lt: Lifetime) (active: Lifetime) (idx: nat)
     (lt_is_active : lifetime_included active lt)
-    (ird: branch_all_total_in_refinement_domain branch active)
-    : view_sat (branch_view branch lt) (branch_total branch active).
+    (ird: branch_all_total_in_refinement_domain branch active idx)
+    : view_sat (branch_view branch lt idx) (branch_total branch active idx).
 Proof.
  - destruct node.
       + unfold node_view. unfold node_total. apply view_sat_conjoin.
@@ -382,7 +380,7 @@ Proof.
           -- destruct c. apply view_sat_projections.
               ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
                   destruct H0. trivial.
-              ++ apply ind_node; trivial. 
+              ++ apply ind_node with (idx := idx); trivial. 
                   unfold branch_all_total_in_refinement_domain in ird. crush.
         * apply branch_view_le_total; trivial.
             unfold branch_all_total_in_refinement_domain in ird. crush.
@@ -391,7 +389,7 @@ Qed.
 
 Definition cell_trivial (cell: Cell) :=
   match cell with
-  | CellCon m _ borrows reserves => (∀ b , borrows b = false) /\ reserves = empty /\ m = unit
+  | CellCon m borrows reserves => (∀ b , borrows b = false) /\ reserves = empty /\ m = unit
   end
 .
 
@@ -413,8 +411,8 @@ Definition equiv_reserved (f g : gmap nat M) :=
 
 Definition cell_equiv (cell1: Cell) (cell2: Cell) :=
   match cell1, cell2 with
-  | CellCon m1 ref1 b1 g1, CellCon m2 ref2 b2 g2 =>
-      (m1 = m2) /\ (ref1 = ref2 \/ m1 = unit) /\ equiv_func b1 b2 /\ equiv_reserved g1 g2
+  | CellCon m1 b1 g1, CellCon m2 b2 g2 =>
+      (m1 = m2) /\ equiv_func b1 b2 /\ equiv_reserved g1 g2
   end
 .
 
@@ -435,7 +433,7 @@ with branch_equiv (branch1: Branch) (branch2: Branch) :=
 
 Definition cell_core (cell: Cell) : Cell :=
   match cell with
-  | CellCon m ref borrows reserved => CellCon unit ref borrows reserved
+  | CellCon m borrows reserved => CellCon unit borrows reserved
   end.
 
 Fixpoint node_core (node: Node) : Node :=
@@ -478,14 +476,13 @@ Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmer
 Definition rmerge (f: gmap nat M) (g: gmap nat M) :=
   merge rmerge_one f g.
 
-Definition op_ri (a: RI) (b: RI) := if decide (a = b) then a else ConflictRI.
-
 Definition cell_op (x: Cell) (y: Cell) : Cell :=
   match x, y with
-  | CellCon m1 ref1 borrows1 reserved1,
-    CellCon m2 ref2 borrows2 reserved2 =>
-      CellCon (dot m1 m2) (op_ri ref1 ref2) 
-                      (bool_or_func borrows1 borrows2) (rmerge reserved1 reserved2)
+  | CellCon m1 borrows1 reserved1,
+    CellCon m2 borrows2 reserved2 =>
+      CellCon (dot m1 m2)
+              (bool_or_func borrows1 borrows2)
+              (rmerge reserved1 reserved2)
   end
 .
 
@@ -529,6 +526,21 @@ Proof. unfold equiv_reserved. intro. unfold gmap_get_or_unit. unfold rmerge.
     rewrite lookup_merge. unfold rmerge_one. rewrite lookup_empty. destruct (g !! n); trivial.
     Qed.
 
+Lemma equiv_refl_cell (cell: Cell) : cell_equiv cell cell.
+Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
+    
+Lemma equiv_refl_node (node: Node) : node_equiv node node
+with equiv_refl_branch (branch: Branch) : branch_equiv branch branch.
+ - destruct node. unfold node_equiv. repeat split.
+  + apply equiv_refl_cell.
+  + apply equiv_refl_branch.
+ - destruct branch.
+  + unfold branch_equiv. repeat split.
+    * apply equiv_refl_node.
+    * apply equiv_refl_branch.
+  + unfold branch_equiv. unfold branch_trivial. trivial.
+Qed.
+
 Lemma op_trivial_node (node1: Node) (node2: Node)
   (istriv: node_trivial node2) : (node_equiv (node_op node1 node2) node1)
 with op_trivial_branch (branch1: Branch) (branch2: Branch)
@@ -538,15 +550,29 @@ Proof.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
     unfold node_op. fold branch_op. destruct c. destruct c0. crush.
         -- apply unit_dot.
-        -- split.
         -- unfold equiv_func, bool_or_func. crush.
         -- apply equiv_rmerge_emptyset.
-      * case_decide.
-        -- crush.
-          ++ unfold equiv_func, bool_or_func. crush.
-          ++ apply equiv_rmerge_emptyset.
-        -- case_decide.
-          ** 
+  - destruct branch1; destruct branch2.
+    + have hyp_branch := op_trivial_branch branch1 branch2. clear hyp_branch.
+      have hyp_node := op_trivial_node n n0. clear hyp_node.
+      crush.
+    + crush.
+      * apply equiv_refl_node.
+      * apply equiv_refl_branch.
+    + crush.
+    + crush.
+Qed.
+
+Lemma cell_op_equiv (c c0 c1 : Cell)
+  (eq1: cell_equiv c0 c1)
+  : (cell_equiv (cell_op c c0) (cell_op c c1)).
+Proof.
+  destruct c0, c1, c. unfold cell_op. unfold cell_equiv in *. destruct eq1.
+      destruct H1. repeat split.
+  + rewrite H0. trivial.
+  + unfold equiv_func in *. unfold bool_or_func. crush.
+  Admitted.
+
 
 Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
     (node_eq: node_equiv nodeRight1 nodeRight2)
