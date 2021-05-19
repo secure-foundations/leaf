@@ -322,7 +322,7 @@ Definition in_refinement_domain (ref: Refinement M M) (m : M) :=
 
 Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) (idx: nat) : Prop :=
   match node with
-  | CellNode (CellCon _ _ _) branch =>
+  | CellNode _ branch =>
          in_refinement_domain (nat_to_ref idx) (node_total node lifetime)
       /\ branch_all_total_in_refinement_domain branch lifetime 0
   end
@@ -654,6 +654,99 @@ Proof.
     + trivial.
 Qed.
 
+Lemma cell_equiv_trans (cell1: Cell) (cell2: Cell) (cell3: Cell)
+  (iseq: cell_equiv cell1 cell2)
+  (iseq2: cell_equiv cell2 cell3)
+  : (cell_equiv cell1 cell3).
+Proof. unfold cell_equiv in *. destruct cell1, cell2, cell3. unfold equiv_func in *. crush. Qed.
+
+Lemma node_trivial_of_equiv (node1: Node) (node2: Node)
+  (iseq: node_equiv node1 node2)
+  (istriv: node_trivial node1)
+  : node_trivial node2
+with branch_trivial_of_equiv (branch1: Branch) (branch2: Branch)
+  (iseq: branch_equiv branch1 branch2)
+  (istriv: branch_trivial branch1)
+  : branch_trivial branch2.
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_trivial_of_equiv b b0. clear node_trivial_of_equiv. clear branch_trivial_of_equiv.
+      crush.
+      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. crush.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_trivial_of_equiv branch1 branch2.
+      have ind_hyp_node := node_trivial_of_equiv n n0.
+      clear branch_trivial_of_equiv. clear node_trivial_of_equiv.
+      crush.
+    + unfold branch_trivial. trivial.
+    + unfold branch_equiv in iseq. trivial.
+    + unfold branch_trivial. trivial.
+Qed.
+
+Lemma node_equiv_of_trivial (node1: Node) (node2: Node)
+  (istriv1: node_trivial node1)
+  (istriv: node_trivial node2)
+  : node_equiv node1 node2
+with branch_equiv_of_trivial (branch1: Branch) (branch2: Branch)
+  (istriv1: branch_trivial branch1)
+  (istriv: branch_trivial branch2)
+  : branch_equiv branch1 branch2.
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_equiv_of_trivial b b0. clear node_equiv_of_trivial. clear branch_equiv_of_trivial.
+      crush.
+      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. crush.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_equiv_of_trivial branch1 branch2.
+      have ind_hyp_node := node_equiv_of_trivial n n0.
+      clear branch_equiv_of_trivial. clear node_equiv_of_trivial.
+      crush.
+    + unfold branch_trivial. trivial.
+    + unfold branch_equiv. trivial.
+    + unfold branch_equiv. trivial.
+Qed.
+
+Lemma node_equiv_trans (node1: Node) (node2: Node) (node3: Node)
+  (iseq: node_equiv node1 node2)
+  (iseq2: node_equiv node2 node3)
+   : (node_equiv node1 node3)
+with branch_equiv_trans (branch1: Branch) (branch2: Branch) (branch3: Branch)
+  (iseq: branch_equiv branch1 branch2)
+  (iseq2: branch_equiv branch2 branch3)
+   : (branch_equiv branch1 branch3).
+Proof.
+  - destruct node1, node2, node3.
+    + have ind_hyp := branch_equiv_trans b b0 b1. clear node_equiv_trans. clear branch_equiv_trans.
+      crush.
+        * apply cell_equiv_trans with (cell2 := c0); trivial.
+  - destruct branch1, branch2, branch3.
+    + have ind_hyp_branch := branch_equiv_trans branch1 branch2 branch3.
+      have ind_hyp_node := node_equiv_trans n n0 n1.
+      clear branch_equiv_trans. clear node_equiv_trans.
+      crush.
+    + unfold branch_equiv. unfold branch_equiv in iseq2.
+        apply branch_trivial_of_equiv with (branch1 := BranchCons n0 branch2); trivial.
+        apply branch_equiv_comm. trivial.
+    + unfold branch_equiv in iseq. unfold branch_equiv in iseq2.
+      apply branch_equiv_of_trivial; trivial.
+    + trivial.
+    + unfold branch_equiv. unfold branch_equiv in iseq.
+        apply branch_trivial_of_equiv with (branch1 := BranchCons n branch2); trivial.
+    + unfold branch_equiv. unfold branch_trivial. trivial.
+    + trivial.
+    + trivial.
+Qed.
+
+Lemma state_equiv_trans (state1: State) (state2: State) (state3: State)
+  (iseq: state_equiv state1 state2)
+  (iseq2: state_equiv state2 state3)
+   : (state_equiv state1 state3).
+Proof.
+  unfold state_equiv in *. destruct state1, state2, state3; trivial.
+    - split; crush. apply node_equiv_trans with (node2 := n0); trivial.
+    - split; crush.
+Qed.
+
 Lemma cell_op_equiv (c c0 c1 : Cell)
   (eq1: cell_equiv c0 c1)
   : (cell_equiv (cell_op c c0) (cell_op c c1)).
@@ -751,6 +844,49 @@ Proof.
     + unfold branch_op. apply equiv_refl_branch.
     + unfold branch_op. apply equiv_refl_branch.
     + apply equiv_refl_branch.
+Qed.
+
+Lemma set_union_comm (s: gset nat) (t: gset nat) : s ∪ t = t ∪ s.
+Proof.
+  ** apply set_eq. intros. rewrite elem_of_union. rewrite elem_of_union. split.
+    -- intros. destruct H0.
+      --- right. trivial.
+      --- left. trivial.
+    -- intros. destruct H0.
+      --- right. trivial.
+      --- left. trivial.
+Qed.
+
+Lemma set_intersect_comm (s: gset nat) (t: gset nat) : s ∩ t = t ∩ s.
+Proof.
+  ** apply set_eq. intros. rewrite elem_of_intersection. rewrite elem_of_intersection. split.
+    -- intros. crush.
+    -- intros. crush.
+Qed.
+
+Lemma state_op_comm (state1: State) (state2: State)
+  : state_equiv (state_op state1 state2) (state_op state2 state1).
+Proof.
+  unfold state_equiv, state_op. destruct state1, state2; trivial.
+  * case_decide; trivial.
+   + case_decide; trivial.
+     - repeat split; trivial.
+      ** apply set_union_comm.
+      ** apply node_op_comm.
+     - rewrite set_intersect_comm in H0. contradiction.
+   + case_decide; trivial. 
+     - rewrite set_intersect_comm in H0. contradiction.
+Qed.
+
+Lemma state_op_equiv_left (stateLeft1: State) (stateLeft2: State) (stateRight: State)
+    (state_eq: state_equiv stateLeft1 stateLeft2)
+    : (state_equiv (state_op stateLeft1 stateRight) (state_op stateLeft2 stateRight)).
+Proof.
+  apply state_equiv_trans with (state2 := state_op stateRight stateLeft1).
+  - apply state_op_comm.
+  - apply state_equiv_trans with (state2 := state_op stateRight stateLeft2).
+    + apply state_op_equiv. trivial.
+    + apply state_op_comm.
 Qed.
 
 Lemma rmerge_one_assoc (f g h: option (option M)) :
@@ -1102,9 +1238,7 @@ Proof.
       rewrite cell_total_of_trivial; trivial.
       rewrite branch_total_of_trivial; trivial.
       rewrite unit_dot.
-      destruct c. split.
-      * unfold in_refinement_domain. rewrite rel_unit. trivial.
-      * apply ind_hyp. trivial.
+      destruct c. unfold in_refinement_domain. rewrite rel_unit. trivial.
   - destruct b.
     + have ind_hyp_branch := branch_all_total_in_refinement_domain_of_trivial b.
       have ind_hyp_node := node_all_total_in_refinement_domain_of_trivial n.
@@ -1128,20 +1262,14 @@ Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_all_total_in_refinement_domain_of_equiv b b0. clear node_all_total_in_refinement_domain_of_equiv. clear branch_all_total_in_refinement_domain_of_equiv.
       unfold node_all_total_in_refinement_domain in *. fold branch_all_total_in_refinement_domain in *.
+      unfold node_total. fold node_total. fold branch_total.
       unfold node_equiv in eq. fold branch_equiv in *. destruct eq.
       split.
+       * rewrite <- (cell_total_of_equiv c c0); trivial.
+         rewrite <- (branch_total_of_equiv b b0); trivial.
+         unfold node_total in rv.
+            destruct rv. trivial.
        * apply ind_hyp; trivial. destruct rv. trivial.
-       * unfold node_view in *. fold branch_view in *.
-        destruct c0. destruct rv. destruct c. intro. have h := H3 b3.
-        replace (b1 b3) with (b2 b3).
-        ** destruct b3.
-          unfold conjoin_umbrella in *.
-          intro.
-          have j := h H4. destruct j. destruct H5.
-          exists x. exists x0.
-          rewrite <- (cell_view_of_equiv (CellCon m0 b2 g0) (CellCon m b1 g)); trivial.
-          rewrite <- (branch_view_of_equiv b); trivial.
-        ** unfold cell_equiv in H0. unfold equiv_func in H0. crush.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_all_total_in_refinement_domain_of_equiv branch1 branch2.
       have ind_hyp_node := node_all_total_in_refinement_domain_of_equiv n n0. 
@@ -1151,18 +1279,29 @@ Proof.
     + trivial.
 Qed.
 
-
-
-
 Lemma state_inv_of_equiv (s: State) (t: State)
     (eq: state_equiv s t)
     (inv_s: state_inv s) : state_inv t.
 Proof.
-  unfold state_inv in *. destruct t; destruct s.
+  unfold state_inv in *. unfold state_equiv in *. destruct t; destruct s; trivial.
+  + split.
+    * destruct inv_s. destruct H1. apply node_reserved_valid_of_equiv with (node1 := n0); trivial. destruct eq. trivial.
+    * split.
+      - destruct inv_s. apply node_borrows_valid_of_equiv with (node1 := n0); trivial.
+        ** destruct eq. trivial.
+        ** destruct H1. trivial.
+      - destruct eq. destruct inv_s. destruct H3.
+        apply node_all_total_in_refinement_domain_of_equiv with (node1 := n0); trivial.
+          rewrite <- H0. trivial.
+  + contradiction.
+Qed. 
 
 Definition allstate_ra_mixin : RAMixin State.
 Proof. split.
   - unfold Proper, "==>". intros. apply state_op_equiv. trivial.
   - unfold pcore. unfold state_pcore. intros. crush.
   - unfold cmra.valid. unfold "==>", alls_valid_instance. unfold impl, Proper. intros.
-     destruct H1. exists x0.
+     destruct H1. exists x0. apply state_inv_of_equiv with (s := state_op x x0).
+     * apply state_op_equiv_left. trivial.
+     * trivial.
+  - unfold Assoc. intros. apply state_op_assoc.
