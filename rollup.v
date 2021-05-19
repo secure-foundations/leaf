@@ -390,12 +390,15 @@ Qed.
 
 Fixpoint node_borrows_valid (node: Node) : Prop :=
   match node with
-  | CellNode (CellCon _ borrows _) branch =>
+  | CellNode cell branch =>
     branch_borrows_valid branch
-    /\ ∀ b , borrows b ->
-      match b with
-        | BorrowO lt m => node_view node lt m
-      end
+    /\ match cell with
+    | CellCon _ borrows _ =>
+      ∀ b , borrows b ->
+        match b with
+          | BorrowO lt m => node_view node lt m
+        end
+     end
   end
 with branch_borrows_valid (branch: Branch) : Prop :=
   match branch with
@@ -866,51 +869,289 @@ Proof.
     + unfold branch_reserved_valid. trivial.
 Qed.
 
-Lemma node_reserved_valid_of_trivial (n: Node)
-    (triv: node_trivial n) : node_reserved_valid n
-with branch_reserved_valid_of_trivial (b: Branch)
-    (triv: branch_trivial b) : branch_reserved_valid b.
-Proof.
-  - destruct n.
-    + have ind_hyp := branch_reserved_valid_of_trivial b.
-      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
-      crush.
-      unfold cell_trivial in *. destruct c. destruct H0. destruct H3. rewrite H3. intro. rewrite lookup_empty. trivial.
-  - destruct b.
-    + have ind_hyp_branch := branch_reserved_valid_of_trivial b.
-      have ind_hyp_node := node_reserved_valid_of_trivial n.
-      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
-      crush. 
-    + unfold branch_reserved_valid. trivial.
+Lemma cell_view_of_trivial (cell: Cell) (lifetime: Lifetime)
+  (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
+Proof. destruct cell. unfold cell_view. unfold cell_trivial in *.
+  unfold conjoin_reserved_over_lifetime.
+  apply gset_easy_induct with (R := λ b , b m).
+  - unfold umbrella_unit. trivial.
+  - intros. destruct eq. destruct H2. rewrite H2.
+    replace (gmap_get_or_unit ∅ a) with unit.
+    * unfold conjoin_umbrella. exists m. exists unit. repeat split; trivial.
+      + unfold umbrella. apply self_le_self.
+      + apply unit_dot.
+    * unfold gmap_get_or_unit. rewrite lookup_empty. trivial.
 Qed.
 
-Lemma node_reserved_valid_of_equiv (node1: Node) (node2: Node)
-    (eq: node_equiv node1 node2)
-    (rv: node_reserved_valid node1) : (node_reserved_valid node2)
-with
-  branch_reserved_valid_of_equiv (branch1: Branch) (branch2: Branch)
-    (eq: branch_equiv branch1 branch2)
-    (rv: branch_reserved_valid branch1) : (branch_reserved_valid branch2).
+Lemma node_view_of_trivial (node: Node) (lifetime: Lifetime)
+  (eq: node_trivial node) (m: M)
+  : node_view node lifetime m
+with branch_view_of_trivial (branch: Branch) (lifetime: Lifetime) (idx: nat)
+  (eq: branch_trivial branch) (m: M)
+  : branch_view branch lifetime idx m.
+Proof.
+  - destruct node.
+    + have ind_hyp := branch_view_of_trivial b.
+      clear node_view_of_trivial. clear branch_view_of_trivial.
+      crush.
+      unfold conjoin_umbrella. exists m. exists unit. crush.
+      * apply cell_view_of_trivial. trivial.
+      * apply unit_dot.
+  - destruct branch.
+    + have ind_hyp_branch := branch_view_of_trivial branch.
+      have ind_hyp_node := node_view_of_trivial n.
+      clear node_view_of_trivial. clear branch_view_of_trivial.
+      crush. 
+      unfold conjoin_umbrella. exists unit. exists m. repeat split.
+      * unfold project_fancy. unfold rel_project_fancy. exists unit. exists unit. repeat split.
+        -- apply self_le_self.
+        -- apply rel_unit.
+        -- apply ind_hyp_node. trivial.
+      * apply ind_hyp_branch. trivial.
+      * rewrite comm. apply unit_dot.
+    + unfold branch_view. unfold umbrella_unit. trivial.
+Qed.
+
+Lemma cell_view_of_equiv (cell1: Cell) (cell2: Cell) (lifetime: Lifetime)
+  (eq: cell_equiv cell1 cell2) (m: M)
+  : cell_view cell1 lifetime m = cell_view cell2 lifetime m.
+Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_view.
+    unfold conjoin_reserved_over_lifetime.
+      replace (set_fold
+    (λ (lu : nat) (um : M → Prop), conjoin_umbrella um (umbrella (gmap_get_or_unit g lu)))
+    umbrella_unit lifetime) with (set_fold
+    (λ (lu : nat) (um : M → Prop), conjoin_umbrella um (umbrella (gmap_get_or_unit g0 lu)))
+    umbrella_unit lifetime); trivial.
+    apply set_fold_equiv_funcs. destruct eq. destruct H1. rewrite H2. intros; trivial.
+Qed.
+
+Lemma node_view_of_equiv (node1: Node) (node2: Node) (lifetime: Lifetime)
+  (eq: node_equiv node1 node2) (m: M)
+  : node_view node1 lifetime m <-> node_view node2 lifetime m
+with branch_view_of_equiv (branch1: Branch) (branch2: Branch) (lifetime: Lifetime) (idx: nat)
+  (eq: branch_equiv branch1 branch2) (m: M)
+  : branch_view branch1 lifetime idx m <-> branch_view branch2 lifetime idx m.
 Proof.
   - destruct node1, node2.
-    + have ind_hyp := branch_reserved_valid_of_equiv b b0. clear node_reserved_valid_of_equiv. clear branch_reserved_valid_of_equiv. destruct c0. crush.
-        destruct c. unfold cell_equiv in *. crush. apply H3.
+    + have ind_hyp := branch_view_of_equiv b b0.
+    crush.
+      * unfold conjoin_umbrella in *. destruct H2. destruct H2. exists x. exists x0.
+        rewrite <- ind_hyp; trivial. rewrite <- (cell_view_of_equiv c c0); trivial.
+      * unfold conjoin_umbrella in *. destruct H2. destruct H2. exists x. exists x0.
+        rewrite ind_hyp; trivial. rewrite (cell_view_of_equiv c c0); trivial.
   - destruct branch1, branch2.
-    + have ind_hyp_branch := branch_reserved_valid_of_equiv branch1 branch2.
-      have ind_hyp_node := node_reserved_valid_of_equiv n n0.
+    + have ind_hyp_branch := branch_view_of_equiv branch1 branch2.
+      have ind_hyp_node := node_view_of_equiv n n0.
+      clear branch_view_of_equiv. clear node_view_of_equiv.
       crush.
-    + unfold branch_reserved_valid. trivial.
-    + unfold branch_equiv in eq. apply branch_reserved_valid_of_trivial. trivial.
-    + unfold branch_reserved_valid. trivial.
+      * unfold conjoin_umbrella in *. unfold project_fancy in *.
+          unfold rel_project_fancy in *.
+          destruct H2. destruct H2. destruct H2. destruct H2. destruct H2.
+          exists x. exists x0. split.
+          ** exists x1. exists x2. rewrite <- ind_hyp_node; trivial.
+          ** rewrite <- ind_hyp_branch; trivial.
+      * unfold conjoin_umbrella in *. unfold project_fancy in *.
+          unfold rel_project_fancy in *.
+          destruct H2. destruct H2. destruct H2. destruct H2. destruct H2.
+          exists x. exists x0. split.
+          ** exists x1. exists x2. rewrite ind_hyp_node; trivial.
+          ** rewrite ind_hyp_branch; trivial.
+    + unfold branch_equiv in *. fold node_equiv in *. fold branch_equiv in *.
+      split.
+        * intros. unfold branch_view. unfold umbrella_unit. trivial.
+        * intros. apply branch_view_of_trivial. trivial.
+    + unfold branch_equiv in *. fold node_equiv in *. fold branch_equiv in *.
+      split.
+        * intros. apply branch_view_of_trivial. trivial.
+        * intros. unfold branch_view. unfold umbrella_unit. trivial.
+    + trivial.
+Qed.
+  
+Lemma node_borrows_valid_of_trivial (n: Node)
+    (triv: node_trivial n) : node_borrows_valid n
+with branch_borrows_valid_of_trivial (b: Branch)
+    (triv: branch_trivial b) : branch_borrows_valid b.
+Proof.
+  - destruct n.
+    + have ind_hyp := branch_borrows_valid_of_trivial b.
+      clear node_borrows_valid_of_trivial. clear branch_borrows_valid_of_trivial.
+      crush.
+      unfold cell_trivial in *. destruct c.
+      intros.
+      destruct H0. have h := H0 b1. rewrite h in H3. contradiction.
+  - destruct b.
+    + have ind_hyp_branch := branch_borrows_valid_of_trivial b.
+      have ind_hyp_node := node_borrows_valid_of_trivial n.
+      clear node_borrows_valid_of_trivial. clear branch_borrows_valid_of_trivial.
+      crush. 
+    + unfold branch_borrows_valid. trivial.
+Qed.
+
+Lemma node_borrows_valid_of_equiv (node1: Node) (node2: Node)
+    (eq: node_equiv node1 node2)
+    (rv: node_borrows_valid node1) : (node_borrows_valid node2)
+with
+  branch_borrows_valid_of_equiv (branch1: Branch) (branch2: Branch)
+    (eq: branch_equiv branch1 branch2)
+    (rv: branch_borrows_valid branch1) : (branch_borrows_valid branch2).
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_borrows_valid_of_equiv b b0. clear node_borrows_valid_of_equiv. clear branch_borrows_valid_of_equiv.
+      unfold node_borrows_valid in *. fold branch_borrows_valid in *.
+      unfold node_equiv in eq. fold branch_equiv in *. destruct eq.
+      split.
+       * apply ind_hyp; trivial. destruct rv. trivial.
+       * unfold node_view in *. fold branch_view in *.
+        destruct c0. destruct rv. destruct c. intro. have h := H3 b3.
+        replace (b1 b3) with (b2 b3).
+        ** destruct b3.
+          unfold conjoin_umbrella in *.
+          intro.
+          have j := h H4. destruct j. destruct H5.
+          exists x. exists x0.
+          rewrite <- (cell_view_of_equiv (CellCon m0 b2 g0) (CellCon m b1 g)); trivial.
+          rewrite <- (branch_view_of_equiv b); trivial.
+        ** unfold cell_equiv in H0. unfold equiv_func in H0. crush.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_borrows_valid_of_equiv branch1 branch2.
+      have ind_hyp_node := node_borrows_valid_of_equiv n n0. 
+      crush.
+    + unfold branch_borrows_valid. trivial.
+    + unfold branch_equiv in *. apply branch_borrows_valid_of_trivial. trivial.
+    + trivial.
 Qed.
 
 
+Lemma cell_total_of_trivial (cell: Cell) (lifetime: Lifetime)
+  (eq: cell_trivial cell) : cell_total cell lifetime = unit.
+Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
+  replace (sum_reserved_over_lifetime g lifetime) with unit.
+  - destruct eq. destruct H1. rewrite H2. apply unit_dot.
+  - unfold sum_reserved_over_lifetime.
+  apply gset_easy_induct with (R := λ b , unit = b).
+   * trivial.
+   * intros. rewrite <- H0. unfold gmap_get_or_unit.
+      destruct eq. destruct H2. rewrite H2. rewrite lookup_empty.
+      rewrite unit_dot. trivial.
+Qed.
+
+Lemma node_total_of_trivial (node: Node) (lifetime: Lifetime)
+  (eq: node_trivial node)
+  : node_total node lifetime = unit
+with branch_total_of_trivial (branch: Branch) (lifetime: Lifetime) (idx: nat)
+  (eq: branch_trivial branch)
+  : branch_total branch lifetime idx = unit.
+Proof.
+  - destruct node.
+    + have ind_hyp := branch_total_of_trivial b.
+      clear node_total_of_trivial. clear branch_total_of_trivial.
+      crush.
+      rewrite cell_total_of_trivial; trivial. apply unit_dot.
+  - destruct branch.
+    + have ind_hyp_branch := branch_total_of_trivial branch.
+      have ind_hyp_node := node_total_of_trivial n.
+      clear node_total_of_trivial. clear branch_total_of_trivial.
+      crush. 
+      unfold project. unfold rel_project. rewrite rel_unit. apply unit_dot.
+    + unfold branch_total. trivial.
+Qed.
+
+Lemma cell_total_of_equiv (cell1: Cell) (cell2: Cell) (lifetime: Lifetime)
+  (eq: cell_equiv cell1 cell2)
+  : cell_total cell1 lifetime = cell_total cell2 lifetime.
+Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
+    destruct eq. destruct H1. rewrite H0. f_equal.
+    unfold sum_reserved_over_lifetime.
+      apply set_fold_equiv_funcs.
+      intros. rewrite H2. trivial.
+Qed.
+
+Lemma node_total_of_equiv (node1: Node) (node2: Node) (lifetime: Lifetime)
+  (eq: node_equiv node1 node2)
+  : node_total node1 lifetime = node_total node2 lifetime
+with branch_total_of_equiv (branch1: Branch) (branch2: Branch) (lifetime: Lifetime) (idx: nat)
+  (eq: branch_equiv branch1 branch2)
+  : branch_total branch1 lifetime idx = branch_total branch2 lifetime idx.
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_total_of_equiv b b0.
+    crush.
+      rewrite (cell_total_of_equiv c c0); trivial. 
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_total_of_equiv branch1 branch2.
+      have ind_hyp_node := node_total_of_equiv n n0.
+      clear branch_total_of_equiv. clear node_total_of_equiv.
+      crush.
+    + unfold branch_equiv in eq. rewrite branch_total_of_trivial; trivial. 
+    + unfold branch_equiv in eq. rewrite branch_total_of_trivial.
+      * rewrite branch_total_of_trivial; trivial.
+      * unfold branch_trivial. trivial.
+    + unfold branch_total. trivial.
+Qed.
 
 
-node_borrows_valid n
+Lemma node_all_total_in_refinement_domain_of_trivial (n: Node) (lifetime: Lifetime) (idx: nat)
+    (triv: node_trivial n) : node_all_total_in_refinement_domain n lifetime idx
+with branch_all_total_in_refinement_domain_of_trivial (b: Branch) (lifetime: Lifetime) (idx: nat)
+    (triv: branch_trivial b) : branch_all_total_in_refinement_domain b lifetime idx.
+Proof.
+  - destruct n.
+    + have ind_hyp := branch_all_total_in_refinement_domain_of_trivial b.
+      clear node_all_total_in_refinement_domain_of_trivial. clear branch_all_total_in_refinement_domain_of_trivial.
+      crush.
+      rewrite cell_total_of_trivial; trivial.
+      rewrite branch_total_of_trivial; trivial.
+      rewrite unit_dot.
+      destruct c. split.
+      * unfold in_refinement_domain. rewrite rel_unit. trivial.
+      * apply ind_hyp. trivial.
+  - destruct b.
+    + have ind_hyp_branch := branch_all_total_in_refinement_domain_of_trivial b.
+      have ind_hyp_node := node_all_total_in_refinement_domain_of_trivial n.
+      clear node_all_total_in_refinement_domain_of_trivial. clear branch_all_total_in_refinement_domain_of_trivial.
+      crush. 
+    + unfold branch_all_total_in_refinement_domain. trivial.
+Qed.
+
+Lemma node_all_total_in_refinement_domain_of_equiv (node1: Node) (node2: Node)
+      (lifetime: Lifetime) (idx: nat)
+    (eq: node_equiv node1 node2)
+    (rv: node_all_total_in_refinement_domain node1 lifetime idx)
+    : (node_all_total_in_refinement_domain node2 lifetime idx)
+with
+  branch_all_total_in_refinement_domain_of_equiv (branch1: Branch) (branch2: Branch)
+      (lifetime: Lifetime) (idx: nat)
+    (eq: branch_equiv branch1 branch2)
+    (rv: branch_all_total_in_refinement_domain branch1 lifetime idx)
+    : (branch_all_total_in_refinement_domain branch2 lifetime idx).
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_all_total_in_refinement_domain_of_equiv b b0. clear node_all_total_in_refinement_domain_of_equiv. clear branch_all_total_in_refinement_domain_of_equiv.
+      unfold node_all_total_in_refinement_domain in *. fold branch_all_total_in_refinement_domain in *.
+      unfold node_equiv in eq. fold branch_equiv in *. destruct eq.
+      split.
+       * apply ind_hyp; trivial. destruct rv. trivial.
+       * unfold node_view in *. fold branch_view in *.
+        destruct c0. destruct rv. destruct c. intro. have h := H3 b3.
+        replace (b1 b3) with (b2 b3).
+        ** destruct b3.
+          unfold conjoin_umbrella in *.
+          intro.
+          have j := h H4. destruct j. destruct H5.
+          exists x. exists x0.
+          rewrite <- (cell_view_of_equiv (CellCon m0 b2 g0) (CellCon m b1 g)); trivial.
+          rewrite <- (branch_view_of_equiv b); trivial.
+        ** unfold cell_equiv in H0. unfold equiv_func in H0. crush.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_all_total_in_refinement_domain_of_equiv branch1 branch2.
+      have ind_hyp_node := node_all_total_in_refinement_domain_of_equiv n n0. 
+      crush.
+    + unfold branch_all_total_in_refinement_domain. trivial.
+    + unfold branch_equiv in *. apply branch_all_total_in_refinement_domain_of_trivial. trivial.
+    + trivial.
+Qed.
 
 
-node_all_total_in_refinement_domain n l 0
 
 
 Lemma state_inv_of_equiv (s: State) (t: State)
