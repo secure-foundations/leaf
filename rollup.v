@@ -388,6 +388,44 @@ Proof.
       + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
 Qed.
 
+Fixpoint node_borrows_valid (node: Node) : Prop :=
+  match node with
+  | CellNode (CellCon _ borrows _) branch =>
+    branch_borrows_valid branch
+    /\ ∀ b , borrows b ->
+      match b with
+        | BorrowO lt m => node_view node lt m
+      end
+  end
+with branch_borrows_valid (branch: Branch) : Prop :=
+  match branch with
+  | BranchCons node branch => node_borrows_valid node /\ node_borrows_valid node
+  | BranchNil => True
+  end
+.
+
+Fixpoint node_reserved_valid (node: Node) : Prop :=
+  match node with
+  | CellNode cell branch =>
+    branch_reserved_valid branch
+    /\ match cell with
+      | CellCon _ _ reserved =>
+        ∀ r , match reserved !! r with
+          | None => True
+          | Some None => False
+          | Some (Some _) => True
+        end
+       end
+  end
+with branch_reserved_valid (branch: Branch) : Prop :=
+  match branch with
+  | BranchCons node branch => node_reserved_valid node /\ node_reserved_valid node
+  | BranchNil => True
+  end
+.
+
+
+
 Definition cell_trivial (cell: Cell) :=
   match cell with
   | CellCon m borrows reserves => (∀ b , borrows b = false) /\ reserves = empty /\ m = unit
@@ -452,7 +490,23 @@ Inductive State :=
   | StateFail
 .
 
-Instance alls_valid_instance : Valid State := λ x, True.
+
+(*Definition cell_basic_valid (cell: Cell) : Prop :=
+  match cell with
+  | CellCon _ _ reserved => forall x ,
+      match reserved !! x
+      with
+      | Some None => False
+      | Some (Some _) => True
+      | None => True
+      end
+  end
+.
+
+Fixpoint node_basic_valid (node: Node) : Prop :=
+  match node with
+  | CellNode cell branch -> cell_basic_valid cell /\ branch_basic_valid branch
+  | *)
 
 (*Instance state_pcore : PCore State := λ state , 
   match state with
@@ -762,8 +816,112 @@ Proof.
     + apply equiv_refl_branch.
 Qed.
 
+Definition state_inv (state: State) :=
+  match state with
+  | StateCon active node =>
+        node_reserved_valid node
+      /\ node_borrows_valid node
+      /\ node_all_total_in_refinement_domain node active 0
+  | StateFail => False
+  end
+.
+
+Instance alls_valid_instance : Valid State := λ x, exists y , state_inv (state_op x y).
+
+Lemma node_reserved_valid_of_trivial (n: Node)
+    (triv: node_trivial n) : node_reserved_valid n
+with branch_reserved_valid_of_trivial (b: Branch)
+    (triv: branch_trivial b) : branch_reserved_valid b.
+Proof.
+  - destruct n.
+    + have ind_hyp := branch_reserved_valid_of_trivial b.
+      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
+      crush.
+      unfold cell_trivial in *. destruct c. destruct H0. destruct H3. rewrite H3. intro. rewrite lookup_empty. trivial.
+  - destruct b.
+    + have ind_hyp_branch := branch_reserved_valid_of_trivial b.
+      have ind_hyp_node := node_reserved_valid_of_trivial n.
+      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
+      crush. 
+    + unfold branch_reserved_valid. trivial.
+Qed.
+
+Lemma node_reserved_valid_of_equiv (node1: Node) (node2: Node)
+    (eq: node_equiv node1 node2)
+    (rv: node_reserved_valid node1) : (node_reserved_valid node2)
+with
+  branch_reserved_valid_of_equiv (branch1: Branch) (branch2: Branch)
+    (eq: branch_equiv branch1 branch2)
+    (rv: branch_reserved_valid branch1) : (branch_reserved_valid branch2).
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_reserved_valid_of_equiv b b0. clear node_reserved_valid_of_equiv. clear branch_reserved_valid_of_equiv. destruct c0. crush.
+        destruct c. unfold cell_equiv in *. crush. apply H3.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_reserved_valid_of_equiv branch1 branch2.
+      have ind_hyp_node := node_reserved_valid_of_equiv n n0.
+      crush.
+    + unfold branch_reserved_valid. trivial.
+    + unfold branch_equiv in eq. apply branch_reserved_valid_of_trivial. trivial.
+    + unfold branch_reserved_valid. trivial.
+Qed.
+
+Lemma node_reserved_valid_of_trivial (n: Node)
+    (triv: node_trivial n) : node_reserved_valid n
+with branch_reserved_valid_of_trivial (b: Branch)
+    (triv: branch_trivial b) : branch_reserved_valid b.
+Proof.
+  - destruct n.
+    + have ind_hyp := branch_reserved_valid_of_trivial b.
+      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
+      crush.
+      unfold cell_trivial in *. destruct c. destruct H0. destruct H3. rewrite H3. intro. rewrite lookup_empty. trivial.
+  - destruct b.
+    + have ind_hyp_branch := branch_reserved_valid_of_trivial b.
+      have ind_hyp_node := node_reserved_valid_of_trivial n.
+      clear node_reserved_valid_of_trivial. clear branch_reserved_valid_of_trivial.
+      crush. 
+    + unfold branch_reserved_valid. trivial.
+Qed.
+
+Lemma node_reserved_valid_of_equiv (node1: Node) (node2: Node)
+    (eq: node_equiv node1 node2)
+    (rv: node_reserved_valid node1) : (node_reserved_valid node2)
+with
+  branch_reserved_valid_of_equiv (branch1: Branch) (branch2: Branch)
+    (eq: branch_equiv branch1 branch2)
+    (rv: branch_reserved_valid branch1) : (branch_reserved_valid branch2).
+Proof.
+  - destruct node1, node2.
+    + have ind_hyp := branch_reserved_valid_of_equiv b b0. clear node_reserved_valid_of_equiv. clear branch_reserved_valid_of_equiv. destruct c0. crush.
+        destruct c. unfold cell_equiv in *. crush. apply H3.
+  - destruct branch1, branch2.
+    + have ind_hyp_branch := branch_reserved_valid_of_equiv branch1 branch2.
+      have ind_hyp_node := node_reserved_valid_of_equiv n n0.
+      crush.
+    + unfold branch_reserved_valid. trivial.
+    + unfold branch_equiv in eq. apply branch_reserved_valid_of_trivial. trivial.
+    + unfold branch_reserved_valid. trivial.
+Qed.
+
+
+
+
+node_borrows_valid n
+
+
+node_all_total_in_refinement_domain n l 0
+
+
+Lemma state_inv_of_equiv (s: State) (t: State)
+    (eq: state_equiv s t)
+    (inv_s: state_inv s) : state_inv t.
+Proof.
+  unfold state_inv in *. destruct t; destruct s.
+
 Definition allstate_ra_mixin : RAMixin State.
 Proof. split.
   - unfold Proper, "==>". intros. apply state_op_equiv. trivial.
   - unfold pcore. unfold state_pcore. intros. crush.
-  - unfold cmra.valid. unfold "==>", alls_valid_instance. unfold impl.
+  - unfold cmra.valid. unfold "==>", alls_valid_instance. unfold impl, Proper. intros.
+     destruct H1. exists x0.

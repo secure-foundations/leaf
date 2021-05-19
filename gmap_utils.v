@@ -195,3 +195,10 @@ Proof.
         + lia.
         + have ineq := H0 m H1. lia.
 Qed.
+
+Lemma set_fold_equiv_funcs `{EqDecision A, Countable A} {B} (f g : A -> B -> B) (u: B) (s: gset A)
+  (equiv: ∀ x y , f x y = g x y) : (set_fold f u s) = (set_fold g u s).
+Proof. apply (gset_relate (=)).
+  - trivial.
+  - intros. rewrite H0. apply equiv.
+Qed.
