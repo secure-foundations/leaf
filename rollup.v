@@ -654,6 +654,13 @@ Proof.
     + trivial.
 Qed.
 
+Lemma state_equiv_comm (state1 state2: State)
+  (seq : state_equiv state1 state2) : (state_equiv state2 state1).
+Proof.
+  destruct state1, state2; unfold state_equiv in *; trivial.
+    - destruct seq; split. * symmetry; trivial. * apply node_equiv_comm; trivial.
+Qed.
+
 Lemma cell_equiv_trans (cell1: Cell) (cell2: Cell) (cell3: Cell)
   (iseq: cell_equiv cell1 cell2)
   (iseq2: cell_equiv cell2 cell3)
@@ -953,6 +960,73 @@ Proof.
     + unfold branch_op. apply equiv_refl_branch.
     + unfold branch_op. apply equiv_refl_branch.
     + apply equiv_refl_branch.
+Qed.
+
+Lemma gset_union_assoc (f g h : gset nat)
+  : f ∪ (g ∪ h) = (f ∪ g) ∪ h.
+Proof.
+  apply set_eq. intros. repeat (rewrite elem_of_union). crush.
+Qed.
+
+Lemma union_intersect_dist_right (a b c : gset nat)
+  : (a ∪ b) ∩ c  = (a ∩ c) ∪ (b ∩ c).
+Proof.
+  apply set_eq. intros. rewrite elem_of_union. repeat (rewrite elem_of_intersection).
+    rewrite elem_of_union. crush. Qed.
+
+Lemma intersect_union_dist_left (a b c : gset nat)
+  : a ∩ (b ∪ c) = (a ∩ b) ∪ (a ∩ c).
+Proof.
+  apply set_eq. intros.
+    rewrite elem_of_intersection. rewrite elem_of_union. rewrite elem_of_union. rewrite elem_of_intersection. crush. Qed.
+    
+Lemma left_of_union_is_empty (a b : gset nat) (eq: a ∪ b = ∅) : (a = ∅).
+Proof. apply set_eq. intros. split.
+  - rewrite <- eq. rewrite elem_of_union. crush.
+  - rewrite elem_of_empty. crush.
+Qed.
+
+Lemma right_of_union_is_empty (a b : gset nat) (eq: a ∪ b = ∅) : (b = ∅).
+Proof. rewrite set_union_comm in eq. apply left_of_union_is_empty with (b := a); trivial.
+Qed.
+
+Lemma state_op_assoc (state1: State) (state2: State) (state3: State)
+  : state_equiv (state_op state1 (state_op state2 state3))
+                (state_op (state_op state1 state2) state3).
+Proof.
+  destruct state1, state2, state3; unfold state_op.
+    + case_decide; trivial.
+     - case_decide; trivial.
+      * case_decide; trivial.
+       ++ case_decide; trivial.
+        -- rewrite gset_union_assoc. unfold state_equiv. split; trivial. apply node_op_assoc.
+        -- rewrite union_intersect_dist_right in H3. rewrite H0 in H3.
+            rewrite intersect_union_dist_left in H1. rewrite H2 in H1.
+            rewrite set_union_comm in H1. contradiction.
+       ++ rewrite intersect_union_dist_left in H1.
+          have h := left_of_union_is_empty (l ∩ l0) (l ∩ l1) H1. contradiction.
+      * case_decide; trivial.
+       ++ case_decide; trivial.
+        -- rewrite union_intersect_dist_right in H3.
+           rewrite intersect_union_dist_left in H1. rewrite set_union_comm in H1.
+            rewrite H0 in H3.  rewrite H2 in H1. contradiction.
+        -- unfold state_equiv. trivial.
+       ++ unfold state_equiv. trivial.
+     - case_decide; trivial.
+      * case_decide; trivial.
+       ++ rewrite union_intersect_dist_right in H2.
+          have h := right_of_union_is_empty (l ∩ l1) (l0 ∩ l1) H2. contradiction.
+       ++ unfold state_equiv. trivial.
+      * unfold state_equiv. trivial.
+   + case_decide; trivial.
+      * unfold state_equiv. trivial.
+      * unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
+   + unfold state_equiv. trivial.
 Qed.
 
 Definition state_inv (state: State) :=
@@ -1305,3 +1379,13 @@ Proof. split.
      * apply state_op_equiv_left. trivial.
      * trivial.
   - unfold Assoc. intros. apply state_op_assoc.
+  - unfold Comm. intros. apply state_op_comm.
+  - unfold pcore. unfold state_pcore. crush.
+  - unfold pcore. unfold state_pcore. crush.
+  - unfold pcore. unfold state_pcore. crush.
+  - intros. unfold "✓" in *. unfold alls_valid_instance in *.
+      destruct H0. exists (state_op y x0). unfold op in H0.
+        apply state_inv_of_equiv with (s := (state_op (state_op x y) x0)); trivial.
+        apply state_equiv_comm.
+        apply state_op_assoc.
+Qed.
