@@ -9,7 +9,7 @@ From stdpp Require Import sets.
 From stdpp Require Import list.
 Require Import gmap_utils.
 
-Section stuff.
+Section RollupRA.
 
 Class TPCM (M : Type) `{EqDecision M} :=
 {
@@ -585,18 +585,19 @@ Proof. unfold rmerge. apply map_eq. intros. rewrite lookup_merge. rewrite lookup
     unfold rmerge_one. destruct (g !! i); trivial. destruct o; trivial.
 Qed.
 
-Lemma equiv_refl_cell (cell: Cell) : cell_equiv cell cell.
+Lemma cell_equiv_refl (cell: Cell) : cell_equiv cell cell.
 Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
     
-Lemma equiv_refl_node (node: Node) : node_equiv node node
-with equiv_refl_branch (branch: Branch) : branch_equiv branch branch.
+Lemma node_equiv_refl (node: Node) : node_equiv node node
+with branch_equiv_refl (branch: Branch) : branch_equiv branch branch.
+Proof.
  - destruct node. unfold node_equiv. repeat split.
-  + apply equiv_refl_cell.
-  + apply equiv_refl_branch.
+  + apply cell_equiv_refl.
+  + apply branch_equiv_refl.
  - destruct branch.
   + unfold branch_equiv. repeat split.
-    * apply equiv_refl_node.
-    * apply equiv_refl_branch.
+    * apply node_equiv_refl.
+    * apply branch_equiv_refl.
   + unfold branch_equiv. unfold branch_trivial. trivial.
 Qed.
 
@@ -620,32 +621,32 @@ Proof.
       have hyp_node := op_trivial_node n n0. clear hyp_node.
       crush.
     + crush.
-      * apply equiv_refl_node.
-      * apply equiv_refl_branch.
+      * apply node_equiv_refl.
+      * apply branch_equiv_refl.
     + crush.
     + crush.
 Qed.
 
-Lemma cell_equiv_comm (cell1: Cell) (cell2: Cell)
+Lemma cell_equiv_symm (cell1: Cell) (cell2: Cell)
   (iseq: cell_equiv cell1 cell2) : (cell_equiv cell2 cell1).
 Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H1. repeat split.
   * symmetry; trivial.  * unfold equiv_func in *. intros. symmetry. apply H1.
   * symmetry; trivial.
 Qed.
 
-Lemma node_equiv_comm (node1: Node) (node2: Node)
+Lemma node_equiv_symm (node1: Node) (node2: Node)
   (iseq: node_equiv node1 node2) : (node_equiv node2 node1)
-with branch_equiv_comm (branch1: Branch) (branch2: Branch)
+with branch_equiv_symm (branch1: Branch) (branch2: Branch)
   (iseq: branch_equiv branch1 branch2) : (branch_equiv branch2 branch1).
 Proof.
   - destruct node1, node2.
-    + have ind_hyp := branch_equiv_comm b b0. clear node_equiv_comm. clear branch_equiv_comm.
+    + have ind_hyp := branch_equiv_symm b b0. clear node_equiv_symm. clear branch_equiv_symm.
         unfold node_equiv. fold branch_equiv. repeat split.
-        * apply cell_equiv_comm. unfold node_equiv in iseq. destruct iseq; trivial.
+        * apply cell_equiv_symm. unfold node_equiv in iseq. destruct iseq; trivial.
         * unfold node_equiv in iseq. destruct iseq. apply ind_hyp; trivial.
   - destruct branch1, branch2.
-    + have ind_hyp_branch := branch_equiv_comm branch1 branch2.
-      have ind_hyp_node := node_equiv_comm n n0.
+    + have ind_hyp_branch := branch_equiv_symm branch1 branch2.
+      have ind_hyp_node := node_equiv_symm n n0.
       unfold branch_equiv in *. fold node_equiv in *. fold branch_equiv in *. split.
         * apply ind_hyp_node. destruct iseq; trivial.
         * apply ind_hyp_branch. destruct iseq; trivial.
@@ -654,11 +655,11 @@ Proof.
     + trivial.
 Qed.
 
-Lemma state_equiv_comm (state1 state2: State)
+Lemma state_equiv_symm (state1 state2: State)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
 Proof.
   destruct state1, state2; unfold state_equiv in *; trivial.
-    - destruct seq; split. * symmetry; trivial. * apply node_equiv_comm; trivial.
+    - destruct seq; split. * symmetry; trivial. * apply node_equiv_symm; trivial.
 Qed.
 
 Lemma cell_equiv_trans (cell1: Cell) (cell2: Cell) (cell3: Cell)
@@ -733,7 +734,7 @@ Proof.
       crush.
     + unfold branch_equiv. unfold branch_equiv in iseq2.
         apply branch_trivial_of_equiv with (branch1 := BranchCons n0 branch2); trivial.
-        apply branch_equiv_comm. trivial.
+        apply branch_equiv_symm. trivial.
     + unfold branch_equiv in iseq. unfold branch_equiv in iseq2.
       apply branch_equiv_of_trivial; trivial.
     + trivial.
@@ -771,6 +772,7 @@ Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
 with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchRight2: Branch)
     (branch_eq: branch_equiv branchRight1 branchRight2) ,
     (branch_equiv (branch_op branchLeft branchRight1) (branch_op branchLeft branchRight2)).
+Proof.
   - destruct nodeLeft, nodeRight1, nodeRight2.
     + have ind_hyp := branch_op_equiv b b0 b1. clear node_op_equiv. clear branch_op_equiv.
         crush.
@@ -783,9 +785,9 @@ with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchR
       * apply op_trivial_node; trivial.
       * apply op_trivial_branch; trivial.
     + clear node_op_equiv. clear branch_op_equiv. crush.
-      * apply node_equiv_comm. apply op_trivial_node; trivial.
-      * apply branch_equiv_comm. apply op_trivial_branch; trivial.
-    + apply equiv_refl_branch.
+      * apply node_equiv_symm. apply op_trivial_node; trivial.
+      * apply branch_equiv_symm. apply op_trivial_branch; trivial.
+    + apply branch_equiv_refl.
     + unfold branch_op. trivial.
     + unfold branch_op. trivial.
     + unfold branch_op. trivial.
@@ -848,9 +850,9 @@ Proof.
       have ind_hyp_node := node_op_comm n n0.
       clear node_op_comm. clear branch_op_comm.
       crush.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + apply equiv_refl_branch.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + apply branch_equiv_refl.
 Qed.
 
 Lemma set_union_comm (s: gset nat) (t: gset nat) : s ∪ t = t ∪ s.
@@ -953,13 +955,13 @@ Proof.
       have ind_hyp_node := node_op_assoc n n0 n1.
       clear node_op_assoc. clear branch_op_assoc.
       crush.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + unfold branch_op. apply equiv_refl_branch.
-    + apply equiv_refl_branch.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + unfold branch_op. apply branch_equiv_refl.
+    + apply branch_equiv_refl.
 Qed.
 
 Lemma gset_union_assoc (f g h : gset nat)
@@ -1386,6 +1388,8 @@ Proof. split.
   - intros. unfold "✓" in *. unfold alls_valid_instance in *.
       destruct H0. exists (state_op y x0). unfold op in H0.
         apply state_inv_of_equiv with (s := (state_op (state_op x y) x0)); trivial.
-        apply state_equiv_comm.
+        apply state_equiv_symm.
         apply state_op_assoc.
 Qed.
+
+End RollupRA.
