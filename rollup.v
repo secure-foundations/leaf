@@ -95,7 +95,7 @@ Definition Lifetime := gset nat.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := subseteq m l.
 
-Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.
+Global Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.
 
 (*Lemma fresh_borrow_inst : ∀ (l : Lifetime) , ∃ b , ∀ t, gset_elem_of t l -> t < b.
 Proof.
@@ -113,10 +113,10 @@ Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
 Inductive BorrowObject : Type :=
   | BorrowO : Lifetime -> M -> BorrowObject
 .
-Instance eqdec_borrow_object : EqDecision BorrowObject.
+Global Instance eqdec_borrow_object : EqDecision BorrowObject.
 Proof using EqDecision0 M. solve_decision. Defined.
 
-Instance countable_borrow_object : Countable BorrowObject. Admitted.
+Global Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 (*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
 
@@ -126,7 +126,7 @@ Inductive RI :=
 
 Definition nat_to_ref: nat -> Refinement M M. Admitted.
   
-Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
+Global Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
 
 Inductive Cell : Type :=
   | CellCon :
@@ -488,7 +488,7 @@ with branch_core (branch: Branch) : Branch :=
   end
 .*)
 
-Instance inst_node_equiv : Equiv Node := node_equiv.
+Global Instance inst_node_equiv : Equiv Node := node_equiv.
 
 Inductive State :=
   | StateCon : Lifetime -> Node -> State
@@ -520,7 +520,7 @@ Fixpoint node_basic_valid (node: Node) : Prop :=
   end
 .*)
 
-Instance state_pcore : PCore State := λ state , None.
+Global Instance state_pcore : PCore State := λ state , None.
 
 Definition bool_or_func {A} (x y : A -> bool) : (A -> bool) :=
   λ b , orb (x b) (y b).
@@ -533,7 +533,7 @@ Definition rmerge_one (a: option (option M)) (b: option (option M)) :=
   | Some (Some _), Some None => Some None
   | Some (Some m), Some (Some p) => if decide (m = p) then Some (Some m) else Some None
   end.
-Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmerge_one. trivial. Defined.
+Global Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfold rmerge_one. trivial. Defined.
 Definition rmerge (f: gmap nat (option M)) (g: gmap nat (option M)) :=
   merge rmerge_one f g.
 
@@ -561,7 +561,7 @@ with branch_op (branch1: Branch) (branch2: Branch) : Branch :=
     end
 .
 
-Instance state_op : Op State := λ x y ,
+Global Instance state_op : Op State := λ x y ,
   match x, y with
   | StateFail, _ => StateFail
   | StateCon _ _, StateFail => StateFail
@@ -572,7 +572,7 @@ Instance state_op : Op State := λ x y ,
     end
   end.
   
-Instance state_equiv : Equiv State := λ x y ,
+Global Instance state_equiv : Equiv State := λ x y ,
   match x, y with
   | StateFail, StateFail => True
   | StateFail, StateCon _ _ => False
@@ -1043,7 +1043,7 @@ Definition state_inv (state: State) :=
   end
 .
 
-Instance alls_valid_instance : Valid State := λ x, exists y , state_inv (state_op x y).
+Global Instance alls_valid_instance : Valid State := λ x, exists y , state_inv (state_op x y).
 
 Lemma node_reserved_valid_of_trivial (n: Node)
     (triv: node_trivial n) : node_reserved_valid n
