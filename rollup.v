@@ -113,7 +113,9 @@ Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
 Inductive BorrowObject : Type :=
   | BorrowO : Lifetime -> M -> BorrowObject
 .
-Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
+Instance eqdec_borrow_object : EqDecision BorrowObject.
+Proof using EqDecision0 M. solve_decision. Defined.
+
 Instance countable_borrow_object : Countable BorrowObject. Admitted.
 
 (*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
