@@ -213,6 +213,64 @@ Section Induct1.
   Qed.
 End Induct1.
 
+Section Induct1Disj.
+  Variable R_cell : @Cell M -> nat -> Prop.
+  Variable R_node : @Node M -> nat -> Prop.
+  Variable R_branch : @Branch M -> nat -> Prop.
+  Variable induct_node_cell : ∀ cell1 branch1 idx ,
+        R_cell cell1 idx -> R_node (CellNode cell1 branch1) idx.
+  Variable induct_node_branch : ∀ cell1 branch1 idx ,
+        R_branch branch1 0 -> R_node (CellNode cell1 branch1) idx.
+  Variable Rinduct_branch_node : ∀ node1 branch1 idx ,
+        R_node node1 idx
+          -> R_branch (BranchCons node1 branch1) idx.
+  Variable Rinduct_branch_branch : ∀ node1 branch1 idx ,
+        R_branch branch1 (S idx)
+          -> R_branch (BranchCons node1 branch1) idx.
+  Variable Rnode_add : ∀ n1 m1 idx ,
+        R_node n1 idx -> R_node (node_op n1 m1) idx.
+  
+  Lemma Induct1Disj_make_parent_from_branch : ∀ idx idx0 b1 ,
+        R_branch b1 idx ->
+        R_node (make_parent_from_branch idx b1) idx0.
+  Proof using R_branch R_node Rinduct_branch_branch induct_node_branch.
+  induction idx.
+    - intros. apply induct_node_branch; trivial.
+    - intros. unfold make_parent_from_branch. apply IHidx. apply Rinduct_branch_branch. trivial.
+  Qed.
+      
+  Lemma Induct1Disj_make_parent_from_node : ∀ idx idx0 n1 ,
+        R_node n1 idx ->
+        R_node (make_parent_from_node idx n1) idx0.
+  Proof using R_branch R_node Rinduct_branch_branch Rinduct_branch_node induct_node_branch.
+  intros. unfold make_parent_from_node.
+      apply Induct1Disj_make_parent_from_branch.
+      apply Rinduct_branch_node; trivial. Qed.
+      
+  Lemma Induct1Disj_build_tree_from_node : ∀ loc n1 idx0 ,
+      R_node n1 (idx_of_loc loc) ->
+      R_node (build_tree_from_node loc n1) idx0.
+  Proof using R_branch R_node Rinduct_branch_branch Rinduct_branch_node Rnode_add
+induct_node_branch.
+  induction loc.
+    - intros. unfold build_tree_from_node. apply Induct1Disj_make_parent_from_node.
+      trivial.
+    - intros. unfold build_tree_from_node. apply IHloc.
+        apply Induct1Disj_make_parent_from_node. trivial.
+    - intros. unfold build_tree_from_node. apply Rnode_add.
+      * apply IHloc1. apply Induct1Disj_make_parent_from_node. trivial.
+  Qed.
+
+  Lemma Induct1Disj_build_tree :
+     ∀ loc c1 idx (R_start : R_cell c1 (idx_of_loc loc)) ,
+        R_node (build_tree loc c1) idx.
+  Proof using R_branch R_cell R_node Rinduct_branch_branch Rinduct_branch_node Rnode_add induct_node_branch induct_node_cell.
+    unfold build_tree. intros. apply Induct1Disj_build_tree_from_node.
+        apply induct_node_cell; trivial.
+  Qed.
+End Induct1Disj.
+
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -438,7 +496,9 @@ Instance state_valid : Valid State := alls_valid_instance refinement_of_index.
 Lemma valid_of_live (loc: Loc) (m: M)
   : (✓ (live loc m)) -> m_valid m.
 Proof.
-  apply Induct1_build_tree with
-      (R_node := λ n , node_valid n -> m_valid m)
-      (R_branch := λ b , branch_valid b -> m_valid m)
-      (R_cell := λ b , T
+  unfold "✓". unfold state_valid. unfold alls_valid_instance.
+  intros. destruct H1.
+  apply Induct1Disj_build_tree with
+      (R_node := λ n i , node_all_total_in_refinement_domain n i -> m_valid m)
+      (R_branch := λ b i , branch_all_total_in_refinement_domain b i -> m_valid m)
+      (R_cell := λ c i , (match c with CellCon m0 _ _ => m_valid m0 end) -> m_valid m).
