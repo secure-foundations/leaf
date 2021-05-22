@@ -13,20 +13,20 @@ Section RollupRA.
 
 Class TPCM (M : Type) `{EqDecision M} :=
 {
-  valid : M -> Prop ;
+  m_valid : M -> Prop ;
   dot : M -> M -> M ;
   mov : M -> M -> Prop ;
   unit : M ;
   
-  valid_monotonic : forall x y , valid (dot x y) -> valid x ;
-  unit_valid : valid unit ;
+  valid_monotonic : forall x y , m_valid (dot x y) -> m_valid x ;
+  unit_valid : m_valid unit ;
   unit_dot : forall x , dot x unit = x ;
   comm : forall x y , dot x y = dot y x ;
   assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
   reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
   mov_onotonic : forall x y z ,
-      mov x y -> valid (dot x z) -> valid (dot y z) /\ mov (dot x z) (dot y z)
+      mov x y -> m_valid (dot x z) -> m_valid (dot y z) /\ mov (dot x z) (dot y z)
 }.
 
 Definition tpcm_le `{TPCM M} (a : M) (b : M) := ∃ c , dot a c = b.
@@ -35,14 +35,14 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
 {
   (*rel : R -> M -> bool ;
   
-  rel_valid : forall r m , rel r m -> valid r /\ valid m ;
+  rel_valid : forall r m , rel r m -> m_valid r /\ m_valid m ;
   rel_unit : rel unit unit ;
   mov_refines : forall b b' q , mov b b' -> rel b q -> exists q' , rel b' q' /\ mov q q' ;
   rel_self : forall b q q' , rel b q -> rel b q' -> mov q q' ;*)
   
   rel : R -> option M ;
-  rel_valid_left : forall r m , rel r = Some m -> valid r ;
-  rel_valid_right : forall r m , rel r = Some m -> valid m ;
+  rel_valid_left : forall r m , rel r = Some m -> m_valid r ;
+  rel_valid_right : forall r m , rel r = Some m -> m_valid m ;
   rel_unit : rel unit = Some unit ;
   mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
 }.

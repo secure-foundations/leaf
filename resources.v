@@ -5,6 +5,7 @@ Require Import CpdtTactics.
 From stdpp Require Import gmap.
 
 Context `{Countable RefinementIndex}.
+Context `{EqDecision RefinementIndex}.
 
 Inductive Loc :=
   | BaseLoc : nat -> Loc
@@ -158,6 +159,60 @@ Definition borrow (lt: Lifetime) (loc: Loc) (m:M) := StateCon empty (borrow_tree
 Definition reserved (lt_unit: nat) (loc: Loc) (m:M) := StateCon empty (reserved_tree lt_unit loc m).
 Definition active (lt: Lifetime) := StateCon lt triv_node.
 
+Section Induct1.
+  Variable R_cell : @Cell M -> Prop.
+  Variable R_node : @Node M -> Prop.
+  Variable R_branch : @Branch M -> Prop.
+  Variable Rtriv : R_cell triv_cell.
+  Variable induct_node : ∀ cell1 branch1 ,
+        R_cell cell1 -> R_branch branch1 -> R_node (CellNode cell1 branch1).
+  Variable Rbranch_triv : R_branch BranchNil.
+  Variable Rinduct_branch : ∀ node1 branch1 ,
+        R_node node1 -> R_branch branch1
+          -> R_branch (BranchCons node1 branch1).
+  Variable Rnode_add : ∀ n1 m1 ,
+        R_node n1 -> R_node m1 ->
+            R_node (node_op n1 m1).
+  
+  Lemma Induct1_make_parent_from_branch : ∀ idx b1 ,
+        R_branch b1 ->
+        R_node (make_parent_from_branch idx b1).
+  Proof using R_branch R_cell R_node Rbranch_triv Rinduct_branch Rtriv induct_node.
+  induction idx. * crush. * crush. apply IHidx. apply Rinduct_branch.
+      - unfold triv_node. apply induct_node. + apply Rtriv. + apply Rbranch_triv.
+      - trivial. Qed.
+      
+  Lemma Induct1_make_parent_from_node : ∀ idx n1 ,
+        R_node n1 ->
+        R_node (make_parent_from_node idx n1).
+  Proof using R_branch R_cell R_node Rbranch_triv Rinduct_branch Rtriv induct_node.
+  intros. unfold make_parent_from_node.
+      apply Induct1_make_parent_from_branch.
+      apply Rinduct_branch; trivial. Qed.
+      
+  Lemma Induct1_build_tree_from_node : ∀ loc n1 ,
+      R_node n1 ->
+      R_node (build_tree_from_node loc n1).
+  Proof using R_branch R_cell R_node Rbranch_triv Rinduct_branch Rnode_add Rtriv induct_node.
+  induction loc.
+    - intros. unfold build_tree_from_node. apply Induct1_make_parent_from_node.
+      trivial.
+    - intros. unfold build_tree_from_node. apply IHloc.
+        apply Induct1_make_parent_from_node. trivial.
+    - intros. unfold build_tree_from_node. apply Rnode_add.
+      * apply IHloc1. apply Induct1_make_parent_from_node. trivial.
+      * apply IHloc2. apply Induct1_make_parent_from_node. trivial.
+  Qed.
+            
+  Lemma Induct1_build_tree :
+     ∀ loc c1 (R_start : R_cell c1) ,
+        R_node (build_tree loc c1).
+  Proof using R_branch R_cell R_node Rbranch_triv Rinduct_branch Rnode_add Rtriv induct_node.
+    unfold build_tree. intros. apply Induct1_build_tree_from_node.
+        apply induct_node; trivial.
+  Qed.
+End Induct1.
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -306,3 +361,84 @@ Proof.
         + rewrite equiv_rmerge_emptyset. trivial.
     * apply H1. apply set_eq. intro. unfold elem_of_intersection. crush.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* live(gamma, unit) = unit *)
+
+Definition state_unit := StateCon empty triv_node.
+
+Lemma cell_trivial_triv_cell : cell_trivial triv_cell.
+Proof.
+  unfold cell_trivial. unfold triv_cell. repeat split; trivial. Qed.
+  
+Lemma node_trivial_triv_node : node_trivial triv_node.
+Proof.
+  unfold node_trivial. unfold triv_node. repeat split; trivial. Qed.
+  
+Lemma node_trivial_node_op (n: Node) (m: Node)
+    (nt1: node_trivial n) (nt2: node_trivial m) : node_trivial (node_op n m).
+Proof. apply node_trivial_of_equiv with (node1 := triv_node).
+  * apply node_equiv_trans with (node2 := node_op n triv_node).
+  ** apply node_equiv_trans with (node2 := node_op triv_node triv_node).
+    *** unfold triv_node. unfold node_equiv. unfold node_op. split.
+      **** apply cell_equiv_symm. apply cell_triv_op_cell_triv.
+      **** unfold branch_trivial. trivial.
+    *** apply node_op_equiv_left. apply node_equiv_of_trivial.
+      **** apply node_trivial_triv_node.
+      **** trivial.
+  ** apply node_op_equiv. apply node_equiv_of_trivial.
+    **** apply node_trivial_triv_node.
+    **** trivial.
+  * apply node_trivial_triv_node.
+Qed.
+
+Lemma node_trivial_live_tree (loc: Loc)
+  : node_trivial (live_tree loc unit).
+Proof.
+  apply Induct1_build_tree with
+      (R_node := node_trivial)
+      (R_branch := branch_trivial)
+      (R_cell := cell_trivial).
+  - apply cell_trivial_triv_cell.
+  - intros. unfold node_trivial. split; trivial.
+  - intros. unfold branch_trivial. trivial.
+  - intros. unfold branch_trivial. split; trivial.
+  - intros. unfold node_trivial. trivial. apply node_trivial_node_op; trivial.
+  - intros. unfold cell_trivial. split; trivial. split; trivial.
+Qed.
+
+Lemma live_tree_unit (loc: Loc)
+  : node_equiv (live_tree loc unit) triv_node.
+Proof.
+  apply node_equiv_of_trivial.
+  - apply node_trivial_live_tree.
+  - apply node_trivial_triv_node.
+Qed.
+
+Lemma live_unit (loc: Loc)
+  : live loc unit ≡ state_unit.
+Proof.
+  unfold live. unfold state_unit. unfold equiv. unfold state_equiv. split; trivial.
+  apply live_tree_unit.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* live(gamma, m) is valid means m is valid *)
+
+Variables refinement_of_index : RefinementIndex -> Refinement M M.
+Print Instances Valid.
+Instance state_valid : Valid State := alls_valid_instance refinement_of_index.
+
+Lemma valid_of_live (loc: Loc) (m: M)
+  : (✓ (live loc m)) -> m_valid m.
+Proof.
+  apply Induct1_build_tree with
+      (R_node := λ n , node_valid n -> m_valid m)
+      (R_branch := λ b , branch_valid b -> m_valid m)
+      (R_cell := λ b , T
