@@ -202,3 +202,32 @@ Proof. apply (gset_relate (=)).
   - trivial.
   - intros. rewrite H0. apply equiv.
 Qed.
+
+Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
+  | MS : gmap A nat -> multiset A.
+
+Definition multiset_add_merge (a b: option nat) : option nat :=
+  match (a, b) with
+    | (Some n, Some m) => Some (n + m + 1)
+    | (None, t) => t
+    | (t, None) => t
+  end.
+
+Definition multiset_add `{EqDecision A, Countable A} (x y: multiset A) : multiset A :=
+  match (x, y) with
+    | (MS _ x0, MS _ y0) => 
+      MS A (merge multiset_add_merge x0 y0)
+  end.
+
+Definition multiset_le `{EqDecision A, Countable A} (x0 y0: multiset A) : Prop :=
+  match (x0, y0) with
+    | (MS _ x, MS _ y) => 
+      ∀ k n , x !! k = Some n -> match y !! k with | None => False | Some m => n <= m end
+  end.
+  
+Instance multiset_lifetime `{EqDecision A, Countable A} : EqDecision (multiset A). Admitted.
+
+Instance multiset_le_dec `{EqDecision A, Countable A} (x y : multiset A) : Decision (multiset_le x y). Admitted.
+
+Lemma multiset_le_transitive `{EqDecision A, Countable A} (x y z: multiset A)
+  (le1 : multiset_le x y) (le2 : multiset_le y z) : multiset_le x z. Admitted.

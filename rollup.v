@@ -91,11 +91,11 @@ Proof.
    - rewrite j. lia.
 Defined.*)
 
-Definition Lifetime := gset nat.
-Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := gset_union l m.
-Definition lifetime_included (l: Lifetime) (m: Lifetime) := subseteq m l.
+Definition Lifetime := multiset nat.
+Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
+Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
 
-Global Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.
+(*Global Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.*)
 
 (*Lemma fresh_borrow_inst : ∀ (l : Lifetime) , ∃ b , ∀ t, gset_elem_of t l -> t < b.
 Proof.
@@ -110,13 +110,13 @@ apply set_ind.
 Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
 Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
  
-Inductive BorrowObject : Type :=
+(*Inductive BorrowObject : Type :=
   | BorrowO : Lifetime -> M -> BorrowObject
 .
 Global Instance eqdec_borrow_object : EqDecision BorrowObject.
 Proof using EqDecision0 M. solve_decision. Defined.
 
-Global Instance countable_borrow_object : Countable BorrowObject. Admitted.
+Global Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
 
 (*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
 
@@ -128,12 +128,12 @@ Definition nat_to_ref: nat -> Refinement M M. Admitted.
   
 Global Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
 
+Instance countable_lifetime : Countable (Lifetime * M). Admitted.
+
 Inductive Cell : Type :=
   | CellCon :
       M ->
-      (*RI ->*)
-      (BorrowObject -> bool) ->
-      gmap nat (option M) ->
+      gset (Lifetime * M) ->
           Cell.
 
 Inductive Node: Type :=
@@ -142,19 +142,17 @@ with Branch: Type :=
   | BranchCons : Node -> Branch -> Branch
   | BranchNil : Branch.
 
-Definition gmap_get_or_unit (reserved: gmap nat (option M)) (lu: nat) :=
-  match reserved !! lu with
-  | Some (Some m) => m
-  | Some None => unit
-  | None => unit
+Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : M :=
+  match reserved with
+  | (my_lt, m) => if decide (multiset_le my_lt lifetime) then m else unit
   end.
   
-Definition sum_reserved_over_lifetime (reserved: gmap nat (option M)) (lifetime: Lifetime) :=
-  set_fold (λ lu m , dot m (gmap_get_or_unit reserved lu)) unit lifetime.
+Definition sum_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifetime: Lifetime) :=
+  set_fold (λ reserved m , dot m (reserved_get_or_unit reserved lifetime)) unit reserved.
   
 Definition cell_total (cell: Cell) (lifetime: Lifetime) :=
   match cell with
-  | CellCon m _ reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
+  | CellCon m reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
   end.
   
 Definition rel_project `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) :=
@@ -194,13 +192,13 @@ Definition project_umbrella
 
 Definition umbrella_is_closed (umb: M -> Prop) := ∀ a b , umb a -> umb (dot a b).
     
-Definition conjoin_reserved_over_lifetime (reserved: gmap nat (option M)) (lifetime: Lifetime) : (M -> Prop) :=
-  set_fold (λ lu um , conjoin_umbrella um (umbrella (gmap_get_or_unit reserved lu)))
-      umbrella_unit lifetime.
+Definition conjoin_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifetime: Lifetime) : (M -> Prop) :=
+  set_fold (λ reserved um , conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lifetime)))
+      umbrella_unit reserved.
 
 Definition cell_view (cell: Cell) (lifetime: Lifetime) : (M -> Prop) :=
   match cell with
-  | CellCon m _ reserved => conjoin_reserved_over_lifetime reserved lifetime
+  | CellCon m reserved => conjoin_reserved_over_lifetime reserved lifetime
   end.
 
 Definition rel_project_fancy (ref : Refinement M M) (um: M -> Prop) :=
@@ -226,12 +224,23 @@ Definition view_sat (umbrella : M -> Prop) (m : M) := umbrella m.
 Lemma self_le_self a : tpcm_le a a.
 Proof. unfold tpcm_le. exists unit. rewrite unit_dot. trivial. Qed.
 
+Lemma unit_le a : tpcm_le unit a.
+Proof. unfold tpcm_le. exists a. rewrite comm. rewrite unit_dot. trivial. Qed.
+
 Lemma unit_view_sat_unit : view_sat umbrella_unit unit.
 Proof. unfold view_sat. unfold umbrella_unit. trivial. Qed.
 
 Lemma le_add_both_sides a b c : tpcm_le a b -> tpcm_le (dot a c) (dot b c).
 Proof.  unfold tpcm_le. intros. destruct H0. exists x. rewrite comm. rewrite assoc.
     rewrite comm in H0. rewrite H0. trivial. Qed.
+    
+Lemma le_add2 a b c d : tpcm_le a c -> tpcm_le b d -> tpcm_le (dot a b) (dot c d).
+Proof.  unfold tpcm_le. intros. destruct H0. destruct H1.
+exists (dot x x0). rewrite <- H0. rewrite <- H1.
+  rewrite <- (assoc a b). rewrite <- (assoc a x). f_equal.
+  rewrite assoc. rewrite assoc. f_equal.
+  apply comm; trivial.
+Qed.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
 Proof.  unfold tpcm_le. intros. destruct H0. exists (dot x c). rewrite assoc.
@@ -254,8 +263,8 @@ Proof. unfold umbrella_is_closed. unfold conjoin_umbrella. intros.
       + rewrite <- H4. apply assoc.
 Qed.
 
-Lemma sum_reserved_over_lifetime_monotonic (g: gmap nat (option M)) (lt1: Lifetime) (lt2: Lifetime)
-  (lt1_le_lt2 : subseteq lt1 lt2)
+Lemma sum_reserved_over_lifetime_monotonic (g: gset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
+  (lt1_le_lt2 : multiset_le lt1 lt2)
   : tpcm_le
         (sum_reserved_over_lifetime g lt1)
         (sum_reserved_over_lifetime g lt2).
@@ -264,20 +273,25 @@ Proof. unfold sum_reserved_over_lifetime.
   apply (gset_subset_relate tpcm_le).
   - apply self_le_self.
   - trivial.
-  - intros. apply le_add_both_sides. trivial.
+  - intros. apply le_add2; trivial.
+    unfold reserved_get_or_unit. destruct a. case_decide; case_decide.
+      * apply self_le_self.
+      * exfalso. apply H2. apply multiset_le_transitive with (y := lt1); trivial.
+      * apply unit_le.
+      * apply self_le_self.
   - intros. apply le_add_right_side. trivial.
   - intros. rewrite <- assoc. rewrite <- assoc. f_equal. apply comm.
 Qed.
 
-Lemma view_sat_reserved_over_lifetime (g: gmap nat (option M)) (lt: Lifetime)
-  : view_sat (conjoin_reserved_over_lifetime g lt)
-             (sum_reserved_over_lifetime g lt).
+Lemma view_sat_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lt: Lifetime)
+  : view_sat (conjoin_reserved_over_lifetime reserved lt)
+             (sum_reserved_over_lifetime reserved lt).
 Proof.
   unfold conjoin_reserved_over_lifetime, sum_reserved_over_lifetime.
   apply (gset_relate view_sat).
   - apply unit_view_sat_unit.
   - intros. unfold view_sat in *. unfold conjoin_umbrella.
-      exists c. exists (gmap_get_or_unit g a). repeat split.
+      exists c. exists (reserved_get_or_unit a lt). repeat split.
     + trivial.
     + unfold umbrella. apply self_le_self.
 Qed.
@@ -290,7 +304,7 @@ Proof. unfold view_sat in *. intros. unfold umbrella_is_closed in closed.
     unfold tpcm_le in mle. destruct mle. rewrite <- H0. apply closed. trivial.
 Qed.
 
-Lemma conjoin_reserved_over_lifetime_is_closed (reserved: gmap nat (option M)) (lt: Lifetime)
+Lemma conjoin_reserved_over_lifetime_is_closed (reserved: gset (Lifetime * M)) (lt: Lifetime)
     : umbrella_is_closed (conjoin_reserved_over_lifetime reserved lt).
 Proof. unfold cell_view. unfold conjoin_reserved_over_lifetime.
   apply (gset_easy_induct umbrella_is_closed).
