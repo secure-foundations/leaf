@@ -982,13 +982,9 @@ Lemma cell_total_of_trivial (cell: Cell) (lifetime: Lifetime)
   (eq: cell_trivial cell) : cell_total cell lifetime = unit.
 Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
   replace (sum_reserved_over_lifetime g lifetime) with unit.
-  - destruct eq. destruct H1. rewrite H2. apply unit_dot.
-  - unfold sum_reserved_over_lifetime.
-  apply gset_easy_induct with (R := λ b , unit = b).
-   * trivial.
-   * intros. rewrite <- H0. unfold gmap_get_or_unit.
-      destruct eq. destruct H2. rewrite H2. rewrite lookup_empty.
-      rewrite unit_dot. trivial.
+  - destruct eq. rewrite H1. apply unit_dot.
+  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H0. rewrite set_fold_empty.
+    trivial.
 Qed.
 
 Lemma node_total_of_trivial (node: Node) (lifetime: Lifetime)
@@ -1013,27 +1009,24 @@ Proof.
 Qed.
 
 Lemma cell_total_of_equiv (cell1: Cell) (cell2: Cell) (lifetime: Lifetime)
-  (eq: cell_equiv cell1 cell2)
+  (eq: cell1 ≡ cell2)
   : cell_total cell1 lifetime = cell_total cell2 lifetime.
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
     destruct eq. destruct H1. rewrite H0. f_equal.
-    unfold sum_reserved_over_lifetime.
-      apply set_fold_equiv_funcs.
-      intros. rewrite H2. trivial.
 Qed.
 
 Lemma node_total_of_equiv (node1: Node) (node2: Node) (lifetime: Lifetime)
-  (eq: node_equiv node1 node2)
+  (eq: node1 ≡ node2)
   : node_total node1 lifetime = node_total node2 lifetime
 with branch_total_of_equiv (branch1: Branch) (branch2: Branch) (lifetime: Lifetime) (idx: nat)
   (eq: branch_equiv branch1 branch2)
   : branch_total branch1 lifetime idx = branch_total branch2 lifetime idx.
 Proof.
-  - destruct node1, node2.
+  - unfold "≡" in *. destruct node1, node2.
     + have ind_hyp := branch_total_of_equiv b b0.
     crush.
       rewrite (cell_total_of_equiv c c0); trivial. 
-  - destruct branch1, branch2.
+  - unfold "≡" in *. destruct branch1, branch2.
     + have ind_hyp_branch := branch_total_of_equiv branch1 branch2.
       have ind_hyp_node := node_total_of_equiv n n0.
       clear branch_total_of_equiv. clear node_total_of_equiv.
@@ -1105,16 +1098,12 @@ Lemma state_inv_of_equiv (s: State) (t: State)
 Proof.
   unfold state_inv in *. unfold state_equiv in *. destruct t; destruct s; trivial.
   + split.
-    * destruct inv_s. destruct H1. apply node_reserved_valid_of_equiv with (node1 := n0); trivial. destruct eq. trivial.
-    * split.
-      - destruct inv_s. apply node_borrows_valid_of_equiv with (node1 := n0); trivial.
-        ** destruct eq. trivial.
-        ** destruct H1. trivial.
-      - destruct eq. destruct inv_s. destruct H3.
-        apply node_all_total_in_refinement_domain_of_equiv with (node1 := n0); trivial.
-          rewrite <- H0. trivial.
-  + contradiction.
-Qed. 
+    * destruct inv_s. trivial. destruct eq. rewrite <- H2.
+        apply node_all_total_in_refinement_domain_of_equiv with (node1 := n0).
+        ** unfold "≡" in H3. trivial.
+        ** trivial.
+    * destruct inv_s. destruct eq. rewrite <- H2. trivial.
+Qed.
 
 Definition allstate_ra_mixin : RAMixin State.
 Proof. split.
@@ -1135,8 +1124,5 @@ Proof. split.
         apply state_equiv_symm.
         apply state_op_assoc.
 Qed.
-
-Print "==>".
-Print Proper.
 
 End RollupRA.
