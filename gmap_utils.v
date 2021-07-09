@@ -231,3 +231,14 @@ Instance multiset_le_dec `{EqDecision A, Countable A} (x y : multiset A) : Decis
 
 Lemma multiset_le_transitive `{EqDecision A, Countable A} (x y z: multiset A)
   (le1 : multiset_le x y) (le2 : multiset_le y z) : multiset_le x z. Admitted.
+  
+Lemma multiset_add_comm `{EqDecision A, Countable A} (x y: multiset A) :
+  multiset_add x y = multiset_add y x. Admitted.
+  
+Lemma multiset_add_assoc `{EqDecision A, Countable A} (x y z: multiset A) :
+  multiset_add x (multiset_add y z) = multiset_add (multiset_add x y) z. Admitted.
+
+Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
+  match x with
+    | (MS _ x) => map_fold (λ k a b , a = 0 /\ b) True x
+  end.
