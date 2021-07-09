@@ -25,7 +25,7 @@ Class TPCM (M : Type) `{EqDecision M} :=
   assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
   reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
-  mov_onotonic : forall x y z ,
+  mov_monotonic : forall x y z ,
       mov x y -> m_valid (dot x z) -> m_valid (dot y z) /\ mov (dot x z) (dot y z)
 }.
 
@@ -450,75 +450,44 @@ with branch_trivial (branch: Branch) :=
 
 Definition equiv_func {A} {B} (f g: A -> B) := ∀ x , f x = g x.
 
-Definition cell_equiv (cell1: Cell) (cell2: Cell) :=
+Global Instance cell_equiv : Equiv Cell := λ (cell1: Cell) (cell2: Cell) ,
   match cell1, cell2 with
   | CellCon m1 b1 g1, CellCon m2 b2 g2 =>
       (m1 = m2) /\ equiv_func b1 b2 /\ g1 = g2
   end
 .
 
-Fixpoint node_equiv (node1: Node) (node2: Node) :=
+Fixpoint internal_node_equiv (node1: Node) (node2: Node) :=
+  let _ : Equiv Node := internal_node_equiv in
+  let _ : Equiv Branch := internal_branch_equiv in
   match node1, node2 with
     | CellNode cell1 branch1, CellNode cell2 branch2 =>
-           cell_equiv cell1 cell2
-        /\ branch_equiv branch1 branch2
+           cell1 ≡ cell2
+        /\ branch1 ≡ branch2
   end
-with branch_equiv (branch1: Branch) (branch2: Branch) :=
-    match branch1, branch2 with
-      | BranchNil, _ => branch_trivial branch2
-      | BranchCons _ _, BranchNil => branch_trivial branch1
-      | BranchCons n1 b1, BranchCons n2 b2 =>
-          node_equiv n1 n2 /\ branch_equiv b1 b2
+with internal_branch_equiv (branch1: Branch) (branch2: Branch) :=
+  let _ : Equiv Node := internal_node_equiv in  
+  let _ : Equiv Branch := internal_branch_equiv in
+  match branch1, branch2 with
+    | BranchNil, _ => branch_trivial branch2
+    | BranchCons _ _, BranchNil => branch_trivial branch1
+    | BranchCons n1 b1, BranchCons n2 b2 =>
+        n1 ≡ n2 /\ b1 ≡ b2
   end 
 .
 
-(*Definition cell_core (cell: Cell) : Cell :=
-  match cell with
-  | CellCon m borrows reserved => CellCon unit borrows reserved
-  end.
-
-Fixpoint node_core (node: Node) : Node :=
-  match node with
-  | CellNode cell branch => CellNode (cell_core cell) (branch_core branch)
-  end
-with branch_core (branch: Branch) : Branch :=
-  match branch with
-  | BranchNil => BranchNil
-  | BranchCons node branch => BranchCons (node_core node) (branch_core branch)
-  end
-.*)
-
-Global Instance inst_node_equiv : Equiv Node := node_equiv.
+(* black magic for defining recursive instances
+   https://github.com/coq/coq/issues/7913 *)
+Definition node_equiv : Equiv Node
+  := Eval cbv [internal_node_equiv internal_branch_equiv] in internal_node_equiv.
+Definition branch_equiv : Equiv Branch
+  := Eval cbv [internal_node_equiv internal_branch_equiv] in internal_branch_equiv.
+Global Existing Instances node_equiv branch_equiv.
 
 Inductive State :=
   | StateCon : Lifetime -> Node -> State
   | StateFail
 .
-
-
-(*Definition cell_basic_valid (cell: Cell) : Prop :=
-  match cell with
-  | CellCon _ _ reserved => forall x ,
-      match reserved !! x
-      with
-      | Some None => False
-      | Some (Some _) => True
-      | None => True
-      end
-  end
-.
-
-Fixpoint node_basic_valid (node: Node) : Prop :=
-  match node with
-  | CellNode cell branch -> cell_basic_valid cell /\ branch_basic_valid branch
-  | *)
-
-(*Instance state_pcore : PCore State := λ state , 
-  match state with
-  | StateFail => Some StateFail
-  | StateCon lt node => Some (StateCon empty (node_core node))
-  end
-.*)
 
 Global Instance state_pcore : PCore State := λ state , None.
 
@@ -537,7 +506,7 @@ Global Instance rmerge_one_diagnone : DiagNone rmerge_one. unfold DiagNone. unfo
 Definition rmerge (f: gmap nat (option M)) (g: gmap nat (option M)) :=
   merge rmerge_one f g.
 
-Definition cell_op (x: Cell) (y: Cell) : Cell :=
+Instance cell_op : Op Cell := λ (x: Cell) (y: Cell) ,
   match x, y with
   | CellCon m1 borrows1 reserved1,
     CellCon m2 borrows2 reserved2 =>
@@ -547,19 +516,31 @@ Definition cell_op (x: Cell) (y: Cell) : Cell :=
   end
 .
 
-Fixpoint node_op (x: Node) (y: Node) : Node :=
+Fixpoint internal_node_op (x: Node) (y: Node) : Node :=
+  let _ : Op Node := internal_node_op in
+  let _ : Op Branch := internal_branch_op in
   match x, y with
   | CellNode cell1 branch1, CellNode cell2 branch2 =>
-      CellNode (cell_op cell1 cell2) (branch_op branch1 branch2)
+      CellNode (cell1 ⋅ cell2) (branch1 ⋅ branch2)
   end 
-with branch_op (branch1: Branch) (branch2: Branch) : Branch :=
-    match branch1, branch2 with
-    | BranchNil, _ => branch2
-    | BranchCons _ _, BranchNil => branch1
-    | BranchCons n1 subbranch1 , BranchCons n2 subbranch2 =>
-        BranchCons (node_op n1 n2) (branch_op subbranch1 subbranch2)
-    end
+with internal_branch_op (branch1: Branch) (branch2: Branch) : Branch :=
+  let _ : Op Node := internal_node_op in
+  let _ : Op Branch := internal_branch_op in
+  match branch1, branch2 with
+  | BranchNil, _ => branch2
+  | BranchCons _ _, BranchNil => branch1
+  | BranchCons n1 subbranch1 , BranchCons n2 subbranch2 =>
+      BranchCons (n1 ⋅ n2) (subbranch1 ⋅ subbranch2)
+  end
 .
+
+(* black magic for defining recursive instances
+   https://github.com/coq/coq/issues/7913 *)
+Definition node_op : Op Node
+  := Eval cbv [internal_node_op internal_branch_op] in internal_node_op.
+Definition branch_op : Op Branch
+  := Eval cbv [internal_node_op internal_branch_op] in internal_branch_op.
+Existing Instances node_op branch_op.
 
 Global Instance state_op : Op State := λ x y ,
   match x, y with
@@ -589,6 +570,9 @@ Qed.
 
 Lemma cell_equiv_refl (cell: Cell) : cell_equiv cell cell.
 Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
+
+Instance inst_cell_equiv_refl : Reflexive cell_equiv.
+unfold Reflexive. intro. apply cell_equiv_refl. Defined.
     
 Lemma node_equiv_refl (node: Node) : node_equiv node node
 with branch_equiv_refl (branch: Branch) : branch_equiv branch branch.
@@ -603,10 +587,16 @@ Proof.
   + unfold branch_equiv. unfold branch_trivial. trivial.
 Qed.
 
+Instance inst_node_equiv_refl : Reflexive node_equiv.
+unfold Reflexive. intro. apply node_equiv_refl. Defined.
+
+Instance inst_branch_equiv_refl : Reflexive branch_equiv.
+unfold Reflexive. intro. apply branch_equiv_refl. Defined.
+
 Lemma op_trivial_node (node1: Node) (node2: Node)
-  (istriv: node_trivial node2) : (node_equiv (node_op node1 node2) node1)
+  (istriv: node_trivial node2) : ((node1 ⋅ node2) ≡ node1)
 with op_trivial_branch (branch1: Branch) (branch2: Branch)
-  (istriv: branch_trivial branch2) : (branch_equiv (branch_op branch1 branch2) branch1).
+  (istriv: branch_trivial branch2) : ((branch1 ⋅ branch2) ≡ branch1).
 Proof.
   - destruct node1; destruct node2.
     + have hyp := op_trivial_branch b b0. clear op_trivial_node. clear op_trivial_branch.
@@ -619,14 +609,12 @@ Proof.
         -- rewrite H2. apply equiv_rmerge_emptyset.
         -- apply hyp; trivial.
   - destruct branch1; destruct branch2.
-    + have hyp_branch := op_trivial_branch branch1 branch2. clear hyp_branch.
-      have hyp_node := op_trivial_node n n0. clear hyp_node.
-      crush.
-    + crush.
-      * apply node_equiv_refl.
-      * apply branch_equiv_refl.
-    + crush.
-    + crush.
+    + have hyp_branch := op_trivial_branch branch1 branch2. clear op_trivial_branch.
+      have hyp_node := op_trivial_node n n0. clear op_trivial_node.
+      unfold "≡". unfold branch_equiv. crush.
+    + unfold "⋅". unfold branch_op. apply branch_equiv_refl.
+    + unfold "⋅". unfold branch_op. unfold "≡". unfold branch_equiv. trivial.
+    + unfold "⋅". unfold branch_op. apply branch_equiv_refl.
 Qed.
 
 Lemma cell_equiv_symm (cell1: Cell) (cell2: Cell)
@@ -635,6 +623,9 @@ Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H1
   * symmetry; trivial.  * unfold equiv_func in *. intros. symmetry. apply H1.
   * symmetry; trivial.
 Qed.
+
+Instance inst_cell_equiv_symm : Symmetric cell_equiv.
+unfold Symmetric. intro. apply cell_equiv_symm. Defined.
 
 Lemma node_equiv_symm (node1: Node) (node2: Node)
   (iseq: node_equiv node1 node2) : (node_equiv node2 node1)
@@ -657,6 +648,10 @@ Proof.
     + trivial.
 Qed.
 
+Instance inst_node_equiv_symm : Symmetric node_equiv := node_equiv_symm.
+
+Instance inst_branch_equiv_symm : Symmetric branch_equiv := branch_equiv_symm.
+
 Lemma state_equiv_symm (state1 state2: State)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
 Proof.
@@ -664,79 +659,110 @@ Proof.
     - destruct seq; split. * symmetry; trivial. * apply node_equiv_symm; trivial.
 Qed.
 
+Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
+
 Lemma cell_equiv_trans (cell1: Cell) (cell2: Cell) (cell3: Cell)
   (iseq: cell_equiv cell1 cell2)
   (iseq2: cell_equiv cell2 cell3)
   : (cell_equiv cell1 cell3).
 Proof. unfold cell_equiv in *. destruct cell1, cell2, cell3. unfold equiv_func in *. crush. Qed.
 
+Instance inst_cell_equiv_trans : Transitive cell_equiv := cell_equiv_trans.
+
+Lemma cell_trivial_of_equiv (cell1: Cell) (cell2: Cell)
+  (iseq: cell1 ≡ cell2)
+  (istriv: cell_trivial cell1)
+  : cell_trivial cell2.
+  unfold "≡", cell_equiv, cell_trivial in *.  destruct cell1, cell2; crush.
+Qed.
+
+Instance inst_cell_trivial_of_equiv : Proper (equiv ==> impl) cell_trivial.
+unfold Proper, equiv, impl, "==>". intros. apply cell_trivial_of_equiv with (cell1 := x).
+  + unfold "≡"; trivial. + trivial.
+Qed.
+
 Lemma node_trivial_of_equiv (node1: Node) (node2: Node)
-  (iseq: node_equiv node1 node2)
+  (iseq: node1 ≡ node2)
   (istriv: node_trivial node1)
   : node_trivial node2
 with branch_trivial_of_equiv (branch1: Branch) (branch2: Branch)
-  (iseq: branch_equiv branch1 branch2)
+  (iseq: branch1 ≡ branch2)
   (istriv: branch_trivial branch1)
   : branch_trivial branch2.
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_trivial_of_equiv b b0. clear node_trivial_of_equiv. clear branch_trivial_of_equiv.
-      crush.
-      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. crush.
+      cbn [node_trivial]. cbn [node_trivial] in istriv. destruct istriv. 
+      unfold "≡" in iseq. unfold node_equiv in iseq. destruct iseq.
+      split.
+       * rewrite <- H2. trivial.
+       * apply ind_hyp; trivial.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_trivial_of_equiv branch1 branch2.
       have ind_hyp_node := node_trivial_of_equiv n n0.
       clear branch_trivial_of_equiv. clear node_trivial_of_equiv.
-      crush.
+      cbn [branch_trivial]; split.
+      * apply ind_hyp_node; trivial. ** unfold "≡" in *. crush. ** crush.
+      * unfold "≡" in *. crush.
     + unfold branch_trivial. trivial.
     + unfold branch_equiv in iseq. trivial.
     + unfold branch_trivial. trivial.
 Qed.
 
+Instance inst_node_trivial_of_equiv : Proper (equiv ==> impl) node_trivial.
+unfold Proper, equiv, impl, "==>". intros. apply node_trivial_of_equiv with (node1 := x).
+  + unfold "≡"; trivial. + trivial.
+Qed.
+
+Instance inst_branch_trivial_of_equiv : Proper (equiv ==> impl) branch_trivial.
+unfold Proper, equiv, impl, "==>". intros. apply branch_trivial_of_equiv with (branch1 := x).
+  + unfold "≡"; trivial. + trivial.
+Qed.
+
 Lemma node_equiv_of_trivial (node1: Node) (node2: Node)
   (istriv1: node_trivial node1)
   (istriv: node_trivial node2)
-  : node_equiv node1 node2
+  : node1 ≡ node2
 with branch_equiv_of_trivial (branch1: Branch) (branch2: Branch)
   (istriv1: branch_trivial branch1)
   (istriv: branch_trivial branch2)
-  : branch_equiv branch1 branch2.
+  : branch1 ≡ branch2.
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_equiv_of_trivial b b0. clear node_equiv_of_trivial. clear branch_equiv_of_trivial.
-      crush.
-      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. crush.
+      unfold "≡". crush.
+      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. unfold "≡". crush.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_equiv_of_trivial branch1 branch2.
       have ind_hyp_node := node_equiv_of_trivial n n0.
       clear branch_equiv_of_trivial. clear node_equiv_of_trivial.
-      crush.
+      unfold "≡". crush.
     + unfold branch_trivial. trivial.
     + unfold branch_equiv. trivial.
     + unfold branch_equiv. trivial.
 Qed.
 
 Lemma node_equiv_trans (node1: Node) (node2: Node) (node3: Node)
-  (iseq: node_equiv node1 node2)
-  (iseq2: node_equiv node2 node3)
-   : (node_equiv node1 node3)
+  (iseq: node1 ≡ node2)
+  (iseq2: node2 ≡ node3)
+   : (node1 ≡ node3)
 with branch_equiv_trans (branch1: Branch) (branch2: Branch) (branch3: Branch)
   (iseq: branch_equiv branch1 branch2)
   (iseq2: branch_equiv branch2 branch3)
    : (branch_equiv branch1 branch3).
 Proof.
-  - destruct node1, node2, node3.
+  - unfold "≡" in *.
+    destruct node1, node2, node3.
     + have ind_hyp := branch_equiv_trans b b0 b1. clear node_equiv_trans. clear branch_equiv_trans.
       crush.
-        * apply cell_equiv_trans with (cell2 := c0); trivial.
-  - destruct branch1, branch2, branch3.
+  - unfold "≡" in *.
+    destruct branch1, branch2, branch3.
     + have ind_hyp_branch := branch_equiv_trans branch1 branch2 branch3.
       have ind_hyp_node := node_equiv_trans n n0 n1.
       clear branch_equiv_trans. clear node_equiv_trans.
       crush.
     + unfold branch_equiv. unfold branch_equiv in iseq2.
         apply branch_trivial_of_equiv with (branch1 := BranchCons n0 branch2); trivial.
-        apply branch_equiv_symm. trivial.
     + unfold branch_equiv in iseq. unfold branch_equiv in iseq2.
       apply branch_equiv_of_trivial; trivial.
     + trivial.
@@ -747,19 +773,23 @@ Proof.
     + trivial.
 Qed.
 
+Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
+Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
+
 Lemma state_equiv_trans (state1: State) (state2: State) (state3: State)
-  (iseq: state_equiv state1 state2)
-  (iseq2: state_equiv state2 state3)
-   : (state_equiv state1 state3).
+  (iseq: state1 ≡ state2)
+  (iseq2: state2 ≡ state3)
+   : (state1 ≡ state3).
 Proof.
+  unfold "≡" in *.
   unfold state_equiv in *. destruct state1, state2, state3; trivial.
-    - split; crush. apply node_equiv_trans with (node2 := n0); trivial.
+    - split; crush.
     - split; crush.
 Qed.
 
 Lemma cell_op_equiv (c c0 c1 : Cell)
-  (eq1: cell_equiv c0 c1)
-  : (cell_equiv (cell_op c c0) (cell_op c c1)).
+  (eq1: c0 ≡ c1)
+  : ((c ⋅ c0) ≡ (c ⋅ c1)).
 Proof.
   destruct c0, c1, c. unfold cell_op. unfold cell_equiv in *. destruct eq1.
       destruct H1. repeat split.
@@ -769,17 +799,19 @@ Proof.
 Qed.
 
 Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
-    (node_eq: node_equiv nodeRight1 nodeRight2)
-    : (node_equiv (node_op nodeLeft nodeRight1) (node_op nodeLeft nodeRight2))
+    (node_eq: nodeRight1 ≡ nodeRight2)
+    : (nodeLeft ⋅ nodeRight1) ≡ (nodeLeft ⋅ nodeRight2)
 with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchRight2: Branch)
-    (branch_eq: branch_equiv branchRight1 branchRight2) ,
-    (branch_equiv (branch_op branchLeft branchRight1) (branch_op branchLeft branchRight2)).
+    (branch_eq: branchRight1 ≡ branchRight2) ,
+    (branchLeft ⋅ branchRight1) ≡ (branchLeft ⋅ branchRight2).
 Proof.
-  - destruct nodeLeft, nodeRight1, nodeRight2.
+  - unfold "⋅" in *. unfold "≡" in *.
+    destruct nodeLeft, nodeRight1, nodeRight2.
     + have ind_hyp := branch_op_equiv b b0 b1. clear node_op_equiv. clear branch_op_equiv.
         crush.
         apply cell_op_equiv; trivial.
-  - intros. destruct branchLeft; destruct branchRight1; destruct branchRight2.
+  - unfold "⋅" in *. unfold "≡" in *.
+    intros. destruct branchLeft; destruct branchRight1; destruct branchRight2.
     + have hyp_node := node_op_equiv n n0 n1. clear node_op_equiv.
       have hyp_branch := branch_op_equiv branchLeft branchRight1 branchRight2. clear branch_op_equiv.
       crush.
@@ -797,12 +829,12 @@ Proof.
 Qed.
 
 Lemma state_op_equiv (stateLeft: State) (stateRight1: State) (stateRight2: State)
-    (state_eq: state_equiv stateRight1 stateRight2)
-    : (state_equiv (state_op stateLeft stateRight1) (state_op stateLeft stateRight2)).
+    (state_eq: stateRight1 ≡ stateRight2)
+    : ((stateLeft ⋅ stateRight1) ≡ (stateLeft ⋅ stateRight2)).
 Proof. unfold state_op. unfold state_equiv in *. destruct stateLeft, stateRight1, stateRight2.
-  + destruct state_eq. repeat case_decide.
-    * repeat split.
-      - rewrite H0. trivial.
+  + unfold "⋅", "≡" in *. destruct state_eq. repeat case_decide.
+    * repeat split; trivial.
+      - rewrite H0; trivial.
       - apply node_op_equiv; trivial.
     * rewrite H0 in H2. contradiction.
     * rewrite H0 in H2. contradiction.
@@ -831,7 +863,7 @@ Proof.
 Qed.
 
 Lemma cell_op_comm (cell1: Cell) (cell2: Cell)
-  : cell_equiv (cell_op cell1 cell2) (cell_op cell2 cell1).
+  : (cell1 ⋅ cell2) ≡ (cell2 ⋅ cell1).
 Proof.
   destruct cell1, cell2; unfold cell_op. unfold cell_equiv. repeat split.
     - apply comm.
@@ -839,15 +871,17 @@ Proof.
     - apply rmerge_comm.
 Qed.
 
+Instance inst_cell_op_comm : Comm cell_equiv cell_op := cell_op_comm.
+
 Lemma node_op_comm (node1: Node) (node2: Node)
-  : node_equiv (node_op node1 node2) (node_op node2 node1)
+  : (node1 ⋅ node2) ≡ (node2 ⋅ node1)
 with branch_op_comm (branch1: Branch) (branch2: Branch)
-  : branch_equiv (branch_op branch1 branch2) (branch_op branch2 branch1).
+  : (branch1 ⋅ branch2) ≡ (branch2 ⋅ branch1).
 Proof.
-  - destruct node1, node2.
+  - unfold "⋅", "≡" in *. destruct node1, node2.
     + have ind_hyp := branch_op_comm b b0. clear node_op_comm. clear branch_op_comm.
       crush. apply cell_op_comm.
-  - destruct branch1, branch2.
+  - unfold "⋅", "≡" in *. destruct branch1, branch2.
     + have ind_hyp_branch := branch_op_comm branch1 branch2.
       have ind_hyp_node := node_op_comm n n0.
       clear node_op_comm. clear branch_op_comm.
@@ -856,6 +890,9 @@ Proof.
     + unfold branch_op. apply branch_equiv_refl.
     + apply branch_equiv_refl.
 Qed.
+
+Instance inst_node_op_comm : Comm node_equiv node_op := node_op_comm.
+Instance inst_branch_op_comm : Comm branch_equiv branch_op := branch_op_comm.
 
 Lemma set_union_comm (s: gset nat) (t: gset nat) : s ∪ t = t ∪ s.
 Proof.
@@ -876,8 +913,9 @@ Proof.
 Qed.
 
 Lemma state_op_comm (state1: State) (state2: State)
-  : state_equiv (state_op state1 state2) (state_op state2 state1).
+  : (state1 ⋅ state2) ≡ (state2 ⋅ state1).
 Proof.
+  unfold "⋅" in *.
   unfold state_equiv, state_op. destruct state1, state2; trivial.
   * case_decide; trivial.
    + case_decide; trivial.
@@ -889,10 +927,34 @@ Proof.
      - rewrite set_intersect_comm in H0. contradiction.
 Qed.
 
+Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
+
+Global Instance inst_state_proper1 : Proper (equiv ==> eq ==> impl) (equiv).
+unfold Proper, equiv, "==>", impl. intros.
+  apply state_equiv_trans with (state2 := x).
+  + unfold "≡". apply state_equiv_symm. trivial.
+  + unfold "≡". rewrite <- H1. trivial. Qed.
+
+Global Instance inst_state_proper2 a : Proper (equiv ==> impl) (equiv a).
+unfold Proper, equiv, "==>", impl. intros.
+  apply state_equiv_trans with (state2 := x).
+  + unfold "≡". trivial.
+  + unfold "≡". trivial. Defined.
+  
+Print Instances Proper.
+  
+Lemma stuff (s: State) (t: State) (u: State)
+  (e1 : s ≡ t)
+  (e2 : u ≡ t) : (s ≡ u).
+setoid_rewrite e1.
+
 Lemma state_op_equiv_left (stateLeft1: State) (stateLeft2: State) (stateRight: State)
-    (state_eq: state_equiv stateLeft1 stateLeft2)
-    : (state_equiv (state_op stateLeft1 stateRight) (state_op stateLeft2 stateRight)).
+    (state_eq: stateLeft1 ≡ stateLeft2)
+    : (stateLeft1 ⋅ stateRight) ≡ (stateLeft2 ⋅ stateRight).
 Proof.
+  unfold "≡".
+  have h := state_op_comm stateLeft2 stateRight.
+  rewrite h.
   apply state_equiv_trans with (state2 := state_op stateRight stateLeft1).
   - apply state_op_comm.
   - apply state_equiv_trans with (state2 := state_op stateRight stateLeft2).
@@ -1393,5 +1455,8 @@ Proof. split.
         apply state_equiv_symm.
         apply state_op_assoc.
 Qed.
+
+Print "==>".
+Print Proper.
 
 End RollupRA.
