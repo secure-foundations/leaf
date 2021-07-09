@@ -787,6 +787,8 @@ Proof.
     - split; crush.
 Qed.
 
+Instance inst_state_equiv_trans : Transitive state_equiv := state_equiv_trans.
+
 Lemma cell_op_equiv (c c0 c1 : Cell)
   (eq1: c0 ≡ c1)
   : ((c ⋅ c0) ≡ (c ⋅ c1)).
@@ -929,37 +931,13 @@ Qed.
 
 Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
 
-Global Instance inst_state_proper1 : Proper (equiv ==> eq ==> impl) (equiv).
-unfold Proper, equiv, "==>", impl. intros.
-  apply state_equiv_trans with (state2 := x).
-  + unfold "≡". apply state_equiv_symm. trivial.
-  + unfold "≡". rewrite <- H1. trivial. Qed.
-
-Global Instance inst_state_proper2 a : Proper (equiv ==> impl) (equiv a).
-unfold Proper, equiv, "==>", impl. intros.
-  apply state_equiv_trans with (state2 := x).
-  + unfold "≡". trivial.
-  + unfold "≡". trivial. Defined.
-  
-Print Instances Proper.
-  
-Lemma stuff (s: State) (t: State) (u: State)
-  (e1 : s ≡ t)
-  (e2 : u ≡ t) : (s ≡ u).
-setoid_rewrite e1.
-
 Lemma state_op_equiv_left (stateLeft1: State) (stateLeft2: State) (stateRight: State)
     (state_eq: stateLeft1 ≡ stateLeft2)
     : (stateLeft1 ⋅ stateRight) ≡ (stateLeft2 ⋅ stateRight).
 Proof.
-  unfold "≡".
-  have h := state_op_comm stateLeft2 stateRight.
-  rewrite h.
-  apply state_equiv_trans with (state2 := state_op stateRight stateLeft1).
-  - apply state_op_comm.
-  - apply state_equiv_trans with (state2 := state_op stateRight stateLeft2).
-    + apply state_op_equiv. trivial.
-    + apply state_op_comm.
+  setoid_rewrite (state_op_comm stateLeft2 stateRight).
+  setoid_rewrite (state_op_comm stateLeft1 stateRight).
+  apply state_op_equiv. trivial.
 Qed.
 
 Lemma rmerge_one_assoc (f g h: option (option M)) :
@@ -995,26 +973,26 @@ Proof.
 Qed.
 
 Lemma cell_op_assoc (cell1: Cell) (cell2: Cell) (cell3: Cell)
-  : cell_equiv (cell_op cell1 (cell_op cell2 cell3))
-               (cell_op (cell_op cell1 cell2) cell3).
+  : (cell1 ⋅ (cell2 ⋅ cell3)) ≡ ((cell1 ⋅ cell2) ⋅ cell3).
 Proof.
+  unfold "⋅", "≡".
   destruct cell1, cell2, cell3; unfold cell_op. unfold cell_equiv. repeat split.
     - apply assoc.
     - unfold bool_or_func. unfold equiv_func. crush.
     - apply rmerge_assoc.
 Qed.
 
+Instance inst_cell_op_assoc : Assoc equiv cell_op := cell_op_assoc.
+
 Lemma node_op_assoc (node1: Node) (node2: Node) (node3: Node)
-  : node_equiv (node_op node1 (node_op node2 node3))
-               (node_op (node_op node1 node2) node3)
+  : (node1 ⋅ (node2 ⋅ node3)) ≡ ((node1 ⋅ node2) ⋅ node3)
 with branch_op_assoc (branch1: Branch) (branch2: Branch) (branch3: Branch)
-  : branch_equiv (branch_op branch1 (branch_op branch2 branch3))
-                 (branch_op (branch_op branch1 branch2) branch3).
+  : (branch1 ⋅ (branch2 ⋅ branch3)) ≡ ((branch1 ⋅ branch2) ⋅ branch3).
 Proof.
-  - destruct node1, node2, node3.
+  - unfold "⋅", "≡". destruct node1, node2, node3.
     + have ind_hyp := branch_op_assoc b b0 b1. clear node_op_assoc. clear branch_op_assoc.
       crush. apply cell_op_assoc.
-  - destruct branch1, branch2, branch3.
+  - unfold "⋅", "≡". destruct branch1, branch2, branch3.
     + have ind_hyp_branch := branch_op_assoc branch1 branch2 branch3.
       have ind_hyp_node := node_op_assoc n n0 n1.
       clear node_op_assoc. clear branch_op_assoc.
@@ -1027,6 +1005,9 @@ Proof.
     + unfold branch_op. apply branch_equiv_refl.
     + apply branch_equiv_refl.
 Qed.
+
+Instance inst_node_op_assoc : Assoc equiv node_op := node_op_assoc.
+Instance inst_branch_op_assoc : Assoc equiv branch_op := branch_op_assoc.
 
 Lemma gset_union_assoc (f g h : gset nat)
   : f ∪ (g ∪ h) = (f ∪ g) ∪ h.
@@ -1057,9 +1038,9 @@ Proof. rewrite set_union_comm in eq. apply left_of_union_is_empty with (b := a);
 Qed.
 
 Lemma state_op_assoc (state1: State) (state2: State) (state3: State)
-  : state_equiv (state_op state1 (state_op state2 state3))
-                (state_op (state_op state1 state2) state3).
+  : (state1 ⋅ (state2 ⋅ state3)) ≡ ((state1 ⋅ state2) ⋅ state3).
 Proof.
+  unfold "⋅", "≡".
   destruct state1, state2, state3; unfold state_op.
     + case_decide; trivial.
      - case_decide; trivial.
@@ -1094,6 +1075,8 @@ Proof.
    + unfold state_equiv. trivial.
    + unfold state_equiv. trivial.
 Qed.
+
+Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 
 Definition state_inv (state: State) :=
   match state with
