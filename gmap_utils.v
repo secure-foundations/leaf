@@ -218,25 +218,80 @@ Definition multiset_add `{EqDecision A, Countable A} (x y: multiset A) : multise
     | (MS _ x0, MS _ y0) => 
       MS A (merge multiset_add_merge x0 y0)
   end.
-
-Definition multiset_le `{EqDecision A, Countable A} (x0 y0: multiset A) : Prop :=
-  match (x0, y0) with
-    | (MS _ x, MS _ y) => 
-      ∀ k n , x !! k = Some n -> match y !! k with | None => False | Some m => n <= m end
-  end.
   
-Instance multiset_lifetime `{EqDecision A, Countable A} : EqDecision (multiset A). Admitted.
+(*Definition multiset_le_fold_fn `{EqDecision A, Countable A} (k: A) (a : nat) (b : Prop) :=
+  match y !! k with | Some a' => a <= a' /\ b | None => False end*)
 
-Instance multiset_le_dec `{EqDecision A, Countable A} (x y : multiset A) : Decision (multiset_le x y). Admitted.
+Definition multiset_le `{EqDecision A, Countable A} (x y: multiset A) : Prop :=
+  match (x, y) with
+    | (MS _ x, MS _ y) =>
+      forall k , match x !! k, y !! k with
+        | None, None => True
+        | Some a, None => False
+        | None, Some b => True
+        | Some a, Some b => a <= b
+      end
+  end.
+
+Definition multiset_le_as_fold `{EqDecision A, Countable A} (x y: multiset A) : Prop :=
+  match (x, y) with
+    | (MS _ x, MS _ y) =>
+      map_fold (λ k a b , match y !! k with | Some a' => a <= a' /\ b | None => False end)
+        True x
+  end.
+
+Lemma multiset_le_defn_eq `{EqDecision A, Countable A} (x y: multiset A)
+  : multiset_le x y <-> multiset_le_as_fold x y. Admitted.
+  
+Instance eqdec_multiset `{EqDecision A, Countable A} : EqDecision (multiset A). 
+  solve_decision. Defined.
+
+Instance multiset_le_as_fold_dec `{EqDecision A, Countable A} (x y : multiset A) : Decision (multiset_le_as_fold x y).
+  unfold multiset_le_as_fold.
+  destruct x, y.
+  unfold map_fold. unfold "∘". generalize (map_to_list g).
+  induction l.
+  * unfold foldr. solve_decision.
+  * unfold foldr. unfold curry. unfold Datatypes.uncurry. destruct a.
+      destruct (g0 !! a); solve_decision.
+Defined.
+
+Instance multiset_le_dec `{EqDecision A, Countable A} (x y : multiset A) : Decision (multiset_le x y).
+  unfold Decision.
+  have h := @multiset_le_as_fold_dec A EqDecision0 EqDecision1 H x y.
+  unfold Decision in *. destruct h.
+  * left. rewrite multiset_le_defn_eq. trivial.
+  * right. rewrite multiset_le_defn_eq. trivial.
+Qed.
 
 Lemma multiset_le_transitive `{EqDecision A, Countable A} (x y z: multiset A)
-  (le1 : multiset_le x y) (le2 : multiset_le y z) : multiset_le x z. Admitted.
-  
+  (le1 : multiset_le x y) (le2 : multiset_le y z) : multiset_le x z.
+Proof.
+  unfold multiset_le in *. destruct x; destruct y. destruct z. intro.
+    have j1 := le1 k. clear le1.
+    have j2 := le2 k. clear le2.
+    destruct (g !! k); destruct (g0 !! k); destruct (g1 !! k); lia.
+Qed.
+
+Instance inst_diagnone_multiset_add_merge : DiagNone multiset_add_merge. unfold DiagNone, multiset_add_merge. trivial. Defined.
+    
 Lemma multiset_add_comm `{EqDecision A, Countable A} (x y: multiset A) :
-  multiset_add x y = multiset_add y x. Admitted.
+  multiset_add x y = multiset_add y x.
+Proof.
+  unfold multiset_add in *. destruct x; destruct y. f_equal.
+    apply map_eq. intro.
+    rewrite lookup_merge. rewrite lookup_merge.
+    unfold multiset_add_merge. destruct (g !! i), (g0 !! i); trivial. f_equal. lia.
+Qed.
   
 Lemma multiset_add_assoc `{EqDecision A, Countable A} (x y z: multiset A) :
-  multiset_add x (multiset_add y z) = multiset_add (multiset_add x y) z. Admitted.
+  multiset_add x (multiset_add y z) = multiset_add (multiset_add x y) z.
+Proof.
+  unfold multiset_add in *. destruct x; destruct y; destruct z. f_equal.
+    apply map_eq. intro.
+    repeat (rewrite lookup_merge).
+    unfold multiset_add_merge. destruct (g !! i), (g0 !! i), (g1 !! i); trivial. f_equal. lia.
+Qed.
 
 Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
   match x with
