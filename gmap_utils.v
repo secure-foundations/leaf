@@ -239,9 +239,68 @@ Definition multiset_le_as_fold `{EqDecision A, Countable A} (x y: multiset A) : 
       map_fold (λ k a b , match y !! k with | Some a' => a <= a' /\ b | None => False end)
         True x
   end.
+  
+Lemma gmap_easy_induct `{EqDecision K, Countable K} {A B}
+  (R : B -> Prop)
+  (s: gmap K A)
+  (fn : K -> A -> B -> B)
+  (u : B)
+  (R_u : R u)
+  (ind: ∀ k a b , s !! k = Some a -> R b -> R (fn k a b))
+  : R (map_fold fn u s).
+Proof.
+  unfold map_fold, "∘".
+  assert (∀ i x , (i,x) ∈ map_to_list s -> s !! i = Some x).
+   - intros. rewrite <- elem_of_map_to_list. trivial.
+   - generalize H0. clear H0. generalize (map_to_list s). induction l.
+    + intro. unfold foldr. trivial.
+    + intro. cbn [foldr]. unfold curry. unfold Datatypes.uncurry. destruct a. apply ind.
+      * apply H0. unfold "∈". apply elem_of_list_here.
+      * unfold curry in IHl. unfold Datatypes.uncurry in IHl. apply IHl.
+          intros. apply H0. apply elem_of_list_further. trivial.
+Qed.
+
+Lemma gmap_induct_with_elem `{EqDecision K, Countable K} {A B}
+  (R : B -> Prop)
+  (s: gmap K A)
+  (fn : K -> A -> B -> B)
+  (u : B)
+  (key: K) (val: A)
+  (key_in_s : s !! key = Some val)
+  (R_key : ∀ b , R (fn key val b))
+  (ind: ∀ k a b , R b -> R (fn k a b))
+  : R (map_fold fn u s).
+Proof.
+  unfold map_fold, "∘".
+  assert ((key, val) ∈ map_to_list s).
+   - rewrite elem_of_map_to_list. trivial.
+   - generalize H0. generalize (map_to_list s). induction l.
+      + intros. inversion H1.
+      + intro. destruct a. inversion H1.
+        * cbn [foldr]. unfold curry. unfold Datatypes.uncurry. rewrite <- H4. rewrite <- H5. apply R_key.
+        * cbn [foldr]. unfold curry in *. unfold Datatypes.uncurry in *.
+            apply ind. apply IHl. trivial.
+Qed.
 
 Lemma multiset_le_defn_eq `{EqDecision A, Countable A} (x y: multiset A)
-  : multiset_le x y <-> multiset_le_as_fold x y. Admitted.
+  : multiset_le x y <-> multiset_le_as_fold x y.
+Proof. split.
+ - unfold multiset_le, multiset_le_as_fold. intro. destruct x, y.
+    apply gmap_easy_induct with (R := λ x, x); trivial.
+      intros. have t := H0 k. rewrite H1 in t. destruct (g0 !! k).
+       + split; trivial.
+       + trivial.
+ - unfold multiset_le, multiset_le_as_fold. intro. destruct x, y.
+   + intro. assert (exists lk , lk = g !! k). * exists (g !! k). trivial.
+   * destruct H1. rewrite <- H1. destruct x.
+     -- enough ((match g0 !! k with | Some b => n > b | None => True end) -> False).
+      ** destruct (g0 !! k). *** lia. *** apply H2. trivial.
+      ** intro. generalize H0. clear H0. apply gmap_induct_with_elem with (key := k) (val := n).
+        *** rewrite <- H1. trivial.
+        *** intros. destruct (g0 !! k). **** lia. **** trivial.
+        *** intros. destruct (g0 !! k0); crush.
+     -- destruct (g0 !! k); trivial.
+Qed.
   
 Instance eqdec_multiset `{EqDecision A, Countable A} : EqDecision (multiset A). 
   solve_decision. Defined.
