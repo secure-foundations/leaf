@@ -50,8 +50,11 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
 
 Context `{TPCM M}.
 
+(*Class IsRefinementIndex (RI: Type) := refinement_of_index: RI -> Refinement M M.*)
+
 Context `{EqDecision RefinementIndex}.
-Variables refinement_of_index : RefinementIndex -> Refinement M M.
+Context {refinement_of_index : RefinementIndex -> Refinement M M}.
+
 
 Definition L := nat.
       
@@ -617,10 +620,12 @@ Lemma cell_trivial_of_equiv (cell1: Cell) (cell2: Cell)
   (iseq: cell1 ≡ cell2)
   (istriv: cell_trivial cell1)
   : cell_trivial cell2.
+Proof.
   unfold "≡", cell_equiv, cell_trivial in *.  destruct cell1, cell2; crush.
 Qed.
 
 Instance inst_cell_trivial_of_equiv : Proper (equiv ==> impl) cell_trivial.
+Proof.
 unfold Proper, equiv, impl, "==>". intros. apply cell_trivial_of_equiv with (cell1 := x).
   + unfold "≡"; trivial. + trivial.
 Qed.
@@ -654,11 +659,13 @@ Proof.
 Qed.
 
 Instance inst_node_trivial_of_equiv : Proper (equiv ==> impl) node_trivial.
+Proof.
 unfold Proper, equiv, impl, "==>". intros. apply node_trivial_of_equiv with (node1 := x).
   + unfold "≡"; trivial. + trivial.
 Qed.
 
 Instance inst_branch_trivial_of_equiv : Proper (equiv ==> impl) branch_trivial.
+Proof.
 unfold Proper, equiv, impl, "==>". intros. apply branch_trivial_of_equiv with (branch1 := x).
   + unfold "≡"; trivial. + trivial.
 Qed.
