@@ -1,13 +1,13 @@
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
-Require Import CpdtTactics.
+Require Import Burrow.CpdtTactics.
 
 From stdpp Require Import gmap.
 From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
-Require Import gmap_utils.
+Require Import Burrow.gmap_utils.
 
 
 Section RollupRA.

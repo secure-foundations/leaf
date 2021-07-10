@@ -3,7 +3,7 @@ From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
 
 From stdpp Require Import gmap.
-Require Import CpdtTactics.
+Require Import Burrow.CpdtTactics.
 
 From stdpp Require Import gmap.
 From stdpp Require Import mapset.
@@ -332,7 +332,7 @@ Proof.
     destruct (g !! k); destruct (g0 !! k); destruct (g1 !! k); lia.
 Qed.
 
-Instance inst_diagnone_multiset_add_merge : DiagNone multiset_add_merge. unfold DiagNone, multiset_add_merge. trivial. Defined.
+(*Instance inst_diagnone_multiset_add_merge : DiagNone multiset_add_merge. unfold DiagNone, multiset_add_merge. trivial. Defined.*)
     
 Lemma multiset_add_comm `{EqDecision A, Countable A} (x y: multiset A) :
   multiset_add x y = multiset_add y x.
@@ -340,7 +340,7 @@ Proof.
   unfold multiset_add in *. destruct x; destruct y. f_equal.
     apply map_eq. intro.
     rewrite lookup_merge. rewrite lookup_merge.
-    unfold multiset_add_merge. destruct (g !! i), (g0 !! i); trivial. f_equal. lia.
+    unfold multiset_add_merge, diag_None. destruct (g !! i), (g0 !! i); trivial. f_equal. lia.
 Qed.
   
 Lemma multiset_add_assoc `{EqDecision A, Countable A} (x y z: multiset A) :
@@ -349,7 +349,7 @@ Proof.
   unfold multiset_add in *. destruct x; destruct y; destruct z. f_equal.
     apply map_eq. intro.
     repeat (rewrite lookup_merge).
-    unfold multiset_add_merge. destruct (g !! i), (g0 !! i), (g1 !! i); trivial. f_equal. lia.
+    unfold multiset_add_merge, diag_None. destruct (g !! i), (g0 !! i), (g1 !! i); trivial. f_equal. lia.
 Qed.
 
 Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
