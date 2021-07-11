@@ -53,26 +53,26 @@ Global Instance countable_lifetime : Countable Lifetime. Admitted.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
 
-Inductive Cell M `{Countable M} : Type :=
+Inductive Cell M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
   | CellCon :
       M ->
       gset (Lifetime * M) ->
           Cell M.
-Arguments CellCon {M}%type_scope {EqDecision0 H} _ _.
+Arguments CellCon {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
 
-Inductive Node M `{EqDecision M} `{Countable M} : Type :=
+Inductive Node M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
   | CellNode : Cell M -> Branch M -> Node M
-with Branch M `{EqDecision M} `{Countable M} : Type :=
+with Branch M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
   | BranchCons : Node M -> Branch M -> Branch M
   | BranchNil : Branch M.
-Arguments CellNode {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
-Arguments BranchCons {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
-Arguments BranchNil {M}%type_scope {EqDecision0 EqDecision1 H}.
+Arguments CellNode {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
+Arguments BranchCons {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
+Arguments BranchNil {M}%type_scope {EqDecision0 Countable0 TPCM0}.
 
-Inductive State M `{EqDecision M} `{Countable M} :=
+Inductive State M `{!EqDecision M} `{!Countable M} `{!TPCM M} :=
   | StateCon : Lifetime -> (Branch M) -> State M
 .
-Arguments StateCon {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
+Arguments StateCon {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
 
 Section RollupRA.
 
