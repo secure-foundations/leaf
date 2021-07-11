@@ -1,42 +1,19 @@
+From iris.algebra Require Export cmra.
+From iris.algebra Require Import proofmode_classes.
+From iris.prelude Require Import options.
 Require Import Burrow.CpdtTactics.
+
+From stdpp Require Import gmap.
+From stdpp Require Import mapset.
+From stdpp Require Import sets.
+From stdpp Require Import list.
+Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 
-Context {M} `{!EqDecision M, !TPCM M}.
+Context {M: Type} `{!EqDecision M, !TPCM M} `{!Countable M}.
 Context `{!EqDecision RefinementIndex}.
 Context {refinement_of_index : RefinementIndex -> Refinement M M}.
 
 Definition PathLoc := list nat.
 
-Print Implicit Cell.
-Print Node.
-Print Implicit Node.
-
-Print Comm.
-Print Cell.
-
-Print Implicit Node.
-
-Print Cell.
-Print Node.
-Print CellNode.
-Print Node.
-Print EqDecision0.
-
-Definition node_of_loc (node: @Node M) (pl: PathLoc) : Cell := match node with | CellNode cell b => cell end.
-
-Print node_of_loc.
-
-Definition x {A} := list A.
-
-Definition y A := list A.
-Print x.
-Print y.
-
-Print Node.
-Print Cell.
-
-Definition H := TPCM0.
-Print Node.
-Definition node_of_loc1 (node: Node) (pl: PathLoc) : Cell := match node with | CellNode cell b => cell end.
-
-Print node_of_loc.
+Definition node_of_pl (node: Node M) (pl: PathLoc) : Node M.
