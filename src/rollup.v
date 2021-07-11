@@ -70,7 +70,7 @@ Arguments BranchCons {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
 Arguments BranchNil {M}%type_scope {EqDecision0 EqDecision1 H}.
 
 Inductive State M `{EqDecision M} `{Countable M} :=
-  | StateCon : Lifetime -> (Node M) -> State M
+  | StateCon : Lifetime -> (Branch M) -> State M
 .
 Arguments StateCon {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
 
@@ -423,7 +423,7 @@ Lemma state_equiv_symm (state1 state2: State M)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
 Proof.
   destruct state1, state2; unfold state_equiv in *; trivial.
-    - destruct seq; split. * symmetry; trivial. * apply node_equiv_symm; trivial.
+    - destruct seq; split. * symmetry; trivial. * apply branch_equiv_symm; trivial.
 Qed.
 
 Global Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
@@ -605,7 +605,7 @@ Proof. unfold state_op. unfold state_equiv in *. destruct stateLeft, stateRight1
   + unfold "⋅", "≡" in *. destruct state_eq. repeat case_decide.
     * repeat split; trivial.
       - rewrite H; trivial.
-      - apply node_op_equiv; trivial.
+      - apply branch_op_equiv; trivial.
 Qed.
 
 Lemma cell_op_comm (cell1: Cell M) (cell2: Cell M)
@@ -645,7 +645,7 @@ Proof.
   unfold "⋅","≡" in *.
   unfold state_equiv, state_op. destruct state1, state2; trivial. split.
   * apply multiset_add_comm.
-  * apply node_op_comm.
+  * apply branch_op_comm.
 Qed.
 
 Global Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
@@ -702,7 +702,7 @@ Proof.
   destruct state1, state2, state3; unfold state_op.
   unfold state_equiv. split.
   * apply multiset_add_assoc.
-  * apply node_op_assoc.
+  * apply branch_op_assoc.
 Qed.
 
 Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
@@ -852,8 +852,8 @@ Qed.
 
 Definition state_inv (state: State M) :=
   match state with
-  | StateCon active node =>
-       node_all_total_in_refinement_domain node active 0
+  | StateCon active branch =>
+       branch_all_total_in_refinement_domain branch active 0
        /\
        multiset_no_dupes active
   end
@@ -1040,7 +1040,7 @@ Proof.
   unfold state_inv in *. unfold state_equiv in *. destruct t; destruct s; trivial.
   + split.
     * destruct inv_s. trivial. destruct eq. rewrite <- H1.
-        apply node_all_total_in_refinement_domain_of_equiv with (node1 := n0).
+        apply branch_all_total_in_refinement_domain_of_equiv with (branch1 := b0).
         ** unfold "≡" in H2. trivial.
         ** trivial.
     * destruct inv_s. destruct eq. rewrite <- H1. trivial.
