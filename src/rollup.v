@@ -80,7 +80,6 @@ Context {M : Type}.
 Context `{!EqDecision M}.
 Context `{!Countable M}.
 Context `{!TPCM M}.
-Context (ref: Refinement M M).
 
 Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : M :=
   match reserved with
@@ -95,24 +94,8 @@ Definition cell_total (cell: Cell M) (lifetime: Lifetime) :=
   | CellCon m reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
   end.
   
-Definition rel_project (r: M) :=
-    match (rel M M ref) r with | Some t => t | None => unit end.
 
-Definition project (m: M) : M :=
-  rel_project m
-.
 
-Fixpoint node_total (node: Node M) (lifetime: Lifetime) : M :=
-  match node with
-  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
-  end
-with branch_total (branch: Branch M) (lifetime: Lifetime) : M :=
-  match branch with
-  | BranchNil => unit
-  | BranchCons node branch => dot (project (node_total node lifetime))
-      (branch_total branch lifetime)
-  end
-.
  
 Definition umbrella : M -> (M -> Prop) := tpcm_le.
 
@@ -124,9 +107,6 @@ Definition intersect_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
 Definition conjoin_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
   λ m , ∃ x y , a x /\ b y /\ dot x y = m.
 
-Definition project_umbrella
-    (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
-    λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
 
 Definition umbrella_is_closed (umb: M -> Prop) := ∀ a b , umb a -> umb (dot a b).
     
@@ -138,24 +118,6 @@ Definition cell_view (cell: Cell M) (lifetime: Lifetime) : (M -> Prop) :=
   match cell with
   | CellCon m reserved => conjoin_reserved_over_lifetime reserved lifetime
   end.
-
-Definition rel_project_fancy (um: M -> Prop) :=
-    λ x , ∃ a b , tpcm_le a x /\ rel M M ref b = Some a /\ um b.
-  
-Definition project_fancy (um: M -> Prop) : (M -> Prop) :=
-  rel_project_fancy um
-.
-
-Fixpoint node_view (node: Node M) (lifetime: Lifetime) : (M -> Prop) :=
-  match node with
-  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
-  end
-with branch_view (branch: Branch M) (lifetime: Lifetime) : (M -> Prop) :=
-  match branch with
-  | BranchNil => umbrella_unit
-  | BranchCons node branch => conjoin_umbrella (project_fancy (node_view node lifetime)) (branch_view branch lifetime)
-  end
-.
 
 Definition view_sat (umbrella : M -> Prop) (m : M) := umbrella m.
 
@@ -270,79 +232,6 @@ Lemma view_sat_conjoin (um1 um2 : M -> Prop) (m1 m2 : M)
     (vs2: view_sat um2 m2)
     : view_sat (conjoin_umbrella um1 um2) (dot m1 m2).
 Proof. unfold view_sat in *. unfold conjoin_umbrella. exists m1. exists m2. repeat split; trivial. Qed.
-
-Definition in_refinement_domain (m : M) :=
-  match rel M M ref m with | Some _ => True | None => False end.
-
-Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) : Prop :=
-  match node with
-  | CellNode _ branch =>
-         in_refinement_domain (node_total node lifetime)
-      /\ branch_all_total_in_refinement_domain branch lifetime
-  end
-with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetime) : Prop :=
-  match branch with
-  | BranchNil => True
-  | BranchCons node branch =>
-         node_all_total_in_refinement_domain node lifetime
-      /\ branch_all_total_in_refinement_domain branch lifetime
-  end
-.
-
-Definition view_sat_projections (view : M -> Prop) (m : M)
-    (vrv : in_refinement_domain m)
-    (vs: view_sat view m)
-      : view_sat
-        (rel_project_fancy view) (*(node_view (CellNode (CellCon m o b0 g) b) lt))*)
-        (rel_project       m). (*(node_total (CellNode (CellCon m o b0 g) b) active))*)
-Proof. 
-  unfold rel_project_fancy. unfold rel_project. unfold view_sat. unfold tpcm_le.
-  exists (match rel M M ref m with | Some t => t | None => unit end).
-  exists m.
-  repeat split.
-  - exists unit. apply unit_dot.
-  - unfold in_refinement_domain in vrv. destruct (rel M M ref m).
-    + trivial.
-    + contradiction.
-  - unfold view_sat in vs. trivial.
-Qed.
-
-Lemma node_view_le_total (node: Node M) (lt: Lifetime) (active: Lifetime)
-    (lt_is_active : lifetime_included active lt)
-    (ird: node_all_total_in_refinement_domain node active)
-    : view_sat (node_view node lt) (node_total node active)
-with branch_view_le_total (branch: Branch M) (lt: Lifetime) (active: Lifetime)
-    (lt_is_active : lifetime_included active lt)
-    (ird: branch_all_total_in_refinement_domain branch active)
-    : view_sat (branch_view branch lt) (branch_total branch active).
-Proof.
- - destruct node.
-      + unfold node_view. unfold node_total. apply view_sat_conjoin.
-        * apply cell_view_le_total. trivial.
-        * apply branch_view_le_total; trivial.
-          unfold node_all_total_in_refinement_domain in ird.
-              fold branch_all_total_in_refinement_domain in ird.
-              destruct c in ird. destruct ird. trivial.
- - destruct branch.
-      + unfold branch_view. unfold branch_total. apply view_sat_conjoin.
-        * fold node_view. fold node_total.
-            unfold project_fancy. unfold project.
-            (* instantiate inductive hypotheses here, so the prover can 
-               infer decreasing arguments *)
-            have ind_node := node_view_le_total n. clear node_view_le_total.
-            have ind_branch := branch_view_le_total branch. clear branch_view_le_total.
-            destruct n.
-          -- destruct c. apply view_sat_projections.
-              ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
-                  destruct H. trivial.
-              ++ apply ind_node; trivial. 
-                  unfold branch_all_total_in_refinement_domain in ird. crush.
-        * apply branch_view_le_total; trivial.
-            unfold branch_all_total_in_refinement_domain in ird. crush.
-      + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
-Qed.
-
-
 
 Definition cell_trivial (cell: Cell M) :=
   match cell with
@@ -818,6 +707,152 @@ Qed.
 
 Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 
+Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
+  (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
+Proof. destruct cell. unfold cell_view. unfold cell_trivial in *.
+  unfold conjoin_reserved_over_lifetime.
+  destruct eq. rewrite H. rewrite set_fold_empty.
+    unfold umbrella_unit. trivial.
+Qed.
+
+Lemma cell_view_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
+  (eq: cell1 ≡ cell2) (m: M)
+  : cell_view cell1 lifetime m = cell_view cell2 lifetime m.
+Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_view.
+    unfold conjoin_reserved_over_lifetime.
+    unfold "≡" in eq. destruct eq. rewrite H0. trivial.
+Qed.
+  
+Lemma cell_total_of_trivial (cell: Cell M) (lifetime: Lifetime)
+  (eq: cell_trivial cell) : cell_total cell lifetime = unit.
+Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
+  replace (sum_reserved_over_lifetime g lifetime) with unit.
+  - destruct eq. rewrite H0. apply unit_dot.
+  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H. rewrite set_fold_empty.
+    trivial.
+Qed.
+
+Lemma cell_total_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
+  (eq: cell1 ≡ cell2)
+  : cell_total cell1 lifetime = cell_total cell2 lifetime.
+Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
+    destruct eq. destruct H0. rewrite H. f_equal.
+Qed.
+
+Context (ref: Refinement M M).
+
+Definition rel_project (r: M) :=
+    match (rel M M ref) r with | Some t => t | None => unit end.
+
+Definition project (m: M) : M :=
+  rel_project m
+.
+
+Fixpoint node_total (node: Node M) (lifetime: Lifetime) : M :=
+  match node with
+  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
+  end
+with branch_total (branch: Branch M) (lifetime: Lifetime) : M :=
+  match branch with
+  | BranchNil => unit
+  | BranchCons node branch => dot (project (node_total node lifetime))
+      (branch_total branch lifetime)
+  end
+.
+
+Definition project_umbrella
+    (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
+    λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
+    
+Definition rel_project_fancy (um: M -> Prop) :=
+    λ x , ∃ a b , tpcm_le a x /\ rel M M ref b = Some a /\ um b.
+  
+Definition project_fancy (um: M -> Prop) : (M -> Prop) :=
+  rel_project_fancy um
+.
+
+Fixpoint node_view (node: Node M) (lifetime: Lifetime) : (M -> Prop) :=
+  match node with
+  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
+  end
+with branch_view (branch: Branch M) (lifetime: Lifetime) : (M -> Prop) :=
+  match branch with
+  | BranchNil => umbrella_unit
+  | BranchCons node branch => conjoin_umbrella (project_fancy (node_view node lifetime)) (branch_view branch lifetime)
+  end
+.
+
+Definition in_refinement_domain (m : M) :=
+  match rel M M ref m with | Some _ => True | None => False end.
+  Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) : Prop :=
+  match node with
+  | CellNode _ branch =>
+         in_refinement_domain (node_total node lifetime)
+      /\ branch_all_total_in_refinement_domain branch lifetime
+  end
+with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetime) : Prop :=
+  match branch with
+  | BranchNil => True
+  | BranchCons node branch =>
+         node_all_total_in_refinement_domain node lifetime
+      /\ branch_all_total_in_refinement_domain branch lifetime
+  end
+.
+
+Definition view_sat_projections (view : M -> Prop) (m : M)
+    (vrv : in_refinement_domain m)
+    (vs: view_sat view m)
+      : view_sat
+        (rel_project_fancy view) (*(node_view (CellNode (CellCon m o b0 g) b) lt))*)
+        (rel_project       m). (*(node_total (CellNode (CellCon m o b0 g) b) active))*)
+Proof. 
+  unfold rel_project_fancy. unfold rel_project. unfold view_sat. unfold tpcm_le.
+  exists (match rel M M ref m with | Some t => t | None => unit end).
+  exists m.
+  repeat split.
+  - exists unit. apply unit_dot.
+  - unfold in_refinement_domain in vrv. destruct (rel M M ref m).
+    + trivial.
+    + contradiction.
+  - unfold view_sat in vs. trivial.
+Qed.
+
+Lemma node_view_le_total (node: Node M) (lt: Lifetime) (active: Lifetime)
+    (lt_is_active : lifetime_included active lt)
+    (ird: node_all_total_in_refinement_domain node active)
+    : view_sat (node_view node lt) (node_total node active)
+with branch_view_le_total (branch: Branch M) (lt: Lifetime) (active: Lifetime)
+    (lt_is_active : lifetime_included active lt)
+    (ird: branch_all_total_in_refinement_domain branch active)
+    : view_sat (branch_view branch lt) (branch_total branch active).
+Proof.
+ - destruct node.
+      + unfold node_view. unfold node_total. apply view_sat_conjoin.
+        * apply cell_view_le_total. trivial.
+        * apply branch_view_le_total; trivial.
+          unfold node_all_total_in_refinement_domain in ird.
+              fold branch_all_total_in_refinement_domain in ird.
+              destruct c in ird. destruct ird. trivial.
+ - destruct branch.
+      + unfold branch_view. unfold branch_total. apply view_sat_conjoin.
+        * fold node_view. fold node_total.
+            unfold project_fancy. unfold project.
+            (* instantiate inductive hypotheses here, so the prover can 
+               infer decreasing arguments *)
+            have ind_node := node_view_le_total n. clear node_view_le_total.
+            have ind_branch := branch_view_le_total branch. clear branch_view_le_total.
+            destruct n.
+          -- destruct c. apply view_sat_projections.
+              ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
+                  destruct H. trivial.
+              ++ apply ind_node; trivial. 
+                  unfold branch_all_total_in_refinement_domain in ird. crush.
+        * apply branch_view_le_total; trivial.
+            unfold branch_all_total_in_refinement_domain in ird. crush.
+      + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
+Qed.
+
+
 Definition state_inv (state: State M) :=
   match state with
   | StateCon active node =>
@@ -829,13 +864,6 @@ Definition state_inv (state: State M) :=
 
 Global Instance state_valid : Valid (State M) := λ x, exists y , state_inv (state_op x y).
 
-Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
-  (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
-Proof. destruct cell. unfold cell_view. unfold cell_trivial in *.
-  unfold conjoin_reserved_over_lifetime.
-  destruct eq. rewrite H. rewrite set_fold_empty.
-    unfold umbrella_unit. trivial.
-Qed.
 
 Lemma node_view_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node) (m: M)
@@ -864,14 +892,6 @@ Proof.
       * apply ind_hyp_branch. trivial.
       * rewrite comm. apply unit_dot.
     + unfold branch_view. unfold umbrella_unit. trivial.
-Qed.
-
-Lemma cell_view_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
-  (eq: cell1 ≡ cell2) (m: M)
-  : cell_view cell1 lifetime m = cell_view cell2 lifetime m.
-Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_view.
-    unfold conjoin_reserved_over_lifetime.
-    unfold "≡" in eq. destruct eq. rewrite H0. trivial.
 Qed.
 
 Lemma node_view_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
@@ -915,15 +935,7 @@ Proof.
         * intros. unfold branch_view. unfold umbrella_unit. trivial.
     + trivial.
 Qed.
-  
-Lemma cell_total_of_trivial (cell: Cell M) (lifetime: Lifetime)
-  (eq: cell_trivial cell) : cell_total cell lifetime = unit.
-Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
-  replace (sum_reserved_over_lifetime g lifetime) with unit.
-  - destruct eq. rewrite H0. apply unit_dot.
-  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H. rewrite set_fold_empty.
-    trivial.
-Qed.
+
 
 Lemma node_total_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node)
@@ -946,12 +958,6 @@ Proof.
     + unfold branch_total. trivial.
 Qed.
 
-Lemma cell_total_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
-  (eq: cell1 ≡ cell2)
-  : cell_total cell1 lifetime = cell_total cell2 lifetime.
-Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
-    destruct eq. destruct H0. rewrite H. f_equal.
-Qed.
 
 Lemma node_total_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
   (eq: node1 ≡ node2)
@@ -1043,11 +1049,11 @@ Proof.
     * destruct inv_s. destruct eq. rewrite <- H1. trivial.
 Qed.
 
-Definition allstate_ra_mixin : RAMixin (State M).
+Definition state_ra_mixin : RAMixin (State M).
 Proof. split.
   - unfold Proper, "==>". intros. apply state_op_equiv. trivial.
   - unfold pcore. unfold state_pcore. intros. crush.
-  - unfold cmra.valid. unfold "==>", alls_valid_instance. unfold impl, Proper. intros.
+  - unfold cmra.valid. unfold "==>", state_valid. unfold impl, Proper. intros.
      destruct H0. exists x0. apply state_inv_of_equiv with (s := state_op x x0).
      * apply state_op_equiv_left. trivial.
      * trivial.
@@ -1056,7 +1062,7 @@ Proof. split.
   - unfold pcore. unfold state_pcore. crush.
   - unfold pcore. unfold state_pcore. crush.
   - unfold pcore. unfold state_pcore. crush.
-  - intros. unfold "✓" in *. unfold alls_valid_instance in *.
+  - intros. unfold "✓" in *. unfold state_valid in *.
       destruct H. exists (state_op y x0). unfold op in H.
         apply state_inv_of_equiv with (s := (state_op (state_op x y) x0)); trivial.
         apply state_equiv_symm.
