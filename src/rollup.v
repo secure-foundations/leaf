@@ -9,9 +9,6 @@ From stdpp Require Import sets.
 From stdpp Require Import list.
 Require Import Burrow.gmap_utils.
 
-
-Section RollupRA.
-
 Class TPCM (M : Type) `{EqDecision M} :=
 {
   m_valid : M -> Prop ;
@@ -48,135 +45,72 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
   mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
 }.
 
-Context `{TPCM M}.
-
-(*Class IsRefinementIndex (RI: Type) := refinement_of_index: RI -> Refinement M M.*)
-
-Context `{EqDecision RefinementIndex}.
-Context {refinement_of_index : RefinementIndex -> Refinement M M}.
-
-
-Definition L := nat.
-      
-(*Inductive Loc :=
-  | LBase : L -> Loc
-  | LExt : L -> RefinementIndex -> Loc -> Loc
- .
-
-Instance eqloc : EqDecision Loc. solve_decision. Defined.
-
-Instance countableloc : Countable Loc. Admitted.*)
-
-(*Inductive PathId :=
-  | NormalId : nat -> PathId.
-
-Definition id_lt (p1: PathId) (p2: PathId) : bool :=
-  match p1, p2 with
-  | NormalId id1, NormalId id2 => id1 <? id2
-  end.
-
-Inductive Trichotomy :=
-  | TrichFirstLtSecond : Trichotomy
-  | TrichSecondLtFirst : Trichotomy
-  | TrichEq : Trichotomy
-.
-
-Definition path_id_trichotomy (p1: PathId) (p2: PathId) : Trichotomy :=
-  if id_lt p1 p2 then TrichFirstLtSecond
-  else if id_lt p2 p1 then TrichSecondLtFirst
-  else TrichEq.*)
-
-(*Definition path_id_trichotomy (p1: PathId) (p2: PathId) :
-    (id_lt p1 p2 \/ id_lt p2 p1) \/ p1 = p2.
-Proof.
-  destruct p1, p2. unfold id_lt.
-  have j : (NormalId n = NormalId n0) <-> n = n0.
-   - split; crush.
-   - rewrite j. lia.
-Defined.*)
-
 Definition Lifetime := multiset nat.
+
+Instance eqdec_lifetime : EqDecision Lifetime. Admitted.
+Instance countable_lifetime : Countable Lifetime. Admitted.
+
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
 
-(*Global Instance lifetime_included_dec l m : Decision (lifetime_included l m). unfold lifetime_included. solve_decision. Defined.*)
-
-(*Lemma fresh_borrow_inst : ∀ (l : Lifetime) , ∃ b , ∀ t, gset_elem_of t l -> t < b.
-Proof.
-apply set_ind.
- - by intros ?? ->%leibniz_equiv_iff.
- - exists 0. intro. unfold gset_elem_of.
- Abort.*)
- 
-(*Inductive BorrowObject : Type :=
-  | BorrowO : Lifetime -> Loc -> M -> BorrowObject
-.
-Instance eqdec_borrow_object : EqDecision BorrowObject. solve_decision. Defined.
-Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
- 
-(*Inductive BorrowObject : Type :=
-  | BorrowO : Lifetime -> M -> BorrowObject
-.
-Global Instance eqdec_borrow_object : EqDecision BorrowObject.
-Proof using EqDecision0 M. solve_decision. Defined.
-
-Global Instance countable_borrow_object : Countable BorrowObject. Admitted.*)
-
-(*Inductive LifetimeStatus := LSNone | LSActive | LSFail.*)
-
-Inductive RI :=
-  | TrivialRI : RI
-  | NormalRI : RefinementIndex -> RI.
-
-Definition nat_to_ref: nat -> Refinement M M. Admitted.
-  
-Global Instance eqdec_ri: EqDecision RI. solve_decision. Defined.
-
-Instance countable_lifetime : Countable (Lifetime * M). Admitted.
-
-Inductive Cell : Type :=
+Inductive Cell M `{EqDecision M} `{Countable M} : Type :=
   | CellCon :
       M ->
       gset (Lifetime * M) ->
-          Cell.
+          Cell M.
+Arguments CellCon {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
 
-Inductive Node: Type :=
-  | CellNode : Cell -> Branch -> Node
-with Branch: Type :=
-  | BranchCons : Node -> Branch -> Branch
-  | BranchNil : Branch.
+Inductive Node M `{EqDecision M} `{Countable M} : Type :=
+  | CellNode : Cell M -> Branch M -> Node M
+with Branch M `{EqDecision M} `{Countable M} : Type :=
+  | BranchCons : Node M -> Branch M -> Branch M
+  | BranchNil : Branch M.
+Arguments CellNode {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
+Arguments BranchCons {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
+Arguments BranchNil {M}%type_scope {EqDecision0 EqDecision1 H}.
+
+Inductive State M `{EqDecision M} `{Countable M} :=
+  | StateCon : Lifetime -> (Node M) -> State M
+.
+Arguments StateCon {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
+
+Section RollupRA.
+
+Context {M : Type}.
+Context `{!EqDecision M}.
+Context `{!Countable M}.
+Context `{!TPCM M}.
+Context {ref: Refinement M M}.
 
 Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : M :=
   match reserved with
   | (my_lt, m) => if decide (multiset_le my_lt lifetime) then m else unit
   end.
-  
+
 Definition sum_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifetime: Lifetime) :=
   set_fold (λ reserved m , dot m (reserved_get_or_unit reserved lifetime)) unit reserved.
   
-Definition cell_total (cell: Cell) (lifetime: Lifetime) :=
+Definition cell_total (cell: Cell M) (lifetime: Lifetime) :=
   match cell with
   | CellCon m reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
   end.
   
-Definition rel_project `{TPCM R, TPCM M} (ref : Refinement R M) (r: R) :=
-    match (rel R M ref) r with | Some t => t | None => unit end.
+Definition rel_project (r: M) :=
+    match (rel M M ref) r with | Some t => t | None => unit end.
 
-Definition get_ref (ri: RI) : Refinement M M. Admitted.
- 
-Definition project (idx: nat) (m: M) : M :=
-  rel_project (nat_to_ref idx) m
+Definition project (m: M) : M :=
+  rel_project m
 .
 
-Fixpoint node_total (node: Node) (lifetime: Lifetime) : M :=
+Fixpoint node_total (node: Node M) (lifetime: Lifetime) : M :=
   match node with
-  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime 0)
+  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
   end
-with branch_total (branch: Branch) (lifetime: Lifetime) (idx: nat) : M :=
+with branch_total (branch: Branch M) (lifetime: Lifetime) : M :=
   match branch with
   | BranchNil => unit
-  | BranchCons node branch => dot (project idx (node_total node lifetime))
-      (branch_total branch lifetime (S idx))
+  | BranchCons node branch => dot (project (node_total node lifetime))
+      (branch_total branch lifetime)
   end
 .
  
@@ -200,26 +134,26 @@ Definition conjoin_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifet
   set_fold (λ reserved um , conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lifetime)))
       umbrella_unit reserved.
 
-Definition cell_view (cell: Cell) (lifetime: Lifetime) : (M -> Prop) :=
+Definition cell_view (cell: Cell M) (lifetime: Lifetime) : (M -> Prop) :=
   match cell with
   | CellCon m reserved => conjoin_reserved_over_lifetime reserved lifetime
   end.
 
-Definition rel_project_fancy (ref : Refinement M M) (um: M -> Prop) :=
+Definition rel_project_fancy (um: M -> Prop) :=
     λ x , ∃ a b , tpcm_le a x /\ rel M M ref b = Some a /\ um b.
   
-Definition project_fancy (idx: nat) (um: M -> Prop) : (M -> Prop) :=
-  rel_project_fancy (nat_to_ref idx) um
+Definition project_fancy (um: M -> Prop) : (M -> Prop) :=
+  rel_project_fancy um
 .
 
-Fixpoint node_view (node: Node) (lifetime: Lifetime) : (M -> Prop) :=
+Fixpoint node_view (node: Node M) (lifetime: Lifetime) : (M -> Prop) :=
   match node with
-  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime 0)
+  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
   end
-with branch_view (branch: Branch) (lifetime: Lifetime) (idx: nat) : (M -> Prop) :=
+with branch_view (branch: Branch M) (lifetime: Lifetime) : (M -> Prop) :=
   match branch with
   | BranchNil => umbrella_unit
-  | BranchCons node branch => conjoin_umbrella (project_fancy idx (node_view node lifetime)) (branch_view branch lifetime (S idx))
+  | BranchCons node branch => conjoin_umbrella (project_fancy (node_view node lifetime)) (branch_view branch lifetime)
   end
 .
 
@@ -235,20 +169,20 @@ Lemma unit_view_sat_unit : view_sat umbrella_unit unit.
 Proof. unfold view_sat. unfold umbrella_unit. trivial. Qed.
 
 Lemma le_add_both_sides a b c : tpcm_le a b -> tpcm_le (dot a c) (dot b c).
-Proof.  unfold tpcm_le. intros. destruct H0. exists x. rewrite comm. rewrite assoc.
-    rewrite comm in H0. rewrite H0. trivial. Qed.
+Proof.  unfold tpcm_le. intros. destruct H. exists x. rewrite comm. rewrite assoc.
+    rewrite comm in H. rewrite H. trivial. Qed.
     
 Lemma le_add2 a b c d : tpcm_le a c -> tpcm_le b d -> tpcm_le (dot a b) (dot c d).
-Proof.  unfold tpcm_le. intros. destruct H0. destruct H1.
-exists (dot x x0). rewrite <- H0. rewrite <- H1.
+Proof.  unfold tpcm_le. intros. destruct H. destruct H0.
+exists (dot x x0). rewrite <- H. rewrite <- H0.
   rewrite <- (assoc a b). rewrite <- (assoc a x). f_equal.
   rewrite assoc. rewrite assoc. f_equal.
   apply comm; trivial.
 Qed.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
-Proof.  unfold tpcm_le. intros. destruct H0. exists (dot x c). rewrite assoc.
-    rewrite H0. trivial. Qed.
+Proof.  unfold tpcm_le. intros. destruct H. exists (dot x c). rewrite assoc.
+    rewrite H. trivial. Qed.
 
 Lemma umbrella_closed_umbrella_unit : umbrella_is_closed umbrella_unit.
 Proof. unfold umbrella_is_closed. unfold umbrella_unit. intros. trivial. Qed.
@@ -260,11 +194,11 @@ Qed.
 Lemma umbrella_closed_conjoin um1 um2 : umbrella_is_closed um1 -> umbrella_is_closed um2 ->
     umbrella_is_closed (conjoin_umbrella um1 um2).
 Proof. unfold umbrella_is_closed. unfold conjoin_umbrella. intros.
-  destruct H2. destruct H2. destruct H2. destruct H3. exists x. exists (dot x0 b). split.
+  destruct H1. destruct H1. destruct H1. destruct H2. exists x. exists (dot x0 b). split.
     - trivial.
     - split.
-      + apply H1. trivial.
-      + rewrite <- H4. apply assoc.
+      + apply H0. trivial.
+      + rewrite <- H3. apply assoc.
 Qed.
 
 Lemma sum_reserved_over_lifetime_monotonic (g: gset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
@@ -280,7 +214,7 @@ Proof. unfold sum_reserved_over_lifetime.
   - intros. apply le_add2; trivial.
     unfold reserved_get_or_unit. destruct a. case_decide; case_decide.
       * apply self_le_self.
-      * exfalso. apply H2. apply multiset_le_transitive with (y := lt1); trivial.
+      * exfalso. apply H1. apply multiset_le_transitive with (y := lt1); trivial.
       * apply unit_le.
       * apply self_le_self.
   - intros. apply le_add_right_side. trivial.
@@ -305,7 +239,7 @@ Lemma view_sat_with_le (umb: M -> Prop) (a : M) (b : M)
     (vs: view_sat umb a)
     (mle: tpcm_le a b) : view_sat umb b.
 Proof. unfold view_sat in *. intros. unfold umbrella_is_closed in closed.
-    unfold tpcm_le in mle. destruct mle. rewrite <- H0. apply closed. trivial.
+    unfold tpcm_le in mle. destruct mle. rewrite <- H. apply closed. trivial.
 Qed.
 
 Lemma conjoin_reserved_over_lifetime_is_closed (reserved: gset (Lifetime * M)) (lt: Lifetime)
@@ -318,7 +252,7 @@ Proof. unfold cell_view. unfold conjoin_reserved_over_lifetime.
     + apply umbrella_closed_umbrella.
 Qed.
 
-Lemma cell_view_le_total (cell: Cell) (lt: Lifetime) (active: Lifetime)
+Lemma cell_view_le_total (cell: Cell M) (lt: Lifetime) (active: Lifetime)
     (lt_is_active : lifetime_included active lt)
     : view_sat (cell_view cell lt) (cell_total cell active).
 Proof.
@@ -337,30 +271,30 @@ Lemma view_sat_conjoin (um1 um2 : M -> Prop) (m1 m2 : M)
     : view_sat (conjoin_umbrella um1 um2) (dot m1 m2).
 Proof. unfold view_sat in *. unfold conjoin_umbrella. exists m1. exists m2. repeat split; trivial. Qed.
 
-Definition in_refinement_domain (ref: Refinement M M) (m : M) :=
+Definition in_refinement_domain (m : M) :=
   match rel M M ref m with | Some _ => True | None => False end.
 
-Fixpoint node_all_total_in_refinement_domain (node: Node) (lifetime: Lifetime) (idx: nat) : Prop :=
+Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) : Prop :=
   match node with
   | CellNode _ branch =>
-         in_refinement_domain (nat_to_ref idx) (node_total node lifetime)
-      /\ branch_all_total_in_refinement_domain branch lifetime 0
+         in_refinement_domain (node_total node lifetime)
+      /\ branch_all_total_in_refinement_domain branch lifetime
   end
-with branch_all_total_in_refinement_domain (branch: Branch) (lifetime: Lifetime) (idx: nat) : Prop :=
+with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetime) : Prop :=
   match branch with
   | BranchNil => True
   | BranchCons node branch =>
-         node_all_total_in_refinement_domain node lifetime idx
-      /\ branch_all_total_in_refinement_domain branch lifetime (S idx)
+         node_all_total_in_refinement_domain node lifetime
+      /\ branch_all_total_in_refinement_domain branch lifetime
   end
 .
 
-Definition view_sat_projections (ref: Refinement M M) (view : M -> Prop) (m : M)
-    (vrv : in_refinement_domain ref m)
+Definition view_sat_projections (view : M -> Prop) (m : M)
+    (vrv : in_refinement_domain m)
     (vs: view_sat view m)
       : view_sat
-        (rel_project_fancy ref view) (*(node_view (CellNode (CellCon m o b0 g) b) lt))*)
-        (rel_project       ref m). (*(node_total (CellNode (CellCon m o b0 g) b) active))*)
+        (rel_project_fancy view) (*(node_view (CellNode (CellCon m o b0 g) b) lt))*)
+        (rel_project       m). (*(node_total (CellNode (CellCon m o b0 g) b) active))*)
 Proof. 
   unfold rel_project_fancy. unfold rel_project. unfold view_sat. unfold tpcm_le.
   exists (match rel M M ref m with | Some t => t | None => unit end).
@@ -373,14 +307,14 @@ Proof.
   - unfold view_sat in vs. trivial.
 Qed.
 
-Lemma node_view_le_total (node: Node) (lt: Lifetime) (active: Lifetime) (idx: nat)
+Lemma node_view_le_total (node: Node M) (lt: Lifetime) (active: Lifetime)
     (lt_is_active : lifetime_included active lt)
-    (ird: node_all_total_in_refinement_domain node active idx)
+    (ird: node_all_total_in_refinement_domain node active)
     : view_sat (node_view node lt) (node_total node active)
-with branch_view_le_total (branch: Branch) (lt: Lifetime) (active: Lifetime) (idx: nat)
+with branch_view_le_total (branch: Branch M) (lt: Lifetime) (active: Lifetime)
     (lt_is_active : lifetime_included active lt)
-    (ird: branch_all_total_in_refinement_domain branch active idx)
-    : view_sat (branch_view branch lt idx) (branch_total branch active idx).
+    (ird: branch_all_total_in_refinement_domain branch active)
+    : view_sat (branch_view branch lt) (branch_total branch active).
 Proof.
  - destruct node.
       + unfold node_view. unfold node_total. apply view_sat_conjoin.
@@ -400,8 +334,8 @@ Proof.
             destruct n.
           -- destruct c. apply view_sat_projections.
               ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
-                  destruct H0. trivial.
-              ++ apply ind_node with (idx := idx); trivial. 
+                  destruct H. trivial.
+              ++ apply ind_node; trivial. 
                   unfold branch_all_total_in_refinement_domain in ird. crush.
         * apply branch_view_le_total; trivial.
             unfold branch_all_total_in_refinement_domain in ird. crush.
@@ -410,17 +344,17 @@ Qed.
 
 
 
-Definition cell_trivial (cell: Cell) :=
+Definition cell_trivial (cell: Cell M) :=
   match cell with
   | CellCon m reserves => reserves = empty /\ m = unit
   end
 .
 
-Fixpoint node_trivial (node: Node) :=
+Fixpoint node_trivial (node: Node M) :=
   match node with
   | CellNode cell branch => cell_trivial cell /\ branch_trivial branch
   end
-with branch_trivial (branch: Branch) :=
+with branch_trivial (branch: Branch M) :=
   match branch with
   | BranchNil => True
   | BranchCons node branch => node_trivial node /\ branch_trivial branch
@@ -429,24 +363,24 @@ with branch_trivial (branch: Branch) :=
 
 Definition equiv_func {A} {B} (f g: A -> B) := ∀ x , f x = g x.
 
-Global Instance cell_equiv : Equiv Cell := λ (cell1: Cell) (cell2: Cell) ,
+Global Instance cell_equiv : Equiv (Cell M) := λ (cell1: Cell M) (cell2: Cell M) ,
   match cell1, cell2 with
   | CellCon m1 g1, CellCon m2 g2 =>
       (m1 = m2) /\ g1 = g2
   end
 .
 
-Fixpoint internal_node_equiv (node1: Node) (node2: Node) :=
-  let _ : Equiv Node := internal_node_equiv in
-  let _ : Equiv Branch := internal_branch_equiv in
+Fixpoint internal_node_equiv (node1: Node M) (node2: Node M) :=
+  let _ : Equiv (Node M) := internal_node_equiv in
+  let _ : Equiv (Branch M) := internal_branch_equiv in
   match node1, node2 with
     | CellNode cell1 branch1, CellNode cell2 branch2 =>
            cell1 ≡ cell2
         /\ branch1 ≡ branch2
   end
-with internal_branch_equiv (branch1: Branch) (branch2: Branch) :=
-  let _ : Equiv Node := internal_node_equiv in  
-  let _ : Equiv Branch := internal_branch_equiv in
+with internal_branch_equiv (branch1: Branch M) (branch2: Branch M) :=
+  let _ : Equiv (Node M) := internal_node_equiv in  
+  let _ : Equiv (Branch M) := internal_branch_equiv in
   match branch1, branch2 with
     | BranchNil, _ => branch_trivial branch2
     | BranchCons _ _, BranchNil => branch_trivial branch1
@@ -457,19 +391,16 @@ with internal_branch_equiv (branch1: Branch) (branch2: Branch) :=
 
 (* black magic for defining recursive instances
    https://github.com/coq/coq/issues/7913 *)
-Definition node_equiv : Equiv Node
+Definition node_equiv : Equiv (Node M)
   := Eval cbv [internal_node_equiv internal_branch_equiv] in internal_node_equiv.
-Definition branch_equiv : Equiv Branch
+Definition branch_equiv : Equiv (Branch M)
   := Eval cbv [internal_node_equiv internal_branch_equiv] in internal_branch_equiv.
 Global Existing Instances node_equiv branch_equiv.
 
-Inductive State :=
-  | StateCon : Lifetime -> Node -> State
-.
 
-Global Instance state_pcore : PCore State := λ state , None.
+Global Instance state_pcore : PCore (State M) := λ state , None.
 
-Instance cell_op : Op Cell := λ (x: Cell) (y: Cell) ,
+Instance cell_op : Op (Cell M) := λ (x: Cell M) (y: Cell M) ,
   match x, y with
   | CellCon m1 reserved1,
     CellCon m2 reserved2 =>
@@ -478,16 +409,16 @@ Instance cell_op : Op Cell := λ (x: Cell) (y: Cell) ,
   end
 .
 
-Fixpoint internal_node_op (x: Node) (y: Node) : Node :=
-  let _ : Op Node := internal_node_op in
-  let _ : Op Branch := internal_branch_op in
+Fixpoint internal_node_op (x: Node M) (y: Node M) : Node M :=
+  let _ : Op (Node M) := internal_node_op in
+  let _ : Op (Branch M) := internal_branch_op in
   match x, y with
   | CellNode cell1 branch1, CellNode cell2 branch2 =>
       CellNode (cell1 ⋅ cell2) (branch1 ⋅ branch2)
   end 
-with internal_branch_op (branch1: Branch) (branch2: Branch) : Branch :=
-  let _ : Op Node := internal_node_op in
-  let _ : Op Branch := internal_branch_op in
+with internal_branch_op (branch1: Branch M) (branch2: Branch M) : Branch M :=
+  let _ : Op (Node M) := internal_node_op in
+  let _ : Op (Branch M) := internal_branch_op in
   match branch1, branch2 with
   | BranchNil, _ => branch2
   | BranchCons _ _, BranchNil => branch1
@@ -498,32 +429,32 @@ with internal_branch_op (branch1: Branch) (branch2: Branch) : Branch :=
 
 (* black magic for defining recursive instances
    https://github.com/coq/coq/issues/7913 *)
-Definition node_op : Op Node
+Definition node_op : Op (Node M)
   := Eval cbv [internal_node_op internal_branch_op] in internal_node_op.
-Definition branch_op : Op Branch
+Definition branch_op : Op (Branch M)
   := Eval cbv [internal_node_op internal_branch_op] in internal_branch_op.
 Existing Instances node_op branch_op.
 
-Global Instance state_op : Op State := λ x y ,
+Global Instance state_op : Op (State M) := λ x y ,
   match x, y with
   | StateCon active1 node1, StateCon active2 node2 =>
       StateCon (multiset_add active1 active2) (node1 ⋅ node2)
   end.
   
-Global Instance state_equiv : Equiv State := λ x y ,
+Global Instance state_equiv : Equiv (State M) := λ x y ,
   match x, y with
   | StateCon lt1 node1, StateCon lt2 node2 =>
       (lt1 = lt2 /\ node1 ≡ node2)
   end.
   
-Lemma cell_equiv_refl (cell: Cell) : cell_equiv cell cell.
+Lemma cell_equiv_refl (cell: Cell M) : cell_equiv cell cell.
 Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
 
 Instance inst_cell_equiv_refl : Reflexive cell_equiv.
 unfold Reflexive. intro. apply cell_equiv_refl. Defined.
     
-Lemma node_equiv_refl (node: Node) : node_equiv node node
-with branch_equiv_refl (branch: Branch) : branch_equiv branch branch.
+Lemma node_equiv_refl (node: Node M) : node_equiv node node
+with branch_equiv_refl (branch: Branch M) : branch_equiv branch branch.
 Proof.
  - destruct node. unfold node_equiv. repeat split.
   + apply cell_equiv_refl.
@@ -541,9 +472,9 @@ unfold Reflexive. intro. apply node_equiv_refl. Defined.
 Instance inst_branch_equiv_refl : Reflexive branch_equiv.
 unfold Reflexive. intro. apply branch_equiv_refl. Defined.
 
-Lemma op_trivial_node (node1: Node) (node2: Node)
+Lemma op_trivial_node (node1: Node M) (node2: Node M)
   (istriv: node_trivial node2) : ((node1 ⋅ node2) ≡ node1)
-with op_trivial_branch (branch1: Branch) (branch2: Branch)
+with op_trivial_branch (branch1: Branch M) (branch2: Branch M)
   (istriv: branch_trivial branch2) : ((branch1 ⋅ branch2) ≡ branch1).
 Proof.
   - destruct node1; destruct node2.
@@ -552,8 +483,8 @@ Proof.
     unfold node_op. fold branch_op. destruct c. destruct c0.
         unfold node_equiv. fold branch_equiv. unfold cell_op. unfold cell_equiv.
             unfold node_trivial in istriv. fold branch_trivial in istriv.
-            destruct istriv. unfold cell_trivial in *. destruct H0. repeat split.
-        -- rewrite H2. apply unit_dot.
+            destruct istriv. unfold cell_trivial in *. destruct H. repeat split.
+        -- rewrite H1. apply unit_dot.
         -- set_solver.
         -- apply hyp; trivial.
   - destruct branch1; destruct branch2.
@@ -565,18 +496,18 @@ Proof.
     + unfold "⋅". unfold branch_op. apply branch_equiv_refl.
 Qed.
 
-Lemma cell_equiv_symm (cell1: Cell) (cell2: Cell)
+Lemma cell_equiv_symm (cell1: Cell M) (cell2: Cell M)
   (iseq: cell_equiv cell1 cell2) : (cell_equiv cell2 cell1).
-Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H1. repeat split.
+Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H. repeat split.
   * symmetry; trivial.
 Qed.
 
 Instance inst_cell_equiv_symm : Symmetric cell_equiv.
 unfold Symmetric. intro. apply cell_equiv_symm. Defined.
 
-Lemma node_equiv_symm (node1: Node) (node2: Node)
+Lemma node_equiv_symm (node1: Node M) (node2: Node M)
   (iseq: node_equiv node1 node2) : (node_equiv node2 node1)
-with branch_equiv_symm (branch1: Branch) (branch2: Branch)
+with branch_equiv_symm (branch1: Branch M) (branch2: Branch M)
   (iseq: branch_equiv branch1 branch2) : (branch_equiv branch2 branch1).
 Proof.
   - destruct node1, node2.
@@ -599,7 +530,7 @@ Instance inst_node_equiv_symm : Symmetric node_equiv := node_equiv_symm.
 
 Instance inst_branch_equiv_symm : Symmetric branch_equiv := branch_equiv_symm.
 
-Lemma state_equiv_symm (state1 state2: State)
+Lemma state_equiv_symm (state1 state2: State M)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
 Proof.
   destruct state1, state2; unfold state_equiv in *; trivial.
@@ -608,7 +539,7 @@ Qed.
 
 Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
 
-Lemma cell_equiv_trans (cell1: Cell) (cell2: Cell) (cell3: Cell)
+Lemma cell_equiv_trans (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   (iseq: cell_equiv cell1 cell2)
   (iseq2: cell_equiv cell2 cell3)
   : (cell_equiv cell1 cell3).
@@ -616,7 +547,7 @@ Proof. unfold cell_equiv in *. destruct cell1, cell2, cell3. unfold equiv_func i
 
 Instance inst_cell_equiv_trans : Transitive cell_equiv := cell_equiv_trans.
 
-Lemma cell_trivial_of_equiv (cell1: Cell) (cell2: Cell)
+Lemma cell_trivial_of_equiv (cell1: Cell M) (cell2: Cell M)
   (iseq: cell1 ≡ cell2)
   (istriv: cell_trivial cell1)
   : cell_trivial cell2.
@@ -630,11 +561,11 @@ unfold Proper, equiv, impl, "==>". intros. apply cell_trivial_of_equiv with (cel
   + unfold "≡"; trivial. + trivial.
 Qed.
 
-Lemma node_trivial_of_equiv (node1: Node) (node2: Node)
+Lemma node_trivial_of_equiv (node1: Node M) (node2: Node M)
   (iseq: node1 ≡ node2)
   (istriv: node_trivial node1)
   : node_trivial node2
-with branch_trivial_of_equiv (branch1: Branch) (branch2: Branch)
+with branch_trivial_of_equiv (branch1: Branch M) (branch2: Branch M)
   (iseq: branch1 ≡ branch2)
   (istriv: branch_trivial branch1)
   : branch_trivial branch2.
@@ -644,7 +575,7 @@ Proof.
       cbn [node_trivial]. cbn [node_trivial] in istriv. destruct istriv. 
       unfold "≡" in iseq. unfold node_equiv in iseq. destruct iseq.
       split.
-       * rewrite <- H2. trivial.
+       * rewrite <- H1. trivial.
        * apply ind_hyp; trivial.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_trivial_of_equiv branch1 branch2.
@@ -670,11 +601,11 @@ unfold Proper, equiv, impl, "==>". intros. apply branch_trivial_of_equiv with (b
   + unfold "≡"; trivial. + trivial.
 Qed.
 
-Lemma node_equiv_of_trivial (node1: Node) (node2: Node)
+Lemma node_equiv_of_trivial (node1: Node M) (node2: Node M)
   (istriv1: node_trivial node1)
   (istriv: node_trivial node2)
   : node1 ≡ node2
-with branch_equiv_of_trivial (branch1: Branch) (branch2: Branch)
+with branch_equiv_of_trivial (branch1: Branch M) (branch2: Branch M)
   (istriv1: branch_trivial branch1)
   (istriv: branch_trivial branch2)
   : branch1 ≡ branch2.
@@ -693,11 +624,11 @@ Proof.
     + unfold branch_equiv. trivial.
 Qed.
 
-Lemma node_equiv_trans (node1: Node) (node2: Node) (node3: Node)
+Lemma node_equiv_trans (node1: Node M) (node2: Node M) (node3: Node M)
   (iseq: node1 ≡ node2)
   (iseq2: node2 ≡ node3)
    : (node1 ≡ node3)
-with branch_equiv_trans (branch1: Branch) (branch2: Branch) (branch3: Branch)
+with branch_equiv_trans (branch1: Branch M) (branch2: Branch M) (branch3: Branch M)
   (iseq: branch_equiv branch1 branch2)
   (iseq2: branch_equiv branch2 branch3)
    : (branch_equiv branch1 branch3).
@@ -727,7 +658,7 @@ Qed.
 Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
 Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
 
-Lemma state_equiv_trans (state1: State) (state2: State) (state3: State)
+Lemma state_equiv_trans (state1: State M) (state2: State M) (state3: State M)
   (iseq: state1 ≡ state2)
   (iseq2: state2 ≡ state3)
    : (state1 ≡ state3).
@@ -739,19 +670,19 @@ Qed.
 
 Instance inst_state_equiv_trans : Transitive state_equiv := state_equiv_trans.
 
-Lemma cell_op_equiv (c c0 c1 : Cell)
+Lemma cell_op_equiv (c c0 c1 : Cell M)
   (eq1: c0 ≡ c1)
   : ((c ⋅ c0) ≡ (c ⋅ c1)).
 Proof.
   destruct c0, c1, c. unfold cell_op. unfold cell_equiv in *. destruct eq1.
-      destruct H1. repeat split.
-  + rewrite H0. trivial.
+      destruct H0. repeat split.
+  + rewrite H. trivial.
 Qed.
 
-Lemma node_op_equiv (nodeLeft: Node) (nodeRight1 : Node) (nodeRight2: Node)
+Lemma node_op_equiv (nodeLeft: Node M) (nodeRight1 : Node M) (nodeRight2: Node M)
     (node_eq: nodeRight1 ≡ nodeRight2)
     : (nodeLeft ⋅ nodeRight1) ≡ (nodeLeft ⋅ nodeRight2)
-with branch_op_equiv (branchLeft: Branch) : ∀ (branchRight1 : Branch) (branchRight2: Branch)
+with branch_op_equiv (branchLeft: Branch M) : ∀ (branchRight1 : Branch M) (branchRight2: Branch M)
     (branch_eq: branchRight1 ≡ branchRight2) ,
     (branchLeft ⋅ branchRight1) ≡ (branchLeft ⋅ branchRight2).
 Proof.
@@ -778,17 +709,17 @@ Proof.
     + unfold branch_op. trivial.
 Qed.
 
-Lemma state_op_equiv (stateLeft: State) (stateRight1: State) (stateRight2: State)
+Lemma state_op_equiv (stateLeft: State M) (stateRight1: State M) (stateRight2: State M)
     (state_eq: stateRight1 ≡ stateRight2)
     : ((stateLeft ⋅ stateRight1) ≡ (stateLeft ⋅ stateRight2)).
 Proof. unfold state_op. unfold state_equiv in *. destruct stateLeft, stateRight1, stateRight2.
   + unfold "⋅", "≡" in *. destruct state_eq. repeat case_decide.
     * repeat split; trivial.
-      - rewrite H0; trivial.
+      - rewrite H; trivial.
       - apply node_op_equiv; trivial.
 Qed.
 
-Lemma cell_op_comm (cell1: Cell) (cell2: Cell)
+Lemma cell_op_comm (cell1: Cell M) (cell2: Cell M)
   : (cell1 ⋅ cell2) ≡ (cell2 ⋅ cell1).
 Proof.
   destruct cell1, cell2; unfold cell_op. unfold cell_equiv. repeat split.
@@ -798,9 +729,9 @@ Qed.
 
 Instance inst_cell_op_comm : Comm cell_equiv cell_op := cell_op_comm.
 
-Lemma node_op_comm (node1: Node) (node2: Node)
+Lemma node_op_comm (node1: Node M) (node2: Node M)
   : (node1 ⋅ node2) ≡ (node2 ⋅ node1)
-with branch_op_comm (branch1: Branch) (branch2: Branch)
+with branch_op_comm (branch1: Branch M) (branch2: Branch M)
   : (branch1 ⋅ branch2) ≡ (branch2 ⋅ branch1).
 Proof.
   - unfold "⋅", "≡" in *. destruct node1, node2.
@@ -819,7 +750,7 @@ Qed.
 Instance inst_node_op_comm : Comm node_equiv node_op := node_op_comm.
 Instance inst_branch_op_comm : Comm branch_equiv branch_op := branch_op_comm.
 
-Lemma state_op_comm (state1: State) (state2: State)
+Lemma state_op_comm (state1: State M) (state2: State M)
   : (state1 ⋅ state2) ≡ (state2 ⋅ state1).
 Proof.
   unfold "⋅","≡" in *.
@@ -830,7 +761,7 @@ Qed.
 
 Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
 
-Lemma state_op_equiv_left (stateLeft1: State) (stateLeft2: State) (stateRight: State)
+Lemma state_op_equiv_left (stateLeft1: State M) (stateLeft2: State M) (stateRight: State M)
     (state_eq: stateLeft1 ≡ stateLeft2)
     : (stateLeft1 ⋅ stateRight) ≡ (stateLeft2 ⋅ stateRight).
 Proof.
@@ -839,7 +770,7 @@ Proof.
   apply state_op_equiv. trivial.
 Qed.
 
-Lemma cell_op_assoc (cell1: Cell) (cell2: Cell) (cell3: Cell)
+Lemma cell_op_assoc (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   : (cell1 ⋅ (cell2 ⋅ cell3)) ≡ ((cell1 ⋅ cell2) ⋅ cell3).
 Proof.
   unfold "⋅", "≡".
@@ -850,9 +781,9 @@ Qed.
 
 Instance inst_cell_op_assoc : Assoc equiv cell_op := cell_op_assoc.
 
-Lemma node_op_assoc (node1: Node) (node2: Node) (node3: Node)
+Lemma node_op_assoc (node1: Node M) (node2: Node M) (node3: Node M)
   : (node1 ⋅ (node2 ⋅ node3)) ≡ ((node1 ⋅ node2) ⋅ node3)
-with branch_op_assoc (branch1: Branch) (branch2: Branch) (branch3: Branch)
+with branch_op_assoc (branch1: Branch M) (branch2: Branch M) (branch3: Branch M)
   : (branch1 ⋅ (branch2 ⋅ branch3)) ≡ ((branch1 ⋅ branch2) ⋅ branch3).
 Proof.
   - unfold "⋅", "≡". destruct node1, node2, node3.
@@ -875,7 +806,7 @@ Qed.
 Instance inst_node_op_assoc : Assoc equiv node_op := node_op_assoc.
 Instance inst_branch_op_assoc : Assoc equiv branch_op := branch_op_assoc.
 
-Lemma state_op_assoc (state1: State) (state2: State) (state3: State)
+Lemma state_op_assoc (state1: State M) (state2: State M) (state3: State M)
   : (state1 ⋅ (state2 ⋅ state3)) ≡ ((state1 ⋅ state2) ⋅ state3).
 Proof.
   unfold "⋅", "≡".
@@ -887,31 +818,31 @@ Qed.
 
 Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 
-Definition state_inv (state: State) :=
+Definition state_inv (state: State M) :=
   match state with
   | StateCon active node =>
-       node_all_total_in_refinement_domain node active 0
+       node_all_total_in_refinement_domain node active
        /\
        multiset_no_dupes active
   end
 .
 
-Global Instance alls_valid_instance : Valid State := λ x, exists y , state_inv (state_op x y).
+Global Instance alls_valid_instance : Valid (State M) := λ x, exists y , state_inv (state_op x y).
 
-Lemma cell_view_of_trivial (cell: Cell) (lifetime: Lifetime)
+Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
 Proof. destruct cell. unfold cell_view. unfold cell_trivial in *.
   unfold conjoin_reserved_over_lifetime.
-  destruct eq. rewrite H0. rewrite set_fold_empty.
+  destruct eq. rewrite H. rewrite set_fold_empty.
     unfold umbrella_unit. trivial.
 Qed.
 
-Lemma node_view_of_trivial (node: Node) (lifetime: Lifetime)
+Lemma node_view_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node) (m: M)
   : node_view node lifetime m
-with branch_view_of_trivial (branch: Branch) (lifetime: Lifetime) (idx: nat)
+with branch_view_of_trivial (branch: Branch M) (lifetime: Lifetime)
   (eq: branch_trivial branch) (m: M)
-  : branch_view branch lifetime idx m.
+  : branch_view branch lifetime m.
 Proof.
   - destruct node.
     + have ind_hyp := branch_view_of_trivial b.
@@ -935,27 +866,27 @@ Proof.
     + unfold branch_view. unfold umbrella_unit. trivial.
 Qed.
 
-Lemma cell_view_of_equiv (cell1: Cell) (cell2: Cell) (lifetime: Lifetime)
+Lemma cell_view_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
   (eq: cell1 ≡ cell2) (m: M)
   : cell_view cell1 lifetime m = cell_view cell2 lifetime m.
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_view.
     unfold conjoin_reserved_over_lifetime.
-    unfold "≡" in eq. destruct eq. rewrite H1. trivial.
+    unfold "≡" in eq. destruct eq. rewrite H0. trivial.
 Qed.
 
-Lemma node_view_of_equiv (node1: Node) (node2: Node) (lifetime: Lifetime)
+Lemma node_view_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
   (eq: node_equiv node1 node2) (m: M)
   : node_view node1 lifetime m <-> node_view node2 lifetime m
-with branch_view_of_equiv (branch1: Branch) (branch2: Branch) (lifetime: Lifetime) (idx: nat)
+with branch_view_of_equiv (branch1: Branch M) (branch2: Branch M) (lifetime: Lifetime)
   (eq: branch_equiv branch1 branch2) (m: M)
-  : branch_view branch1 lifetime idx m <-> branch_view branch2 lifetime idx m.
+  : branch_view branch1 lifetime m <-> branch_view branch2 lifetime m.
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_view_of_equiv b b0.
     crush.
-      * unfold conjoin_umbrella in *. destruct H2. destruct H2. exists x. exists x0.
+      * unfold conjoin_umbrella in *. destruct H1. destruct H1. exists x. exists x0.
         rewrite <- ind_hyp; trivial. rewrite <- (cell_view_of_equiv c c0); trivial.
-      * unfold conjoin_umbrella in *. destruct H2. destruct H2. exists x. exists x0.
+      * unfold conjoin_umbrella in *. destruct H1. destruct H1. exists x. exists x0.
         rewrite ind_hyp; trivial. rewrite (cell_view_of_equiv c c0); trivial.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_view_of_equiv branch1 branch2.
@@ -964,13 +895,13 @@ Proof.
       crush.
       * unfold conjoin_umbrella in *. unfold project_fancy in *.
           unfold rel_project_fancy in *.
-          destruct H2. destruct H2. destruct H2. destruct H2. destruct H2.
+          destruct H1. destruct H1. destruct H1. destruct H1. destruct H1.
           exists x. exists x0. split.
           ** exists x1. exists x2. rewrite <- ind_hyp_node; trivial.
           ** rewrite <- ind_hyp_branch; trivial.
       * unfold conjoin_umbrella in *. unfold project_fancy in *.
           unfold rel_project_fancy in *.
-          destruct H2. destruct H2. destruct H2. destruct H2. destruct H2.
+          destruct H1. destruct H1. destruct H1. destruct H1. destruct H1.
           exists x. exists x0. split.
           ** exists x1. exists x2. rewrite ind_hyp_node; trivial.
           ** rewrite ind_hyp_branch; trivial.
@@ -985,21 +916,21 @@ Proof.
     + trivial.
 Qed.
   
-Lemma cell_total_of_trivial (cell: Cell) (lifetime: Lifetime)
+Lemma cell_total_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) : cell_total cell lifetime = unit.
 Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
   replace (sum_reserved_over_lifetime g lifetime) with unit.
-  - destruct eq. rewrite H1. apply unit_dot.
-  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H0. rewrite set_fold_empty.
+  - destruct eq. rewrite H0. apply unit_dot.
+  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H. rewrite set_fold_empty.
     trivial.
 Qed.
 
-Lemma node_total_of_trivial (node: Node) (lifetime: Lifetime)
+Lemma node_total_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node)
   : node_total node lifetime = unit
-with branch_total_of_trivial (branch: Branch) (lifetime: Lifetime) (idx: nat)
+with branch_total_of_trivial (branch: Branch M) (lifetime: Lifetime)
   (eq: branch_trivial branch)
-  : branch_total branch lifetime idx = unit.
+  : branch_total branch lifetime = unit.
 Proof.
   - destruct node.
     + have ind_hyp := branch_total_of_trivial b.
@@ -1015,19 +946,19 @@ Proof.
     + unfold branch_total. trivial.
 Qed.
 
-Lemma cell_total_of_equiv (cell1: Cell) (cell2: Cell) (lifetime: Lifetime)
+Lemma cell_total_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
   (eq: cell1 ≡ cell2)
   : cell_total cell1 lifetime = cell_total cell2 lifetime.
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
-    destruct eq. destruct H1. rewrite H0. f_equal.
+    destruct eq. destruct H0. rewrite H. f_equal.
 Qed.
 
-Lemma node_total_of_equiv (node1: Node) (node2: Node) (lifetime: Lifetime)
+Lemma node_total_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
   (eq: node1 ≡ node2)
   : node_total node1 lifetime = node_total node2 lifetime
-with branch_total_of_equiv (branch1: Branch) (branch2: Branch) (lifetime: Lifetime) (idx: nat)
+with branch_total_of_equiv (branch1: Branch M) (branch2: Branch M) (lifetime: Lifetime)
   (eq: branch_equiv branch1 branch2)
-  : branch_total branch1 lifetime idx = branch_total branch2 lifetime idx.
+  : branch_total branch1 lifetime = branch_total branch2 lifetime.
 Proof.
   - unfold "≡" in *. destruct node1, node2.
     + have ind_hyp := branch_total_of_equiv b b0.
@@ -1046,10 +977,10 @@ Proof.
 Qed.
 
 
-Lemma node_all_total_in_refinement_domain_of_trivial (n: Node) (lifetime: Lifetime) (idx: nat)
-    (triv: node_trivial n) : node_all_total_in_refinement_domain n lifetime idx
-with branch_all_total_in_refinement_domain_of_trivial (b: Branch) (lifetime: Lifetime) (idx: nat)
-    (triv: branch_trivial b) : branch_all_total_in_refinement_domain b lifetime idx.
+Lemma node_all_total_in_refinement_domain_of_trivial (n: Node M) (lifetime: Lifetime)
+    (triv: node_trivial n) : node_all_total_in_refinement_domain n lifetime
+with branch_all_total_in_refinement_domain_of_trivial (b: Branch M) (lifetime: Lifetime)
+    (triv: branch_trivial b) : branch_all_total_in_refinement_domain b lifetime.
 Proof.
   - destruct n.
     + have ind_hyp := branch_all_total_in_refinement_domain_of_trivial b.
@@ -1067,17 +998,17 @@ Proof.
     + unfold branch_all_total_in_refinement_domain. trivial.
 Qed.
 
-Lemma node_all_total_in_refinement_domain_of_equiv (node1: Node) (node2: Node)
-      (lifetime: Lifetime) (idx: nat)
+Lemma node_all_total_in_refinement_domain_of_equiv (node1: Node M) (node2: Node M)
+      (lifetime: Lifetime)
     (eq: node_equiv node1 node2)
-    (rv: node_all_total_in_refinement_domain node1 lifetime idx)
-    : (node_all_total_in_refinement_domain node2 lifetime idx)
+    (rv: node_all_total_in_refinement_domain node1 lifetime)
+    : (node_all_total_in_refinement_domain node2 lifetime)
 with
-  branch_all_total_in_refinement_domain_of_equiv (branch1: Branch) (branch2: Branch)
-      (lifetime: Lifetime) (idx: nat)
+  branch_all_total_in_refinement_domain_of_equiv (branch1: Branch M) (branch2: Branch M)
+      (lifetime: Lifetime)
     (eq: branch_equiv branch1 branch2)
-    (rv: branch_all_total_in_refinement_domain branch1 lifetime idx)
-    : (branch_all_total_in_refinement_domain branch2 lifetime idx).
+    (rv: branch_all_total_in_refinement_domain branch1 lifetime)
+    : (branch_all_total_in_refinement_domain branch2 lifetime).
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_all_total_in_refinement_domain_of_equiv b b0. clear node_all_total_in_refinement_domain_of_equiv. clear branch_all_total_in_refinement_domain_of_equiv.
@@ -1099,7 +1030,7 @@ Proof.
     + trivial.
 Qed.
 
-Lemma state_inv_of_equiv (s: State) (t: State)
+Lemma state_inv_of_equiv (s: State M) (t: State M)
     (eq: state_equiv s t)
     (inv_s: state_inv s) : state_inv t.
 Proof.
@@ -1112,7 +1043,7 @@ Proof.
     * destruct inv_s. destruct eq. rewrite <- H2. trivial.
 Qed.
 
-Definition allstate_ra_mixin : RAMixin State.
+Definition allstate_ra_mixin : RAMixin (State M).
 Proof. split.
   - unfold Proper, "==>". intros. apply state_op_equiv. trivial.
   - unfold pcore. unfold state_pcore. intros. crush.
