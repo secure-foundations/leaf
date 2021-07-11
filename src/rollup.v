@@ -80,7 +80,7 @@ Context {M : Type}.
 Context `{!EqDecision M}.
 Context `{!Countable M}.
 Context `{!TPCM M}.
-Context {ref: Refinement M M}.
+Context (ref: Refinement M M).
 
 Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : M :=
   match reserved with
@@ -827,7 +827,7 @@ Definition state_inv (state: State M) :=
   end
 .
 
-Global Instance alls_valid_instance : Valid (State M) := λ x, exists y , state_inv (state_op x y).
+Global Instance state_valid : Valid (State M) := λ x, exists y , state_inv (state_op x y).
 
 Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
@@ -1036,11 +1036,11 @@ Lemma state_inv_of_equiv (s: State M) (t: State M)
 Proof.
   unfold state_inv in *. unfold state_equiv in *. destruct t; destruct s; trivial.
   + split.
-    * destruct inv_s. trivial. destruct eq. rewrite <- H2.
+    * destruct inv_s. trivial. destruct eq. rewrite <- H1.
         apply node_all_total_in_refinement_domain_of_equiv with (node1 := n0).
-        ** unfold "≡" in H3. trivial.
+        ** unfold "≡" in H2. trivial.
         ** trivial.
-    * destruct inv_s. destruct eq. rewrite <- H2. trivial.
+    * destruct inv_s. destruct eq. rewrite <- H1. trivial.
 Qed.
 
 Definition allstate_ra_mixin : RAMixin (State M).
@@ -1048,7 +1048,7 @@ Proof. split.
   - unfold Proper, "==>". intros. apply state_op_equiv. trivial.
   - unfold pcore. unfold state_pcore. intros. crush.
   - unfold cmra.valid. unfold "==>", alls_valid_instance. unfold impl, Proper. intros.
-     destruct H1. exists x0. apply state_inv_of_equiv with (s := state_op x x0).
+     destruct H0. exists x0. apply state_inv_of_equiv with (s := state_op x x0).
      * apply state_op_equiv_left. trivial.
      * trivial.
   - unfold Assoc. intros. apply state_op_assoc.
@@ -1057,10 +1057,25 @@ Proof. split.
   - unfold pcore. unfold state_pcore. crush.
   - unfold pcore. unfold state_pcore. crush.
   - intros. unfold "✓" in *. unfold alls_valid_instance in *.
-      destruct H0. exists (state_op y x0). unfold op in H0.
+      destruct H. exists (state_op y x0). unfold op in H.
         apply state_inv_of_equiv with (s := (state_op (state_op x y) x0)); trivial.
         apply state_equiv_symm.
         apply state_op_assoc.
 Qed.
 
 End RollupRA.
+
+(*
+Print alls_valid_instance.
+
+Context {M : Type}.
+Context `{!EqDecision M}.
+Context `{!Countable M}.
+Context `{!TPCM M}.
+Context {ref: Refinement M M}.
+
+
+Local Instance valid_state : Valid (State M) := alls_valid_instance ref.
+
+Definition a (x: State M) := ✓ x.
+*)
