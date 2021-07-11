@@ -10,25 +10,33 @@ From stdpp Require Import list.
 Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 
-Definition PathLoc := list nat.
+Definition PathLoc : Type := list nat * nat.
+Definition plend (pl: PathLoc) := match pl with (_, l) => l end.
 
-Context {M: Type} `{!EqDecision M, !TPCM M} `{!Countable M}.
-Context `{!EqDecision RefinementIndex}.
-Context {refinement_of_index : RefinementIndex -> Refinement M M}.
+Section Indexing.
 
-Definition node_of_pl (node: Node M) (pl: PathLoc) : Node M. Admitted.
-Definition every_node (node: Node M) (fn : Node M -> Prop) : Prop. Admitted.
+Context {M: Type}  `{!EqDecision M, !Countable M}.
+(*Context `{!EqDecision RefinementIndex}.
+Context {refinement_of_index : RefinementIndex -> Refinement M M}.*)
+
+Definition node_of_pl (branch: Branch M) (pl: PathLoc) : Node M. Admitted.
+Definition cell_of_pl (branch: Branch M) (pl: PathLoc) : Cell M. Admitted.
+Definition every_node (branch: Branch M) (fn : Node M -> nat -> Prop) : Prop. Admitted.
+
+Context `{!TPCM M}.
 
 Lemma every_node_equiv_forall
-    (node : Node M) (fn : Node M -> Prop) (rtriv: ∀ n , node_trivial n -> fn n)
-  : (every_node node fn) <-> (forall pl , fn (node_of_pl node pl)). Admitted.
+    (branch : Branch M) (fn : Node M -> nat -> Prop)
+    (rtriv: ∀ n idx , node_trivial n -> fn n idx)
+  : (every_node branch fn) <-> (forall pl , fn (node_of_pl branch pl) (plend pl)). Admitted.
 
 Lemma forall_node_op
-    (node1 : Node M) (node2 : Node M)
-  : forall pl , (node_of_pl node1 pl) ⋅ (node_of_pl node2 pl) ≡ node_of_pl (node1 ⋅ node2) pl.
+    (branch1 : Branch M) (branch2 : Branch M)
+  : forall pl , (node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl.
 Admitted.
 
-Lemma equiv_existentiality_cells
+(*Lemma equiv_existentionality_cells
     (node1 : Node M) (node2 : Node M)
-  : forall pl , (node_of_pl node
+  : forall pl , (node_of_pl node*)
   
+End Indexing.

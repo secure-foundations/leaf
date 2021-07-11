@@ -53,12 +53,12 @@ Global Instance countable_lifetime : Countable Lifetime. Admitted.
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
 
-Inductive Cell M `{EqDecision M} `{Countable M} : Type :=
+Inductive Cell M `{Countable M} : Type :=
   | CellCon :
       M ->
       gset (Lifetime * M) ->
           Cell M.
-Arguments CellCon {M}%type_scope {EqDecision0 EqDecision1 H} _ _.
+Arguments CellCon {M}%type_scope {EqDecision0 H} _ _.
 
 Inductive Node M `{EqDecision M} `{Countable M} : Type :=
   | CellNode : Cell M -> Branch M -> Node M
