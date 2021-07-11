@@ -47,8 +47,8 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
 
 Definition Lifetime := multiset nat.
 
-Instance eqdec_lifetime : EqDecision Lifetime. Admitted.
-Instance countable_lifetime : Countable Lifetime. Admitted.
+Global Instance eqdec_lifetime : EqDecision Lifetime. Admitted.
+Global Instance countable_lifetime : Countable Lifetime. Admitted.
 
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
@@ -289,7 +289,7 @@ Global Existing Instances node_equiv branch_equiv.
 
 Global Instance state_pcore : PCore (State M) := λ state , None.
 
-Instance cell_op : Op (Cell M) := λ (x: Cell M) (y: Cell M) ,
+Global Instance cell_op : Op (Cell M) := λ (x: Cell M) (y: Cell M) ,
   match x, y with
   | CellCon m1 reserved1,
     CellCon m2 reserved2 =>
@@ -322,7 +322,7 @@ Definition node_op : Op (Node M)
   := Eval cbv [internal_node_op internal_branch_op] in internal_node_op.
 Definition branch_op : Op (Branch M)
   := Eval cbv [internal_node_op internal_branch_op] in internal_branch_op.
-Existing Instances node_op branch_op.
+Global Existing Instances node_op branch_op.
 
 Global Instance state_op : Op (State M) := λ x y ,
   match x, y with
@@ -339,7 +339,7 @@ Global Instance state_equiv : Equiv (State M) := λ x y ,
 Lemma cell_equiv_refl (cell: Cell M) : cell_equiv cell cell.
 Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
 
-Instance inst_cell_equiv_refl : Reflexive cell_equiv.
+Global Instance inst_cell_equiv_refl : Reflexive cell_equiv.
 unfold Reflexive. intro. apply cell_equiv_refl. Defined.
     
 Lemma node_equiv_refl (node: Node M) : node_equiv node node
@@ -355,10 +355,10 @@ Proof.
   + unfold branch_equiv. unfold branch_trivial. trivial.
 Qed.
 
-Instance inst_node_equiv_refl : Reflexive node_equiv.
+Global Instance inst_node_equiv_refl : Reflexive node_equiv.
 unfold Reflexive. intro. apply node_equiv_refl. Defined.
 
-Instance inst_branch_equiv_refl : Reflexive branch_equiv.
+Global Instance inst_branch_equiv_refl : Reflexive branch_equiv.
 unfold Reflexive. intro. apply branch_equiv_refl. Defined.
 
 Lemma op_trivial_node (node1: Node M) (node2: Node M)
@@ -391,7 +391,7 @@ Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H.
   * symmetry; trivial.
 Qed.
 
-Instance inst_cell_equiv_symm : Symmetric cell_equiv.
+Global Instance inst_cell_equiv_symm : Symmetric cell_equiv.
 unfold Symmetric. intro. apply cell_equiv_symm. Defined.
 
 Lemma node_equiv_symm (node1: Node M) (node2: Node M)
@@ -415,9 +415,9 @@ Proof.
     + trivial.
 Qed.
 
-Instance inst_node_equiv_symm : Symmetric node_equiv := node_equiv_symm.
+Global Instance inst_node_equiv_symm : Symmetric node_equiv := node_equiv_symm.
 
-Instance inst_branch_equiv_symm : Symmetric branch_equiv := branch_equiv_symm.
+Global Instance inst_branch_equiv_symm : Symmetric branch_equiv := branch_equiv_symm.
 
 Lemma state_equiv_symm (state1 state2: State M)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
@@ -426,7 +426,7 @@ Proof.
     - destruct seq; split. * symmetry; trivial. * apply node_equiv_symm; trivial.
 Qed.
 
-Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
+Global Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
 
 Lemma cell_equiv_trans (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   (iseq: cell_equiv cell1 cell2)
@@ -434,7 +434,7 @@ Lemma cell_equiv_trans (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   : (cell_equiv cell1 cell3).
 Proof. unfold cell_equiv in *. destruct cell1, cell2, cell3. unfold equiv_func in *. crush. Qed.
 
-Instance inst_cell_equiv_trans : Transitive cell_equiv := cell_equiv_trans.
+Global Instance inst_cell_equiv_trans : Transitive cell_equiv := cell_equiv_trans.
 
 Lemma cell_trivial_of_equiv (cell1: Cell M) (cell2: Cell M)
   (iseq: cell1 ≡ cell2)
@@ -444,7 +444,7 @@ Proof.
   unfold "≡", cell_equiv, cell_trivial in *.  destruct cell1, cell2; crush.
 Qed.
 
-Instance inst_cell_trivial_of_equiv : Proper (equiv ==> impl) cell_trivial.
+Global Instance inst_cell_trivial_of_equiv : Proper (equiv ==> impl) cell_trivial.
 Proof.
 unfold Proper, equiv, impl, "==>". intros. apply cell_trivial_of_equiv with (cell1 := x).
   + unfold "≡"; trivial. + trivial.
@@ -478,13 +478,13 @@ Proof.
     + unfold branch_trivial. trivial.
 Qed.
 
-Instance inst_node_trivial_of_equiv : Proper (equiv ==> impl) node_trivial.
+Global Instance inst_node_trivial_of_equiv : Proper (equiv ==> impl) node_trivial.
 Proof.
 unfold Proper, equiv, impl, "==>". intros. apply node_trivial_of_equiv with (node1 := x).
   + unfold "≡"; trivial. + trivial.
 Qed.
 
-Instance inst_branch_trivial_of_equiv : Proper (equiv ==> impl) branch_trivial.
+Global Instance inst_branch_trivial_of_equiv : Proper (equiv ==> impl) branch_trivial.
 Proof.
 unfold Proper, equiv, impl, "==>". intros. apply branch_trivial_of_equiv with (branch1 := x).
   + unfold "≡"; trivial. + trivial.
@@ -544,8 +544,8 @@ Proof.
     + trivial.
 Qed.
 
-Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
-Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
+Global Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
+Global Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
 
 Lemma state_equiv_trans (state1: State M) (state2: State M) (state3: State M)
   (iseq: state1 ≡ state2)
@@ -557,7 +557,7 @@ Proof.
     - split; crush.
 Qed.
 
-Instance inst_state_equiv_trans : Transitive state_equiv := state_equiv_trans.
+Global Instance inst_state_equiv_trans : Transitive state_equiv := state_equiv_trans.
 
 Lemma cell_op_equiv (c c0 c1 : Cell M)
   (eq1: c0 ≡ c1)
@@ -616,7 +616,7 @@ Proof.
     - set_solver.
 Qed.
 
-Instance inst_cell_op_comm : Comm cell_equiv cell_op := cell_op_comm.
+Global Instance inst_cell_op_comm : Comm cell_equiv cell_op := cell_op_comm.
 
 Lemma node_op_comm (node1: Node M) (node2: Node M)
   : (node1 ⋅ node2) ≡ (node2 ⋅ node1)
@@ -636,8 +636,8 @@ Proof.
     + apply branch_equiv_refl.
 Qed.
 
-Instance inst_node_op_comm : Comm node_equiv node_op := node_op_comm.
-Instance inst_branch_op_comm : Comm branch_equiv branch_op := branch_op_comm.
+Global Instance inst_node_op_comm : Comm node_equiv node_op := node_op_comm.
+Global Instance inst_branch_op_comm : Comm branch_equiv branch_op := branch_op_comm.
 
 Lemma state_op_comm (state1: State M) (state2: State M)
   : (state1 ⋅ state2) ≡ (state2 ⋅ state1).
@@ -648,7 +648,7 @@ Proof.
   * apply node_op_comm.
 Qed.
 
-Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
+Global Instance inst_state_op_comm : Comm state_equiv state_op := state_op_comm.
 
 Lemma state_op_equiv_left (stateLeft1: State M) (stateLeft2: State M) (stateRight: State M)
     (state_eq: stateLeft1 ≡ stateLeft2)
@@ -668,7 +668,7 @@ Proof.
     - set_solver.
 Qed.
 
-Instance inst_cell_op_assoc : Assoc equiv cell_op := cell_op_assoc.
+Global Instance inst_cell_op_assoc : Assoc equiv cell_op := cell_op_assoc.
 
 Lemma node_op_assoc (node1: Node M) (node2: Node M) (node3: Node M)
   : (node1 ⋅ (node2 ⋅ node3)) ≡ ((node1 ⋅ node2) ⋅ node3)
@@ -692,8 +692,8 @@ Proof.
     + apply branch_equiv_refl.
 Qed.
 
-Instance inst_node_op_assoc : Assoc equiv node_op := node_op_assoc.
-Instance inst_branch_op_assoc : Assoc equiv branch_op := branch_op_assoc.
+Global Instance inst_node_op_assoc : Assoc equiv node_op := node_op_assoc.
+Global Instance inst_branch_op_assoc : Assoc equiv branch_op := branch_op_assoc.
 
 Lemma state_op_assoc (state1: State M) (state2: State M) (state3: State M)
   : (state1 ⋅ (state2 ⋅ state3)) ≡ ((state1 ⋅ state2) ⋅ state3).
@@ -705,7 +705,7 @@ Proof.
   * apply node_op_assoc.
 Qed.
 
-Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
+Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 
 Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
