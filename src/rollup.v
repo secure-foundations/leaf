@@ -739,24 +739,20 @@ Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
     destruct eq. destruct H0. rewrite H. f_equal.
 Qed.
 
-Context (ref: Refinement M M).
+Context (refs: nat -> Refinement M M).
 
-Definition rel_project (r: M) :=
-    match (rel M M ref) r with | Some t => t | None => unit end.
-
-Definition project (m: M) : M :=
-  rel_project m
-.
+Definition project (idx: nat) (r: M) :=
+    match (rel M M (refs idx)) r with | Some t => t | None => unit end.
 
 Fixpoint node_total (node: Node M) (lifetime: Lifetime) : M :=
   match node with
-  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime)
+  | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime 0)
   end
-with branch_total (branch: Branch M) (lifetime: Lifetime) : M :=
+with branch_total (branch: Branch M) (lifetime: Lifetime) (idx: nat) : M :=
   match branch with
   | BranchNil => unit
-  | BranchCons node branch => dot (project (node_total node lifetime))
-      (branch_total branch lifetime)
+  | BranchCons node branch => dot (project idx (node_total node lifetime))
+      (branch_total branch lifetime (S idx))
   end
 .
 
@@ -764,67 +760,68 @@ Definition project_umbrella
     (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
     λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
     
-Definition rel_project_fancy (um: M -> Prop) :=
-    λ x , ∃ a b , tpcm_le a x /\ rel M M ref b = Some a /\ um b.
+Definition rel_project_fancy (idx: nat) (um: M -> Prop) :=
+    λ x , ∃ a b , tpcm_le a x /\ rel M M (refs idx) b = Some a /\ um b.
   
-Definition project_fancy (um: M -> Prop) : (M -> Prop) :=
-  rel_project_fancy um
+Definition project_fancy (idx: nat) (um: M -> Prop) : (M -> Prop) :=
+  rel_project_fancy idx um
 .
 
 Fixpoint node_view (node: Node M) (lifetime: Lifetime) : (M -> Prop) :=
   match node with
-  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime)
+  | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime 0)
   end
-with branch_view (branch: Branch M) (lifetime: Lifetime) : (M -> Prop) :=
+with branch_view (branch: Branch M) (lifetime: Lifetime) (idx: nat) : (M -> Prop) :=
   match branch with
   | BranchNil => umbrella_unit
-  | BranchCons node branch => conjoin_umbrella (project_fancy (node_view node lifetime)) (branch_view branch lifetime)
+  | BranchCons node branch => conjoin_umbrella (project_fancy idx (node_view node lifetime)) (branch_view branch lifetime (S idx))
   end
 .
 
-Definition in_refinement_domain (m : M) :=
-  match rel M M ref m with | Some _ => True | None => False end.
-  Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) : Prop :=
+Definition in_refinement_domain (idx: nat) (m : M) :=
+  match rel M M (refs idx) m with | Some _ => True | None => False end.
+  
+Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) (idx: nat) : Prop :=
   match node with
   | CellNode _ branch =>
-         in_refinement_domain (node_total node lifetime)
-      /\ branch_all_total_in_refinement_domain branch lifetime
+         in_refinement_domain idx (node_total node lifetime)
+      /\ branch_all_total_in_refinement_domain branch lifetime 0
   end
-with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetime) : Prop :=
+with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetime) (idx: nat) : Prop :=
   match branch with
   | BranchNil => True
   | BranchCons node branch =>
-         node_all_total_in_refinement_domain node lifetime
-      /\ branch_all_total_in_refinement_domain branch lifetime
+         node_all_total_in_refinement_domain node lifetime idx
+      /\ branch_all_total_in_refinement_domain branch lifetime (S idx)
   end
 .
 
-Definition view_sat_projections (view : M -> Prop) (m : M)
-    (vrv : in_refinement_domain m)
+Definition view_sat_projections (idx: nat) (view : M -> Prop) (m : M)
+    (vrv : in_refinement_domain idx m)
     (vs: view_sat view m)
       : view_sat
-        (rel_project_fancy view) (*(node_view (CellNode (CellCon m o b0 g) b) lt))*)
-        (rel_project       m). (*(node_total (CellNode (CellCon m o b0 g) b) active))*)
+        (rel_project_fancy idx view)
+        (project           idx m).
 Proof. 
-  unfold rel_project_fancy. unfold rel_project. unfold view_sat. unfold tpcm_le.
-  exists (match rel M M ref m with | Some t => t | None => unit end).
+  unfold rel_project_fancy. unfold project. unfold view_sat. unfold tpcm_le.
+  exists (match rel M M (refs idx) m with | Some t => t | None => unit end).
   exists m.
   repeat split.
   - exists unit. apply unit_dot.
-  - unfold in_refinement_domain in vrv. destruct (rel M M ref m).
+  - unfold in_refinement_domain in vrv. destruct (rel M M (refs idx) m).
     + trivial.
     + contradiction.
   - unfold view_sat in vs. trivial.
 Qed.
 
-Lemma node_view_le_total (node: Node M) (lt: Lifetime) (active: Lifetime)
+Lemma node_view_le_total (node: Node M) (lt: Lifetime) (active: Lifetime) (idx: nat)
     (lt_is_active : lifetime_included active lt)
-    (ird: node_all_total_in_refinement_domain node active)
+    (ird: node_all_total_in_refinement_domain node active idx)
     : view_sat (node_view node lt) (node_total node active)
-with branch_view_le_total (branch: Branch M) (lt: Lifetime) (active: Lifetime)
+with branch_view_le_total (branch: Branch M) (lt: Lifetime) (active: Lifetime) (idx: nat)
     (lt_is_active : lifetime_included active lt)
-    (ird: branch_all_total_in_refinement_domain branch active)
-    : view_sat (branch_view branch lt) (branch_total branch active).
+    (ird: branch_all_total_in_refinement_domain branch active idx)
+    : view_sat (branch_view branch lt idx) (branch_total branch active idx).
 Proof.
  - destruct node.
       + unfold node_view. unfold node_total. apply view_sat_conjoin.
@@ -845,7 +842,7 @@ Proof.
           -- destruct c. apply view_sat_projections.
               ++ unfold branch_all_total_in_refinement_domain in ird. destruct ird.
                   destruct H. trivial.
-              ++ apply ind_node; trivial. 
+              ++ apply ind_node with (idx := idx); trivial. 
                   unfold branch_all_total_in_refinement_domain in ird. crush.
         * apply branch_view_le_total; trivial.
             unfold branch_all_total_in_refinement_domain in ird. crush.
@@ -856,7 +853,7 @@ Qed.
 Definition state_inv (state: State M) :=
   match state with
   | StateCon active node =>
-       node_all_total_in_refinement_domain node active
+       node_all_total_in_refinement_domain node active 0
        /\
        multiset_no_dupes active
   end
@@ -869,8 +866,8 @@ Lemma node_view_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node) (m: M)
   : node_view node lifetime m
 with branch_view_of_trivial (branch: Branch M) (lifetime: Lifetime)
-  (eq: branch_trivial branch) (m: M)
-  : branch_view branch lifetime m.
+  (eq: branch_trivial branch) (m: M) (idx: nat)
+  : branch_view branch lifetime idx m.
 Proof.
   - destruct node.
     + have ind_hyp := branch_view_of_trivial b.
@@ -898,8 +895,8 @@ Lemma node_view_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
   (eq: node_equiv node1 node2) (m: M)
   : node_view node1 lifetime m <-> node_view node2 lifetime m
 with branch_view_of_equiv (branch1: Branch M) (branch2: Branch M) (lifetime: Lifetime)
-  (eq: branch_equiv branch1 branch2) (m: M)
-  : branch_view branch1 lifetime m <-> branch_view branch2 lifetime m.
+  (eq: branch_equiv branch1 branch2) (m: M) (idx: nat)
+  : branch_view branch1 lifetime idx m <-> branch_view branch2 lifetime idx m.
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_view_of_equiv b b0.
@@ -941,8 +938,8 @@ Lemma node_total_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node)
   : node_total node lifetime = unit
 with branch_total_of_trivial (branch: Branch M) (lifetime: Lifetime)
-  (eq: branch_trivial branch)
-  : branch_total branch lifetime = unit.
+  (eq: branch_trivial branch) (idx: nat)
+  : branch_total branch lifetime idx = unit.
 Proof.
   - destruct node.
     + have ind_hyp := branch_total_of_trivial b.
@@ -954,7 +951,7 @@ Proof.
       have ind_hyp_node := node_total_of_trivial n.
       clear node_total_of_trivial. clear branch_total_of_trivial.
       crush. 
-      unfold project. unfold rel_project. rewrite rel_unit. apply unit_dot.
+      unfold project. unfold project. rewrite rel_unit. apply unit_dot.
     + unfold branch_total. trivial.
 Qed.
 
@@ -963,8 +960,8 @@ Lemma node_total_of_equiv (node1: Node M) (node2: Node M) (lifetime: Lifetime)
   (eq: node1 ≡ node2)
   : node_total node1 lifetime = node_total node2 lifetime
 with branch_total_of_equiv (branch1: Branch M) (branch2: Branch M) (lifetime: Lifetime)
-  (eq: branch_equiv branch1 branch2)
-  : branch_total branch1 lifetime = branch_total branch2 lifetime.
+  (eq: branch_equiv branch1 branch2) (idx: nat)
+  : branch_total branch1 lifetime idx = branch_total branch2 lifetime idx.
 Proof.
   - unfold "≡" in *. destruct node1, node2.
     + have ind_hyp := branch_total_of_equiv b b0.
@@ -983,10 +980,10 @@ Proof.
 Qed.
 
 
-Lemma node_all_total_in_refinement_domain_of_trivial (n: Node M) (lifetime: Lifetime)
-    (triv: node_trivial n) : node_all_total_in_refinement_domain n lifetime
-with branch_all_total_in_refinement_domain_of_trivial (b: Branch M) (lifetime: Lifetime)
-    (triv: branch_trivial b) : branch_all_total_in_refinement_domain b lifetime.
+Lemma node_all_total_in_refinement_domain_of_trivial (n: Node M) (lifetime: Lifetime) (idx: nat)
+    (triv: node_trivial n) : node_all_total_in_refinement_domain n lifetime idx
+with branch_all_total_in_refinement_domain_of_trivial (b: Branch M) (lifetime: Lifetime) (idx: nat)
+    (triv: branch_trivial b) : branch_all_total_in_refinement_domain b lifetime idx.
 Proof.
   - destruct n.
     + have ind_hyp := branch_all_total_in_refinement_domain_of_trivial b.
@@ -1005,16 +1002,16 @@ Proof.
 Qed.
 
 Lemma node_all_total_in_refinement_domain_of_equiv (node1: Node M) (node2: Node M)
-      (lifetime: Lifetime)
+      (lifetime: Lifetime) (idx: nat)
     (eq: node_equiv node1 node2)
-    (rv: node_all_total_in_refinement_domain node1 lifetime)
-    : (node_all_total_in_refinement_domain node2 lifetime)
+    (rv: node_all_total_in_refinement_domain node1 lifetime idx)
+    : (node_all_total_in_refinement_domain node2 lifetime idx)
 with
   branch_all_total_in_refinement_domain_of_equiv (branch1: Branch M) (branch2: Branch M)
-      (lifetime: Lifetime)
+      (lifetime: Lifetime) (idx: nat)
     (eq: branch_equiv branch1 branch2)
-    (rv: branch_all_total_in_refinement_domain branch1 lifetime)
-    : (branch_all_total_in_refinement_domain branch2 lifetime).
+    (rv: branch_all_total_in_refinement_domain branch1 lifetime idx)
+    : (branch_all_total_in_refinement_domain branch2 lifetime idx).
 Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_all_total_in_refinement_domain_of_equiv b b0. clear node_all_total_in_refinement_domain_of_equiv. clear branch_all_total_in_refinement_domain_of_equiv.
