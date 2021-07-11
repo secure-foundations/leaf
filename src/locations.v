@@ -22,20 +22,22 @@ Inductive Loc (RI: Type) `{!EqDecision RI, !Countable RI} :=
   | CrossLoc : Loc RI -> Loc RI -> Loc RI
 .
 
-Definition pls_of_loc `{Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
+Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
 
-Definition build `{Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
+Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
     (loc: Loc RI) (cell: Cell M) : Branch M. Admitted.
     
-Lemma build_spec `{Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
+Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl = cell). Admitted.
+  
+Definition triv_cell {M} `{!EqDecision M, !Countable M, !TPCM M} : Cell M := CellCon unit empty.
   
 Lemma build_rest_triv
         {M} `{!EqDecision M, !Countable M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI}
     (loc: Loc RI) (cell: Cell M)
-  : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_trivial (cell_of_pl (build loc cell) pl)). Admitted.
+  : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl = triv_cell). Admitted.
 
 Definition refinement_of_index
         M `{!EqDecision M, !Countable M, !TPCM M}

@@ -206,6 +206,8 @@ Qed.
 Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
   | MS : gmap A nat -> multiset A.
 
+Definition empty_multiset {A} `{EqDecision A, Countable A} : multiset A := MS A ∅.
+
 Definition multiset_add_merge (a b: option nat) : option nat :=
   match (a, b) with
     | (Some n, Some m) => Some (n + m + 1)
@@ -356,3 +358,6 @@ Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
   match x with
     | (MS _ x) => map_fold (λ k a b , a = 0 /\ b) True x
   end.
+
+Lemma empty_add_empty_eq_empty `{EqDecision A, Countable A}
+    : multiset_add empty_multiset empty_multiset = empty_multiset (A:=A). Admitted.

@@ -38,8 +38,16 @@ Lemma forall_node_op {M} `{!EqDecision M, !Countable M, !TPCM M}
   : forall pl , (node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl.
 Admitted.
 
-(*Lemma equiv_existentionality_cells
-    (node1 : Node M) (node2 : Node M)
-  : forall pl , (node_of_pl node*)
+Lemma forall_cell_op {M} `{!EqDecision M, !Countable M, !TPCM M}
+    (branch1 : Branch M) (branch2 : Branch M)
+  : forall pl , (cell_of_pl branch1 pl) ⋅ (cell_of_pl branch2 pl) ≡ cell_of_pl (branch1 ⋅ branch2) pl.
+Admitted.
+
+
+
+Lemma equiv_extensionality_cells {M} `{!EqDecision M, !Countable M, !TPCM M}
+    (branch1: Branch M) (branch2: Branch M)
+    (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
+    : branch1 ≡ branch2. Admitted.
   
 End Indexing.

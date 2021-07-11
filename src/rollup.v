@@ -52,6 +52,7 @@ Global Instance countable_lifetime : Countable Lifetime. Admitted.
 
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
+Definition empty_lifetime : Lifetime := empty_multiset.
 
 Inductive Cell M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
   | CellCon :
