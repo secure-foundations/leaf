@@ -20,7 +20,7 @@ Class TPCM (M : Type) `{EqDecision M} :=
   unit_valid : m_valid unit ;
   unit_dot : forall x , dot x unit = x ;
   comm : forall x y , dot x y = dot y x ;
-  assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
+  tpcm_assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
   reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
   mov_monotonic : forall x y z ,
@@ -70,10 +70,12 @@ Arguments CellNode {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
 Arguments BranchCons {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
 Arguments BranchNil {M}%type_scope {EqDecision0 Countable0 TPCM0}.
 
+(*
 Inductive State M `{!EqDecision M} `{!Countable M} `{!TPCM M} :=
   | StateCon : Lifetime -> (Branch M) -> State M
 .
 Arguments StateCon {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
+*)
 
 Section RollupRA.
 
@@ -95,8 +97,15 @@ Definition cell_total (cell: Cell M) (lifetime: Lifetime) :=
   | CellCon m reserved => dot m (sum_reserved_over_lifetime reserved lifetime)
   end.
   
-
-
+Definition cell_live (cell: Cell M) :=
+  match cell with
+  | CellCon m reserved => m
+  end.
+  
+Definition cell_total_minus_live (cell: Cell M) (lifetime: Lifetime) :=
+  match cell with
+  | CellCon m reserved => (sum_reserved_over_lifetime reserved lifetime)
+  end.
  
 Definition umbrella : M -> (M -> Prop) := tpcm_le.
 
@@ -132,19 +141,19 @@ Lemma unit_view_sat_unit : view_sat umbrella_unit unit.
 Proof. unfold view_sat. unfold umbrella_unit. trivial. Qed.
 
 Lemma le_add_both_sides a b c : tpcm_le a b -> tpcm_le (dot a c) (dot b c).
-Proof.  unfold tpcm_le. intros. destruct H. exists x. rewrite comm. rewrite assoc.
+Proof.  unfold tpcm_le. intros. destruct H. exists x. rewrite comm. rewrite tpcm_assoc.
     rewrite comm in H. rewrite H. trivial. Qed.
     
 Lemma le_add2 a b c d : tpcm_le a c -> tpcm_le b d -> tpcm_le (dot a b) (dot c d).
 Proof.  unfold tpcm_le. intros. destruct H. destruct H0.
 exists (dot x x0). rewrite <- H. rewrite <- H0.
-  rewrite <- (assoc a b). rewrite <- (assoc a x). f_equal.
-  rewrite assoc. rewrite assoc. f_equal.
+  rewrite <- (tpcm_assoc a b). rewrite <- (tpcm_assoc a x). f_equal.
+  rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal.
   apply comm; trivial.
 Qed.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
-Proof.  unfold tpcm_le. intros. destruct H. exists (dot x c). rewrite assoc.
+Proof.  unfold tpcm_le. intros. destruct H. exists (dot x c). rewrite tpcm_assoc.
     rewrite H. trivial. Qed.
 
 Lemma umbrella_closed_umbrella_unit : umbrella_is_closed umbrella_unit.
@@ -161,7 +170,7 @@ Proof. unfold umbrella_is_closed. unfold conjoin_umbrella. intros.
     - trivial.
     - split.
       + apply H0. trivial.
-      + rewrite <- H3. apply assoc.
+      + rewrite <- H3. apply tpcm_assoc.
 Qed.
 
 Lemma sum_reserved_over_lifetime_monotonic (g: gset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
@@ -181,7 +190,7 @@ Proof. unfold sum_reserved_over_lifetime.
       * apply unit_le.
       * apply self_le_self.
   - intros. apply le_add_right_side. trivial.
-  - intros. rewrite <- assoc. rewrite <- assoc. f_equal. apply comm.
+  - intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply comm.
 Qed.
 
 Lemma view_sat_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lt: Lifetime)
@@ -287,8 +296,9 @@ Definition branch_equiv : Equiv (Branch M)
   := Eval cbv [internal_node_equiv internal_branch_equiv] in internal_branch_equiv.
 Global Existing Instances node_equiv branch_equiv.
 
-
+(*
 Global Instance state_pcore : PCore (State M) := λ state , None.
+*)
 
 Global Instance cell_op : Op (Cell M) := λ (x: Cell M) (y: Cell M) ,
   match x, y with
@@ -325,6 +335,7 @@ Definition branch_op : Op (Branch M)
   := Eval cbv [internal_node_op internal_branch_op] in internal_branch_op.
 Global Existing Instances node_op branch_op.
 
+(*
 Global Instance state_op : Op (State M) := λ x y ,
   match x, y with
   | StateCon active1 node1, StateCon active2 node2 =>
@@ -336,6 +347,7 @@ Global Instance state_equiv : Equiv (State M) := λ x y ,
   | StateCon lt1 node1, StateCon lt2 node2 =>
       (lt1 = lt2 /\ node1 ≡ node2)
   end.
+*)
   
 Lemma cell_equiv_refl (cell: Cell M) : cell_equiv cell cell.
 Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
@@ -420,6 +432,7 @@ Global Instance inst_node_equiv_symm : Symmetric node_equiv := node_equiv_symm.
 
 Global Instance inst_branch_equiv_symm : Symmetric branch_equiv := branch_equiv_symm.
 
+(*
 Lemma state_equiv_symm (state1 state2: State M)
   (seq : state_equiv state1 state2) : (state_equiv state2 state1).
 Proof.
@@ -428,6 +441,7 @@ Proof.
 Qed.
 
 Global Instance inst_state_equiv_symm : Symmetric state_equiv := state_equiv_symm.
+*)
 
 Lemma cell_equiv_trans (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   (iseq: cell_equiv cell1 cell2)
@@ -548,6 +562,7 @@ Qed.
 Global Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
 Global Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
 
+(*
 Lemma state_equiv_trans (state1: State M) (state2: State M) (state3: State M)
   (iseq: state1 ≡ state2)
   (iseq2: state2 ≡ state3)
@@ -559,6 +574,7 @@ Proof.
 Qed.
 
 Global Instance inst_state_equiv_trans : Transitive state_equiv := state_equiv_trans.
+*)
 
 Lemma cell_op_equiv (c c0 c1 : Cell M)
   (eq1: c0 ≡ c1)
@@ -599,6 +615,7 @@ Proof.
     + unfold branch_op. trivial.
 Qed.
 
+(*
 Lemma state_op_equiv (stateLeft: State M) (stateRight1: State M) (stateRight2: State M)
     (state_eq: stateRight1 ≡ stateRight2)
     : ((stateLeft ⋅ stateRight1) ≡ (stateLeft ⋅ stateRight2)).
@@ -608,6 +625,7 @@ Proof. unfold state_op. unfold state_equiv in *. destruct stateLeft, stateRight1
       - rewrite H; trivial.
       - apply branch_op_equiv; trivial.
 Qed.
+*)
 
 Lemma cell_op_comm (cell1: Cell M) (cell2: Cell M)
   : (cell1 ⋅ cell2) ≡ (cell2 ⋅ cell1).
@@ -640,6 +658,7 @@ Qed.
 Global Instance inst_node_op_comm : Comm node_equiv node_op := node_op_comm.
 Global Instance inst_branch_op_comm : Comm branch_equiv branch_op := branch_op_comm.
 
+(*
 Lemma state_op_comm (state1: State M) (state2: State M)
   : (state1 ⋅ state2) ≡ (state2 ⋅ state1).
 Proof.
@@ -659,13 +678,14 @@ Proof.
   setoid_rewrite (state_op_comm stateLeft1 stateRight).
   apply state_op_equiv. trivial.
 Qed.
+*)
 
 Lemma cell_op_assoc (cell1: Cell M) (cell2: Cell M) (cell3: Cell M)
   : (cell1 ⋅ (cell2 ⋅ cell3)) ≡ ((cell1 ⋅ cell2) ⋅ cell3).
 Proof.
   unfold "⋅", "≡".
   destruct cell1, cell2, cell3; unfold cell_op. unfold cell_equiv. repeat split.
-    - apply assoc.
+    - apply tpcm_assoc.
     - set_solver.
 Qed.
 
@@ -696,6 +716,7 @@ Qed.
 Global Instance inst_node_op_assoc : Assoc equiv node_op := node_op_assoc.
 Global Instance inst_branch_op_assoc : Assoc equiv branch_op := branch_op_assoc.
 
+(*
 Lemma state_op_assoc (state1: State M) (state2: State M) (state3: State M)
   : (state1 ⋅ (state2 ⋅ state3)) ≡ ((state1 ⋅ state2) ⋅ state3).
 Proof.
@@ -707,6 +728,7 @@ Proof.
 Qed.
 
 Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
+*)
 
 Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
@@ -756,6 +778,20 @@ with branch_total (branch: Branch M) (lifetime: Lifetime) (idx: nat) : M :=
       (branch_total branch lifetime (S idx))
   end
 .
+
+Definition node_live (node: Node M) : M :=
+  match node with
+  | CellNode cell branch => cell_live cell
+  end.
+
+Definition node_total_minus_live (node: Node M) (lifetime: Lifetime) : M :=
+  match node with
+  | CellNode cell branch => dot (cell_total_minus_live cell lifetime) (branch_total branch lifetime 0)
+  end.
+
+Lemma node_live_plus_node_total_minus_live (node: Node M) (lifetime: Lifetime)
+    : dot (node_live node) (node_total_minus_live node lifetime) = node_total node lifetime.
+    Admitted.
 
 Definition project_umbrella
     (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
@@ -850,7 +886,14 @@ Proof.
       + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
 Qed.
 
+Lemma node_view_le_total_minus_live (node: Node M) (lt: Lifetime) (active: Lifetime) (idx: nat)
+    (lt_is_active : lifetime_included active lt)
+    (ird: node_all_total_in_refinement_domain node active idx)
+    : view_sat (node_view node lt) (node_total_minus_live node active).
+Admitted.
 
+
+(*
 Definition state_inv (state: State M) :=
   match state with
   | StateCon active branch =>
@@ -861,6 +904,7 @@ Definition state_inv (state: State M) :=
 .
 
 Global Instance state_valid : Valid (State M) := λ x, exists y , state_inv (state_op x y).
+*)
 
 
 Lemma node_view_of_trivial (node: Node M) (lifetime: Lifetime)
@@ -1034,6 +1078,7 @@ Proof.
     + trivial.
 Qed.
 
+(*
 Lemma state_inv_of_equiv (s: State M) (t: State M)
     (eq: state_equiv s t)
     (inv_s: state_inv s) : state_inv t.
@@ -1066,6 +1111,7 @@ Proof. split.
         apply state_equiv_symm.
         apply state_op_assoc.
 Qed.
+*)
 
 End RollupRA.
 
