@@ -28,7 +28,7 @@ Arguments StateCon {M}%type_scope {EqDecision0 Countable0 TPCM0}
     {RI}%type_scope {EqDecision1 Countable1} _ _.
     
 Context {M} `{!EqDecision M} `{!Countable M} `{!TPCM M}.
-Context {RI} `{!EqDecision RI, !Countable RI}.
+Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
     
 Definition lmap_lookup (m : gmap (Loc RI) (Cell M)) (l : Loc RI) :=
   match m !! l with None => triv_cell | Some c => c end.
@@ -169,11 +169,14 @@ Instance branch_all_total_in_refinement_domain_proper roi :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (branch_all_total_in_refinement_domain roi).
     Admitted.
 
-Instance branch_op_proper_left :
+(*Instance branch_op_proper_left :
     Proper ((≡) ==> (=) ==> (≡)) branch_op. Admitted.
     
 Instance branch_op_proper_right b :
-    Proper ((≡) ==> (≡)) (branch_op b). Admitted.
+    Proper ((≡) ==> (≡)) (branch_op b). Admitted.*)
+    
+Instance branch_op_proper :
+    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
     
 Instance node_op_proper_left :
     Proper ((≡) ==> (=) ==> (≡)) node_op. Admitted.
@@ -301,3 +304,97 @@ Proof.
   have res := valid_monotonic _ _ elem_is_val.
   trivial.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow(kappa, gamma, z) . live(gamma, m) . live(alpha ref gamma, y)
+                         --> live(gamma, m') . live(alpha ref gamma, y') *)
+
+Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
+  ∀ p , match rel M M ref (dot (dot f z) p) with
+  | None => True
+  | Some i1 => m_valid (dot m i1) /\
+      match rel M M ref (dot (dot f' z) p) with
+      | None => False
+      | Some i2 => mov (dot m i1) (dot m' i2)
+      end
+  end.
+  
+Lemma multiset_add_empty (a : Lifetime) :
+  multiset_add a empty_lifetime = a. Admitted.
+  
+Definition view_exchange_cond (ref: Refinement M M) (view: M -> Prop) (m f m' f' : M) :=
+  ∀ p , view p -> match rel M M ref (dot f p) with
+  | None => True
+  | Some i1 => m_valid (dot m i1) /\
+      match rel M M ref (dot f' p) with
+      | None => False
+      | Some i2 => mov (dot m i1) (dot m' i2)
+      end
+  end.
+  
+Definition flow_cond p i (b t t': Branch M) (active: Lifetime) (down up : PathLoc -> M) :=
+  let q := (p, i) in
+  let r := (p, S i) in
+  let s := (p ++ [i], 0) in
+  view_exchange_cond (refinement_of_index M RI i)
+      (branch_view (refinement_of_index M RI) b active 0)
+      (dot (down q) (up r))
+      (dot (up s) (node_live (node_of_pl t q)))
+      (dot (up q) (down r))
+      (dot (down s) (node_live (node_of_pl t' q))).
+
+Lemma flows_preserve_branch_all_total_in_refinement_domain b t t' active
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , flow_cond p i b t t' active down up)
+  (batird : branch_all_total_in_refinement_domain (refinement_of_index M RI) (t⋅b) active 0)
+          : branch_all_total_in_refinement_domain (refinement_of_index M RI) (t'⋅b) active 0.
+Admitted.
+
+Lemma assoc_comm (a b c : Branch M) : (a ⋅ b) ⋅ c ≡ (a ⋅ c) ⋅ b.
+Proof.
+  have r : a ⋅ (b ⋅ c) ≡ (a ⋅ b) ⋅ c by apply branch_op_assoc.
+  have q : a ⋅ (c ⋅ b) ≡ (a ⋅ c) ⋅ b by apply branch_op_assoc.
+  have j : b ⋅ c ≡ c ⋅ b by apply branch_op_comm.
+  setoid_rewrite <- r.
+  setoid_rewrite <- q.
+  setoid_rewrite j.
+  trivial.
+Qed.
+
+Lemma is_borrow_weaken_lifetime k k1 gamma z b
+  : is_borrow k gamma z b -> is_borrow (multiset_add k k1) gamma z b.
+Admitted.
+
+Lemma borrow_exchange b kappa gamma m f z m' f' alpha ri
+  (isb: is_borrow kappa gamma z b)
+  (exchange_cond: borrow_exchange_cond (refinement_of ri) z m f m' f')
+  (si: state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f ⋅ b ⋅ live gamma m))
+     : state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f' ⋅ b ⋅ live gamma m').
+Proof.
+  unfold state_inv in *. destruct b. unfold live in *. unfold "⋅", state_op in *. split.
+  - destruct si. trivial.
+  - destruct si. clear H. rename H0 into sinv.
+    repeat (rewrite multiset_add_empty).
+    repeat (rewrite multiset_add_empty in sinv).
+    repeat (setoid_rewrite <- as_tree_dot).
+    repeat (setoid_rewrite <- as_tree_dot in sinv).
+    setoid_rewrite (as_tree_singleton gamma).
+    setoid_rewrite as_tree_singleton.
+    setoid_rewrite as_tree_singleton in sinv.
+    rename l0 into borrow_branch.
+    setoid_rewrite assoc_comm.
+    setoid_rewrite assoc_comm in sinv.
+    
+    assert (is_borrow (multiset_add kappa l) gamma z
+             (StateCon l borrow_branch)) by (apply is_borrow_weaken_lifetime; trivial).
+    clear isb; rename H into isb.
+    
+    unfold is_borrow in isb.
+    
+    assert (exists active_lifetime , active_lifetime = multiset_add kappa l) by (exists (multiset_add kappa l); trivial). deex. rewrite <- H in *. clear H. clear kappa. clear l.
+    
+    
+    

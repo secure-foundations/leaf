@@ -16,11 +16,17 @@ Context `{Countable RefinementIndex}.
 Context `{EqDecision RefinementIndex}.
 Context (ref_map : RefinementIndex -> Refinement M M).*)
 
+Class RefinementIndex (M: Type) `{!EqDecision M} `{!TPCM M} (RI: Type) :=
+    refinement_of : RI -> Refinement M M .
+
 Inductive Loc (RI: Type) `{!EqDecision RI, !Countable RI} :=
   | BaseLoc : nat -> Loc RI
   | ExtLoc : nat -> RI -> Loc RI -> Loc RI
   | CrossLoc : Loc RI -> Loc RI -> Loc RI
 .
+Arguments BaseLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope.
+Arguments ExtLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope _ _.
+Arguments CrossLoc {RI}%type_scope {EqDecision0 Countable0} _ _.
 
 Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
 
