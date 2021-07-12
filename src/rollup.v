@@ -19,7 +19,7 @@ Class TPCM (M : Type) `{EqDecision M} :=
   valid_monotonic : forall x y , m_valid (dot x y) -> m_valid x ;
   unit_valid : m_valid unit ;
   unit_dot : forall x , dot x unit = x ;
-  comm : forall x y , dot x y = dot y x ;
+  tpcm_comm : forall x y , dot x y = dot y x ;
   tpcm_assoc : forall x y z , dot x (dot y z) = dot (dot x y) z ;
   reflex : forall x , mov x x ;
   trans : forall x y z , mov x y -> mov y z -> mov x z ;
@@ -135,21 +135,21 @@ Lemma self_le_self a : tpcm_le a a.
 Proof. unfold tpcm_le. exists unit. rewrite unit_dot. trivial. Qed.
 
 Lemma unit_le a : tpcm_le unit a.
-Proof. unfold tpcm_le. exists a. rewrite comm. rewrite unit_dot. trivial. Qed.
+Proof. unfold tpcm_le. exists a. rewrite tpcm_comm. rewrite unit_dot. trivial. Qed.
 
 Lemma unit_view_sat_unit : view_sat umbrella_unit unit.
 Proof. unfold view_sat. unfold umbrella_unit. trivial. Qed.
 
 Lemma le_add_both_sides a b c : tpcm_le a b -> tpcm_le (dot a c) (dot b c).
-Proof.  unfold tpcm_le. intros. destruct H. exists x. rewrite comm. rewrite tpcm_assoc.
-    rewrite comm in H. rewrite H. trivial. Qed.
+Proof.  unfold tpcm_le. intros. destruct H. exists x. rewrite tpcm_comm. rewrite tpcm_assoc.
+    rewrite tpcm_comm in H. rewrite H. trivial. Qed.
     
 Lemma le_add2 a b c d : tpcm_le a c -> tpcm_le b d -> tpcm_le (dot a b) (dot c d).
 Proof.  unfold tpcm_le. intros. destruct H. destruct H0.
 exists (dot x x0). rewrite <- H. rewrite <- H0.
   rewrite <- (tpcm_assoc a b). rewrite <- (tpcm_assoc a x). f_equal.
   rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal.
-  apply comm; trivial.
+  apply tpcm_comm; trivial.
 Qed.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
@@ -190,7 +190,7 @@ Proof. unfold sum_reserved_over_lifetime.
       * apply unit_le.
       * apply self_le_self.
   - intros. apply le_add_right_side. trivial.
-  - intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply comm.
+  - intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply tpcm_comm.
 Qed.
 
 Lemma view_sat_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lt: Lifetime)
@@ -232,7 +232,7 @@ Proof.
     apply view_sat_with_le with (a := (sum_reserved_over_lifetime g lt)).
     + apply conjoin_reserved_over_lifetime_is_closed.
     + apply view_sat_reserved_over_lifetime.
-    + rewrite comm. apply le_add_right_side.
+    + rewrite tpcm_comm. apply le_add_right_side.
         apply sum_reserved_over_lifetime_monotonic.
         unfold lifetime_included in lt_is_active. trivial.
 Qed.
@@ -631,7 +631,7 @@ Lemma cell_op_comm (cell1: Cell M) (cell2: Cell M)
   : (cell1 ⋅ cell2) ≡ (cell2 ⋅ cell1).
 Proof.
   destruct cell1, cell2; unfold cell_op. unfold cell_equiv. repeat split.
-    - apply comm.
+    - apply tpcm_comm.
     - set_solver.
 Qed.
 
@@ -932,7 +932,7 @@ Proof.
         -- apply rel_unit.
         -- apply ind_hyp_node. trivial.
       * apply ind_hyp_branch. trivial.
-      * rewrite comm. apply unit_dot.
+      * rewrite tpcm_comm. apply unit_dot.
     + unfold branch_view. unfold umbrella_unit. trivial.
 Qed.
 

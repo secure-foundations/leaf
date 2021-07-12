@@ -315,7 +315,7 @@ Qed.
 Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
   ∀ p , match rel M M ref (dot (dot f z) p) with
   | None => True
-  | Some i1 => m_valid (dot m i1) /\
+  | Some i1 => m_valid (dot m i1) ->
       match rel M M ref (dot (dot f' z) p) with
       | None => False
       | Some i2 => mov (dot m i1) (dot m' i2)
@@ -328,7 +328,7 @@ Lemma multiset_add_empty (a : Lifetime) :
 Definition view_exchange_cond (ref: Refinement M M) (view: M -> Prop) (m f m' f' : M) :=
   ∀ p , view p -> match rel M M ref (dot f p) with
   | None => True
-  | Some i1 => m_valid (dot m i1) /\
+  | Some i1 => m_valid (dot m i1) ->
       match rel M M ref (dot f' p) with
       | None => False
       | Some i2 => mov (dot m i1) (dot m' i2)
@@ -340,7 +340,7 @@ Definition flow_cond p i (b t t': Branch M) (active: Lifetime) (down up : PathLo
   let r := (p, S i) in
   let s := (p ++ [i], 0) in
   view_exchange_cond (refinement_of_index M RI i)
-      (branch_view (refinement_of_index M RI) b active 0)
+      (node_view (refinement_of_index M RI) (node_of_pl b q) active)
       (dot (down q) (up r))
       (dot (up s) (node_live (node_of_pl t q)))
       (dot (up q) (down r))
@@ -368,8 +368,96 @@ Lemma is_borrow_weaken_lifetime k k1 gamma z b
   : is_borrow k gamma z b -> is_borrow (multiset_add k k1) gamma z b.
 Admitted.
 
-Lemma borrow_exchange b kappa gamma m f z m' f' alpha ri
-  (isb: is_borrow kappa gamma z b)
+Definition plsplit (ln: list nat) : PathLoc. Admitted.
+
+(*Instance thing_dec (p:PathLoc) (gamma: Loc RI) (i alpha:nat) (ri:RI) :
+  Decision (p ∈ pls_of_loc gamma /\ i < nat_of_extstep alpha ri). solve_decision. Defined.*)
+
+Definition updog (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI) : (PathLoc -> M) :=
+  λ (pl: PathLoc) , match pl with | (p, i) =>
+        if decide (p ≠ [] /\ (plsplit p) ∈ pls_of_loc gamma /\ i < nat_of_extstep alpha ri) then
+          m
+        else
+          unit
+      end.
+
+Lemma updog_eq_m p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    : (updog m gamma alpha ri (p, i)) = m. Admitted.
+    
+Lemma updog_eq_unit1 p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    : (updog m gamma alpha ri (p, S i)) = unit. Admitted.
+    
+Lemma updog_eq_unit2 p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    : (updog m gamma alpha ri (p ++ [i], 0)) = unit. Admitted.
+
+(*Lemma updog_base_eq_unit1 p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc gamma)
+    : (updog m gamma alpha ri (p, i)) = unit. Admitted.
+    
+Lemma updog_base_eq_unit2 p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc gamma)
+    : (updog m gamma alpha ri (p, S i)) = unit. Admitted.*)
+    
+Lemma updog_base_eq_m p i alpha ri gamma m
+  (is_in : (p, i) ∈ pls_of_loc gamma)
+    : (updog m gamma alpha ri (p ++ [i], 0)) = m. Admitted.
+    
+Lemma updog_other_eq_both p i alpha ri gamma m
+  (is_not_in : (p, i) ∉ pls_of_loc (ExtLoc alpha ri gamma))
+    : (updog m gamma alpha ri (p, i)) = (updog m gamma alpha ri (p, S i)). Admitted.
+    
+Lemma updog_other_eq_unit p i alpha ri gamma m
+  (is_not_in : (p, i) ∉ pls_of_loc gamma)
+    : (updog m gamma alpha ri (p ++ [i], 0)) = unit. Admitted.
+    
+Lemma view_exchange_cond_of_no_change ref view x y
+  : view_exchange_cond ref view x y x y.
+Proof. unfold view_exchange_cond. intro.
+  assert (exists t , t = rel M M ref (dot y p)) by (exists (rel M M ref (dot y p)); trivial).
+  deex.
+  rewrite <- H. destruct t; crush.
+  apply reflex.  
+Qed.
+
+Lemma unit_dot_left a : dot unit a = a. Admitted.
+
+Definition node_live_op (n1 n2: Node M) : node_live (n1 ⋅ n2) = dot (node_live n1) (node_live n2). Admitted.
+
+Lemma pl_not_in_of_pl_in_extloc pl alpha (ri: RI) gamma
+  : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
+  
+Lemma refinement_of_index_eq_refinement_of_of_in_pls_of_loc p i alpha ri gamma
+  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    : refinement_of_index M RI i = refinement_of ri.
+    Admitted.
+  
+Lemma view_exchange_cond_of_borrow_exchange_cond alpha ri gamma z m f m' f' p i borrow_branch
+  (i_matches : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+  (active_lifetime : multiset nat)
+  (exchange_cond : borrow_exchange_cond (refinement_of ri) z m f m' f')
+  (isb : lmap_is_borrow active_lifetime (ExtLoc alpha ri gamma) z borrow_branch)
+  : view_exchange_cond
+    (refinement_of_index M RI i)
+    (node_view (refinement_of_index M RI) (node_of_pl (as_tree borrow_branch) (p,i)) active_lifetime)
+    m f m' f'.
+Proof.
+  have h := refinement_of_index_eq_refinement_of_of_in_pls_of_loc p i alpha ri gamma.
+  rewrite h; trivial. clear h.
+  unfold view_exchange_cond. unfold borrow_exchange_cond in *.
+  unfold lmap_is_borrow in *.
+  intro extra. intro.
+  assert (tpcm_le z extra).
+  - apply isb with (pl := (p,i)); trivial.
+  - unfold tpcm_le in H0. deex. rewrite <- H0.
+    rewrite tpcm_assoc. 
+    rewrite tpcm_assoc. apply exchange_cond.
+Qed.
+  
+Lemma borrow_exchange b kappa gamma (m f z m' f': M) alpha (ri: RI)
+  (isb: is_borrow kappa (ExtLoc alpha ri gamma) z b)
   (exchange_cond: borrow_exchange_cond (refinement_of ri) z m f m' f')
   (si: state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f ⋅ b ⋅ live gamma m))
      : state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f' ⋅ b ⋅ live gamma m').
@@ -381,14 +469,14 @@ Proof.
     repeat (rewrite multiset_add_empty in sinv).
     repeat (setoid_rewrite <- as_tree_dot).
     repeat (setoid_rewrite <- as_tree_dot in sinv).
-    setoid_rewrite (as_tree_singleton gamma).
-    setoid_rewrite as_tree_singleton.
+    setoid_rewrite (as_tree_singleton (ExtLoc alpha ri gamma) (CellCon f' ∅)).
+    setoid_rewrite (as_tree_singleton gamma (CellCon m' ∅)).
     setoid_rewrite as_tree_singleton in sinv.
     rename l0 into borrow_branch.
     setoid_rewrite assoc_comm.
     setoid_rewrite assoc_comm in sinv.
     
-    assert (is_borrow (multiset_add kappa l) gamma z
+    assert (is_borrow (multiset_add kappa l) (ExtLoc alpha ri gamma) z
              (StateCon l borrow_branch)) by (apply is_borrow_weaken_lifetime; trivial).
     clear isb; rename H into isb.
     
@@ -396,5 +484,76 @@ Proof.
     
     assert (exists active_lifetime , active_lifetime = multiset_add kappa l) by (exists (multiset_add kappa l); trivial). deex. rewrite <- H in *. clear H. clear kappa. clear l.
     
+    apply flows_preserve_branch_all_total_in_refinement_domain
+      with (t := build (ExtLoc alpha ri gamma) (CellCon f ∅) ⋅ build gamma (CellCon m ∅))
+      (down := updog m gamma alpha ri)
+      (up   := updog m' gamma alpha ri); trivial.
     
+    intros. unfold flow_cond.
+    have the_case : Decision ((p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma)) by solve_decision.
+    destruct the_case.
     
+    (* interesting case: ext location *)
+    + rewrite (updog_eq_m p i); trivial. rewrite (updog_eq_m p i); trivial.
+      rewrite (updog_eq_unit1 p i); trivial. rewrite (updog_eq_unit1 p i); trivial.
+      rewrite (updog_eq_unit2 p i); trivial. rewrite (updog_eq_unit2 p i); trivial.
+      rewrite <- forall_node_op. rewrite <- forall_node_op.
+      repeat (rewrite unit_dot).
+      repeat (rewrite unit_dot_left).
+      rewrite node_live_op. rewrite node_live_op.
+      rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+      rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+      assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha:=alpha) (ri:=ri); trivial ).
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      unfold cell_live. unfold triv_cell.
+      repeat (rewrite unit_dot).
+      apply (view_exchange_cond_of_borrow_exchange_cond alpha ri gamma z); trivial.
+      
+    + have the_case2 : Decision ((p, i) ∈ pls_of_loc gamma) by solve_decision.
+      destruct the_case2.
+      
+      (* semi-interesting case: base location *)
+      * 
+        rewrite <- (updog_other_eq_both p i); trivial.
+        rewrite <- (updog_other_eq_both p i); trivial.
+        (*rewrite (updog_base_eq_unit1 p i); trivial. rewrite (updog_base_eq_unit1 p i); trivial.
+        rewrite (updog_base_eq_unit2 p i); trivial. rewrite (updog_base_eq_unit2 p i); trivial.*)
+        rewrite (updog_base_eq_m p i); trivial. rewrite (updog_base_eq_m p i); trivial.
+        
+        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite node_live_op. rewrite node_live_op.
+        repeat (rewrite unit_dot).
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite build_rest_triv; trivial.
+        rewrite build_spec; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_spec; trivial.
+        unfold cell_live, triv_cell.
+        repeat (rewrite unit_dot_left).
+        rewrite tpcm_comm.
+        assert (dot m m' = dot m' m) by apply tpcm_comm.
+        rewrite H.
+        apply view_exchange_cond_of_no_change.
+
+      (* uninteresting case *)
+      * 
+        rewrite <- (updog_other_eq_both p i); trivial.
+        rewrite <- (updog_other_eq_both p i); trivial.
+        rewrite updog_other_eq_unit; trivial.
+        rewrite updog_other_eq_unit; trivial.
+
+        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite tpcm_comm.
+        apply view_exchange_cond_of_no_change.
+Qed.

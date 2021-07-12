@@ -28,6 +28,9 @@ Arguments BaseLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope.
 Arguments ExtLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope _ _.
 Arguments CrossLoc {RI}%type_scope {EqDecision0 Countable0} _ _.
 
+Definition nat_of_extstep {RI} `{!EqDecision RI, !Countable RI} (alpha:nat) (ri: RI) : nat.
+Admitted.
+
 Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
 
 Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
