@@ -41,6 +41,7 @@ Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !C
   : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl = cell). Admitted.
   
 Definition triv_cell {M} `{!EqDecision M, !Countable M, !TPCM M} : Cell M := CellCon unit empty.
+Definition triv_node {M} `{!EqDecision M, !Countable M, !TPCM M} : Node M := CellNode triv_cell BranchNil.
   
 Lemma build_rest_triv
         {M} `{!EqDecision M, !Countable M, !TPCM M}
@@ -48,10 +49,12 @@ Lemma build_rest_triv
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl = triv_cell). Admitted.
 
-Definition refinement_of_index
+Definition ri_of_nat (RI : Type) `{!EqDecision RI, !Countable RI} : nat -> RI. Admitted.
+
+Definition refinement_of_nat
         M `{!EqDecision M, !Countable M, !TPCM M}
-        RI `{!EqDecision RI, !Countable RI}
-        (idx: nat) : Refinement M M. Admitted.
+        RI `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+        (idx: nat) : Refinement M M := refinement_of (ri_of_nat RI idx).
 
 (*
 Global Instance loc_eqdec : EqDecision Loc.

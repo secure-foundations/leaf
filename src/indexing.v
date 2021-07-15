@@ -23,7 +23,7 @@ Definition node_of_pl {M} `{!EqDecision M, !Countable M, !TPCM M}
     (branch: Branch M) (pl: PathLoc) : Node M. Admitted.
     
 Definition cell_of_pl {M} `{!EqDecision M, !Countable M, !TPCM M}
-    (branch: Branch M) (pl: PathLoc) : Cell M. Admitted.
+    (branch: Branch M) (pl: PathLoc) : Cell M := match node_of_pl branch pl with CellNode c _ => c end.
     
 Definition every_node {M} `{!EqDecision M, !Countable M, !TPCM M}
     (branch: Branch M) (fn : Node M -> nat -> Prop) : Prop. Admitted.
