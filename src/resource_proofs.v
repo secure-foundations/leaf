@@ -202,6 +202,9 @@ Instance node_total_minus_live_proper ref:
 Instance cell_live_proper :
     Proper ((≡) ==> (=)) cell_live. Admitted.
     
+Instance cell_total_proper :
+    Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
+    
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
   : as_tree {[loc := cell]} ≡ build loc cell. Admitted.
 
@@ -323,6 +326,9 @@ Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
   
 Lemma multiset_add_empty (a : Lifetime) :
   multiset_add a empty_lifetime = a. Admitted.
+  
+Lemma multiset_add_empty_left (a : Lifetime) :
+  multiset_add empty_lifetime a = a. Admitted.
     
 Definition specific_exchange_cond (ref: Refinement M M) (p m f m' f' : M) :=
   match rel M M ref (dot f p) with
@@ -654,7 +660,7 @@ Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
   let EQ := fresh in
   let name1 := fresh in
   assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
-    rewrite <- EQ;
+    try (rewrite <- EQ);
     (repeat match reverse goal with  
     | [H : context[t] |- _ ] => rewrite <- EQ in H
     end); clear EQ; try (clear name); rename name1 into name.
@@ -786,4 +792,113 @@ Proof.
         rewrite build_rest_triv; trivial.
         repeat (rewrite unit_dot_left).
         apply specific_exchange_cond_of_no_change.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* live(m, gamma) -> exists kappa , active(kappa) . reserved(kappa, m, gamma) *)
+
+Definition max_ltunit_in_branch (b: Branch M) : nat. Admitted.
+Definition max_ltunit_in_lt (lt: Lifetime) : nat. Admitted.
+Definition lt_singleton (n: nat) : Lifetime. Admitted.
+
+Lemma multiset_no_dupes_of_add_larger_elem lt y
+  (mnd : multiset_no_dupes lt)
+  (larger: y > max_ltunit_in_lt lt)
+  : multiset_no_dupes (multiset_add (lt_singleton y) lt). Admitted.
+  
+Lemma branch_all_total_in_refinement_domain_of_preserved_cell_totals ref b1 b2 lt1 lt2 idx
+  (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
+  (batird : branch_all_total_in_refinement_domain ref b1 lt1 idx)
+  : branch_all_total_in_refinement_domain ref b2 lt2 idx.
+Admitted.
+
+Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
+  (isgreater: ltunit > max_ltunit_in_branch b)
+  : match cell_of_pl b pl with CellCon _ rset =>
+    ∀ r , r ∈ rset -> match r with (lt, _) => ¬(multiset_in lt ltunit) end
+    end. Admitted.
+  
+Lemma sum_reserved_over_lifetime_union (a b: gset (Lifetime * M)) lt
+  (disj: a ∩ b = ∅)
+  : sum_reserved_over_lifetime (a ∪ b) lt
+      = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt). Admitted.
+
+Lemma multiset_in_lt_singleton x
+    : multiset_in (lt_singleton x) x. Admitted.
+    
+Lemma sum_reserved_over_lifetime_singleton r lt
+  : sum_reserved_over_lifetime {[ r ]} lt = reserved_get_or_unit r lt. Admitted.
+
+Lemma sum_reserved_over_lifetime_eq_adding_singleton g active_lifetime (lt: Lifetime) alt
+  (notin : ∀ r : multiset nat * M, r ∈ g → let (lt, _) := r in ¬ multiset_in lt alt)
+  : (sum_reserved_over_lifetime g active_lifetime)
+  = (sum_reserved_over_lifetime g (multiset_add (lt_singleton alt) active_lifetime)).
+  Admitted.
+
+Lemma multiset_le_add (a b: Lifetime) : multiset_le a (multiset_add a b). Admitted.
+
+Lemma borrow_begin (m: M) gamma p
+  (si: state_inv (live gamma m ⋅ p))
+     : exists kappa , state_inv (active kappa ⋅ reserved kappa gamma m ⋅ p).
+Proof.
+  destruct p. rename l into active_lifetime. rename l0 into p.
+  
+  assert ((max_ltunit_in_branch (as_tree p) `max` max_ltunit_in_lt active_lifetime) + 1 > 
+    max_ltunit_in_branch (as_tree p)) as ineq1 by lia.
+  assert ((max_ltunit_in_branch (as_tree p) `max` max_ltunit_in_lt active_lifetime) + 1 >
+    max_ltunit_in_lt active_lifetime) as ineq2 by lia.
+  full_generalize ((max_ltunit_in_branch (as_tree p) `max` max_ltunit_in_lt active_lifetime) + 1) as alt.
+  exists (lt_singleton alt).
+  
+  unfold state_inv in *. unfold "⋅", state_op, active, reserved, live in *.
+    destruct_ands. split.
+  
+  - rewrite multiset_add_empty.
+    rewrite multiset_add_empty_left in H.
+    apply multiset_no_dupes_of_add_larger_elem; trivial.
+  
+  - setoid_rewrite <- as_tree_dot.
+    setoid_rewrite <- as_tree_dot.
+    rewrite multiset_add_empty.
+    setoid_rewrite as_tree_singleton.
+    rewrite multiset_add_empty_left in H0.
+    setoid_rewrite <- as_tree_dot in H0.
+    setoid_rewrite as_tree_singleton in H0.
+    apply branch_all_total_in_refinement_domain_of_preserved_cell_totals
+      with (b1 := build gamma (CellCon m ∅) ⋅ as_tree p)
+           (lt1 := active_lifetime); trivial.
+    intro.
+    
+    have h : Decision (pl ∈ pls_of_loc gamma) by solve_decision. destruct h.
+    + setoid_rewrite <- forall_cell_op.
+      setoid_rewrite build_spec; trivial.
+      destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
+      unfold cell_total, "⋅", cell_op.
+      replace (∅ ∪ g) with (g) by set_solver.
+      have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
+      rewrite cellpl in h.
+      assert ({[(lt_singleton alt, m)]} ∩ g = ∅) as disjoint_empty.
+      * apply set_eq. intro. rewrite elem_of_empty. rewrite elem_of_intersection.
+          rewrite elem_of_singleton. split. ** intro. destruct_ands. have h' := h x H2.
+          rewrite H1 in h'. apply h'. apply multiset_in_lt_singleton. ** intro. contradiction.
+      * rewrite sum_reserved_over_lifetime_union; trivial.
+        rewrite sum_reserved_over_lifetime_singleton.
+        unfold reserved_get_or_unit.
+        case_decide.
+        -- rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
+           rewrite unit_dot_left.
+           rewrite tpcm_assoc. trivial.
+           assert (dot m m0 = dot m0 m) as co by (apply tpcm_comm). rewrite co. trivial.
+        -- exfalso. apply H1. apply multiset_le_add.
+    + setoid_rewrite <- forall_cell_op.
+      setoid_rewrite build_rest_triv; trivial.
+      destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
+      unfold cell_total, "⋅", cell_op, triv_cell.
+      replace (∅ ∪ g) with (g) by set_solver.
+      have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
+      rewrite cellpl in h.
+      rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
 Qed.

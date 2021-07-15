@@ -361,3 +361,8 @@ Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
 
 Lemma empty_add_empty_eq_empty `{EqDecision A, Countable A}
     : multiset_add empty_multiset empty_multiset = empty_multiset (A:=A). Admitted.
+
+Definition multiset_in `{EqDecision A, Countable A} (x : multiset A) y :=
+  match x with
+    | (MS _ x) => x !! y ≠ None
+  end.
