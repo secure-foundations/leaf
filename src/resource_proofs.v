@@ -12,7 +12,7 @@ Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
 
-Require Import coqtricks.Deex.
+Require Import coq_tricks.Deex.
 
 Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI). Admitted.
 Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.

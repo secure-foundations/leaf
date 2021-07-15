@@ -13,3 +13,11 @@ Proof.
   (* creates a fresh n0 for the witness, and preserves the hypothesis name. *)
   exists n0; assumption.
 Qed.
+
+(* from https://github.com/tchajed/coq-tactical/blob/master/src/Propositional.v *)
+
+Ltac destruct_ands :=
+  repeat match goal with
+         | [ H: _ /\ _ |- _ ] =>
+           destruct H
+         end.
