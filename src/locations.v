@@ -40,9 +40,6 @@ Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !C
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl = cell). Admitted.
   
-Definition triv_cell {M} `{!EqDecision M, !Countable M, !TPCM M} : Cell M := CellCon unit empty.
-Definition triv_node {M} `{!EqDecision M, !Countable M, !TPCM M} : Node M := CellNode triv_cell BranchNil.
-  
 Lemma build_rest_triv
         {M} `{!EqDecision M, !Countable M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI}
