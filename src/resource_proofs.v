@@ -135,7 +135,7 @@ Proof.
     rewrite lookup_merge. unfold diag_None.
     assert (Decision (gamma = l)) by solve_decision. destruct H.
     + rewrite e. repeat (rewrite lookup_singleton). unfold cell_op_opt.
-      unfold "≡", cell_equiv, "⋅", cell_op. split; trivial. set_solver.
+      unfold "≡", cell_equiv, "⋅", cell_op. split; trivial.
     + repeat (rewrite lookup_singleton_ne); trivial.
 Qed.
 
@@ -821,8 +821,8 @@ Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
     ∀ r , r ∈ rset -> match r with (lt, _) => ¬(multiset_in lt ltunit) end
     end. Admitted.
   
-Lemma sum_reserved_over_lifetime_union (a b: gset (Lifetime * M)) lt
-  (disj: a ∩ b = ∅)
+Lemma sum_reserved_over_lifetime_union (a b: listset (Lifetime * M)) lt
+  (disj: a ∩ b ≡ ∅)
   : sum_reserved_over_lifetime (a ∪ b) lt
       = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt). Admitted.
 
@@ -877,11 +877,11 @@ Proof.
       setoid_rewrite build_spec; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op.
-      replace (∅ ∪ g) with (g) by set_solver.
+      setoid_replace (∅ ∪ l) with (l) by set_solver.
       have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
       rewrite cellpl in h.
-      assert ({[(lt_singleton alt, m)]} ∩ g = ∅) as disjoint_empty.
-      * apply set_eq. intro. rewrite elem_of_empty. rewrite elem_of_intersection.
+      assert ({[(lt_singleton alt, m)]} ∩ l ≡ ∅) as disjoint_empty.
+      * unfold "≡". intro. rewrite elem_of_empty. rewrite elem_of_intersection.
           rewrite elem_of_singleton. split. ** intro. destruct_ands. have h' := h x H2.
           rewrite H1 in h'. apply h'. apply multiset_in_lt_singleton. ** intro. contradiction.
       * rewrite sum_reserved_over_lifetime_union; trivial.
@@ -897,7 +897,7 @@ Proof.
       setoid_rewrite build_rest_triv; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op, triv_cell.
-      replace (∅ ∪ g) with (g) by set_solver.
+      setoid_replace (∅ ∪ l) with (l) by set_solver.
       have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
       rewrite cellpl in h.
       rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.

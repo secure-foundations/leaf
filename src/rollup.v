@@ -8,6 +8,7 @@ From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
 Require Import Burrow.gmap_utils.
+Require Import coq_tricks.Deex.
 
 Class TPCM (M : Type) `{EqDecision M} :=
 {
@@ -54,21 +55,21 @@ Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
 Definition empty_lifetime : Lifetime := empty_multiset.
 
-Inductive Cell M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
+Inductive Cell M `{!EqDecision M} `{!TPCM M} : Type :=
   | CellCon :
       M ->
-      gset (Lifetime * M) ->
+      listset (Lifetime * M) ->
           Cell M.
-Arguments CellCon {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
+Arguments CellCon {M}%type_scope {EqDecision0 TPCM0} _ _.
 
-Inductive Node M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
+Inductive Node M `{!EqDecision M} `{!TPCM M} : Type :=
   | CellNode : Cell M -> Branch M -> Node M
-with Branch M `{!EqDecision M} `{!Countable M} `{!TPCM M} : Type :=
+with Branch M `{!EqDecision M} `{!TPCM M} : Type :=
   | BranchCons : Node M -> Branch M -> Branch M
   | BranchNil : Branch M.
-Arguments CellNode {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
-Arguments BranchCons {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
-Arguments BranchNil {M}%type_scope {EqDecision0 Countable0 TPCM0}.
+Arguments CellNode {M}%type_scope {EqDecision0 TPCM0} _ _.
+Arguments BranchCons {M}%type_scope {EqDecision0 TPCM0} _ _.
+Arguments BranchNil {M}%type_scope {EqDecision0 TPCM0}.
 
 (*
 Inductive State M `{!EqDecision M} `{!Countable M} `{!TPCM M} :=
@@ -81,7 +82,6 @@ Section RollupRA.
 
 Context {M : Type}.
 Context `{!EqDecision M}.
-Context `{!Countable M}.
 Context `{!TPCM M}.
 
 Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : M :=
@@ -89,7 +89,7 @@ Definition reserved_get_or_unit (reserved: Lifetime * M) (lifetime: Lifetime) : 
   | (my_lt, m) => if decide (multiset_le my_lt lifetime) then m else unit
   end.
 
-Definition sum_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifetime: Lifetime) :=
+Definition sum_reserved_over_lifetime (reserved: listset (Lifetime * M)) (lifetime: Lifetime) :=
   set_fold (λ reserved m , dot m (reserved_get_or_unit reserved lifetime)) unit reserved.
   
 Definition cell_total (cell: Cell M) (lifetime: Lifetime) :=
@@ -120,7 +120,7 @@ Definition conjoin_umbrella (a b : (M -> Prop)) : (M -> Prop) :=
 
 Definition umbrella_is_closed (umb: M -> Prop) := ∀ a b , umb a -> umb (dot a b).
     
-Definition conjoin_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lifetime: Lifetime) : (M -> Prop) :=
+Definition conjoin_reserved_over_lifetime (reserved: listset (Lifetime * M)) (lifetime: Lifetime) : (M -> Prop) :=
   set_fold (λ reserved um , conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lifetime)))
       umbrella_unit reserved.
 
@@ -173,14 +173,14 @@ Proof. unfold umbrella_is_closed. unfold conjoin_umbrella. intros.
       + rewrite <- H3. apply tpcm_assoc.
 Qed.
 
-Lemma sum_reserved_over_lifetime_monotonic (g: gset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
+Lemma sum_reserved_over_lifetime_monotonic (g: listset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
   (lt1_le_lt2 : multiset_le lt1 lt2)
   : tpcm_le
         (sum_reserved_over_lifetime g lt1)
         (sum_reserved_over_lifetime g lt2).
 Proof. unfold sum_reserved_over_lifetime.
   unfold Lifetime in lt1, lt2.
-  apply (gset_subset_relate tpcm_le).
+  apply (set_subset_relate tpcm_le).
   - apply self_le_self.
   - trivial.
   - intros. apply le_add2; trivial.
@@ -193,12 +193,12 @@ Proof. unfold sum_reserved_over_lifetime.
   - intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply tpcm_comm.
 Qed.
 
-Lemma view_sat_reserved_over_lifetime (reserved: gset (Lifetime * M)) (lt: Lifetime)
+Lemma view_sat_reserved_over_lifetime (reserved: listset (Lifetime * M)) (lt: Lifetime)
   : view_sat (conjoin_reserved_over_lifetime reserved lt)
              (sum_reserved_over_lifetime reserved lt).
 Proof.
   unfold conjoin_reserved_over_lifetime, sum_reserved_over_lifetime.
-  apply (gset_relate view_sat).
+  apply (set_relate view_sat).
   - apply unit_view_sat_unit.
   - intros. unfold view_sat in *. unfold conjoin_umbrella.
       exists c. exists (reserved_get_or_unit a lt). repeat split.
@@ -214,10 +214,10 @@ Proof. unfold view_sat in *. intros. unfold umbrella_is_closed in closed.
     unfold tpcm_le in mle. destruct mle. rewrite <- H. apply closed. trivial.
 Qed.
 
-Lemma conjoin_reserved_over_lifetime_is_closed (reserved: gset (Lifetime * M)) (lt: Lifetime)
+Lemma conjoin_reserved_over_lifetime_is_closed (reserved: listset (Lifetime * M)) (lt: Lifetime)
     : umbrella_is_closed (conjoin_reserved_over_lifetime reserved lt).
 Proof. unfold cell_view. unfold conjoin_reserved_over_lifetime.
-  apply (gset_easy_induct umbrella_is_closed).
+  apply (set_easy_induct umbrella_is_closed).
   - apply umbrella_closed_umbrella_unit.
   - intros. apply umbrella_closed_conjoin.
     + trivial.
@@ -229,7 +229,7 @@ Lemma cell_view_le_total (cell: Cell M) (lt: Lifetime) (active: Lifetime)
     : view_sat (cell_view cell lt) (cell_total cell active).
 Proof.
   unfold cell_view. destruct cell. unfold cell_total.
-    apply view_sat_with_le with (a := (sum_reserved_over_lifetime g lt)).
+    apply view_sat_with_le with (a := (sum_reserved_over_lifetime l lt)).
     + apply conjoin_reserved_over_lifetime_is_closed.
     + apply view_sat_reserved_over_lifetime.
     + rewrite tpcm_comm. apply le_add_right_side.
@@ -245,7 +245,7 @@ Proof. unfold view_sat in *. unfold conjoin_umbrella. exists m1. exists m2. repe
 
 Definition cell_trivial (cell: Cell M) :=
   match cell with
-  | CellCon m reserves => reserves = empty /\ m = unit
+  | CellCon m reserves => reserves ≡ empty /\ m = unit
   end
 .
 
@@ -265,7 +265,7 @@ Definition equiv_func {A} {B} (f g: A -> B) := ∀ x , f x = g x.
 Global Instance cell_equiv : Equiv (Cell M) := λ (cell1: Cell M) (cell2: Cell M) ,
   match cell1, cell2 with
   | CellCon m1 g1, CellCon m2 g2 =>
-      (m1 = m2) /\ g1 = g2
+      (m1 = m2) /\ g1 ≡ g2
   end
 .
 
@@ -350,7 +350,7 @@ Global Instance state_equiv : Equiv (State M) := λ x y ,
 *)
   
 Lemma cell_equiv_refl (cell: Cell M) : cell_equiv cell cell.
-Proof. destruct cell. unfold cell_equiv. repeat split. Qed.
+Proof. destruct cell. unfold cell_equiv. split; trivial. Qed.
 
 Global Instance inst_cell_equiv_refl : Reflexive cell_equiv.
 unfold Reflexive. intro. apply cell_equiv_refl. Defined.
@@ -387,6 +387,7 @@ Proof.
             unfold node_trivial in istriv. fold branch_trivial in istriv.
             destruct istriv. unfold cell_trivial in *. destruct H. repeat split.
         -- rewrite H1. apply unit_dot.
+        -- rewrite H. set_solver.
         -- set_solver.
         -- apply hyp; trivial.
   - destruct branch1; destruct branch2.
@@ -401,7 +402,8 @@ Qed.
 Lemma cell_equiv_symm (cell1: Cell M) (cell2: Cell M)
   (iseq: cell_equiv cell1 cell2) : (cell_equiv cell2 cell1).
 Proof. unfold cell_equiv in *. destruct cell1, cell2. destruct iseq. destruct H. repeat split.
-  * symmetry; trivial.
+  * set_solver.
+  * set_solver.
 Qed.
 
 Global Instance inst_cell_equiv_symm : Symmetric cell_equiv.
@@ -456,7 +458,7 @@ Lemma cell_trivial_of_equiv (cell1: Cell M) (cell2: Cell M)
   (istriv: cell_trivial cell1)
   : cell_trivial cell2.
 Proof.
-  unfold "≡", cell_equiv, cell_trivial in *.  destruct cell1, cell2; crush.
+  unfold "≡", cell_equiv, cell_trivial in *.  destruct cell1, cell2; crush. set_solver.
 Qed.
 
 Global Instance inst_cell_trivial_of_equiv : Proper (equiv ==> impl) cell_trivial.
@@ -517,7 +519,7 @@ Proof.
   - destruct node1, node2.
     + have ind_hyp := branch_equiv_of_trivial b b0. clear node_equiv_of_trivial. clear branch_equiv_of_trivial.
       unfold "≡". crush.
-      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. unfold "≡". crush.
+      unfold cell_equiv in *. unfold cell_trivial. destruct c0, c. unfold "≡". split; set_solver.
   - destruct branch1, branch2.
     + have ind_hyp_branch := branch_equiv_of_trivial branch1 branch2.
       have ind_hyp_node := node_equiv_of_trivial n n0.
@@ -581,8 +583,7 @@ Lemma cell_op_equiv (c c0 c1 : Cell M)
   : ((c ⋅ c0) ≡ (c ⋅ c1)).
 Proof.
   destruct c0, c1, c. unfold cell_op. unfold cell_equiv in *. destruct eq1.
-      destruct H0. repeat split.
-  + rewrite H. trivial.
+      unfold "≡", "⋅". split; set_solver.
 Qed.
 
 Lemma node_op_equiv (nodeLeft: Node M) (nodeRight1 : Node M) (nodeRight2: Node M)
@@ -632,6 +633,7 @@ Lemma cell_op_comm (cell1: Cell M) (cell2: Cell M)
 Proof.
   destruct cell1, cell2; unfold cell_op. unfold cell_equiv. repeat split.
     - apply tpcm_comm.
+    - set_solver.
     - set_solver.
 Qed.
 
@@ -687,6 +689,7 @@ Proof.
   destruct cell1, cell2, cell3; unfold cell_op. unfold cell_equiv. repeat split.
     - apply tpcm_assoc.
     - set_solver.
+    - set_solver.
 Qed.
 
 Global Instance inst_cell_op_assoc : Assoc equiv cell_op := cell_op_assoc.
@@ -730,36 +733,102 @@ Qed.
 Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 *)
 
+(*Lemma conjoin_umbrella_comm a b x
+  : conjoin_umbrella a b x = conjoin_umbrella b a x. Admitted.
+  
+Lemma conjoin_umbrella_assoc a b c x
+  : conjoin_umbrella (conjoin_umbrella a b) c x
+  = conjoin_umbrella a (conjoin_umbrella b c) x. Admitted.*)
+
+Lemma conjoin_umbrella_cassoc a b c x :
+  conjoin_umbrella (conjoin_umbrella a b) c x <->
+  conjoin_umbrella (conjoin_umbrella a c) b x. Admitted.
+
+(*Instance eqinst {A} : Equivalence (respectful eq iff)%signature.*)
+Local Instance eqinst : Equivalence (λ f g : M → Prop, ∀ x2 y2 : M, x2 = y2 → f x2 ↔ g y2).
+Proof.  apply Build_Equivalence.
+  - unfold Reflexive. crush.
+  - unfold Symmetric. crush. have r := H y2 y2. crush.
+  - unfold Transitive. crush. have r := H0 y2 y2. have q := H y2 y2. crush.
+Qed.
+
+Global Instance conjoin_reserved_over_lifetime_proper :
+  Proper ((≡) ==> (=) ==> (=) ==> iff) (conjoin_reserved_over_lifetime).
+Proof.
+  unfold conjoin_reserved_over_lifetime.
+  unfold Proper, "==>". intros.
+  assert (∀ (a1 a2 : Lifetime * M) (b : M → Prop),
+                   (eq ==> iff)%signature
+                     (conjoin_umbrella
+                        (conjoin_umbrella b (umbrella (reserved_get_or_unit a2 x0)))
+                        (umbrella (reserved_get_or_unit a1 x0)))
+                     (conjoin_umbrella
+                        (conjoin_umbrella b (umbrella (reserved_get_or_unit a1 x0)))
+                        (umbrella (reserved_get_or_unit a2 x0)))).
+   * intros. unfold "==>". intros. rewrite H2. unfold iff. apply conjoin_umbrella_cassoc.
+   * have p := set_fold_proper (respectful (=) (iff)) (λ (reserved : Lifetime * M) (um : M → Prop),
+       conjoin_umbrella um (umbrella (reserved_get_or_unit reserved x0)))
+       umbrella_unit H2.
+    + rewrite <- H0. rewrite <- H1.
+    unfold Proper in p.
+    eapply p.
+     ** typeclasses eauto.
+     ** unfold "==>". typeclasses eauto.
+     ** unfold "==>". intros. rewrite H3. rewrite H5.
+        unfold conjoin_umbrella. split.
+          *** intro. deex. exists x5. exists y5. rewrite <- (H4 x5); trivial.
+          *** intro. deex. exists x5. exists y5. rewrite (H4 x5); trivial. trivial.
+     ** rewrite H. trivial.
+     ** trivial.
+Qed. 
+
+Global Instance sum_reserved_over_lifetime_proper :
+  Proper ((≡) ==> (=) ==> (=)) (sum_reserved_over_lifetime).
+Proof.
+  unfold sum_reserved_over_lifetime.
+  unfold Proper, "==>". intros.
+  have p := set_fold_proper (=) ((λ (reserved : Lifetime * M) (m : M), dot m (reserved_get_or_unit reserved x0))).
+  unfold Proper in p. unfold "==>" in p. rewrite <- H0. eapply p.
+  ** typeclasses eauto.
+  ** typeclasses eauto.
+  ** intros. crush.
+  ** intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc.
+      f_equal. apply tpcm_comm.
+  ** trivial.
+Qed.
+
 Lemma cell_view_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) (m: M) : cell_view cell lifetime m.
 Proof. destruct cell. unfold cell_view. unfold cell_trivial in *.
+  destruct_ands. setoid_rewrite H.
   unfold conjoin_reserved_over_lifetime.
-  destruct eq. rewrite H. rewrite set_fold_empty.
+  rewrite set_fold_empty.
     unfold umbrella_unit. trivial.
 Qed.
 
 Lemma cell_view_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
   (eq: cell1 ≡ cell2) (m: M)
-  : cell_view cell1 lifetime m = cell_view cell2 lifetime m.
+  : cell_view cell1 lifetime m <-> cell_view cell2 lifetime m.
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_view.
-    unfold conjoin_reserved_over_lifetime.
-    unfold "≡" in eq. destruct eq. rewrite H0. trivial.
+    unfold "≡" in eq. destruct_ands.
+    setoid_rewrite H0.
+    trivial.
 Qed.
   
 Lemma cell_total_of_trivial (cell: Cell M) (lifetime: Lifetime)
   (eq: cell_trivial cell) : cell_total cell lifetime = unit.
 Proof. destruct cell. unfold cell_total. unfold cell_trivial in *.
-  replace (sum_reserved_over_lifetime g lifetime) with unit.
+  replace (sum_reserved_over_lifetime l lifetime) with unit.
   - destruct eq. rewrite H0. apply unit_dot.
-  - unfold sum_reserved_over_lifetime. destruct eq. rewrite H. rewrite set_fold_empty.
-    trivial.
+  - destruct_ands. setoid_rewrite H.
+    unfold sum_reserved_over_lifetime. rewrite set_fold_empty. trivial.
 Qed.
 
 Lemma cell_total_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
   (eq: cell1 ≡ cell2)
   : cell_total cell1 lifetime = cell_total cell2 lifetime.
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
-    destruct eq. destruct H0. rewrite H. f_equal.
+    destruct eq. setoid_rewrite H0. rewrite H. trivial.
 Qed.
 
 Context (refs: nat -> Refinement M M).
@@ -1120,7 +1189,6 @@ Print alls_valid_instance.
 
 Context {M : Type}.
 Context `{!EqDecision M}.
-Context `{!Countable M}.
 Context `{!TPCM M}.
 Context {ref: Refinement M M}.
 

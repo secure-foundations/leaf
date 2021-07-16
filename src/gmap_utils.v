@@ -10,10 +10,11 @@ From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import fin_sets.
 From stdpp Require Import list.
+Require Import coq_tricks.Deex.
 
-Lemma gset_easy_induct `{EqDecision A, Countable A} {B}
+Lemma set_easy_induct `{Elements A T} {B}
   (R : B -> Prop)
-  (s: gset A)
+  (s: T)
   (fn : A -> B -> B)
   (u : B)
   (R_u : R u)
@@ -25,9 +26,9 @@ Proof.
   - unfold foldr. apply ind. apply IHl.
 Qed.
 
-Lemma gset_relate `{EqDecision A, Countable A} {B} {C}
+Lemma set_relate `{Elements A T} {B} {C}
   (R : B -> C -> Prop)
-  (s: gset A)
+  (s: T)
   (fn1 : A -> B -> B)
   (fn2 : A -> C -> C)
   (u1 : B)
@@ -53,16 +54,22 @@ Proof.
   unfold set_fold. unfold "∘". induction (elements Y).
      - unfold foldr. symmetry. apply is_unit.
      - unfold foldr. rewrite <- assoc. f_equal.*)
+     
+(* this was a local instance in stdpp for some reason *)
+Global Instance elem_of_dec `{FinSet A T} : RelDecision (∈@{T}) | 100.
+Proof.
+  refine (λ x X, cast_if (decide_rel (∈) x (elements X)));
+    by rewrite <-(elem_of_elements _). 
+Defined.
   
-
-Lemma minus_union_eq  `{EqDecision A, Countable A}
-  (s1: gset A)
-  (s2: gset A)
+Lemma minus_union_eq  `{FinSet A T}
+  (s1: T)
+  (s2: T)
   (sub : s1 ⊆ s2)
-  : (s2 ∖ s1) ∪ s1 = s2.
-Proof. apply set_eq. split.
-  - rewrite elem_of_union. rewrite elem_of_difference. intros. destruct H0.
-    + destruct H0. trivial.
+  : (s2 ∖ s1) ∪ s1 ≡ s2.
+Proof. unfold "≡". split.
+  - rewrite elem_of_union. rewrite elem_of_difference. intros. destruct H7.
+    + destruct_ands. trivial.
     + unfold "⊆" in sub. unfold set_subseteq_instance in sub. apply sub. trivial.
   - rewrite elem_of_union. rewrite elem_of_difference. intros. 
     destruct (decide (x ∈ s1)).
@@ -149,10 +156,10 @@ Proof.
 Qed.
 *)
 
-Lemma gset_subset_relate `{EqDecision A, Countable A} {B} {C}
+Lemma set_subset_relate `{FinSet A T} {B} {C}
   (R : B -> C -> Prop)
-  (s1: gset A)
-  (s2: gset A)
+  (s1: T)
+  (s2: T)
   (fn1 : A -> B -> B)
   (fn2 : A -> C -> C)
   (u1 : B)
@@ -171,36 +178,37 @@ Proof.
   unfold set_fold. simpl. rewrite t.
     - induction (elements (s2 ∖ s1)).
       + simpl.
-        have l := gset_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l. apply EqDecision0.
+        have l := set_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l.
       + simpl. apply pro_single. trivial.
-    - have k := minus_union_eq s1 s2 sub.
-      replace (elements s2) with (elements (s2 ∖ s1 ∪ s1)).
-        * apply elements_disj_union. unfold "##". unfold set_disjoint_instance.
-          intro. rewrite elem_of_difference. intros. destruct H0. contradiction.
-        * rewrite k. trivial.
+    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_eq; trivial).
+      assert (elements s2 ≡ₚ elements ((s2 ∖ s1) ∪ s1)) by 
+        (setoid_rewrite <- H7; trivial).
+      rewrite H8.
+      apply elements_disj_union. unfold "##". unfold set_disjoint_instance.
+          intro. rewrite elem_of_difference. intros. destruct_ands. contradiction.
 Qed.
 
-Lemma gset_nat_upper_bound (s: gset nat)
+Lemma set_nat_upper_bound `{FinSet nat T} (s: T)
     : ∃ n , ∀ m , m ∈ s -> m < n.
 Proof.
   generalize s.
-  apply set_ind with (P := λ t : (gset nat), ∃ n , ∀ m , m ∈ t -> m < n).
-  - unfold Proper, equiv, "==>", iff.  unfold set_equiv_instance. intros. split; intros; destruct H0.
-    + exists x0. intros. apply H0. unfold set_equiv_instance in H. rewrite H. trivial.
-    + exists x0. intros. apply H0. unfold set_equiv_instance in H. rewrite <- H. trivial.
+  apply set_ind with (P := λ t : T, ∃ n , ∀ m , m ∈ t -> m < n).
+  - unfold Proper, equiv, "==>", iff.  unfold set_equiv_instance. intros. split; intros; destruct H8.
+    + exists x0. intros. apply H8. unfold set_equiv_instance in H7. rewrite H7. trivial.
+    + exists x0. intros. apply H8. unfold set_equiv_instance in H7. rewrite <- H7. trivial.
   - exists 0. intro. rewrite elem_of_empty. contradiction.
-  - intros. destruct H0. exists (max x0 (x + 1)). intro. rewrite elem_of_union.
+  - intros. destruct H8. exists (max x0 (x + 1)). intro. rewrite elem_of_union.
         rewrite elem_of_singleton.
-      intros. destruct H1.
+      intros. destruct H9.
         + lia.
-        + have ineq := H0 m H1. lia.
+        + have ineq := H8 m H9. lia.
 Qed.
 
-Lemma set_fold_equiv_funcs `{EqDecision A, Countable A} {B} (f g : A -> B -> B) (u: B) (s: gset A)
+Lemma set_fold_equiv_funcs `{FinSet A T} {B} (f g : A -> B -> B) (u: B) (s: T)
   (equiv: ∀ x y , f x y = g x y) : (set_fold f u s) = (set_fold g u s).
-Proof. apply (gset_relate (=)).
+Proof. apply (set_relate (=)).
   - trivial.
-  - intros. rewrite H0. apply equiv.
+  - intros. rewrite H7. apply equiv.
 Qed.
 
 Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
