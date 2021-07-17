@@ -111,7 +111,7 @@ Proof.
   unfold "≡", state_equiv, live. unfold "⋅", state_op. split.
   - apply empty_add_empty_eq_empty.
   - apply equiv_extensionality_cells. intro.
-      setoid_rewrite <- forall_cell_op.
+      setoid_rewrite <- cell_of_pl_op.
       assert (Decision (pl ∈ pls_of_loc gamma)) by solve_decision.
       unfold Decision in H. destruct H.
       + repeat (rewrite build_spec); trivial. unfold "≡", "⋅", cell_equiv, cell_op.
@@ -246,10 +246,10 @@ Lemma node_view_strip roi a b c loc kappa x :
   node_view roi (node_of_pl b loc) kappa x.
 Proof.  
   intro.
-  setoid_rewrite <- forall_node_op in H.
+  setoid_rewrite <- node_of_pl_op in H.
   assert (node_view roi (node_of_pl (a ⋅ b) loc) kappa x).
   - apply node_view_le with (b := node_of_pl c loc). trivial.
-  - setoid_rewrite <- forall_node_op in H0.
+  - setoid_rewrite <- node_of_pl_op in H0.
     setoid_rewrite node_op_comm in H0.
     apply node_view_le with (b := node_of_pl a loc). trivial.
 Qed.
@@ -262,8 +262,8 @@ Lemma tpcm_le_m_node_live_with_m m gamma e b c
       (node_live (node_of_pl (build gamma (CellCon m e) ⋅ b ⋅ c) (any_pl_of_loc gamma))).
 Proof.
   rewrite node_node_cell_cell.
-  setoid_rewrite <- forall_cell_op.
-  setoid_rewrite <- forall_cell_op.
+  setoid_rewrite <- cell_of_pl_op.
+  setoid_rewrite <- cell_of_pl_op.
   setoid_rewrite build_spec.
   - destruct (cell_of_pl b (any_pl_of_loc gamma)).
     destruct (cell_of_pl c (any_pl_of_loc gamma)).
@@ -399,12 +399,12 @@ Proof.
   
   assert (node_live (node_of_pl (t ⋅ b) (p, i)) =
       dot (node_live (node_of_pl t (p, i))) (node_live (node_of_pl b (p,i))))
-  by (setoid_rewrite <- forall_node_op; apply node_live_op).
+  by (setoid_rewrite <- node_of_pl_op; apply node_live_op).
   rewrite H. clear H.
   
   assert (node_live (node_of_pl (t' ⋅ b) (p, i)) =
       dot (node_live (node_of_pl t' (p, i))) (node_live (node_of_pl b (p,i))))
-  by (setoid_rewrite <- forall_node_op; apply node_live_op).
+  by (setoid_rewrite <- node_of_pl_op; apply node_live_op).
   rewrite H. clear H.
   
   rewrite tpcm_assoc. rewrite tpcm_assoc.
@@ -415,7 +415,7 @@ Proof.
   apply node_view_le2.
   apply node_view_le with (b := node_of_pl t (p, i)).
   setoid_rewrite node_op_comm.
-  setoid_rewrite forall_node_op.
+  setoid_rewrite node_of_pl_op.
   
   assert (view_sat (node_view (refinement_of_nat M RI) (node_of_pl (t ⋅ b) (p, i)) active)
     (node_total_minus_live (refinement_of_nat M RI) (node_of_pl (t ⋅ b) (p, i)) active)).
@@ -578,7 +578,7 @@ Proof.
     + rewrite (updog_eq_m p i); trivial. rewrite (updog_eq_m p i); trivial.
       rewrite (updog_eq_unit1 p i); trivial. rewrite (updog_eq_unit1 p i); trivial.
       rewrite (updog_eq_unit2 p i); trivial. rewrite (updog_eq_unit2 p i); trivial.
-      rewrite <- forall_node_op. rewrite <- forall_node_op.
+      rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
       repeat (rewrite unit_dot).
       repeat (rewrite unit_dot_left).
       rewrite node_live_op. rewrite node_live_op.
@@ -604,7 +604,7 @@ Proof.
         rewrite (updog_base_eq_unit2 p i); trivial. rewrite (updog_base_eq_unit2 p i); trivial.*)
         rewrite (updog_base_eq_m p i); trivial. rewrite (updog_base_eq_m p i); trivial.
         
-        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
         rewrite node_live_op. rewrite node_live_op.
         repeat (rewrite unit_dot).
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
@@ -627,7 +627,7 @@ Proof.
         rewrite updog_other_eq_unit; trivial.
         rewrite updog_other_eq_unit; trivial.
 
-        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
         rewrite node_live_op. rewrite node_live_op.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
@@ -724,7 +724,7 @@ Proof.
   - rewrite (updog_eq_m p i); trivial. 
     rewrite (updog_eq_unit1 p i); trivial.
     rewrite (updog_eq_unit2 p i); trivial.
-    rewrite <- forall_node_op. rewrite <- forall_node_op.
+    rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
     repeat (rewrite unit_dot).
     repeat (rewrite unit_dot_left).
     rewrite node_live_op. rewrite node_live_op.
@@ -741,7 +741,7 @@ Proof.
       apply trivial_node_at_fresh;
       rewrite <- (i_value_of_pls_of_loc_ext p i gamma) in is_fresh; trivial).
     
-    rewrite <- forall_node_op in EqTrivNode.
+    rewrite <- node_of_pl_op in EqTrivNode.
     
     rewrite node_total_minus_live_of_trivial; trivial.
     
@@ -768,7 +768,7 @@ Proof.
         rewrite <- (updog_other_eq_both p i); trivial.
         rewrite (updog_base_eq_m p i); trivial.
         
-        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
         rewrite node_live_op. rewrite node_live_op.
         repeat (rewrite unit_dot).
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
@@ -784,7 +784,7 @@ Proof.
         rewrite <- (updog_other_eq_both p i); trivial.
         rewrite updog_other_eq_unit; trivial.
 
-        rewrite <- forall_node_op. rewrite <- forall_node_op.
+        rewrite <- node_of_pl_op. rewrite <- node_of_pl_op.
         rewrite node_live_op. rewrite node_live_op.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
@@ -873,7 +873,7 @@ Proof.
     intro.
     
     have h : Decision (pl ∈ pls_of_loc gamma) by solve_decision. destruct h.
-    + setoid_rewrite <- forall_cell_op.
+    + setoid_rewrite <- cell_of_pl_op.
       setoid_rewrite build_spec; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op.
@@ -893,7 +893,7 @@ Proof.
            rewrite tpcm_assoc. trivial.
            assert (dot m m0 = dot m0 m) as co by (apply tpcm_comm). rewrite co. trivial.
         -- exfalso. apply H1. apply multiset_le_add.
-    + setoid_rewrite <- forall_cell_op.
+    + setoid_rewrite <- cell_of_pl_op.
       setoid_rewrite build_rest_triv; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op, triv_cell.

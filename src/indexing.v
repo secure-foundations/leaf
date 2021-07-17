@@ -162,47 +162,45 @@ Lemma step_branch_op branch1 branch2 i
   : step_branch branch1 i ⋅ step_branch branch2 i
       ≡ step_branch (branch1 ⋅ branch2) i.
 Proof.
+  assert (step_node branch1 i ⋅ step_node branch2 i ≡ step_node (branch1 ⋅ branch2) i)
+      by (apply step_node_op; trivial).
   unfold step_branch. 
-  
+  destruct (step_node branch1 i).
+  destruct (step_node branch2 i).
+  destruct (step_node (branch1 ⋅ branch2) i).
+  unfold "≡", "⋅", cell_op in H. unfold node_equiv, node_op in H. destruct_ands. trivial.
+Qed.
+
+Lemma node_of_pl'_op (branch1 : Branch M) (branch2 : Branch M) p i
+  : (node_of_pl' branch1 p i) ⋅ (node_of_pl' branch2 p i) ≡ node_of_pl' (branch1 ⋅ branch2) p i.
   generalize branch1, branch2. clear branch1. clear branch2.
-  induction i.
-  - intros. unfold "⋅". unfold branch_op, step_node. destruct branch1, branch2.
-     + fold branch_op. unfold step_branch. destruct n. destruct n0. unfold "⋅".
-        trivial.
-     + fold branch_op. cbn [step_branch]. destruct n. apply op_trivial_branch.
-        unfold branch_trivial. trivial.
-     + fold branch_op. cbn [step_branch]. destruct n. unfold branch_op. trivial.
-     + fold branch_op. cbn [step_branch]. unfold branch_op. trivial.
-  - intros. unfold "⋅". unfold node_op, branch_op, step_branch. destruct branch1, branch2.
-     + destruct n. destruct n0. fold branch_op. fold step_branch. fold node_op. unfold "⋅". unfold node_op. apply IHi.
-     + destruct n. fold branch_op. fold step_branch.
-        setoid_rewrite op_trivial_branch; trivial. unfold branch_trivial. trivial.
-     + destruct n. fold branch_op. fold step_branch. trivial.
-     + trivial.
+  induction p.
+  - intros. unfold node_of_pl'. apply step_node_op.
+  - intros.
+      unfold node_of_pl in *. cbn [node_of_pl'].
+      setoid_rewrite <- step_branch_op.
+      apply IHp.
 Qed.
 
 Lemma node_of_pl_op (branch1 : Branch M) (branch2 : Branch M) pl
   : (node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl.
 Proof.
-  generalize branch1, branch2. clear branch1. clear branch2.
-  destruct pl. rename l into p. rename n into i.
-  induction p.
-  - intros. unfold node_of_pl, node_of_pl'. apply step_node_op.
-  - intros.
-      unfold node_of_pl in *. cbn [node_of_pl'].
-      setoid_rewrite <- step_branch_op.
-  
+  unfold node_of_pl. destruct pl. apply node_of_pl'_op. Qed.
 
-Lemma cell_of_pl_op {M} `{!EqDecision M, !TPCM M}
-    (branch1 : Branch M) (branch2 : Branch M)
-  : forall pl , (cell_of_pl branch1 pl) ⋅ (cell_of_pl branch2 pl) ≡ cell_of_pl (branch1 ⋅ branch2) pl.
-Admitted.
+Lemma cell_of_pl_op (branch1 : Branch M) (branch2 : Branch M) pl
+  : (cell_of_pl branch1 pl) ⋅ (cell_of_pl branch2 pl) ≡ cell_of_pl (branch1 ⋅ branch2) pl.
+Proof.
+  assert ((node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl) as ce by (apply node_of_pl_op).
+  unfold cell_of_pl.
+  destruct (node_of_pl branch1 pl).
+  destruct (node_of_pl branch2 pl).
+  destruct (node_of_pl (branch1 ⋅ branch2) pl).
+  unfold "≡","⋅",node_equiv,node_op in ce. destruct_ands; trivial.
+Qed.
 
-
-
-Lemma equiv_extensionality_cells {M} `{!EqDecision M, !TPCM M}
+(*Lemma equiv_extensionality_cells {M} `{!EqDecision M, !TPCM M}
     (branch1: Branch M) (branch2: Branch M)
     (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
-    : branch1 ≡ branch2. Admitted.
+    : branch1 ≡ branch2. Admitted.*)
   
 End Indexing.
