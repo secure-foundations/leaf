@@ -14,7 +14,9 @@ Require Import Burrow.locations.
 
 Require Import coq_tricks.Deex.
 
-Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI). Admitted.
+Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI).
+Proof. solve_decision. Defined.
+
 Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.
 
 Definition lmap M `{!EqDecision M} `{!Countable M} `{!TPCM M}
@@ -94,7 +96,32 @@ Definition state_inv (state: State M RI) : Prop :=
 Instance state_valid : Valid (State M RI) :=
   λ v , ∃ p , state_inv (v ⋅ p).
   
-Lemma as_tree_dot (a b: lmap M RI) : (as_tree a) ⋅ (as_tree b) ≡ as_tree (a ⋅ b). Admitted.
+Instance branch_op_proper :
+    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
+  
+Lemma as_tree_dot (a b: lmap M RI) : (as_tree a) ⋅ (as_tree b) ≡ as_tree (a ⋅ b).
+Proof. unfold as_tree.
+  apply map_fold_merge.
+  - intros. setoid_rewrite branch_op_comm. apply op_trivial_branch.
+      unfold branch_trivial. trivial.
+  - intros. unfold cell_op_opt. trivial.
+  - intros. unfold cell_op_opt. trivial.
+  - intros. unfold cell_op_opt. exists (v ⋅ w). trivial.
+  - intros. unfold Proper, "==>". intros. setoid_rewrite H. trivial.
+  - intros. unfold Proper, "==>". intros. setoid_rewrite H0. setoid_rewrite H. trivial.
+  - intros.
+    setoid_rewrite <- branch_op_assoc.
+    setoid_replace (build k2 v2 ⋅ build k1 v1) with (build k1 v1 ⋅ build k2 v2); trivial.
+        apply branch_op_comm.
+  - intros.
+      setoid_rewrite <- branch_op_assoc.
+      setoid_replace (build i x ⋅ (s ⋅ build i y)) with (s ⋅ build i z); trivial.
+      setoid_rewrite branch_op_assoc.
+      setoid_replace (build i x ⋅ s) with (s ⋅ build i x).
+      + setoid_rewrite <- branch_op_assoc.
+        setoid_replace ((build i x ⋅ build i y)) with (build i z); trivial.
+        Admitted.
+  
 
 (****************************************************************)
 (****************************************************************)
@@ -163,7 +190,9 @@ Qed.
 (****************************************************************)
 (* live(gamma, m) . borrow(kappa, gamma, k) --> valid (a . b) *)
 
-Instance state_equiv_symm : Symmetric state_equiv. Admitted.
+Instance state_equiv_symm : Symmetric state_equiv.
+Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
+  split. * symmetry. trivial. * Admitted.
 
 Instance branch_all_total_in_refinement_domain_proper roi :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (branch_all_total_in_refinement_domain roi).
@@ -175,8 +204,6 @@ Instance branch_all_total_in_refinement_domain_proper roi :
 Instance branch_op_proper_right b :
     Proper ((≡) ==> (≡)) (branch_op b). Admitted.*)
     
-Instance branch_op_proper :
-    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
     
 Instance node_op_proper_left :
     Proper ((≡) ==> (=) ==> (≡)) node_op. Admitted.

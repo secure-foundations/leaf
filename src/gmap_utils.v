@@ -211,6 +211,97 @@ Proof. apply (set_relate (=)).
   - intros. rewrite H7. apply equiv.
 Qed.
 
+Lemma merge_assign `{!EqDecision K, !Countable K} {V}
+    (z:V) op (i:K) (x y:V) (m m' : gmap K V)
+    (xyz : Some z = op (Some x) (Some y))
+  : merge op (<[i:=x]> m) (<[i:=y]> m') = <[i:=z]> (merge op m m').
+Proof.
+  apply map_eq. intro. rewrite lookup_merge. unfold diag_None.
+  have heq : Decision (i = i0) by solve_decision. destruct heq.
+  - rewrite e. rewrite lookup_insert. rewrite lookup_insert. rewrite lookup_insert.
+      rewrite xyz. trivial.
+  - repeat (rewrite lookup_insert_ne; trivial). rewrite lookup_merge.
+    unfold diag_None. trivial.
+Qed.
+
+Lemma merge_assign2 `{!EqDecision K, !Countable K} {V}
+    op (i:K) (x:V) (m m' : gmap K V)
+    (xyz : op (Some x) None = Some x)
+    (i_not_in_m : m' !! i = None)
+  : merge op (<[i:=x]> m) m' = <[i:=x]> (merge op m m').
+Proof.
+  apply map_eq. intro. rewrite lookup_merge. unfold diag_None.
+  have heq : Decision (i = i0) by solve_decision. destruct heq.
+  - rewrite e. rewrite lookup_insert. rewrite lookup_insert.
+    rewrite e in i_not_in_m. rewrite i_not_in_m. trivial.
+  - repeat (rewrite lookup_insert_ne; trivial). rewrite lookup_merge.
+      unfold diag_None. trivial.
+Qed.
+
+Lemma map_fold_merge `{EqDecision K, Countable K} `{!Equiv B} {V}
+    {tr: Transitive Equiv0}
+    {rf: Reflexive Equiv0}
+    {sy: Symmetric Equiv0}
+  (big_op: B -> B -> B)
+  (small_op: option V -> option V -> option V)
+  (u: B)
+  (a: gmap K V)
+  (b: gmap K V)
+  (u_is_unit: ∀ t, big_op u t ≡ t)
+  (small_op_none_some: ∀ v, small_op None (Some v) = Some v)
+  (small_op_some_none: ∀ v, small_op (Some v) None = Some v)
+  (small_op_some_some: ∀ v w, ∃ z , small_op (Some v) (Some w) = Some z)
+  (fn: K -> V -> B -> B)
+  (fn_proper: ∀ k v , Proper ((≡) ==> (≡)) (fn k v))
+  (big_op_proper: Proper ((≡) ==> (≡) ==> (≡)) big_op)
+  (fn_assoc: ∀ k1 v1 k2 v2 y ,
+      fn k1 v1 (fn k2 v2 y) ≡ fn k2 v2 (fn k1 v1 y))
+  (big_op_fn: ∀ i x y z t s ,
+      small_op (Some x) (Some y) = Some z ->
+      big_op (fn i x t) (fn i y s) ≡ fn i z (big_op t s))
+  (big_op_fn1: ∀ i x t s ,
+      big_op (fn i x t) s ≡ fn i x (big_op t s))
+  : big_op (map_fold fn u a) (map_fold fn u b) ≡ map_fold fn u (merge small_op a b).
+Proof.
+  generalize b. clear b.
+  apply map_ind with (P := λ ak , ∀ b,
+      big_op (map_fold fn u ak) (map_fold fn u b) ≡ map_fold fn u (merge small_op ak b)).
+  - intro. rewrite map_fold_empty.
+    setoid_rewrite u_is_unit.
+    assert (merge small_op ∅ b = b).
+    + apply map_eq. intros. rewrite lookup_merge. rewrite lookup_empty.
+        unfold diag_None. destruct (b !! i). * apply small_op_none_some.
+        * trivial.
+    + rewrite H0. trivial.
+  - intros.
+    assert (∀ x m, m!!i = None -> map_fold fn u (<[i:=x]> m) ≡ fn i x (map_fold fn u m)) as equiv1.
+    + intros. apply map_fold_insert with (R := (≡)).
+      * apply Build_PreOrder; typeclasses eauto.
+      * typeclasses eauto.
+      * intros. apply fn_assoc.
+      * trivial.
+    + setoid_rewrite equiv1; trivial.
+      destruct (b !! i) eqn:b_i.
+      * assert (exists b' , b' !! i = None /\ <[i:=v]>b' = b).
+        -- exists (delete i b). split. ++ apply lookup_delete. ++ rewrite insert_delete; trivial.
+        -- deex. destruct_ands. subst b.
+            intros. setoid_rewrite equiv1; trivial.
+            have ss := small_op_some_some x v. deex.
+            rewrite (merge_assign z).
+            ++ setoid_rewrite equiv1; trivial.
+              ** setoid_rewrite <- H1. apply big_op_fn. trivial.
+              ** rewrite lookup_merge. rewrite H0. rewrite H2. unfold diag_None. trivial.
+            ++ symmetry. trivial.
+      * rewrite merge_assign2.
+        -- setoid_rewrite equiv1; trivial.
+         ++ rewrite <- H1. apply big_op_fn1.
+         ++ rewrite lookup_merge. rewrite H0. rewrite b_i. unfold diag_None. trivial.
+        -- apply small_op_some_none.
+        -- trivial.
+Qed.
+  
+ (* unfold map_fold. unfold curry. unfold Datatypes.uncurry. unfold "∘". *)
+
 Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
   | MS : gmap A nat -> multiset A.
 
