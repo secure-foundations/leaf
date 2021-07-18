@@ -465,3 +465,30 @@ Definition multiset_in `{EqDecision A, Countable A} (x : multiset A) y :=
   match x with
     | (MS _ x) => x !! y ≠ None
   end.
+
+Lemma multiset_add_chain_included (a b c d : multiset nat) :
+  multiset_le a (multiset_add (multiset_add (multiset_add a b) c) d). Admitted.
+  
+Lemma multiset_add_empty (a : multiset nat) :
+  multiset_add a empty_multiset = a. Admitted.
+  
+Lemma multiset_add_empty_left (a : multiset nat) :
+  multiset_add empty_multiset a = a. Admitted.
+
+Lemma multiset_le_add `{EqDecision A, Countable A} (a b: multiset A) : multiset_le a (multiset_add a b). Admitted.
+
+Lemma multiset_le_refl `{EqDecision A, Countable A} (x: multiset A)
+  : multiset_le x x.
+Proof. unfold multiset_le. destruct x. intro. destruct (g !! k); lia. Qed.
+
+Definition max_ltunit_in_lt (lt: multiset nat) : nat. Admitted.
+Definition lt_singleton (n: nat) : multiset nat. Admitted.
+
+Lemma multiset_no_dupes_of_add_larger_elem lt y
+  (mnd : multiset_no_dupes lt)
+  (larger: y > max_ltunit_in_lt lt)
+  : multiset_no_dupes (multiset_add (lt_singleton y) lt). Admitted.
+  
+Lemma multiset_in_lt_singleton x
+    : multiset_in (lt_singleton x) x. Admitted.
+    

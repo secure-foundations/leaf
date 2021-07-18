@@ -198,6 +198,14 @@ Proof.
   unfold "≡","⋅",node_equiv,node_op in ce. destruct_ands; trivial.
 Qed.
 
+(*Lemma pl_induction (branch: Branch M)
+  (node_fn : Node M -> Prop) 
+  (branch_fn : Node M -> Prop) 
+  (branch_fn_nil : ∀ pl, branch_fn BranchNil pl)
+  (∀ pl , node_fn (node_of_pl branch pl) pl)
+  (node_ind : 
+  *)
+
 (*Lemma equiv_extensionality_cells {M} `{!EqDecision M, !TPCM M}
     (branch1: Branch M) (branch2: Branch M)
     (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))

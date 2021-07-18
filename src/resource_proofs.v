@@ -244,9 +244,6 @@ Definition any_pl_of_loc (loc: Loc RI) : PathLoc. Admitted.
 Lemma any_pl_of_loc_is_of_loc (loc: Loc RI)
   : any_pl_of_loc loc ∈ pls_of_loc loc. Admitted.
 
-Lemma multiset_add_chain_included (a b c d : Lifetime) :
-  lifetime_included (multiset_add (multiset_add (multiset_add a b) c) d) a. Admitted.
-  
 Lemma in_refinement_domain_of_natird roi (node: Node M) (lifetime: Lifetime) (idx: nat)
   (natird : node_all_total_in_refinement_domain roi node lifetime idx)
       : in_refinement_domain roi idx (node_total roi node lifetime). Admitted.
@@ -282,7 +279,8 @@ Proof.
 Qed.
 
 Lemma node_node_cell_cell b pl : node_live (node_of_pl b pl) = cell_live (cell_of_pl b pl).
-Admitted.
+Proof. unfold cell_of_pl. unfold node_live. unfold cell_live. destruct (node_of_pl b pl).
+trivial. Qed.
 
 Lemma tpcm_le_m_node_live_with_m m gamma e b c
     : tpcm_le m
@@ -317,6 +315,7 @@ Proof.
   rename isb into isb'. have isb := isb' (any_pl_of_loc gamma) (any_pl_of_loc_is_of_loc gamma). clear isb'.
   rename isv into isv'. have isv := isv' (any_pl_of_loc gamma). clear isv'.
   have nvlt := node_view_le_total_minus_live _ _ _ _ _ _ isv.
+  unfold lifetime_included in *.
   have nvlt' := nvlt kappa (multiset_add_chain_included _ _ _ _). clear nvlt.
   unfold view_sat in nvlt'.
   
@@ -350,12 +349,6 @@ Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
       | Some i2 => mov (dot m i1) (dot m' i2)
       end
   end.
-  
-Lemma multiset_add_empty (a : Lifetime) :
-  multiset_add a empty_lifetime = a. Admitted.
-  
-Lemma multiset_add_empty_left (a : Lifetime) :
-  multiset_add empty_lifetime a = a. Admitted.
     
 Definition specific_exchange_cond (ref: Refinement M M) (p m f m' f' : M) :=
   match rel M M ref (dot f p) with
@@ -398,9 +391,6 @@ Lemma specific_flows_preserve_branch_all_total_in_refinement_domain t t' active
   (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) t active 0)
           : branch_all_total_in_refinement_domain (refinement_of_nat M RI) t' active 0.
 Admitted.
-
-Lemma multiset_le_refl `{EqDecision A, Countable A} (x: multiset A)
-  : multiset_le x x. Admitted.
 
 Lemma specific_exchange_cond_add_stuff (ref: Refinement M M) (p m f m' f' stuff : M) :
   specific_exchange_cond ref (dot p stuff) m f m' f' -> specific_exchange_cond ref p m (dot f stuff) m' (dot f' stuff).
@@ -828,14 +818,7 @@ Qed.
 (* live(m, gamma) -> exists kappa , active(kappa) . reserved(kappa, m, gamma) *)
 
 Definition max_ltunit_in_branch (b: Branch M) : nat. Admitted.
-Definition max_ltunit_in_lt (lt: Lifetime) : nat. Admitted.
-Definition lt_singleton (n: nat) : Lifetime. Admitted.
 
-Lemma multiset_no_dupes_of_add_larger_elem lt y
-  (mnd : multiset_no_dupes lt)
-  (larger: y > max_ltunit_in_lt lt)
-  : multiset_no_dupes (multiset_add (lt_singleton y) lt). Admitted.
-  
 Lemma branch_all_total_in_refinement_domain_of_preserved_cell_totals ref b1 b2 lt1 lt2 idx
   (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
   (batird : branch_all_total_in_refinement_domain ref b1 lt1 idx)
@@ -852,9 +835,6 @@ Lemma sum_reserved_over_lifetime_union (a b: listset (Lifetime * M)) lt
   (disj: a ∩ b ≡ ∅)
   : sum_reserved_over_lifetime (a ∪ b) lt
       = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt). Admitted.
-
-Lemma multiset_in_lt_singleton x
-    : multiset_in (lt_singleton x) x. Admitted.
     
 Lemma sum_reserved_over_lifetime_singleton r lt
   : sum_reserved_over_lifetime {[ r ]} lt = reserved_get_or_unit r lt. Admitted.
@@ -864,8 +844,6 @@ Lemma sum_reserved_over_lifetime_eq_adding_singleton g active_lifetime (lt: Life
   : (sum_reserved_over_lifetime g active_lifetime)
   = (sum_reserved_over_lifetime g (multiset_add (lt_singleton alt) active_lifetime)).
   Admitted.
-
-Lemma multiset_le_add (a b: Lifetime) : multiset_le a (multiset_add a b). Admitted.
 
 Lemma borrow_begin (m: M) gamma p
   (si: state_inv (live gamma m ⋅ p))
