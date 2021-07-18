@@ -233,7 +233,10 @@ Instance cell_total_proper :
     Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
     
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
-  : as_tree {[loc := cell]} ≡ build loc cell. Admitted.
+  : as_tree {[loc := cell]} ≡ build loc cell.
+Proof. unfold as_tree. unfold map_fold. unfold foldr, curry. unfold "∘".
+  rewrite map_to_list_singleton. unfold Datatypes.uncurry.
+  unfold "⋅". unfold branch_op. trivial. Qed.
 
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
   : branch_all_total_in_refinement_domain roi branch lt idx
@@ -249,7 +252,7 @@ Lemma in_refinement_domain_of_natird roi (node: Node M) (lifetime: Lifetime) (id
       : in_refinement_domain roi idx (node_total roi node lifetime). Admitted.
 
 Lemma exists_some_of_match {A} (t: option A) (is_some : match t with | Some _ => True | None => False end)
-  : exists x , t = Some x. Admitted.
+  : exists x , t = Some x. Proof. destruct t. - exists a; trivial. - contradiction. Qed.
 
 (*node_view roi (a ⋅ b) k -> node_view roi a k
             (node_of_pl (build gamma (CellCon m ∅) ⋅ as_tree l2 ⋅ as_tree l0)

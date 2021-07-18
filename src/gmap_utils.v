@@ -459,36 +459,75 @@ Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
   end.
 
 Lemma empty_add_empty_eq_empty `{EqDecision A, Countable A}
-    : multiset_add empty_multiset empty_multiset = empty_multiset (A:=A). Admitted.
+    : multiset_add empty_multiset empty_multiset = empty_multiset (A:=A).
+Proof.
+  unfold empty_multiset, multiset_add. f_equal. apply map_eq. intro.
+    rewrite lookup_merge. rewrite lookup_empty. unfold diag_None. trivial. Qed.
 
 Definition multiset_in `{EqDecision A, Countable A} (x : multiset A) y :=
   match x with
     | (MS _ x) => x !! y ≠ None
   end.
-
-Lemma multiset_add_chain_included (a b c d : multiset nat) :
-  multiset_le a (multiset_add (multiset_add (multiset_add a b) c) d). Admitted.
   
 Lemma multiset_add_empty (a : multiset nat) :
-  multiset_add a empty_multiset = a. Admitted.
+  multiset_add a empty_multiset = a.
+Proof. unfold empty_multiset, multiset_add. destruct a. f_equal. apply map_eq. intro.
+    rewrite lookup_merge. rewrite lookup_empty. unfold diag_None. destruct (g !! i); trivial.
+Qed.
   
 Lemma multiset_add_empty_left (a : multiset nat) :
-  multiset_add empty_multiset a = a. Admitted.
+  multiset_add empty_multiset a = a.
+Proof. unfold empty_multiset, multiset_add. destruct a. f_equal. apply map_eq. intro.
+    rewrite lookup_merge. rewrite lookup_empty. unfold diag_None. destruct (g !! i); trivial.
+Qed.
 
-Lemma multiset_le_add `{EqDecision A, Countable A} (a b: multiset A) : multiset_le a (multiset_add a b). Admitted.
+Lemma multiset_le_add `{EqDecision A, Countable A} (a b: multiset A) : multiset_le a (multiset_add a b).
+Proof. unfold multiset_le. destruct a, b. unfold multiset_add. intro.
+  rewrite lookup_merge. unfold diag_None. unfold multiset_add_merge.
+    destruct (g !! k); destruct (g0 !! k); lia.
+Qed.
+
+Lemma multiset_le_add_right `{EqDecision A, Countable A} (a b: multiset A) : multiset_le a (multiset_add b a).
+Proof. unfold multiset_le. destruct a, b. unfold multiset_add. intro.
+  rewrite lookup_merge. unfold diag_None. unfold multiset_add_merge.
+    destruct (g !! k); destruct (g0 !! k); lia.
+Qed.
+
+Lemma multiset_add_chain_included (a b c d : multiset nat) :
+  multiset_le a (multiset_add (multiset_add (multiset_add a b) c) d).
+Proof. unfold multiset_le. destruct a, b, c, d. unfold multiset_add. intro.
+  repeat (rewrite lookup_merge). unfold diag_None. unfold multiset_add_merge.
+    destruct (g !! k); destruct (g0 !! k); destruct (g1 !! k); destruct (g2 !! k); lia.
+Qed.
 
 Lemma multiset_le_refl `{EqDecision A, Countable A} (x: multiset A)
   : multiset_le x x.
 Proof. unfold multiset_le. destruct x. intro. destruct (g !! k); lia. Qed.
 
-Definition max_ltunit_in_lt (lt: multiset nat) : nat. Admitted.
-Definition lt_singleton (n: nat) : multiset nat. Admitted.
+Definition lt_singleton (n: nat) : multiset nat := MS nat {[ n := 0 ]}.
+
+Lemma multiset_in_lt_singleton x : multiset_in (lt_singleton x) x.
+Proof. unfold multiset_in, lt_singleton. rewrite lookup_singleton. crush. Qed.
+
+Definition max_ltunit_in_lt (lt: multiset nat) : nat :=
+  match lt with
+  | MS _ y => map_fold (λ k v b , max k b) 0 y
+  end.
+  
+Lemma max_ltunit_in_lt_ge (lt: multiset nat) k :
+  multiset_in lt k -> k ≤ max_ltunit_in_lt lt.
+Proof. intro. unfold max_ltunit_in_lt.
+  destruct lt.
+  unfold multiset_in in H. destruct (g !! k) eqn:t.
+  - apply gmap_induct_with_elem with (key := k) (val := n); trivial.
+    + intros. lia.
+    + intros. lia.
+  - contradiction.
+Qed.
 
 Lemma multiset_no_dupes_of_add_larger_elem lt y
   (mnd : multiset_no_dupes lt)
   (larger: y > max_ltunit_in_lt lt)
-  : multiset_no_dupes (multiset_add (lt_singleton y) lt). Admitted.
-  
-Lemma multiset_in_lt_singleton x
-    : multiset_in (lt_singleton x) x. Admitted.
+  : multiset_no_dupes (multiset_add (lt_singleton y) lt).
+Admitted. 
     
