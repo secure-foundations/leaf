@@ -1235,6 +1235,9 @@ Global Instance node_total_in_refinement_domain_proper :
     
 Global Instance node_total_minus_live_proper :
     Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live). Admitted.
+    
+Global Instance node_total_proper :
+    Proper ((≡) ==> (=) ==> (=)) (node_total). Admitted.
 
 End RollupRA.
 
@@ -1252,5 +1255,5 @@ Local Instance valid_state : Valid (State M) := alls_valid_instance ref.
 Definition a (x: State M) := ✓ x.
 *)
 
-Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} 
+Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
     Proper ((≡) ==> (=)) node_live. Admitted.

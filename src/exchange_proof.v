@@ -58,6 +58,10 @@ Lemma branchcons_pl_inv_n t p i b n
   : branch_of_pl t (p, i) ≡ BranchCons n b ->
       n ≡ node_of_pl t (p, i).
   Admitted.
+  
+Lemma cellnode_pl_inv_b t p i c branch
+  : node_of_pl t (p, i) ≡ CellNode c branch -> branch ≡ branch_of_pl t (p++[i], 0).
+  Admitted.
 
 Definition branch_of_node (node: Node M) := match node with CellNode _ b => b end.
 
@@ -164,12 +168,191 @@ Proof.
   - contradiction.
 Qed.
 
+Lemma m_valid_ca a b c
+: m_valid (dot (dot a b) c) -> m_valid (dot c a). Admitted.
+
+Lemma m_valid_bd (a b c d : M)
+: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot b d). Admitted.
+
+Lemma m_valid_db (a b c d : M)
+: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot d b). Admitted.
+
+Lemma rec_m_valid_branch
+  (t t' : Branch M)
+  (active : Lifetime)
+  (branch : Branch M) p i
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (branch_is : branch ≡ branch_of_pl t (p, i))
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
+  : m_valid (dot
+                  (branch_total (refinement_of_nat M RI) (branch_of_pl t (p, S i)) active
+                     (S i)) (down (p, S i))).
+Proof.
+  setoid_rewrite branch_is in amval.
+  setoid_rewrite branchcons_pl in amval.
+  rewrite branch_total_unfold in amval.
+  have fl := flow_update p i.
+  unfold specific_flow_cond in fl.
+  unfold specific_exchange_cond in fl. deex.
+  
+  setoid_rewrite branch_is in batird.
+  setoid_rewrite branchcons_pl in batird.
+  rewrite branch_all_total_in_refinement_domain_unfold in batird.
+  destruct_ands. clear H0. rename H into natird.
+  setoid_rewrite cellnode_pl in natird.
+  rewrite node_all_total_in_refinement_domain_unfold in natird.
+  destruct_ands. rename H into Y. clear H0.
+  unfold in_refinement_domain in Y.
+  assert ((node_total (refinement_of_nat M RI)
+             (CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p ++ [i], 0))) active)
+             = node_total (refinement_of_nat M RI) (node_of_pl t (p, i)) active).
+   - setoid_rewrite cellnode_pl. trivial.
+   - rewrite H in Y.
+     rewrite <- node_live_plus_node_total_minus_live in Y.
+     
+     rewrite <- node_live_plus_node_total_minus_live in amval.
+     unfold project in amval.
+     
+     full_generalize (rel M M (refinement_of_nat M RI i)
+          (dot (node_live (node_of_pl t (p, i)))
+             (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) as x.
+     destruct x.
+     + have fl' := fl (m_valid_ca _ _ _ amval).
+       destruct_ands.
+       rewrite H1 in amval.
+       have am := m_valid_bd _ _ _ _ amval.
+       trivial.
+     + contradiction.
+Qed.
+
+Lemma rec_m_valid_node
+  (t t' : Branch M)
+  (active : Lifetime)
+  (branch : Branch M) p i
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (branch_is : branch ≡ branch_of_pl t (p, i))
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
+      : m_valid
+             (dot
+                (branch_total (refinement_of_nat M RI) (branch_of_node (node_of_pl t (p, i)))
+                   active 0) (down (p ++ [i], 0))).
+Proof.
+  (*setoid_rewrite branch_is in amval.
+  setoid_rewrite branchcons_pl in amval.
+  rewrite branch_total_unfold in amval.
+  setoid_rewrite cellnode_pl in amval.
+  rewrite node_total_unfold in amval.*)
+
+  setoid_rewrite branch_is in amval.
+  setoid_rewrite branchcons_pl in amval.
+  rewrite branch_total_unfold in amval.
+  have fl := flow_update p i.
+  unfold specific_flow_cond in fl.
+  unfold specific_exchange_cond in fl. deex.
+  
+  setoid_rewrite branch_is in batird.
+  setoid_rewrite branchcons_pl in batird.
+  rewrite branch_all_total_in_refinement_domain_unfold in batird.
+  destruct_ands. clear H0. rename H into natird.
+  setoid_rewrite cellnode_pl in natird.
+  rewrite node_all_total_in_refinement_domain_unfold in natird.
+  destruct_ands. rename H into Y. clear H0.
+  unfold in_refinement_domain in Y.
+  assert ((node_total (refinement_of_nat M RI)
+             (CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p ++ [i], 0))) active)
+             = node_total (refinement_of_nat M RI) (node_of_pl t (p, i)) active).
+   - setoid_rewrite cellnode_pl. trivial.
+   - rewrite H in Y.
+     rewrite <- node_live_plus_node_total_minus_live in Y.
+     
+     rewrite <- node_live_plus_node_total_minus_live in amval.
+     unfold project in amval.
+     
+     full_generalize (rel M M (refinement_of_nat M RI i)
+          (dot (node_live (node_of_pl t (p, i)))
+             (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) as x.
+     destruct x.
+     + have fl' := fl (m_valid_ca _ _ _ amval).
+       destruct_ands.
+       destruct (rel M M (refinement_of_nat M RI i)
+           (dot (dot j (down (p ++ [i], 0)))
+              (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) eqn:de.
+       * have rvl := rel_valid_left M M (refinement_of_nat M RI i) _ _ de.
+         setoid_rewrite cellnode_pl in rvl.
+         unfold node_total_minus_live in rvl.
+         have q := m_valid_db _ _ _ _ rvl .
+         setoid_rewrite branch_of_node_node_of_pl.
+         trivial.
+       * contradiction.
+    + contradiction.
+Qed.
+
+(*Lemma transit_at_node
+  (t t' : Branch M)
+  (active : Lifetime)
+  (branch branch' : Branch M) p i
+  (c c' : Cell M)
+  (down up : PathLoc -> M)
+  (branch1_equiv : branch ≡ branch_of_pl t (p ++ [i], 0))
+  (branch2_equiv : branch' ≡ branch_of_pl t' (p ++ [i], 0))
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active 0) (down (p ++ [i], 0))))
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active 0)
+  (batird' : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active 0)
+  (mo : mov (dot (branch_total (refinement_of_nat M RI) branch active 0) (down (p ++ [i], 0)))
+         (dot (branch_total (refinement_of_nat M RI) branch' active 0) (up (p ++ [i], 0))))
+  (ird : in_refinement_domain (refinement_of_nat M RI) i
+          (dot (cell_total c active) (branch_total (refinement_of_nat M RI) branch active 0)))
+  : in_refinement_domain (refinement_of_nat M RI) i
+    (dot (cell_total c' active) (branch_total (refinement_of_nat M RI) branch' active 0)).
+Proof.
+  have fl := flow_update p i. clear flow_update.
+  unfold specific_flow_cond, specific_exchange_cond in fl.
+  
+  setoid_rewrite branch1_equiv in batird. Admitted.*)
+
+Lemma dot_cba a b c
+  : (dot (dot a b) c) = (dot (dot c b) a). Admitted.
+
+Lemma specexc_branch_t t t' active (branch branch': Branch M) p i
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (branch_is : branch ≡ branch_of_pl t (p, i))
+  (branch'_is : branch' ≡ branch_of_pl t' (p, i))
+  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
+  (branch'_is_trivial : branch_trivial branch')
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
+          : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
+      /\ mov
+        (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
+        (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i)))
+with specexc_node_t t t' active (node node': Node M) p i
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (node_is : node ≡ node_of_pl t (p, i))
+  (node'_is : node' ≡ node_of_pl t' (p, i))
+  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) (branch_of_node node) active 0) (down (p++[i], 0))))
+  (node'_is_trivial : node_trivial node')
+  (batird : node_all_total_in_refinement_domain (refinement_of_nat M RI) node active i)
+          : node_all_total_in_refinement_domain (refinement_of_nat M RI) node' active i
+      /\ mov
+        (dot (branch_total (refinement_of_nat M RI) (branch_of_node node) active 0) (down (p++[i], 0)))
+        (dot (branch_total (refinement_of_nat M RI) (branch_of_node node') active 0) (up (p++[i], 0))).
+        Admitted.
+
 Lemma specexc_branch t t' active (branch branch': Branch M) p i
   (down up : PathLoc -> M)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (branch_is : branch ≡ branch_of_pl t (p, i))
   (branch'_is : branch' ≡ branch_of_pl t' (p, i))
   (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
   (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
           : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
       /\ mov
@@ -181,6 +364,7 @@ with specexc_node t t' active (node node': Node M) p i
   (node_is : node ≡ node_of_pl t (p, i))
   (node'_is : node' ≡ node_of_pl t' (p, i))
   (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) (branch_of_node node) active 0) (down (p++[i], 0))))
   (batird : node_all_total_in_refinement_domain (refinement_of_nat M RI) node active i)
           : node_all_total_in_refinement_domain (refinement_of_nat M RI) node' active i
       /\ mov
@@ -196,11 +380,18 @@ Proof.
         by (apply branchcons_pl_inv_b with (n := n'); symmetry; trivial).
      have n_equiv : n' ≡ node_of_pl t' (p, i)
         by (apply branchcons_pl_inv_n with (b := branch'); symmetry; trivial).
+        
+     have mval_b := rec_m_valid_branch t t' active branch p i down up flow_update branch_is
+        amval batird.
+        
+     have mval_n := rec_m_valid_node t t' active branch p i down up flow_update branch_is
+        amval batird.
+        
      have IHbranch := specexc_branch t t' active (branch_of_pl t (p, S i)) branch' p (S i)
-                          down up flow_update triv_equiv b_equiv reserved_untouched.
+                          down up flow_update triv_equiv b_equiv reserved_untouched mval_b.
      clear specexc_branch.
      have IHnode := specexc_node t t' active (node_of_pl t (p, i)) n' p i
-                          down up flow_update triv_equiv2 n_equiv reserved_untouched.
+                          down up flow_update triv_equiv2 n_equiv reserved_untouched mval_n.
      clear specexc_node.
      
      setoid_rewrite branch_is in batird.
@@ -251,6 +442,14 @@ Proof.
         rewrite ctml_pres in ird.
         rewrite <- tpcm_assoc in ird.
         
+        setoid_rewrite branch_is in amval.
+        setoid_rewrite branchcons_pl in amval.
+        rewrite branch_total_unfold in amval.
+        setoid_rewrite cellnode_pl in amval.
+        rewrite node_total_unfold in amval.
+        rewrite cell_total_split in amval.
+        rewrite ctml_pres in amval.
+        
         full_generalize
           (branch_total (refinement_of_nat M RI) (branch_of_pl t (p, S i)) active (S i))
           as k.
@@ -272,6 +471,26 @@ Proof.
         unfold specific_exchange_cond in myflow.
         
         apply all_the_movs with (h := h) (s := s) (h' := h') (s' := s'); trivial.
+        rewrite dot_cba. trivial.
+      + eapply specexc_branch_t with (t := t) (t' := t'); trivial.
+        unfold branch_trivial. trivial.
+ - clear specexc_node.
+  destruct node, node'. rename b into branch. rename b0 into branch'.
+  rewrite node_all_total_in_refinement_domain_unfold.
+  rewrite node_total_unfold.
+  assert (branch ≡ branch_of_pl t (p ++ [i], 0)) as branch1_equiv
+      by (apply cellnode_pl_inv_b with (c := c); symmetry; trivial).
+  assert (branch' ≡ branch_of_pl t' (p ++ [i], 0)) as branch2_equiv
+      by (apply cellnode_pl_inv_b with (c := c0); symmetry; trivial).
+  unfold branch_of_node in amval.
+  rewrite node_all_total_in_refinement_domain_unfold in batird.
+  destruct_ands. rename H into ird. rename H0 into batird.
+  have Ihb := specexc_branch t t' active branch branch' (p++[i]) 0 down up flow_update
+      branch1_equiv branch2_equiv reserved_untouched amval batird.
+  destruct_ands.
+  repeat split; trivial.
+  rewrite node_total_unfold in ird.
+  
         
 
  
