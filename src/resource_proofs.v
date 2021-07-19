@@ -194,9 +194,6 @@ Instance state_equiv_symm : Symmetric state_equiv.
 Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
   split. * symmetry. trivial. * Admitted.
 
-Instance branch_all_total_in_refinement_domain_proper roi :
-    Proper ((≡) ==> (=) ==> (=) ==> impl) (branch_all_total_in_refinement_domain roi).
-    Admitted.
 
 (*Instance branch_op_proper_left :
     Proper ((≡) ==> (=) ==> (≡)) branch_op. Admitted.
@@ -220,11 +217,7 @@ Instance cell_op_proper_right n :
 Instance node_view_proper roi :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi). Admitted.
     
-Instance node_live_proper :
-    Proper ((≡) ==> (=)) node_live. Admitted.
 
-Instance node_total_minus_live_proper ref:
-    Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live ref). Admitted.
     
 Instance cell_live_proper :
     Proper ((≡) ==> (=)) cell_live. Admitted.

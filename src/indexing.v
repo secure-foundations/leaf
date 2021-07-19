@@ -47,6 +47,8 @@ Definition node_of_pl (branch: Branch M) (pl: PathLoc) : Node M :=
   match pl with
   | (p, i) => node_of_pl' branch p i
   end.
+  
+Definition branch_of_pl (branch: Branch M) (pl: PathLoc) : Branch M. Admitted.
     
 Definition cell_of_pl (branch: Branch M) (pl: PathLoc) : Cell M :=
   match node_of_pl branch pl with CellNode c _ => c end.

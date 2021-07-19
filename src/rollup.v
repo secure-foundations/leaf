@@ -848,11 +848,27 @@ with branch_total (branch: Branch M) (lifetime: Lifetime) (idx: nat) : M :=
   end
 .
 
+Lemma node_total_unfold (node: Node M) (lifetime: Lifetime) :
+    node_total node lifetime = 
+    match node with
+    | CellNode cell branch => dot (cell_total cell lifetime) (branch_total branch lifetime 0)
+    end.
+Proof. destruct node. unfold node_total. trivial. Qed.
+    
+Lemma branch_total_unfold (branch: Branch M) (lifetime: Lifetime) (idx: nat) :
+    branch_total branch lifetime idx =
+  match branch with
+  | BranchNil => unit
+  | BranchCons node branch => dot (project idx (node_total node lifetime))
+      (branch_total branch lifetime (S idx))
+  end.
+Proof. destruct branch; unfold branch_total; trivial. Qed.
+
 Definition node_live (node: Node M) : M :=
   match node with
   | CellNode cell branch => cell_live cell
   end.
-
+  
 Definition node_total_minus_live (node: Node M) (lifetime: Lifetime) : M :=
   match node with
   | CellNode cell branch => dot (cell_total_minus_live cell lifetime) (branch_total branch lifetime 0)
@@ -901,6 +917,25 @@ with branch_all_total_in_refinement_domain (branch: Branch M) (lifetime: Lifetim
       /\ branch_all_total_in_refinement_domain branch lifetime (S idx)
   end
 .
+ 
+Lemma node_all_total_in_refinement_domain_unfold (node: Node M) (lifetime: Lifetime) (idx: nat) :
+  node_all_total_in_refinement_domain node lifetime idx =
+  match node with
+  | CellNode _ branch =>
+         in_refinement_domain idx (node_total node lifetime)
+      /\ branch_all_total_in_refinement_domain branch lifetime 0
+  end.
+Proof. unfold node_all_total_in_refinement_domain. destruct node. trivial. Qed.
+
+Lemma branch_all_total_in_refinement_domain_unfold (branch: Branch M) (lifetime: Lifetime) (idx: nat) :
+  branch_all_total_in_refinement_domain branch lifetime idx =
+  match branch with
+  | BranchNil => True
+  | BranchCons node branch =>
+         node_all_total_in_refinement_domain node lifetime idx
+      /\ branch_all_total_in_refinement_domain branch lifetime (S idx)
+  end.
+Proof. unfold branch_all_total_in_refinement_domain; destruct branch; trivial. Qed.
 
 Definition view_sat_projections (idx: nat) (view : M -> Prop) (m : M)
     (vrv : in_refinement_domain idx m)
@@ -1182,6 +1217,25 @@ Proof. split.
 Qed.
 *)
 
+Global Instance branch_all_total_in_refinement_domain_proper :
+    Proper ((≡) ==> (=) ==> (=) ==> impl) (branch_all_total_in_refinement_domain).
+    Admitted.
+    
+Global Instance node_all_total_in_refinement_domain_proper :
+    Proper ((≡) ==> (=) ==> (=) ==> impl) (node_all_total_in_refinement_domain).
+    Admitted.
+    
+Global Instance branch_total_in_refinement_domain_proper :
+    Proper ((≡) ==> (=) ==> (=) ==> (=)) branch_total.
+    Admitted.
+    
+Global Instance node_total_in_refinement_domain_proper :
+    Proper ((≡) ==> (=) ==> (=)) node_total.
+    Admitted.
+    
+Global Instance node_total_minus_live_proper :
+    Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live). Admitted.
+
 End RollupRA.
 
 (*
@@ -1197,3 +1251,6 @@ Local Instance valid_state : Valid (State M) := alls_valid_instance ref.
 
 Definition a (x: State M) := ✓ x.
 *)
+
+Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=)) node_live. Admitted.
