@@ -18,16 +18,17 @@ Context {M} `{!EqDecision M} `{!Countable M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
 Definition specific_exchange_cond (ref: Refinement M M) (p m f h s m' f' h' s' : M) :=
-  ∃ j mh ,
+  ∃ j l l' ,
   match rel M M ref (dot f p) with
   | None => True
   | Some i1 => m_valid (dot m i1) ->
-      dot j s' = f' /\ m' = dot h' mh /\
+      dot j s' = f' /\ m = dot l h /\ m' = dot l' h' /\
       match rel M M ref (dot (dot j s) p) with
       | None => False
-      | Some i2 => mov (dot m i1) (dot (dot h mh) i2)
+      | Some i2 => mov (dot l i1) (dot l' i2)
       end
   end.
+
 
 Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up : PathLoc -> M) :=
   let q := (p, i) in
@@ -78,26 +79,90 @@ Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
     | [H : context[t] |- _ ] => rewrite <- EQ in H
     end); clear EQ; try (clear name); rename name1 into name.
     
+Lemma dot_kjha k j a : (dot (dot a k) j) = (dot (dot j a) k). Admitted.
+
+Lemma valid_reduce m k a :
+  m_valid (dot (dot m k) a) -> m_valid (dot m a). Admitted.
+  
+Lemma dot_aklh a k l h
+  : (dot (dot a k) (dot l h)) = dot (dot l a) (dot k h). Admitted.
+  
+Lemma dot_aklh2 a k l h
+    : (dot (dot (dot l h) k) a) = (dot (dot l a) (dot k h)). Admitted.
+
+Lemma dot_jszr (j s z r : M)
+        : dot (dot j s) (dot z r) = dot (dot r s) (dot j z). Admitted.
+        
+Lemma dot_jszr2 (j s z r : M)
+        : (dot (dot (dot j s) z) r) = dot(dot r s) (dot j z). Admitted.
+  
+Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a. Admitted.
+
+Lemma dot_qklh (q k l h : M)
+  : dot (dot q k) (dot l h) = dot (dot h k) (dot q l). Admitted.
+    
 Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (mo: mov (dot r s) (dot r' s'))
+  (mo2: mov (dot h k) (dot h' k'))
   (inr: in_refinement_domain (refinement_of_nat M RI) i (dot f (dot z r)))
   (myflow : specific_exchange_cond (refinement_of_nat M RI i) (dot z r) m f h s m' f' h' s')
-  (val : m_valid (dot m (project (refinement_of_nat M RI) i (dot (dot f z) r))))
+  (val : m_valid (dot (dot m k) (project (refinement_of_nat M RI) i (dot (dot f z) r))))
   : mov (dot (dot (project (refinement_of_nat M RI) i (dot (dot f z) r)) k) m)
     (dot (dot (project (refinement_of_nat M RI) i (dot (dot f' z) r')) k') m').
 Proof.
   unfold specific_exchange_cond in myflow. deex.
   unfold in_refinement_domain in inr.
   unfold project in *.
-  replace ((dot (dot f z) r)) with (dot f (dot z r)) in val
-    by (apply tpcm_assoc).
-  destruct (rel M M (refinement_of_nat M RI i) (dot f (dot z r))).
+  assert ((dot (dot f z) r) = (dot f (dot z r))) as A by (rewrite tpcm_assoc; trivial).
+  rewrite A in val. rewrite A. clear A.
+  destruct (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) eqn:fzr.
   - rename m0 into a.
-    have myf := myflow val. clear myflow.
+    have myf := myflow (valid_reduce m k a val). clear myflow.
     destruct_ands.
-    
-  
-
+    subst m.
+    subst m'.
+    destruct (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) eqn:jszr.
+    + rename m into a'.
+      assert (m_valid (dot (dot a' k) (dot l' h)) /\
+        (mov (dot (dot a k) (dot l h)) (dot (dot a' k) (dot l' h)))).
+      * assert (dot (dot a k) (dot l h) = dot (dot l a) (dot k h)) as r1 by (apply dot_aklh).
+        assert (dot (dot a' k) (dot l' h) = dot (dot l' a') (dot k h)) as r2 by (apply dot_aklh).
+        rewrite r1.
+        rewrite r2.
+        apply mov_monotonic; trivial.
+        rewrite <- dot_aklh2. trivial.
+      * destruct_ands.
+        apply trans with (y := dot (dot a' k) (dot l' h)); trivial.
+        
+        subst f'.
+        rewrite dot_jszr in jszr.
+        rewrite dot_jszr2.
+        
+        assert (m_valid (dot (dot r s) (dot j z))) as m_valid_srjz
+         by (apply (rel_valid_left M M (refinement_of_nat M RI i) (dot (dot r s) (dot j z)) a'); trivial).
+        assert (mov (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z))) as mov_rsjz
+          by (apply mov_monotonic; trivial).
+        
+        have movr := mov_refines M M (refinement_of_nat M RI i)
+            (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z)) a' mov_rsjz jszr.
+        deex. destruct_ands.
+        rewrite H.
+        
+        assert (m_valid (dot (dot q' k) (dot l' h)) /\
+          (mov (dot (dot a' k) (dot l' h)) (dot (dot q' k) (dot l' h)))).
+          -- rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc in H0.
+             apply mov_monotonic; trivial.
+          -- destruct_ands.
+              apply trans with (y := (dot (dot q' k) (dot l' h))); trivial.
+              rewrite dot_qklh.
+              rewrite dot_qklh in H4.
+              assert (dot (dot q' k') (dot l' h') = dot (dot h' k') (dot q' l'))
+                  by (apply dot_qklh).
+              rewrite H6.
+              apply mov_monotonic; trivial.
+    + contradiction.
+  - contradiction.
+Qed.
 
 Lemma specexc_branch t t' active (branch branch': Branch M) p i
   (down up : PathLoc -> M)

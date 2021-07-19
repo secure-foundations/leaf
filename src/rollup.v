@@ -1252,5 +1252,5 @@ Local Instance valid_state : Valid (State M) := alls_valid_instance ref.
 Definition a (x: State M) := ✓ x.
 *)
 
-Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} 
     Proper ((≡) ==> (=)) node_live. Admitted.
