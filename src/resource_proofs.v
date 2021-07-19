@@ -353,18 +353,20 @@ Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
       end
   end.
     
-Definition specific_exchange_cond (ref: Refinement M M) (p m f m' f' : M) :=
+Definition specific_exchange_cond (ref: Refinement M M) (p m f h s m' f' h' s' : M) :=
+  ∃ j mh ,
   match rel M M ref (dot f p) with
   | None => True
   | Some i1 => m_valid (dot m i1) ->
-      match rel M M ref (dot f' p) with
+      dot j s' = f' /\ m' = dot h' mh /\
+      match rel M M ref (dot (dot j s) p) with
       | None => False
-      | Some i2 => mov (dot m i1) (dot m' i2)
+      | Some i2 => mov (dot m i1) (dot (dot h mh) i2)
       end
   end.
   
-Definition view_exchange_cond (ref: Refinement M M) (view: M -> Prop) (m f m' f' : M) :=
-  ∀ p , view p -> specific_exchange_cond ref p m f m' f'.
+Definition view_exchange_cond (ref: Refinement M M) (view: M -> Prop) (m f h s m' f' h' s' : M) :=
+  ∀ p , view p -> specific_exchange_cond ref p m f h s m' f' h' s'.
   
 Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up : PathLoc -> M) :=
   let q := (p, i) in
@@ -372,10 +374,10 @@ Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up :
   let s := (p ++ [i], 0) in
   specific_exchange_cond (refinement_of_nat M RI i)
       (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t q) active)
-      (dot (down q) (up r))
-      (dot (up s) (node_live (node_of_pl t q)))
-      (dot (up q) (down r))
-      (dot (down s) (node_live (node_of_pl t' q))).
+      (down q) (node_live (node_of_pl t q))
+      (down r) (down s)
+      (up q) (node_live (node_of_pl t' q))
+      (up r) (up s).
   
 Definition view_flow_cond p i (b t t': Branch M) (active: Lifetime) (down up : PathLoc -> M) :=
   let q := (p, i) in
@@ -383,10 +385,10 @@ Definition view_flow_cond p i (b t t': Branch M) (active: Lifetime) (down up : P
   let s := (p ++ [i], 0) in
   view_exchange_cond (refinement_of_nat M RI i)
       (node_view (refinement_of_nat M RI) (node_of_pl b q) active)
-      (dot (down q) (up r))
-      (dot (up s) (node_live (node_of_pl t q)))
-      (dot (up q) (down r))
-      (dot (down s) (node_live (node_of_pl t' q))).
+      (down q) (node_live (node_of_pl t q))
+      (down r) (down s)
+      (up q) (node_live (node_of_pl t' q))
+      (up r) (up s).
       
 Lemma specific_flows_preserve_branch_all_total_in_refinement_domain t t' active
   (down up : PathLoc -> M)
@@ -395,11 +397,24 @@ Lemma specific_flows_preserve_branch_all_total_in_refinement_domain t t' active
           : branch_all_total_in_refinement_domain (refinement_of_nat M RI) t' active 0.
 Admitted.
 
-Lemma specific_exchange_cond_add_stuff (ref: Refinement M M) (p m f m' f' stuff : M) :
-  specific_exchange_cond ref (dot p stuff) m f m' f' -> specific_exchange_cond ref p m (dot f stuff) m' (dot f' stuff).
+Lemma specific_exchange_cond_add_stuff (ref: Refinement M M) (p m f h s m' f' h' s' stuff : M) :
+  specific_exchange_cond ref (dot p stuff) m f h s m' f' h' s'
+      -> specific_exchange_cond ref p m (dot f stuff) h s m' (dot f' stuff) h' s'.
 Proof. unfold specific_exchange_cond. intro. rewrite <- tpcm_assoc.
+deex. exists (dot j stuff). exists mh.
 rewrite <- tpcm_assoc. assert (dot p stuff = dot stuff p) by (apply tpcm_comm).
-rewrite <- H0. trivial. Qed.
+rewrite <- H0. trivial. destruct (rel M M ref (dot f (dot p stuff))); trivial.
+intro. have ab := H H1. destruct_ands; repeat split; trivial.
+- replace (dot stuff s') with (dot s' stuff).
+  + rewrite tpcm_assoc. f_equal. trivial.
+  + apply tpcm_comm.
+- replace ((dot (dot (dot j stuff) s) p)) with ((dot (dot j s) (dot p stuff))); trivial.
+  replace (dot p stuff) with (dot stuff p) by (apply tpcm_comm).
+  rewrite tpcm_assoc. f_equal.
+  rewrite <-tpcm_assoc.
+  rewrite <-tpcm_assoc.
+  f_equal. apply tpcm_comm.
+Qed.
 
 Lemma node_live_op (n1 n2 : Node M) : node_live (n1 ⋅ n2) = dot (node_live n1) (node_live n2).
 Admitted.
@@ -427,7 +442,7 @@ Proof.
   by (setoid_rewrite <- node_of_pl_op; apply node_live_op).
   rewrite H. clear H.
   
-  rewrite tpcm_assoc. rewrite tpcm_assoc.
+  (*rewrite tpcm_assoc. rewrite tpcm_assoc.*)
   
   apply specific_exchange_cond_add_stuff.
   
@@ -506,19 +521,64 @@ Lemma updog_other_eq_unit p i alpha ri gamma m
   (is_not_in : (p, i) ∉ pls_of_loc gamma)
     : (updog m gamma alpha ri (p ++ [i], 0)) = unit. Admitted.
     
-Lemma specific_exchange_cond_of_no_change ref p x y
-  : specific_exchange_cond ref p x y x y. Admitted.
+(*Lemma specific_exchange_cond_of_no_change ref p x y h s
+  : specific_exchange_cond ref p x y h s x y h s. Admitted.*)
+  
+Lemma unit_dot_left a : dot unit a = a. Admitted.
+
+
+Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
+  let EQ := fresh in
+  let name1 := fresh in
+  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
+    try (rewrite <- EQ);
+    (repeat match reverse goal with  
+    | [H : context[t] |- _ ] => rewrite <- EQ in H
+    end); clear EQ; try (clear name); rename name1 into name.
+
     
 Lemma view_exchange_cond_of_no_change ref view x y
-  : view_exchange_cond ref view x y x y.
+  : view_exchange_cond ref view x y unit unit x y unit unit.
 Proof. unfold view_exchange_cond. intro.
-  assert (exists t , t = rel M M ref (dot y p)) by (exists (rel M M ref (dot y p)); trivial).
   deex. unfold specific_exchange_cond.
-  rewrite <- H. destruct t; crush.
+  exists y. exists x. rewrite unit_dot. rewrite unit_dot_left.
+  full_generalize (rel M M ref (dot y p)) as t.
+  destruct t; crush.
   apply reflex.  
 Qed.
 
-Lemma unit_dot_left a : dot unit a = a. Admitted.
+Lemma view_exchange_cond_of_no_change2 ref view x y z w
+  : view_exchange_cond ref view x y x y z w z w.
+Proof. unfold view_exchange_cond. intro.
+  deex. unfold specific_exchange_cond. intro.
+  exists unit. exists unit.
+  repeat (rewrite unit_dot_left). destruct (rel M M ref (dot y p)); trivial.
+  intro. repeat split.
+  - rewrite unit_dot. trivial.
+  - rewrite unit_dot. apply reflex.
+Qed.
+
+Lemma specific_exchange_cond_of_whatever ref a x y m
+    : specific_exchange_cond ref a x (dot m y) x m unit y unit unit.
+Proof.
+  unfold specific_exchange_cond. exists y. exists unit.
+  replace (dot y m) with (dot m y) by (apply tpcm_comm).
+  repeat (rewrite unit_dot_left). destruct (rel M M ref (dot (dot m y) a)); trivial.
+  intro. repeat split.
+  - apply unit_dot.
+  - rewrite unit_dot. apply reflex.
+Qed.
+
+Lemma specific_exchange_cond_of_whatever2 ref a x y
+    : specific_exchange_cond ref a x y x unit unit y unit unit.
+Proof.
+  unfold specific_exchange_cond. exists y. exists unit.
+  rewrite unit_dot.
+  destruct (rel M M ref (dot y a)); trivial.
+  intro. repeat split; trivial.
+  - rewrite unit_dot. trivial.
+  - rewrite unit_dot. apply reflex.
+Qed.
 
 Lemma pl_not_in_of_pl_in_extloc pl alpha (ri: RI) gamma
   : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
@@ -543,18 +603,25 @@ Lemma view_exchange_cond_of_borrow_exchange_cond alpha ri gamma z m f m' f' p i 
   : view_exchange_cond
     (refinement_of_nat M RI i)
     (node_view (refinement_of_nat M RI) (node_of_pl (as_tree borrow_branch) (p,i)) active_lifetime)
-    m f m' f'.
+    m f unit unit m' f' unit unit.
 Proof.
   have h := refinement_of_nat_eq_refinement_of_of_in_pls_of_loc p i alpha ri gamma.
   rewrite h; trivial. clear h.
   unfold view_exchange_cond. unfold specific_exchange_cond. unfold borrow_exchange_cond in *.
   unfold lmap_is_borrow in *.
   intro extra. intro.
+  exists f'. exists m'.
   assert (tpcm_le z extra).
   - apply isb with (pl := (p,i)); trivial.
   - unfold tpcm_le in H0. deex. rewrite <- H0.
     rewrite tpcm_assoc. 
-    rewrite tpcm_assoc. apply exchange_cond.
+    rewrite tpcm_assoc. have ec := exchange_cond c.
+    destruct (rel M M (refinement_of ri) (dot (dot f z) c)); trivial.
+    intro Q.
+    have ec2 := ec Q. repeat split.
+    + apply unit_dot.
+    + rewrite unit_dot_left. trivial.
+    + repeat (rewrite unit_dot). repeat (rewrite unit_dot_left). trivial.
 Qed.
   
 Lemma borrow_exchange b kappa gamma (m f z m' f': M) alpha (ri: RI)
@@ -635,10 +702,10 @@ Proof.
         rewrite build_spec; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot_left).
-        rewrite tpcm_comm.
+        (*rewrite tpcm_comm.*)
         assert (dot m m' = dot m' m) by apply tpcm_comm.
-        rewrite H.
-        apply view_exchange_cond_of_no_change.
+        (*rewrite H.*)
+        apply view_exchange_cond_of_no_change2.
 
       (* uninteresting case *)
       * 
@@ -655,8 +722,8 @@ Proof.
         rewrite build_rest_triv; trivial.
         rewrite build_rest_triv; trivial.
         rewrite build_rest_triv; trivial.
-        rewrite tpcm_comm.
-        apply view_exchange_cond_of_no_change.
+        unfold cell_live, triv_cell. repeat (rewrite unit_dot).
+        apply view_exchange_cond_of_no_change2.
 Qed.
 
 (****************************************************************)
@@ -675,15 +742,6 @@ Lemma is_fresh_alloc branch ri : is_fresh_nat branch
 Lemma trivial_node_at_fresh (b: Branch M) p i
   (is_fresh: is_fresh_nat b i)
   : node_trivial (node_of_pl b (p, i)). Admitted.
-
-Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
-  let EQ := fresh in
-  let name1 := fresh in
-  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
-    try (rewrite <- EQ);
-    (repeat match reverse goal with  
-    | [H : context[t] |- _ ] => rewrite <- EQ in H
-    end); clear EQ; try (clear name); rename name1 into name.
     
 Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
   (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
@@ -769,16 +827,19 @@ Proof.
     unfold cell_of_pl. destruct (node_of_pl q (p, i)).
     unfold cell_trivial in h. destruct c. destruct_ands.
     subst m0.
+    repeat (rewrite unit_dot).
     
     unfold specific_exchange_cond.
-    repeat (rewrite unit_dot). unfold refinement_of_nat.
+    exists f. exists unit.
+    repeat (rewrite unit_dot).
+    unfold refinement_of_nat.
     have j := i_value_of_pls_of_loc_ext p i gamma alpha ri e. rewrite j.
     rewrite ri_of_nat_nat_of_extstep.
     rewrite is_rel.
     rewrite rel_unit.
     repeat (rewrite unit_dot).
     repeat (rewrite unit_dot_left).
-    intro. apply reflex.
+    intro. repeat split; trivial. apply reflex.
     
     - have the_case2 : Decision ((p, i) ∈ pls_of_loc gamma) by solve_decision.
       destruct the_case2.
@@ -797,7 +858,7 @@ Proof.
         rewrite build_rest_triv; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot_left).
-        apply specific_exchange_cond_of_no_change.
+        apply specific_exchange_cond_of_whatever.
 
       (* uninteresting case *)
       + 
@@ -811,7 +872,7 @@ Proof.
         rewrite build_rest_triv; trivial.
         rewrite build_rest_triv; trivial.
         repeat (rewrite unit_dot_left).
-        apply specific_exchange_cond_of_no_change.
+        apply specific_exchange_cond_of_whatever2.
 Qed.
 
 (****************************************************************)
