@@ -367,6 +367,34 @@ Proof.
 
 Lemma dot_cba a b c
   : (dot (dot a b) c) = (dot (dot c b) a). Admitted.
+  
+Lemma rec_branch_branch_triv t p i
+  : branch_trivial (branch_of_pl t (p, i)) ->
+    branch_trivial (branch_of_pl t (p, S i)). Admitted.
+    
+Lemma rec_branch_node_triv t p i
+  : branch_trivial (branch_of_pl t (p, i)) ->
+    node_trivial (node_of_pl t (p, i)). Admitted.
+    
+Lemma rec_node_branch_triv t p i
+  : node_trivial (node_of_pl t (p, i)) ->
+    branch_trivial (branch_of_pl t (p++[i], 0)). Admitted.
+    
+Lemma specexc_branch_tt t t' active (branch branch': Branch M) p i
+  (down up : PathLoc -> M)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (branch_is : branch ≡ branch_of_pl t (p, i))
+  (branch'_is : branch' ≡ branch_of_pl t' (p, i))
+  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
+  (branch_is_trivial : branch_trivial branch)
+  (branch'_is_trivial : branch_trivial branch')
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
+          : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
+      /\ mov
+        (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
+        (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i))).
+Admitted.
 
 Lemma specexc_branch_t t t' active (branch branch': Branch M) p i
   (down up : PathLoc -> M)
@@ -390,11 +418,209 @@ with specexc_node_t t t' active (node node': Node M) p i
   (amval : m_valid (dot (branch_total (refinement_of_nat M RI) (branch_of_node node) active 0) (down (p++[i], 0))))
   (node'_is_trivial : node_trivial node')
   (batird : node_all_total_in_refinement_domain (refinement_of_nat M RI) node active i)
-          : node_all_total_in_refinement_domain (refinement_of_nat M RI) node' active i
+          : branch_all_total_in_refinement_domain (refinement_of_nat M RI) (branch_of_node node') active 0
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) (branch_of_node node) active 0) (down (p++[i], 0)))
         (dot (branch_total (refinement_of_nat M RI) (branch_of_node node') active 0) (up (p++[i], 0))).
-        Admitted.
+Proof.
+ -
+  have mval_b := rec_m_valid_branch t t' active branch p i down up flow_update branch_is
+    amval batird.
+
+  have mval_n := rec_m_valid_node t t' active branch p i down up flow_update branch_is
+    amval batird.
+
+   destruct branch.
+   + have branch_destruct := branchcons_pl t p i.
+     have triv_equiv : (branch_of_pl t' (p, S i) ≡ branch_of_pl t' (p, S i)) by trivial.
+     have triv_equiv2 : (node_of_pl t' (p, i) ≡ node_of_pl t' (p, i)) by trivial.
+     have b_equiv : branch ≡ branch_of_pl t (p, S i)
+        by (apply branchcons_pl_inv_b with (n := n); symmetry; trivial).
+     have n_equiv : n ≡ node_of_pl t (p, i)
+        by (apply branchcons_pl_inv_n with (b := branch); symmetry; trivial).
+        
+     setoid_rewrite branch'_is in branch'_is_trivial.
+     assert (branch_trivial (branch_of_pl t' (p, S i))) as rec_bt by
+      (apply rec_branch_branch_triv; trivial).
+     assert (node_trivial (node_of_pl t' (p, i))) as rec_nt by
+      (apply rec_branch_node_triv; trivial).
+        
+     setoid_rewrite <- b_equiv in mval_b.
+     have IHbranch := specexc_branch_t t t' active branch (branch_of_pl t' (p, S i)) p (S i)
+                          down up flow_update b_equiv triv_equiv reserved_untouched mval_b rec_bt.
+     clear specexc_branch_t.
+     setoid_rewrite <- n_equiv in mval_n.
+     have IHnode := specexc_node_t t t' active n (node_of_pl t' (p, i)) p i
+                          down up flow_update n_equiv triv_equiv2 reserved_untouched mval_n rec_nt.
+     clear specexc_node_t.
+     
+     setoid_rewrite branch_is in batird.
+     setoid_rewrite branch_destruct in batird.
+     rewrite branch_all_total_in_refinement_domain_unfold in batird.
+     destruct_ands.
+     rename H into natird.
+     rename H0 into batird.
+     setoid_rewrite <- n_equiv in natird.
+     setoid_rewrite <- b_equiv in batird.
+     
+     have IHbranch' := IHbranch batird. clear IHbranch.
+     have IHnode' := IHnode natird. clear IHnode.
+        destruct_ands. rename H1 into Q1. rename H2 into Q2.
+        rename H into Q3. rename H0 into Q4.
+     
+     setoid_rewrite branch_is. setoid_rewrite branch_destruct.
+     rewrite branch_total_unfold.
+     have myflow := flow_update p i.
+     unfold specific_flow_cond in myflow.
+     setoid_rewrite cellnode_pl.
+     setoid_rewrite cellnode_pl in myflow.
+     unfold node_total_minus_live in myflow.
+        
+     unfold node_live in myflow.
+     setoid_rewrite branchcons_pl in Q1.
+     (*setoid_rewrite branchcons_pl in Q2.*)
+     setoid_rewrite b_equiv in Q2.
+        
+     setoid_rewrite n_equiv in natird.
+     setoid_rewrite cellnode_pl in natird.
+     rewrite node_all_total_in_refinement_domain_unfold in natird.
+     rewrite node_total_unfold in natird.
+     rewrite cell_total_split in natird.
+     destruct_ands. rename H into ird.
+        
+     assert ((cell_total_minus_live (cell_of_pl t (p, i)) active)
+            = (cell_total_minus_live (cell_of_pl t' (p, i)) active)) as ctml_pres
+            by (apply reserved_untouched).
+            
+     setoid_rewrite branch_is in amval.
+     setoid_rewrite branchcons_pl in amval.
+     rewrite branch_total_unfold in amval.
+     setoid_rewrite cellnode_pl in amval.
+     rewrite node_total_unfold in amval.
+     rewrite cell_total_split in amval.
+     rewrite ctml_pres in amval.
+        
+     setoid_rewrite branch_of_node_node_of_pl in Q4.
+     setoid_rewrite n_equiv in Q4.
+     setoid_rewrite branch_of_node_node_of_pl in Q4.
+        
+     rewrite ctml_pres in myflow.
+     rewrite ctml_pres in ird.
+     rewrite <- tpcm_assoc in ird.
+        
+     (*rewrite (branch_total_unfold (refinement_of_nat M RI) (BranchCons n' branch')).*)
+        
+     split.
+        
+        * setoid_rewrite branch'_is.
+          setoid_rewrite branchcons_pl.
+          rewrite branch_all_total_in_refinement_domain_unfold.
+          
+          split.
+        
+          -- setoid_rewrite cellnode_pl.
+             rewrite node_all_total_in_refinement_domain_unfold.
+             rewrite node_total_unfold.
+             split.
+             
+             
+             
+            (* ++ setoid_rewrite cellnode_pl in Q3.
+              rewrite branch_all_total_in_refinement_domain_unfold in Q3.
+              unfold branch_of_node in Q3.
+              destruct (branch_of_pl t' (p ++ [i], 0)) eqn:ye.
+              ** destruct Q3.
+                 rewrite ye in H.*)
+           
+           ++ rewrite cell_total_split.
+           
+        full_generalize
+          (branch_total (refinement_of_nat M RI) (branch_of_pl t (p, S i)) active (S i))
+          as k.
+        full_generalize
+          (branch_total (refinement_of_nat M RI) (branch_of_pl t' (p, S i)) active (S i))
+          as k'.
+        full_generalize (cell_live (cell_of_pl t (p, i))) as f.
+        full_generalize (cell_live (cell_of_pl t' (p, i))) as f'.
+        (*full_generalize (cell_total_minus_live (cell_of_pl t (p, i)) active) as z.*)
+        full_generalize (cell_total_minus_live (cell_of_pl t' (p, i)) active) as z.
+        full_generalize (branch_total (refinement_of_nat M RI) (branch_of_pl t (p ++ [i], 0)) active 0) as r.
+        full_generalize (branch_total (refinement_of_nat M RI) (branch_of_pl t' (p ++ [i], 0)) active 0) as r'.
+        full_generalize (down (p, S i)) as h.
+        full_generalize (up (p, S i)) as h'.
+        full_generalize (down (p, i)) as m.
+        full_generalize (up (p, i)) as m'.
+        full_generalize ((down (p ++ [i], 0))) as s.
+        full_generalize ((up(p ++ [i], 0))) as s'.
+        
+        apply all_the_movs_ird
+          with (m:=m) (f:=f) (h:=h) (s:=s) (r:=r) (k:=k) (m':=m') (h':=h') (s':=s') (k':=k');
+          trivial.
+          ** rewrite dot_cba. trivial.
+        
+        ++ setoid_rewrite cellnode_pl in Q3. unfold branch_of_node in Q3. trivial.
+      -- setoid_rewrite <- branchcons_pl in Q1. trivial.
+        
+        *
+        (*
+        (*setoid_rewrite n_equiv.*)
+        rewrite branch_total_unfold.
+        (*setoid_rewrite b_equiv.*)
+        rewrite cell_total_split.
+        (*rewrite cell_total_split.*)
+        *)
+        
+        setoid_rewrite branch'_is.
+        rewrite node_total_unfold.
+        setoid_rewrite (branchcons_pl t' p i).
+        rewrite (branch_total_unfold _ (BranchCons (node_of_pl t' (p, i)) (branch_of_pl t' (p, S i)))).
+        setoid_rewrite (cellnode_pl t' p i).
+        rewrite node_total_unfold.
+        rewrite cell_total_split.
+        rewrite cell_total_split.
+        
+        rewrite ctml_pres.
+        
+        full_generalize
+          (branch_total (refinement_of_nat M RI) (branch_of_pl t (p, S i)) active (S i))
+          as k.
+        full_generalize
+          (branch_total (refinement_of_nat M RI) (branch_of_pl t' (p, S i)) active (S i))
+          as k'.
+        full_generalize (cell_live (cell_of_pl t (p, i))) as f.
+        full_generalize (cell_live (cell_of_pl t' (p, i))) as f'.
+        (*full_generalize (cell_total_minus_live (cell_of_pl t (p, i)) active) as z.*)
+        full_generalize (cell_total_minus_live (cell_of_pl t' (p, i)) active) as z.
+        full_generalize (branch_total (refinement_of_nat M RI) (branch_of_pl t (p ++ [i], 0)) active 0) as r.
+        full_generalize (branch_total (refinement_of_nat M RI) (branch_of_pl t' (p ++ [i], 0)) active 0) as r'.
+        full_generalize (down (p, S i)) as h.
+        full_generalize (up (p, S i)) as h'.
+        full_generalize (down (p, i)) as m.
+        full_generalize (up (p, i)) as m'.
+        full_generalize ((down (p ++ [i], 0))) as s.
+        full_generalize ((up(p ++ [i], 0))) as s'.
+                
+        apply all_the_movs with (h := h) (s := s) (h' := h') (s' := s'); trivial.
+        rewrite dot_cba. trivial.
+      + eapply specexc_branch_tt with (t := t) (t' := t'); trivial.
+ - clear specexc_node_t.
+  assert (branch_trivial (branch_of_pl t' (p ++ [i], 0))) as rec_bt
+   by (apply rec_node_branch_triv; setoid_rewrite <- node'_is; trivial).
+  destruct node, node'. rename b into branch. rename b0 into branch'.
+  assert (branch ≡ branch_of_pl t (p ++ [i], 0)) as branch1_equiv
+      by (apply cellnode_pl_inv_b with (c := c); symmetry; trivial).
+  assert (branch' ≡ branch_of_pl t' (p ++ [i], 0)) as branch2_equiv
+      by (apply cellnode_pl_inv_b with (c := c0); symmetry; trivial).
+  unfold branch_of_node in amval.
+  rewrite node_all_total_in_refinement_domain_unfold in batird.
+  destruct_ands. rename H into ird. rename H0 into batird.
+  setoid_rewrite <- branch2_equiv in rec_bt.
+  have Ihb := specexc_branch_t t t' active branch branch' (p++[i]) 0 down up flow_update
+      branch1_equiv branch2_equiv reserved_untouched amval rec_bt batird.
+  destruct_ands.
+  repeat split; trivial.
+Qed.
+
 
 Lemma specexc_branch t t' active (branch branch': Branch M) p i
   (down up : PathLoc -> M)
