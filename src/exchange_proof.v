@@ -577,8 +577,10 @@ Proof.
         rewrite unit_dot_left in amval. trivial.
 Qed.
         
-Lemma specexc_branch_tt t t' active
+Lemma specexc_branch_tt t t' active (se: listset PathLoc) p i
+  branch branch'
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (branch_is : branch ≡ branch_of_pl t (p, i))
   (branch'_is : branch' ≡ branch_of_pl t' (p, i))
@@ -591,10 +593,20 @@ Lemma specexc_branch_tt t t' active
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
         (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i))).
-Admitted.
+Proof.
+  have lmax_h := listset_max_len se.
+  have imax_h := listset_max_i se. deex.
+  assert ( ∀ (p0 : list nat) (i0 : nat), (p0, i0) ∈ se → length p0 < (lmax+1) + length p).
+   - intros. have g := lmax_h p0 i0 H. lia.
+   - assert (∀ (p0 : list nat) (i0 : nat), (p0, i0) ∈ se → i0 < imax + 1 + i).
+    + intros. have g := imax_h p0 i0 H0. lia.
+    + eapply (specexc_branch_tt_ind t t' active se (lmax+1) (imax+1) p i branch branch' H H0 down up flow_se flow_update branch_is
+      branch'_is reserved_untouched amval branch_is_trivial branch'_is_trivial batird).
+Qed.
 
-Lemma specexc_branch_t t t' active (branch branch': Branch M) p i
+Lemma specexc_branch_t t t' active (branch branch': Branch M) (se: listset PathLoc) p i
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (branch_is : branch ≡ branch_of_pl t (p, i))
   (branch'_is : branch' ≡ branch_of_pl t' (p, i))
@@ -606,8 +618,9 @@ Lemma specexc_branch_t t t' active (branch branch': Branch M) p i
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
         (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i)))
-with specexc_node_t t t' active (node node': Node M) p i
+with specexc_node_t t t' active (node node': Node M) (se: listset PathLoc) p i
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (node_is : node ≡ node_of_pl t (p, i))
   (node'_is : node' ≡ node_of_pl t' (p, i))
@@ -643,12 +656,12 @@ Proof.
       (apply rec_branch_node_triv; trivial).
         
      setoid_rewrite <- b_equiv in mval_b.
-     have IHbranch := specexc_branch_t t t' active branch (branch_of_pl t' (p, S i)) p (S i)
-                          down up flow_update b_equiv triv_equiv reserved_untouched mval_b rec_bt.
+     have IHbranch := specexc_branch_t t t' active branch (branch_of_pl t' (p, S i)) se p (S i)
+                          down up flow_se flow_update b_equiv triv_equiv reserved_untouched mval_b rec_bt.
      clear specexc_branch_t.
      setoid_rewrite <- n_equiv in mval_n.
-     have IHnode := specexc_node_t t t' active n (node_of_pl t' (p, i)) p i
-                          down up flow_update n_equiv triv_equiv2 reserved_untouched mval_n rec_nt.
+     have IHnode := specexc_node_t t t' active n (node_of_pl t' (p, i)) se p i
+                          down up flow_se flow_update n_equiv triv_equiv2 reserved_untouched mval_n rec_nt.
      clear specexc_node_t.
      
      setoid_rewrite branch_is in batird.
@@ -799,7 +812,7 @@ Proof.
                 
         apply all_the_movs with (h := h) (s := s) (h' := h') (s' := s'); trivial.
         rewrite dot_cba. trivial.
-      + eapply specexc_branch_tt with (t := t) (t' := t'); trivial.
+      + eapply specexc_branch_tt with (t := t) (t' := t') (se:=se); trivial.
  - clear specexc_node_t.
   assert (branch_trivial (branch_of_pl t' (p ++ [i], 0))) as rec_bt
    by (apply rec_node_branch_triv; setoid_rewrite <- node'_is; trivial).
@@ -812,15 +825,16 @@ Proof.
   rewrite node_all_total_in_refinement_domain_unfold in batird.
   destruct_ands. rename H into ird. rename H0 into batird.
   setoid_rewrite <- branch2_equiv in rec_bt.
-  have Ihb := specexc_branch_t t t' active branch branch' (p++[i]) 0 down up flow_update
+  have Ihb := specexc_branch_t t t' active branch branch' se (p++[i]) 0 down up flow_se flow_update
       branch1_equiv branch2_equiv reserved_untouched amval rec_bt batird.
   destruct_ands.
   repeat split; trivial.
 Qed.
 
 
-Lemma specexc_branch t t' active (branch branch': Branch M) p i
+Lemma specexc_branch t t' active (branch branch': Branch M) (se: listset PathLoc) p i
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (branch_is : branch ≡ branch_of_pl t (p, i))
   (branch'_is : branch' ≡ branch_of_pl t' (p, i))
@@ -831,8 +845,9 @@ Lemma specexc_branch t t' active (branch branch': Branch M) p i
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
         (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i)))
-with specexc_node t t' active (node node': Node M) p i
+with specexc_node t t' active (node node': Node M) (se: listset PathLoc) p i
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (node_is : node ≡ node_of_pl t (p, i))
   (node'_is : node' ≡ node_of_pl t' (p, i))
@@ -860,11 +875,11 @@ Proof.
      have mval_n := rec_m_valid_node t t' active branch p i down up flow_update branch_is
         amval batird.
         
-     have IHbranch := specexc_branch t t' active (branch_of_pl t (p, S i)) branch' p (S i)
-                          down up flow_update triv_equiv b_equiv reserved_untouched mval_b.
+     have IHbranch := specexc_branch t t' active (branch_of_pl t (p, S i)) branch' se p (S i)
+                          down up flow_se flow_update triv_equiv b_equiv reserved_untouched mval_b.
      clear specexc_branch.
-     have IHnode := specexc_node t t' active (node_of_pl t (p, i)) n' p i
-                          down up flow_update triv_equiv2 n_equiv reserved_untouched mval_n.
+     have IHnode := specexc_node t t' active (node_of_pl t (p, i)) n' se p i
+                          down up flow_se flow_update triv_equiv2 n_equiv reserved_untouched mval_n.
      clear specexc_node.
      
      setoid_rewrite branch_is in batird.
@@ -1001,7 +1016,7 @@ Proof.
         
         apply all_the_movs with (h := h) (s := s) (h' := h') (s' := s'); trivial.
         rewrite dot_cba. trivial.
-      + eapply specexc_branch_t with (t := t) (t' := t'); trivial.
+      + eapply specexc_branch_t with (t := t) (t' := t') (se := se); trivial.
         unfold branch_trivial. trivial.
  - clear specexc_node.
   destruct node, node'. rename b into branch. rename b0 into branch'.
@@ -1012,7 +1027,7 @@ Proof.
   unfold branch_of_node in amval.
   rewrite node_all_total_in_refinement_domain_unfold in batird.
   destruct_ands. rename H into ird. rename H0 into batird.
-  have Ihb := specexc_branch t t' active branch branch' (p++[i]) 0 down up flow_update
+  have Ihb := specexc_branch t t' active branch branch' se (p++[i]) 0 down up flow_se flow_update
       branch1_equiv branch2_equiv reserved_untouched amval batird.
   destruct_ands.
   repeat split; trivial.
