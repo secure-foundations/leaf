@@ -104,6 +104,8 @@ Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a. Admitted.
 
 Lemma dot_qklh (q k l h : M)
   : dot (dot q k) (dot l h) = dot (dot k h) (dot q l). Admitted.
+  
+Lemma unit_dot_left a : dot unit a = a. Admitted.
     
 Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (mo: mov (dot r s) (dot r' s'))
@@ -112,6 +114,7 @@ Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (myflow : specific_exchange_cond (refinement_of_nat M RI i) (dot z r) m f h s m' f' h' s')
   (val : m_valid (dot (dot m k) (project (refinement_of_nat M RI) i (dot (dot f z) r))))
   : mov (dot (dot (project (refinement_of_nat M RI) i (dot (dot f z) r)) k) m)
+        
     (dot (dot (project (refinement_of_nat M RI) i (dot (dot f' z) r')) k') m').
 Proof.
   unfold specific_exchange_cond in myflow. deex.
@@ -379,8 +382,202 @@ Lemma rec_branch_node_triv t p i
 Lemma rec_node_branch_triv t p i
   : node_trivial (node_of_pl t (p, i)) ->
     branch_trivial (branch_of_pl t (p++[i], 0)). Admitted.
+
+Lemma listset_max_len (se : listset PathLoc)
+  : ∃ lmax , ∀ p i , (p, i) ∈ se -> length p ≤ lmax. Admitted.
+  
+Lemma listset_max_i (se : listset PathLoc)
+  : ∃ imax , ∀ p i , (p, i) ∈ se -> i ≤ imax. Admitted.
+  
+Lemma resolve_trivial branch branch' active i
+  (bt : branch_trivial branch)
+  (bt' : branch_trivial branch)
+  : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
+  ∧ mov (dot (branch_total (refinement_of_nat M RI) branch active i) unit)
+      (dot (branch_total (refinement_of_nat M RI) branch' active i) unit).
+Admitted.
+
+Lemma branch_nil_of_n_child t p i :
+    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p ++ [i], 0).
+    Admitted.
     
-Lemma specexc_branch_tt t t' active (branch branch': Branch M) p i
+Lemma branch_nil_of_b_child t p i :
+    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p, S i).
+    Admitted.
+    
+Lemma node_triv_of_triv_branch t p i
+    : (branch_trivial (branch_of_pl t (p, i))) -> (node_of_pl t (p, i)) ≡ triv_node.
+    Admitted.
+    
+Lemma batird_BranchNil active idx:
+  branch_all_total_in_refinement_domain (refinement_of_nat M RI) BranchNil active idx.
+Proof. unfold branch_all_total_in_refinement_domain. trivial. Qed.
+
+Lemma branch_total_is_unit active i
+ : branch_total (refinement_of_nat M RI) BranchNil active i = unit.
+Proof. unfold branch_total. trivial. Qed.
+
+Lemma node_total_minus_live_triv active
+ : node_total_minus_live (refinement_of_nat M RI) triv_node active = unit.
+ Admitted.
+
+Lemma do_trivial_movs (m h s m' h' s': M) i
+  (mov1 : mov h h')
+  (mov2 : mov s s')
+  (is_valid_m: m_valid m)
+  (fl : specific_exchange_cond (refinement_of_nat M RI i) unit m unit h s m' unit h' s')
+  : mov m m'.
+Proof.
+  have t : mov (dot (dot (project (refinement_of_nat M RI) i (dot (dot unit unit) unit)) unit) m) (dot (dot (project (refinement_of_nat M RI) i (dot (dot unit unit) unit)) unit) m').
+  - apply all_the_movs with (h := h) (s := s) (h' := h') (s' := s').
+    + rewrite unit_dot_left. rewrite unit_dot_left. trivial.
+    + rewrite unit_dot_left. rewrite unit_dot_left. trivial.
+    + rewrite unit_dot_left. rewrite unit_dot_left. 
+        unfold in_refinement_domain. rewrite rel_unit. trivial.
+    + rewrite unit_dot_left. trivial.
+    + repeat (rewrite unit_dot_left).
+      repeat (rewrite unit_dot).
+      unfold project. rewrite rel_unit.
+      repeat (rewrite unit_dot).
+      trivial.
+  - unfold project in t.
+    repeat (rewrite unit_dot_left in t).
+    repeat (rewrite unit_dot in t).
+    rewrite rel_unit in t.
+    repeat (rewrite unit_dot_left in t).
+    trivial.
+Qed.
+
+Lemma specexc_branch_tt_ind t t' active (se: listset PathLoc) : ∀ len_add i_add p i
+  branch branch'
+  (indl: ∀ p0 i0 , (p0, i0) ∈ se -> length p0 < len_add + length p)
+  (indi: ∀ p0 i0 , (p0, i0) ∈ se -> i0 < i_add + i)
+  (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
+  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
+  (branch_is : branch ≡ branch_of_pl t (p, i))
+  (branch'_is : branch' ≡ branch_of_pl t' (p, i))
+  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i))))
+  (branch_is_trivial : branch_trivial branch)
+  (branch'_is_trivial : branch_trivial branch')
+  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active i)
+  ,
+            branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
+      /\ mov
+        (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
+        (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i))).
+  induction len_add as [len_add IHnLen] using lt_wf_ind.
+  induction i_add as [i_add IHnI] using lt_wf_ind.
+Proof.
+  intros.
+  destruct len_add.
+  - assert ((p, i) ∉ se).
+    + intro. have indl_a := indl p i H. lia.
+    + have d := flow_se p i H. destruct_ands. rewrite H0. rewrite H1.
+        apply resolve_trivial; trivial.
+  - destruct i_add.
+    + assert ((p, i) ∉ se).
+      * intro. have indi_a := indi p i H. lia.
+      * have d := flow_se p i H. destruct_ands. rewrite H0. rewrite H1.
+          apply resolve_trivial; trivial.
+    +
+      assert (len_add < S len_add) as len_add_lt_S by lia.
+      assert (∀ (p0 : list nat) (i0 : nat),
+           (p0, i0) ∈ se → length p0 < len_add + length (p ++ [i])) as afl
+        by  (intros; have indla := indl p0 i0 H; rewrite app_length; simpl; lia).
+      assert ((∀ (p0 : list nat) (i0 : nat), (p0, i0) ∈ se → i0 < S i_add + i + 0)) as ifl
+        by (intros; have india := indi p0 i0 H; lia).
+      assert (BranchNil ≡ branch_of_pl t (p ++ [i], 0)) as branch_nil_n_child
+        by (apply branch_nil_of_n_child; setoid_rewrite branch_is in branch_is_trivial;
+            trivial).
+      assert (BranchNil ≡ branch_of_pl t' (p ++ [i], 0)) as branch_nil_n_child'
+        by (apply branch_nil_of_n_child; setoid_rewrite branch'_is in branch'_is_trivial;
+            trivial).
+            
+      assert (BranchNil ≡ branch_of_pl t (p, S i)) as branch_nil_b_child
+        by (apply branch_nil_of_b_child; setoid_rewrite branch_is in branch_is_trivial;
+            trivial).
+      assert (BranchNil ≡ branch_of_pl t' (p, S i)) as branch_nil_b_child'
+        by (apply branch_nil_of_b_child; setoid_rewrite branch'_is in branch'_is_trivial;
+            trivial).
+            
+      have mval_b := rec_m_valid_branch t t' active branch p i down up flow_update branch_is
+    amval batird.
+      setoid_rewrite <- branch_nil_b_child in mval_b.
+
+      have mval_n := rec_m_valid_node t t' active branch p i down up flow_update branch_is
+    amval batird.
+      setoid_rewrite branch_of_node_node_of_pl in mval_n.
+      setoid_rewrite <- branch_nil_n_child in mval_n.
+      
+      assert (branch_trivial BranchNil) as bt_bn by (unfold branch_trivial; trivial).
+    
+      have Ih1 := IHnLen len_add len_add_lt_S (S i_add + i) (p ++ [i]) 0
+          BranchNil BranchNil afl ifl down up flow_se flow_update branch_nil_n_child
+          branch_nil_n_child' reserved_untouched mval_n bt_bn bt_bn
+          (batird_BranchNil active 0).
+          
+      assert (i_add < S i_add) as i_add_lt_S by lia.
+      
+      assert (∀ (p0 : list nat) (i0 : nat), (p0, i0) ∈ se → length p0 < S len_add + length p)
+          as merf by (intros; have q := indl p0 i0 H; lia).
+          
+      assert (∀ (p0 : list nat) (i0 : nat), (p0, i0) ∈ se → i0 < i_add + S i)
+          as gerf by (intros; have q := indi p0 i0 H; lia).
+      
+      have Ih2 := IHnI i_add i_add_lt_S p (S i) BranchNil BranchNil merf gerf
+          down up flow_se flow_update branch_nil_b_child
+          branch_nil_b_child' reserved_untouched mval_b bt_bn bt_bn
+          (batird_BranchNil active (S i)).
+      
+      clear IHnLen. clear IHnI.
+      destruct_ands. rename H0 into mov1. rename H2 into mov2.
+      
+      assert (branch ≡ BranchNil) as b_bn by (apply branch_equiv_of_trivial; trivial).
+      assert (branch' ≡ BranchNil) as b'_bn by (apply branch_equiv_of_trivial; trivial).
+      
+      split.
+      * setoid_rewrite b'_bn. apply batird_BranchNil.
+      * setoid_rewrite b'_bn. setoid_rewrite b_bn.
+        rewrite branch_total_is_unit.
+        rewrite branch_total_is_unit in mov1.
+        rewrite branch_total_is_unit in mov2.
+        setoid_rewrite b_bn in amval.
+        rewrite branch_total_is_unit in amval.
+        rewrite unit_dot_left.
+        rewrite unit_dot_left.
+        rewrite unit_dot_left in mov1.
+        rewrite unit_dot_left in mov1.
+        rewrite unit_dot_left in mov2.
+        rewrite unit_dot_left in mov2.
+        have fl := flow_update p i.
+        unfold specific_flow_cond in fl.
+        
+        assert (node_of_pl t (p, i) ≡ triv_node) as is_triv_node
+          by (apply node_triv_of_triv_branch; setoid_rewrite branch_is in branch_is_trivial;
+              trivial).
+              
+        assert (node_of_pl t' (p, i) ≡ triv_node) as is_triv_node'
+          by (apply node_triv_of_triv_branch; setoid_rewrite branch'_is in branch'_is_trivial;
+              trivial).
+              
+        setoid_rewrite is_triv_node in fl.
+        setoid_rewrite is_triv_node' in fl.
+        rewrite node_total_minus_live_triv in fl.
+        unfold node_live, triv_node, cell_live, triv_cell in fl.
+        
+        full_generalize (down (p, S i)) as h.
+        full_generalize (up (p, S i)) as h'.
+        full_generalize (down (p, i)) as m.
+        full_generalize (up (p, i)) as m'.
+        full_generalize ((down (p ++ [i], 0))) as s.
+        full_generalize ((up(p ++ [i], 0))) as s'.
+        apply do_trivial_movs with (h:=h) (s:=s) (h':=h') (s':=s') (i:=i); trivial.
+        rewrite unit_dot_left in amval. trivial.
+Qed.
+        
+Lemma specexc_branch_tt t t' active
   (down up : PathLoc -> M)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (branch_is : branch ≡ branch_of_pl t (p, i))
