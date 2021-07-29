@@ -135,6 +135,8 @@ Proof. intros. unfold node_of_pl. destruct pl. apply node_of_pl'_equiv. trivial.
 Global Instance node_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) node_of_pl.
 Proof. unfold Proper, "==>". intros. rewrite H0. apply node_of_pl_equiv. trivial. Defined.
 
+Global Instance cell_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) cell_of_pl. Admitted.
+
 Lemma step_node_op branch1 branch2 i
   : step_node branch1 i ⋅ step_node branch2 i
       ≡ step_node (branch1 ⋅ branch2) i.
@@ -207,11 +209,12 @@ Qed.
   (node_ind : 
   *)
 
-(*Lemma equiv_extensionality_cells {M} `{!EqDecision M, !TPCM M}
+Lemma equiv_extensionality_cells
     (branch1: Branch M) (branch2: Branch M)
     (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
-    : branch1 ≡ branch2. Admitted.*)
-    Lemma branchcons_pl t p i
+    : branch1 ≡ branch2. Admitted.
+    
+Lemma branchcons_pl t p i
   : branch_of_pl t (p, i) ≡ BranchCons (node_of_pl t (p, i)) (branch_of_pl t (p, S i)).
   Admitted.
   

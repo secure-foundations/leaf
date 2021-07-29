@@ -19,11 +19,11 @@ Definition lmap M `{!EqDecision M} `{!TPCM M}
                 RI `{!EqDecision RI, !Countable RI}
   := gmap (Loc RI) (Cell M).
 Inductive State M `{!EqDecision M} `{!TPCM M}
-                RI `{!EqDecision RI, !Countable RI} :=
+                RI `{!EqDecision RI, !Countable RI, !RefinementIndex M RI} :=
   | StateCon : Lifetime -> lmap M RI -> State M RI
 .
 Arguments StateCon {M}%type_scope {EqDecision0 TPCM0}
-    {RI}%type_scope {EqDecision1 Countable0} _ _.
+    {RI}%type_scope {EqDecision1 Countable0 RefinementIndex0} _ _.
 
 Section ResourceProofs.
     
@@ -82,6 +82,14 @@ Definition lmap_is_borrow (lt: Lifetime) (loc: Loc RI) (m: M) (l : lmap M RI) :=
 Definition is_borrow (lt: Lifetime) (loc: Loc RI) (m: M) (state: State M RI) :=
     match state with
     | StateCon _ l => lmap_is_borrow lt loc m l
+    end.
+
+Definition branch_no_live (b: Branch M) := ∀ pl , cell_live (cell_of_pl b pl) = unit.
+Definition lmap_no_live (l: lmap M RI) := branch_no_live (as_tree l).
+
+Definition state_no_live (state: State M RI) :=
+    match state with
+    | StateCon a l => a = empty_multiset /\ lmap_no_live l
     end.
   
 Definition state_inv (state: State M RI) : Prop :=
@@ -323,10 +331,6 @@ Proof.
   trivial.
 Qed.
 
-Lemma is_borrow_weaken_lifetime k k1 gamma z b
-  : is_borrow k gamma z b -> is_borrow (multiset_add k k1) gamma z b.
-Admitted.
-
 Definition plsplit (ln: list nat) : PathLoc. Admitted.
 
 (*Global Instance thing_dec (p:PathLoc) (gamma: Loc RI) (i alpha:nat) (ri:RI) :
@@ -492,6 +496,108 @@ Proof.
       have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
       rewrite cellpl in h.
       rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* reserved(kappa, m, gamma) is a borrow *)
+
+Definition cell_of_node (n: Node M) := match n with | CellNode c _ => c end.
+
+Lemma cell_view_of_node_view roi node lt y :
+  node_view roi node lt y -> cell_view (cell_of_node node) lt y. Admitted.
+
+Lemma cell_of_node_node_of_pl b pl
+  : cell_of_node (node_of_pl b pl) = cell_of_pl b pl.
+Proof. unfold cell_of_pl. unfold cell_of_node. trivial. Qed.
+
+Lemma is_borrow_reserved kappa gamma m
+  : is_borrow kappa gamma m (reserved kappa gamma m).
+Proof.
+  unfold is_borrow, reserved, lmap_is_borrow. intros.
+    setoid_rewrite as_tree_singleton in H0.
+    have h := cell_view_of_node_view _ _ _ _ H0.
+    unfold node_view in H0.
+    rewrite cell_of_node_node_of_pl in h.
+    rewrite build_spec in h; trivial.
+    unfold cell_view in h.
+    unfold conjoin_reserved_over_lifetime in h.
+    rewrite set_fold_singleton in h.
+    unfold conjoin_umbrella, umbrella_unit, umbrella, reserved_get_or_unit in h.
+    deex. destruct_ands.
+    case_decide.
+    - unfold tpcm_le in *. deex. subst y0. exists (dot x c).
+        subst y. rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
+    - assert (multiset_le kappa kappa) by (apply multiset_le_refl). contradiction.
+Qed.
+
+Lemma cell_live_cell_of_pl_unit (gamma: Loc RI) (res : listset (Lifetime * M)) pl
+ : cell_live (cell_of_pl (build gamma (CellCon unit res)) pl) = unit.
+Proof.
+  have h : Decision (pl ∈ pls_of_loc gamma) by solve_decision.
+  destruct h.
+  - rewrite build_spec; trivial.
+  - rewrite build_rest_triv; trivial.
+Qed.
+
+Lemma state_no_live_reserved kappa gamma m
+  : state_no_live (reserved kappa gamma m).
+Proof.
+  unfold state_no_live. unfold reserved, lmap_no_live, branch_no_live.
+  split; trivial.
+  intro.
+  setoid_rewrite as_tree_singleton.
+  apply cell_live_cell_of_pl_unit.
+Qed.
+
+Lemma lmaps_equiv_of_tree_equiv a b
+  : as_tree a ≡ as_tree b -> lmaps_equiv a b.
+Admitted.
+
+Lemma no_live_duplicable (s : State M RI)
+  : state_no_live s -> s ⋅ s ≡ s.
+Proof.
+  destruct s. intro. unfold state_no_live in H. destruct_ands.
+  unfold "⋅". unfold state_op. unfold "≡", state_equiv. split.
+  - rewrite H. rewrite multiset_add_empty. trivial.
+  - unfold lmap_no_live in H0. unfold branch_no_live in H0.
+    apply lmaps_equiv_of_tree_equiv.
+    setoid_rewrite as_tree_op.
+    full_generalize (as_tree l0) as t.
+    apply equiv_extensionality_cells.
+    intro. setoid_rewrite <- cell_of_pl_op.
+    unfold "⋅". have j := H0 pl.
+    full_generalize (cell_of_pl t pl) as c.
+    unfold cell_live in j. destruct c. unfold cell_op.
+    rewrite j. rewrite unit_dot. unfold "≡", cell_equiv. split; trivial.
+    set_solver.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow(kappa, m, gamma) -> borrow(kappa', m, gamma) *)
+
+Lemma borrow_lifetime_inclusion kappa kappa' gamma m state
+    (li: lifetime_included kappa' kappa)
+    (ib: is_borrow kappa gamma m state)
+       : is_borrow kappa' gamma m state.
+Proof.
+  unfold is_borrow in *. destruct state. unfold lmap_is_borrow in *. intros.
+  have orig := ib pl H y. apply orig. clear orig.
+  unfold lifetime_included in li.
+  apply node_view_inclusion with (lt2 := kappa'); trivial.
+Qed.
+       
+Lemma is_borrow_weaken_lifetime k k1 gamma z b
+  : is_borrow k gamma z b -> is_borrow (multiset_add k k1) gamma z b.
+Proof.
+  intros. apply borrow_lifetime_inclusion with (kappa := k); trivial.
+  unfold lifetime_included.
+  apply multiset_le_add.
 Qed.
 
 End ResourceProofs.

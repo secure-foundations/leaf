@@ -8,6 +8,7 @@ From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
 Require Import Burrow.gmap_utils.
+Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
 
 Class TPCM (M : Type) `{EqDecision M} :=
@@ -191,6 +192,60 @@ Proof. unfold sum_reserved_over_lifetime.
       * apply self_le_self.
   - intros. apply le_add_right_side. trivial.
   - intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply tpcm_comm.
+Qed.
+
+
+Lemma umbrella_reserved_get_or_unit_monotonic l (m:M) (lt1: Lifetime) (lt2: Lifetime) y
+  (lt1_le_lt2 : multiset_le lt1 lt2) :
+  umbrella (reserved_get_or_unit (l, m) lt2) y ->
+  umbrella (reserved_get_or_unit (l, m) lt1) y.
+Proof.
+  intro.
+  unfold reserved_get_or_unit in *. repeat (case_decide); trivial.
+  - unfold umbrella. unfold tpcm_le. exists y. apply unit_dot_left.
+  - assert (multiset_le l lt2).
+    + apply multiset_le_transitive with (y0 := lt1); trivial.
+    + contradiction.
+Qed.
+
+Lemma conjoin_umbrella_monotonic (a b a' b' : M -> Prop)
+  (att: ∀ y , a y -> a' y)
+  (btt: ∀ y , b y -> b' y)
+  : ∀ y , conjoin_umbrella a b y -> conjoin_umbrella a' b' y.
+Proof.
+  intro. unfold conjoin_umbrella. intro. deex.
+  exists x. exists y0. destruct_ands. repeat split; trivial.
+  - apply att; trivial.
+  - apply btt; trivial.
+Qed.
+
+Lemma conjoin_reserved_over_lifetime_monotonic (g: listset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
+  (lt1_le_lt2 : multiset_le lt1 lt2)
+  : ∀ y ,
+        (conjoin_reserved_over_lifetime g lt2 y) ->
+        (conjoin_reserved_over_lifetime g lt1 y).
+Proof.
+  unfold conjoin_reserved_over_lifetime.
+  have ss := set_relate (λ (a:M->Prop) (b:M->Prop) , ∀ (y:M), a y -> b y) g
+    (λ (reserved : Lifetime * M) (um : M → Prop),
+         conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt2)))
+    (λ (reserved : Lifetime * M) (um : M → Prop),
+           conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt1))).
+  apply ss.
+  - intro. trivial.
+  - intros. clear ss. destruct a.
+    have urg := umbrella_reserved_get_or_unit_monotonic l m lt1 lt2 _ lt1_le_lt2.
+    full_generalize (umbrella (reserved_get_or_unit (l, m) lt1)) as u1.
+    full_generalize (umbrella (reserved_get_or_unit (l, m) lt2)) as u2.
+    apply conjoin_umbrella_monotonic with (a := b) (b := u2); trivial.
+Qed.
+
+Lemma cell_view_inclusion lt1 lt2 cell
+  (li: multiset_le lt1 lt2)
+  : (∀ y, cell_view cell lt2 y -> cell_view cell lt1 y).
+Proof.
+  destruct cell. unfold cell_view in *.
+  intro. apply conjoin_reserved_over_lifetime_monotonic with (lt2 := lt2); trivial.
 Qed.
 
 Lemma view_sat_reserved_over_lifetime (reserved: listset (Lifetime * M)) (lt: Lifetime)
@@ -900,6 +955,13 @@ with branch_view (branch: Branch M) (lifetime: Lifetime) (idx: nat) : (M -> Prop
   end
 .
 
+Lemma node_view_rewrite (node: Node M) (lifetime: Lifetime)
+  : node_view node lifetime =
+    match node with
+    | CellNode cell branch => conjoin_umbrella (cell_view cell lifetime) (branch_view branch lifetime 0)
+    end.
+Proof. unfold node_view. destruct node. trivial. Qed.
+
 Definition in_refinement_domain (idx: nat) (m : M) :=
   match rel M M (refs idx) m with | Some _ => True | None => False end.
   
@@ -1242,6 +1304,39 @@ Global Instance node_total_proper :
 Lemma node_total_minus_live_triv active
  : node_total_minus_live triv_node active = unit.
  Admitted.
+
+Lemma project_fancy_preserves_inclusion idx (a b : M -> Prop)
+  (inc: ∀ y : M, a y -> b y)
+  : ∀ y : M, project_fancy idx a y → project_fancy idx b y.
+Proof.
+  unfold project_fancy, rel_project_fancy. intros.
+    deex. destruct_ands. unfold tpcm_le in H. deex.
+        subst y. exists a0. exists b0. repeat split.
+  - unfold tpcm_le. exists c. trivial.
+  - trivial.
+  - apply inc; trivial.
+Qed.
+ 
+Lemma node_view_inclusion lt1 lt2 node (li: multiset_le lt1 lt2)
+  : (∀ y, node_view node lt2 y -> node_view node lt1 y)
+with branch_view_inclusion lt1 lt2 branch idx (li: multiset_le lt1 lt2)
+  : (∀ y, branch_view branch lt2 idx y -> branch_view branch lt1 idx y).
+Proof.
+ - destruct node.
+    have Ib := branch_view_inclusion lt1 lt2 b 0 li.
+    clear node_view_inclusion. clear branch_view_inclusion.
+    repeat (rewrite node_view_rewrite).
+    apply conjoin_umbrella_monotonic; trivial.
+    apply cell_view_inclusion; trivial.
+ - destruct branch.
+  + have Ib := branch_view_inclusion lt1 lt2 branch (S idx) li.
+    have In := node_view_inclusion lt1 lt2 n li.
+    clear node_view_inclusion. clear branch_view_inclusion.
+    unfold branch_view. fold branch_view. fold node_view.
+    apply conjoin_umbrella_monotonic; trivial.
+    apply project_fancy_preserves_inclusion; trivial.
+  + intro. unfold branch_view. intro. trivial.
+Qed.
 
 End RollupRA.
 
