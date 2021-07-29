@@ -168,12 +168,18 @@ Proof.
   unfold lmap_is_borrow in *.
   intro extra. intro.
   exists f'. exists m. exists m'.
+  destruct (rel M M (refinement_of ri) (dot f extra)) eqn:meqn; trivial.
   assert (tpcm_le z extra).
   - apply isb with (pl := (p,i)); trivial.
+    apply m_valid_of_right_dot with (a := f).
+    apply (rel_valid_left M M (refinement_of ri) (dot f extra) (m0)).
+    trivial.
   - unfold tpcm_le in H0. deex. rewrite <- H0.
     rewrite tpcm_assoc. 
-    rewrite tpcm_assoc. have ec := exchange_cond c.
-    destruct (rel M M (refinement_of ri) (dot (dot f z) c)); trivial.
+    have ec := exchange_cond c.
+    rewrite <- H0 in meqn.
+    rewrite tpcm_assoc in meqn. 
+    rewrite meqn in ec.
     intro Q.
     have ec2 := ec Q. repeat split.
     + apply unit_dot.

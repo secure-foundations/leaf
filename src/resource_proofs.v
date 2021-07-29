@@ -77,7 +77,7 @@ Definition as_tree (l : lmap M RI) : Branch M :=
   
 Definition lmap_is_borrow (lt: Lifetime) (loc: Loc RI) (m: M) (l : lmap M RI) :=
   forall pl , pl ∈ pls_of_loc loc ->
-    ∀ y , node_view (refinement_of_nat M RI) (node_of_pl (as_tree l) pl) lt y -> tpcm_le m y.
+    ∀ y , m_valid y -> node_view (refinement_of_nat M RI) (node_of_pl (as_tree l) pl) lt y -> tpcm_le m y.
 
 Definition is_borrow (lt: Lifetime) (loc: Loc RI) (m: M) (state: State M RI) :=
     match state with
@@ -266,6 +266,9 @@ Proof.
   - apply any_pl_of_loc_is_of_loc.
 Qed.
 
+Lemma m_valid_of_right_dot a b
+  : m_valid (dot a b) -> m_valid b. Admitted.
+
 Lemma live_and_borrow_implies_valid (gamma: Loc RI) (kappa: Lifetime) (m k: M) (b: State M RI)
     (isb: is_borrow kappa gamma k b)
     (isv: ✓(active kappa ⋅ live gamma m ⋅ b))
@@ -290,25 +293,33 @@ Proof.
   unfold view_sat in nvlt'.
   
   have nvlt'' := node_view_strip _ _ _ _ _ _ _ nvlt'.
-  have ineq := isb _ nvlt''.
+  have ineq := isb _ _ nvlt''.
   
   have ird := in_refinement_domain_of_natird _ _ _ _ isv.
   unfold in_refinement_domain in ird.
   rename ird into ird'. have ird := exists_some_of_match _ ird'. clear ird'. deex.
   have elem_is_val := rel_valid_left _ _ _ _ _ ird.
   clear ird.
+  
+  assert (m_valid
+           (node_total_minus_live (refinement_of_nat M RI)
+              (node_of_pl (build gamma (CellCon m ∅) ⋅ as_tree l2 ⋅ as_tree l0)
+                 (any_pl_of_loc gamma))
+              (multiset_add (multiset_add (multiset_add kappa empty_lifetime) l1) l))) as mv2.
+   - rewrite <- node_live_plus_node_total_minus_live in elem_is_val.
+      have j := m_valid_of_right_dot _ _ elem_is_val. trivial.
+   -
 
   assert (tpcm_le m (node_live 
               (node_of_pl (build gamma (CellCon m ∅) ⋅ as_tree l2 ⋅ as_tree l0)
                  (any_pl_of_loc gamma)))) by apply tpcm_le_m_node_live_with_m.
-  have summed_ineqs := le_add2 _ _ _ _ H ineq.
+  have summed_ineqs := le_add2 _ _ _ _ H (ineq mv2).
   rewrite node_live_plus_node_total_minus_live in summed_ineqs.
   unfold tpcm_le in summed_ineqs. deex.
   rewrite <- summed_ineqs in elem_is_val.
   have res := valid_monotonic _ _ elem_is_val.
   trivial.
 Qed.
-
 
 Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
   ∀ p , match rel M M ref (dot (dot f z) p) with
@@ -517,9 +528,9 @@ Lemma is_borrow_reserved kappa gamma m
   : is_borrow kappa gamma m (reserved kappa gamma m).
 Proof.
   unfold is_borrow, reserved, lmap_is_borrow. intros.
-    setoid_rewrite as_tree_singleton in H0.
-    have h := cell_view_of_node_view _ _ _ _ H0.
-    unfold node_view in H0.
+    setoid_rewrite as_tree_singleton in H1.
+    have h := cell_view_of_node_view _ _ _ _ H1.
+    unfold node_view in H1.
     rewrite cell_of_node_node_of_pl in h.
     rewrite build_spec in h; trivial.
     unfold cell_view in h.
@@ -587,7 +598,7 @@ Lemma borrow_lifetime_inclusion kappa kappa' gamma m state
        : is_borrow kappa' gamma m state.
 Proof.
   unfold is_borrow in *. destruct state. unfold lmap_is_borrow in *. intros.
-  have orig := ib pl H y. apply orig. clear orig.
+  have orig := ib pl H y. apply orig; trivial. clear orig.
   unfold lifetime_included in li.
   apply node_view_inclusion with (lt2 := kappa'); trivial.
 Qed.
@@ -599,5 +610,24 @@ Proof.
   unfold lifetime_included.
   apply multiset_le_add.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow(kappa, a, gamma) + borrow(kappa, b, gamma) -> borrow(kappa, c, gamma) *)
+
+(*Lemma borrow_nonseparating_conjunction a b c kappa gamma state1 state2
+  (abcr: ∀ r , m_valid r -> tpcm_le a r -> tpcm_le b r -> tpcm_le c r)
+    (b1: is_borrow kappa gamma a state1)
+    (b2: is_borrow kappa gamma b state2)
+    : is_borrow kappa gamma c (state1 ⋅ state2).
+Proof.
+  unfold is_borrow in *. destruct state1, state2. unfold "⋅", state_op.
+  unfold lmap_is_borrow in *.
+  intros.
+  apply abcr; trivial.
+  *)
+    
 
 End ResourceProofs.
