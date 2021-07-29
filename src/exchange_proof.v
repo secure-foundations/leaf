@@ -1032,12 +1032,43 @@ Proof.
   destruct_ands.
   repeat split; trivial.
 Qed.
+
+Definition valid_totals (refs: nat -> Refinement M M) (b: Branch M) (active: Lifetime) :=
+    branch_all_total_in_refinement_domain refs b active 0
+    /\ m_valid (branch_total refs b active 0).
+
+Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
+
+Lemma valid_of_mov (x y : M) : m_valid x -> mov x y -> m_valid y.
+  intros.
+  have h := mov_monotonic x y unit.
+  have j := h EqDecision0 TPCM0 EqDecision0 TPCM0.
+  rewrite unit_dot in j.
+  rewrite unit_dot in j.
+  have l := j H0 H. destruct_ands. trivial.
+Qed.
  
-Lemma specific_flows_preserve_branch_all_total_in_refinement_domain t t' active
+Lemma specific_flows_preserve_branch_all_total_in_refinement_domain
+  (t t': Branch M) (active: Lifetime)
+  (se: listset PathLoc)
   (down up : PathLoc -> M)
+  (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (down_0 : down ([], 0) = unit)
   (up_0 : up ([], 0) = unit)
-  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) t active 0)
-          : branch_all_total_in_refinement_domain (refinement_of_nat M RI) t' active 0.
+  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (vts : valid_totals (refinement_of_nat M RI) t active)
+       : valid_totals (refinement_of_nat M RI) t' active.
 Proof.
+  unfold valid_totals in *. destruct_ands.
+  have h := specexc_branch t t' active t t' se [] 0 down up flow_se flow_update
+      (branch_of_pl_zero t) (branch_of_pl_zero t') reserved_untouched _ _.
+  rewrite down_0 in h.
+  rewrite up_0 in h.
+  rewrite unit_dot in h.
+  rewrite unit_dot in h.
+  have j := h H0 H.
+  destruct_ands.
+  split; trivial.
+  apply valid_of_mov with (x := (branch_total (refinement_of_nat M RI) t active 0)); trivial.
+Qed.
