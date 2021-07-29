@@ -28,6 +28,11 @@ Arguments BaseLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope.
 Arguments ExtLoc {RI}%type_scope {EqDecision0 Countable0} _%nat_scope _ _.
 Arguments CrossLoc {RI}%type_scope {EqDecision0 Countable0} _ _.
 
+Global Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI).
+Proof. solve_decision. Defined.
+
+Global Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.
+
 Definition nat_of_extstep {RI} `{!EqDecision RI, !Countable RI} (alpha:nat) (ri: RI) : nat.
 Admitted.
 

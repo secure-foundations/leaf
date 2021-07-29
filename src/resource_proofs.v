@@ -16,10 +16,6 @@ Require Import Burrow.tactics.
 
 Require Import coq_tricks.Deex.
 
-Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI).
-Proof. solve_decision. Defined.
-
-Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.
 
 Definition lmap M `{!EqDecision M} `{!Countable M} `{!TPCM M}
                 RI `{!EqDecision RI, !Countable RI}
