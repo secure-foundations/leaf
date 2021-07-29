@@ -244,7 +244,7 @@ Proof.
       rewrite node_live_op. rewrite node_live_op.
       rewrite node_node_cell_cell. rewrite node_node_cell_cell.
       rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-      assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha:=alpha) (ri:=ri); trivial ).
+      assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha0:=alpha) (ri0:=ri); trivial ).
       rewrite build_spec; trivial.
       rewrite build_rest_triv; trivial.
       rewrite build_spec; trivial.
@@ -389,7 +389,7 @@ Proof.
     rewrite node_node_cell_cell. rewrite node_node_cell_cell.
     rewrite node_node_cell_cell.
     
-    assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha:=alpha) (ri:=ri); trivial ).
+    assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha0:=alpha) (ri0:=ri); trivial ).
     rewrite build_rest_triv; trivial.
     
     rewrite build_spec; trivial.
