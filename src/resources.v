@@ -490,8 +490,7 @@ Qed.
 (* live(gamma, m) is valid means m is valid *)
 
 Variables refinement_of_index : RefinementIndex -> Refinement M M.
-Print Instances Valid.
-Instance state_valid : Valid State := alls_valid_instance refinement_of_index.
+Global Instance state_valid : Valid State := alls_valid_instance refinement_of_index.
 
 Lemma valid_of_live (loc: Loc) (m: M)
   : (✓ (live loc m)) -> m_valid m.

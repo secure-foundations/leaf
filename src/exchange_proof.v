@@ -17,7 +17,7 @@ Require Import coq_tricks.Deex.
 
 Section ExchangeProof.
 
-Context {M} `{!EqDecision M} `{!Countable M} `{!TPCM M}.
+Context {M} `{!EqDecision M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
 Definition specific_exchange_cond (ref: Refinement M M) (p m f h s m' f' h' s' : M) :=

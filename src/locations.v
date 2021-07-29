@@ -11,7 +11,7 @@ Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 
-(*Context {M: Type} `{!EqDecision M, !TPCM M} `{!Countable M}.
+(*Context {M: Type} `{!EqDecision M, !TPCM M}.
 Context `{Countable RefinementIndex}.
 Context `{EqDecision RefinementIndex}.
 Context (ref_map : RefinementIndex -> Refinement M M).*)
@@ -38,15 +38,15 @@ Admitted.
 
 Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
 
-Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
+Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !TPCM M}
     (loc: Loc RI) (cell: Cell M) : Branch M. Admitted.
     
-Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !Countable M, !TPCM M}
+Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !TPCM M}
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl = cell). Admitted.
   
 Lemma build_rest_triv
-        {M} `{!EqDecision M, !Countable M, !TPCM M}
+        {M} `{!EqDecision M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI}
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl = triv_cell). Admitted.
@@ -54,7 +54,7 @@ Lemma build_rest_triv
 Definition ri_of_nat (RI : Type) `{!EqDecision RI, !Countable RI} : nat -> RI. Admitted.
 
 Definition refinement_of_nat
-        M `{!EqDecision M, !Countable M, !TPCM M}
+        M `{!EqDecision M, !TPCM M}
         RI `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
         (idx: nat) : Refinement M M := refinement_of (ri_of_nat RI idx).
 

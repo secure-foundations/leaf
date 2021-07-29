@@ -74,13 +74,6 @@ Arguments BranchNil {M}%type_scope {EqDecision0 TPCM0}.
 Definition triv_cell `{!EqDecision M} `{!TPCM M} : Cell M := CellCon unit empty.
 Definition triv_node `{!EqDecision M} `{!TPCM M} : Node M := CellNode triv_cell BranchNil.
 
-(*
-Inductive State M `{!EqDecision M} `{!Countable M} `{!TPCM M} :=
-  | StateCon : Lifetime -> (Branch M) -> State M
-.
-Arguments StateCon {M}%type_scope {EqDecision0 Countable0 TPCM0} _ _.
-*)
-
 Section RollupRA.
 
 Context {M : Type}.
@@ -1298,3 +1291,14 @@ Definition valid_totals {M : Type} `{!EqDecision M} `{!TPCM M} (refs: nat -> Ref
 Global Instance valid_totals_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
     Proper ((≡) ==> (=) ==> impl) (valid_totals roi).
   Admitted.
+
+ 
+Lemma node_live_op {M : Type} `{!EqDecision M} `{!TPCM M} (n1 n2 : Node M) : node_live (n1 ⋅ n2) = dot (node_live n1) (node_live n2).
+Admitted.
+
+Global Instance cell_total_minus_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=) ==> (=)) (cell_total_minus_live). Admitted.
+    
+Lemma cell_total_minus_live_op {M : Type} `{!EqDecision M} `{!TPCM M} a b active
+  : cell_total_minus_live (a ⋅ b) active =
+      dot (cell_total_minus_live a active) (cell_total_minus_live b active). Admitted.
