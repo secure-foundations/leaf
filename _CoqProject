@@ -5,6 +5,7 @@ src/rollup.v
 src/CpdtTactics.v
 src/indexing.v
 src/locations.v
+src/exchange_proof.v
 src/resource_proofs.v
 
 -arg -w -arg -ssr-search-moved

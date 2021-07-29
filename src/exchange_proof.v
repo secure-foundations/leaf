@@ -14,6 +14,8 @@ Require Import Burrow.locations.
 
 Require Import coq_tricks.Deex.
 
+Section ExchangeProof.
+
 Context {M} `{!EqDecision M} `{!Countable M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
@@ -1072,3 +1074,5 @@ Proof.
   split; trivial.
   apply valid_of_mov with (x := (branch_total (refinement_of_nat M RI) t active 0)); trivial.
 Qed.
+
+End ExchangeProof.
