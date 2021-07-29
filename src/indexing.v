@@ -22,9 +22,6 @@ Context {refinement_of_index : RefinementIndex -> Refinement M M}.*)
 
 Context {M} `{!EqDecision M, !TPCM M}.
 
-Definition triv_cell : Cell M := CellCon unit empty.
-Definition triv_node : Node M := CellNode triv_cell BranchNil.
-
 Fixpoint step_node (branch: Branch M) (idx: nat) :=
   match branch, idx with
   | BranchNil, _ => triv_node
@@ -121,6 +118,7 @@ Proof. unfold Proper, "==>". intros. rewrite H0. apply step_branch_equiv. trivia
 
 Definition node_of_pl'_equiv p : ∀ branch1 branch2 i ,
   (branch1 ≡ branch2) -> node_of_pl' branch1 p i ≡ node_of_pl' branch2 p i.
+Proof.
   induction p.
    - unfold node_of_pl'. apply step_node_equiv.
    - unfold node_of_pl'. fold node_of_pl'. intros.
@@ -175,6 +173,7 @@ Qed.
 
 Lemma node_of_pl'_op (branch1 : Branch M) (branch2 : Branch M) p i
   : (node_of_pl' branch1 p i) ⋅ (node_of_pl' branch2 p i) ≡ node_of_pl' (branch1 ⋅ branch2) p i.
+Proof.
   generalize branch1, branch2. clear branch1. clear branch2.
   induction p.
   - intros. unfold node_of_pl'. apply step_node_op.
@@ -212,5 +211,58 @@ Qed.
     (branch1: Branch M) (branch2: Branch M)
     (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
     : branch1 ≡ branch2. Admitted.*)
+    Lemma branchcons_pl t p i
+  : branch_of_pl t (p, i) ≡ BranchCons (node_of_pl t (p, i)) (branch_of_pl t (p, S i)).
+  Admitted.
+  
+Lemma cellnode_pl t p i
+  : node_of_pl t (p, i) ≡ CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p++[i], 0)).
+  Admitted.
+  
+Lemma branchcons_pl_inv_b t p i b n
+  : branch_of_pl t (p, i) ≡ BranchCons n b ->
+      b ≡ branch_of_pl t (p, S i).
+  Admitted.
+  
+Lemma branchcons_pl_inv_n t p i b n
+  : branch_of_pl t (p, i) ≡ BranchCons n b ->
+      n ≡ node_of_pl t (p, i).
+  Admitted.
+  
+Lemma cellnode_pl_inv_b t p i c branch
+  : node_of_pl t (p, i) ≡ CellNode c branch -> branch ≡ branch_of_pl t (p++[i], 0).
+  Admitted.
+
+Definition branch_of_node (node: Node M) := match node with CellNode _ b => b end.
+
+Lemma branch_of_node_node_of_pl t p i
+  : branch_of_node (node_of_pl t (p, i)) ≡ branch_of_pl t (p++[i], 0). Admitted.
+
+Global Instance branch_of_node_proper :
+  Proper ((≡) ==> (≡)) branch_of_node. Admitted.
+  
+Lemma rec_branch_branch_triv t p i
+  : branch_trivial (branch_of_pl t (p, i)) ->
+    branch_trivial (branch_of_pl t (p, S i)). Admitted.
+    
+Lemma rec_branch_node_triv t p i
+  : branch_trivial (branch_of_pl t (p, i)) ->
+    node_trivial (node_of_pl t (p, i)). Admitted.
+    
+Lemma rec_node_branch_triv t p i
+  : node_trivial (node_of_pl t (p, i)) ->
+    branch_trivial (branch_of_pl t (p++[i], 0)). Admitted.
+    Lemma branch_nil_of_n_child t p i :
+    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p ++ [i], 0).
+    Admitted.
+    
+Lemma branch_nil_of_b_child t p i :
+    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p, S i).
+    Admitted.
+    
+Lemma node_triv_of_triv_branch t p i
+    : (branch_trivial (branch_of_pl t (p, i))) -> (node_of_pl t (p, i)) ≡ triv_node.
+    Admitted.
+
   
 End Indexing.

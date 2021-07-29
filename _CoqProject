@@ -1,5 +1,6 @@
 -Q src Burrow
 
+src/tactics.v
 src/gmap_utils.v
 src/rollup.v
 src/CpdtTactics.v

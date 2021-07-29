@@ -71,6 +71,9 @@ Arguments CellNode {M}%type_scope {EqDecision0 TPCM0} _ _.
 Arguments BranchCons {M}%type_scope {EqDecision0 TPCM0} _ _.
 Arguments BranchNil {M}%type_scope {EqDecision0 TPCM0}.
 
+Definition triv_cell `{!EqDecision M} `{!TPCM M} : Cell M := CellCon unit empty.
+Definition triv_node `{!EqDecision M} `{!TPCM M} : Node M := CellNode triv_cell BranchNil.
+
 (*
 Inductive State M `{!EqDecision M} `{!Countable M} `{!TPCM M} :=
   | StateCon : Lifetime -> (Branch M) -> State M
@@ -151,6 +154,10 @@ exists (dot x x0). rewrite <- H. rewrite <- H0.
   rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal.
   apply tpcm_comm; trivial.
 Qed.
+
+Lemma unit_dot_left a : dot unit a = a. Admitted.
+
+Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a. Admitted.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
 Proof.  unfold tpcm_le. intros. destruct H. exists (dot x c). rewrite tpcm_assoc.
@@ -1238,6 +1245,10 @@ Global Instance node_total_minus_live_proper :
     
 Global Instance node_total_proper :
     Proper ((≡) ==> (=) ==> (=)) (node_total). Admitted.
+    
+Lemma node_total_minus_live_triv active
+ : node_total_minus_live triv_node active = unit.
+ Admitted.
 
 End RollupRA.
 
@@ -1257,3 +1268,33 @@ Definition a (x: State M) := ✓ x.
 
 Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
     Proper ((≡) ==> (=)) node_live. Admitted.
+
+
+Global Instance branch_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
+    
+Global Instance node_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (≡) ==> (≡)) node_op. Admitted.
+    
+Global Instance cell_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (≡) ==> (≡)) cell_op. Admitted.
+
+Global Instance node_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
+    Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi). Admitted.
+    
+Global Instance cell_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=)) cell_live. Admitted.
+    
+Global Instance cell_total_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
+    
+Lemma cell_total_split {M : Type} `{!EqDecision M} `{!TPCM M} (cell: Cell M) lt :
+  cell_total cell lt = dot (cell_live cell) (cell_total_minus_live cell lt). Admitted.
+
+Definition valid_totals {M : Type} `{!EqDecision M} `{!TPCM M} (refs: nat -> Refinement M M) (b: Branch M) (active: Lifetime) :=
+    branch_all_total_in_refinement_domain refs b active 0
+    /\ m_valid (branch_total refs b active 0).
+    
+Global Instance valid_totals_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
+    Proper ((≡) ==> (=) ==> impl) (valid_totals roi).
+  Admitted.

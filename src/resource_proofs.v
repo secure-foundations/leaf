@@ -12,6 +12,7 @@ Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
 Require Import Burrow.exchange_proof.
+Require Import Burrow.tactics.
 
 Require Import coq_tricks.Deex.
 
@@ -97,11 +98,10 @@ Definition state_inv (state: State M RI) : Prop :=
 Instance state_valid : Valid (State M RI) :=
   λ v , ∃ p , state_inv (v ⋅ p).
   
-Instance branch_op_proper :
-    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
-  
-Lemma as_tree_dot (a b: lmap M RI) : (as_tree a) ⋅ (as_tree b) ≡ as_tree (a ⋅ b).
+Lemma as_tree_op (a b: lmap M RI)
+    : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
 Proof. unfold as_tree.
+    symmetry.
   apply map_fold_merge.
   - intros. setoid_rewrite branch_op_comm. apply op_trivial_branch.
       unfold branch_trivial. trivial.
@@ -122,7 +122,6 @@ Proof. unfold as_tree.
       + setoid_rewrite <- branch_op_assoc.
         setoid_replace ((build i x ⋅ build i y)) with (build i z); trivial.
         Admitted.
-  
 
 (****************************************************************)
 (****************************************************************)
@@ -194,38 +193,6 @@ Qed.
 Instance state_equiv_symm : Symmetric state_equiv.
 Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
   split. * symmetry. trivial. * Admitted.
-
-
-(*Instance branch_op_proper_left :
-    Proper ((≡) ==> (=) ==> (≡)) branch_op. Admitted.
-    
-Instance branch_op_proper_right b :
-    Proper ((≡) ==> (≡)) (branch_op b). Admitted.*)
-    
-    
-Instance node_op_proper_left :
-    Proper ((≡) ==> (=) ==> (≡)) node_op. Admitted.
-    
-Instance node_op_proper_right n :
-    Proper ((≡) ==> (≡)) (node_op n). Admitted.
-    
-Instance cell_op_proper_left :
-    Proper ((≡) ==> (=) ==> (≡)) cell_op. Admitted.
-    
-Instance cell_op_proper_right n :
-    Proper ((≡) ==> (≡)) (cell_op n). Admitted.
-
-Instance node_view_proper roi :
-    Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi). Admitted.
-    
-Instance valid_totals_proper roi : Proper ((≡) ==> (=) ==> impl) (valid_totals roi).
-  Admitted.
-    
-Instance cell_live_proper :
-    Proper ((≡) ==> (=)) cell_live. Admitted.
-    
-Instance cell_total_proper :
-    Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
     
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
   : as_tree {[loc := cell]} ≡ build loc cell.
@@ -305,9 +272,9 @@ Proof.
   unfold state_op in isv. destruct isv. clear H. rename H0 into isv.
   unfold is_borrow, lmap_is_borrow in isb.
   unfold valid_totals in isv. destruct_ands. rename H into isv.
-  setoid_rewrite <- as_tree_dot in isv.
-  setoid_rewrite <- as_tree_dot in isv.
-  setoid_rewrite <- as_tree_dot in isv.
+  setoid_rewrite as_tree_op in isv.
+  setoid_rewrite as_tree_op in isv.
+  setoid_rewrite as_tree_op in isv.
   setoid_rewrite as_tree_singleton in isv.
   generalize isv. clear isv. rewrite forall_equiv_branch_all_total_in_refinement_domain. intro isv.
   
@@ -515,19 +482,6 @@ Lemma updog_other_eq_unit p i alpha ri gamma m
 (*Lemma specific_exchange_cond_of_no_change ref p x y h s
   : specific_exchange_cond ref p x y h s x y h s. Admitted.*)
   
-Lemma unit_dot_left a : dot unit a = a. Admitted.
-
-
-Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
-  let EQ := fresh in
-  let name1 := fresh in
-  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
-    try (rewrite <- EQ);
-    (repeat match reverse goal with  
-    | [H : context[t] |- _ ] => rewrite <- EQ in H
-    end); clear EQ; try (clear name); rename name1 into name.
-
-    
 Lemma view_exchange_cond_of_no_change ref view x y
   : view_exchange_cond ref view x y unit unit x y unit unit.
 Proof. unfold view_exchange_cond. intro.
@@ -633,8 +587,9 @@ Proof.
   - destruct si. clear H. rename H0 into sinv.
     repeat (rewrite multiset_add_empty).
     repeat (rewrite multiset_add_empty in sinv).
-    repeat (setoid_rewrite <- as_tree_dot).
-    repeat (setoid_rewrite <- as_tree_dot in sinv).
+    setoid_rewrite as_tree_op.
+    repeat (setoid_rewrite as_tree_op).
+    repeat (setoid_rewrite as_tree_op in sinv).
     setoid_rewrite (as_tree_singleton (ExtLoc alpha ri gamma) (CellCon f' ∅)).
     setoid_rewrite (as_tree_singleton gamma (CellCon m' ∅)).
     setoid_rewrite as_tree_singleton in sinv.
@@ -773,8 +728,8 @@ Proof.
   unfold state_inv, live, "⋅", state_op in *. destruct_ands. split; trivial.
   
   rename H0 into batird.
-  setoid_rewrite <- as_tree_dot.
-  setoid_rewrite <- as_tree_dot in batird.
+  setoid_rewrite as_tree_op.
+  setoid_rewrite as_tree_op in batird.
   
   setoid_rewrite as_tree_singleton.
   setoid_rewrite as_tree_singleton in batird.
@@ -946,12 +901,12 @@ Proof.
     rewrite multiset_add_empty_left in H.
     apply multiset_no_dupes_of_add_larger_elem; trivial.
   
-  - setoid_rewrite <- as_tree_dot.
-    setoid_rewrite <- as_tree_dot.
+  - setoid_rewrite as_tree_op.
+    setoid_rewrite as_tree_op.
     rewrite multiset_add_empty.
     setoid_rewrite as_tree_singleton.
     rewrite multiset_add_empty_left in H0.
-    setoid_rewrite <- as_tree_dot in H0.
+    setoid_rewrite as_tree_op in H0.
     setoid_rewrite as_tree_singleton in H0.
     eapply valid_totals_of_preserved_cell_totals
       with (b1 := build gamma (CellCon m ∅) ⋅ as_tree p)

@@ -11,6 +11,7 @@ Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
+Require Import Burrow.tactics.
 
 Require Import coq_tricks.Deex.
 
@@ -42,48 +43,6 @@ Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up :
       (down r) (down s)
       (up q) (node_live (node_of_pl t' q))
       (up r) (up s).
-
-Lemma branchcons_pl t p i
-  : branch_of_pl t (p, i) ≡ BranchCons (node_of_pl t (p, i)) (branch_of_pl t (p, S i)).
-  Admitted.
-  
-Lemma cellnode_pl t p i
-  : node_of_pl t (p, i) ≡ CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p++[i], 0)).
-  Admitted.
-  
-Lemma branchcons_pl_inv_b t p i b n
-  : branch_of_pl t (p, i) ≡ BranchCons n b ->
-      b ≡ branch_of_pl t (p, S i).
-  Admitted.
-  
-Lemma branchcons_pl_inv_n t p i b n
-  : branch_of_pl t (p, i) ≡ BranchCons n b ->
-      n ≡ node_of_pl t (p, i).
-  Admitted.
-  
-Lemma cellnode_pl_inv_b t p i c branch
-  : node_of_pl t (p, i) ≡ CellNode c branch -> branch ≡ branch_of_pl t (p++[i], 0).
-  Admitted.
-
-Definition branch_of_node (node: Node M) := match node with CellNode _ b => b end.
-
-Lemma branch_of_node_node_of_pl t p i
-  : branch_of_node (node_of_pl t (p, i)) ≡ branch_of_pl t (p++[i], 0). Admitted.
-
-Global Instance branch_of_node_proper :
-  Proper ((≡) ==> (≡)) branch_of_node. Admitted.
-
-Lemma cell_total_split (cell: Cell M) lt :
-  cell_total cell lt = dot (cell_live cell) (cell_total_minus_live cell lt). Admitted.
-  
-Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
-  let EQ := fresh in
-  let name1 := fresh in
-  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
-    try (rewrite <- EQ);
-    (repeat match reverse goal with  
-    | [H : context[t] |- _ ] => rewrite <- EQ in H
-    end); clear EQ; try (clear name); rename name1 into name.
     
 Lemma dot_kjha k j a : (dot (dot a k) j) = (dot (dot j a) k). Admitted.
 
@@ -102,13 +61,9 @@ Lemma dot_jszr (j s z r : M)
 Lemma dot_jszr2 (j s z r : M)
         : (dot (dot (dot j s) z) r) = dot(dot r s) (dot j z). Admitted.
   
-Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a. Admitted.
-
 Lemma dot_qklh (q k l h : M)
   : dot (dot q k) (dot l h) = dot (dot k h) (dot q l). Admitted.
   
-Lemma unit_dot_left a : dot unit a = a. Admitted.
-    
 Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (mo: mov (dot r s) (dot r' s'))
   (mo2: mov (dot k h) (dot k' h'))
@@ -372,18 +327,6 @@ Proof.
 
 Lemma dot_cba a b c
   : (dot (dot a b) c) = (dot (dot c b) a). Admitted.
-  
-Lemma rec_branch_branch_triv t p i
-  : branch_trivial (branch_of_pl t (p, i)) ->
-    branch_trivial (branch_of_pl t (p, S i)). Admitted.
-    
-Lemma rec_branch_node_triv t p i
-  : branch_trivial (branch_of_pl t (p, i)) ->
-    node_trivial (node_of_pl t (p, i)). Admitted.
-    
-Lemma rec_node_branch_triv t p i
-  : node_trivial (node_of_pl t (p, i)) ->
-    branch_trivial (branch_of_pl t (p++[i], 0)). Admitted.
 
 Lemma listset_max_len (se : listset PathLoc)
   : ∃ lmax , ∀ p i , (p, i) ∈ se -> length p ≤ lmax. Admitted.
@@ -399,17 +342,6 @@ Lemma resolve_trivial branch branch' active i
       (dot (branch_total (refinement_of_nat M RI) branch' active i) unit).
 Admitted.
 
-Lemma branch_nil_of_n_child t p i :
-    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p ++ [i], 0).
-    Admitted.
-    
-Lemma branch_nil_of_b_child t p i :
-    branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p, S i).
-    Admitted.
-    
-Lemma node_triv_of_triv_branch t p i
-    : (branch_trivial (branch_of_pl t (p, i))) -> (node_of_pl t (p, i)) ≡ triv_node.
-    Admitted.
     
 Lemma batird_BranchNil active idx:
   branch_all_total_in_refinement_domain (refinement_of_nat M RI) BranchNil active idx.
@@ -419,9 +351,6 @@ Lemma branch_total_is_unit active i
  : branch_total (refinement_of_nat M RI) BranchNil active i = unit.
 Proof. unfold branch_total. trivial. Qed.
 
-Lemma node_total_minus_live_triv active
- : node_total_minus_live (refinement_of_nat M RI) triv_node active = unit.
- Admitted.
 
 Lemma do_trivial_movs (m h s m' h' s': M) i
   (mov1 : mov h h')
@@ -647,7 +576,7 @@ Proof.
      have triv_equiv : (branch_of_pl t' (p, S i) ≡ branch_of_pl t' (p, S i)) by trivial.
      have triv_equiv2 : (node_of_pl t' (p, i) ≡ node_of_pl t' (p, i)) by trivial.
      have b_equiv : branch ≡ branch_of_pl t (p, S i)
-        by (apply branchcons_pl_inv_b with (n := n); symmetry; trivial).
+        by (apply branchcons_pl_inv_b with (n0 := n); symmetry; trivial).
      have n_equiv : n ≡ node_of_pl t (p, i)
         by (apply branchcons_pl_inv_n with (b := branch); symmetry; trivial).
         
@@ -820,9 +749,9 @@ Proof.
    by (apply rec_node_branch_triv; setoid_rewrite <- node'_is; trivial).
   destruct node, node'. rename b into branch. rename b0 into branch'.
   assert (branch ≡ branch_of_pl t (p ++ [i], 0)) as branch1_equiv
-      by (apply cellnode_pl_inv_b with (c := c); symmetry; trivial).
+      by (apply cellnode_pl_inv_b with (c1 := c); symmetry; trivial).
   assert (branch' ≡ branch_of_pl t' (p ++ [i], 0)) as branch2_equiv
-      by (apply cellnode_pl_inv_b with (c := c0); symmetry; trivial).
+      by (apply cellnode_pl_inv_b with (c1 := c0); symmetry; trivial).
   unfold branch_of_node in amval.
   rewrite node_all_total_in_refinement_domain_unfold in batird.
   destruct_ands. rename H into ird. rename H0 into batird.
@@ -1023,9 +952,9 @@ Proof.
  - clear specexc_node.
   destruct node, node'. rename b into branch. rename b0 into branch'.
   assert (branch ≡ branch_of_pl t (p ++ [i], 0)) as branch1_equiv
-      by (apply cellnode_pl_inv_b with (c := c); symmetry; trivial).
+      by (apply cellnode_pl_inv_b with (c1 := c); symmetry; trivial).
   assert (branch' ≡ branch_of_pl t' (p ++ [i], 0)) as branch2_equiv
-      by (apply cellnode_pl_inv_b with (c := c0); symmetry; trivial).
+      by (apply cellnode_pl_inv_b with (c1 := c0); symmetry; trivial).
   unfold branch_of_node in amval.
   rewrite node_all_total_in_refinement_domain_unfold in batird.
   destruct_ands. rename H into ird. rename H0 into batird.
@@ -1035,13 +964,10 @@ Proof.
   repeat split; trivial.
 Qed.
 
-Definition valid_totals (refs: nat -> Refinement M M) (b: Branch M) (active: Lifetime) :=
-    branch_all_total_in_refinement_domain refs b active 0
-    /\ m_valid (branch_total refs b active 0).
-
 Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
 
 Lemma valid_of_mov (x y : M) : m_valid x -> mov x y -> m_valid y.
+Proof.
   intros.
   have h := mov_monotonic x y unit.
   have j := h EqDecision0 TPCM0 EqDecision0 TPCM0.
