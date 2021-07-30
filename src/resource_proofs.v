@@ -871,12 +871,14 @@ Proof. unfold "≡", set_equiv_instance. intro.
     assert (Decision (x ∈ a)) by solve_decision. destruct H; intuition.
 Qed.
 
-(*
 Lemma live_in_relive m kappa gamma p
+    (kappa_not_in_p : match p with StateCon p_active _ => ¬ multiset_le kappa p_active end)
   : exists r , live gamma m ⋅ r ≡ relive (reserved kappa gamma m ⋅ p) kappa.
 Proof.
   exists (relive_exc p kappa gamma (kappa, m)).
-  unfold live, relive, "≡", "⋅", state_op, reserved, state_equiv. destruct p. split.
+  unfold live, relive, "≡", "⋅", state_op, reserved, state_equiv. destruct p.
+    rename l into plifetime.
+  split.
   - rewrite multiset_add_empty. trivial.
   - apply lmaps_equiv_of_tree_equiv.
     setoid_rewrite as_tree_op.
@@ -897,16 +899,29 @@ Proof.
       unfold "⋅", "≡", cell_op, cell_equiv, relive_cell_exc.
       full_generalize (cell_of_pl (as_tree l0) pl) as pcell. destruct pcell.
       split.
-       * assert (({[(kappa, m)]} ∪ l1) ≡
-            ( (l1 ∖ {[(kappa, m)]}) ∪ {[(kappa,m)]} )) as bdeq by (apply backslash_union).
+       * assert (({[(kappa, m)]} ∪ l) ≡
+            ( (l ∖ {[(kappa, m)]}) ∪ {[(kappa,m)]} )) as bdeq by (apply backslash_union).
          setoid_rewrite bdeq.
          unfold sum_reserved_over_lifetime_relive.
          rewrite set_fold_add_1_element; trivial.
          ** rewrite tpcm_comm. f_equal.
             unfold reserved_get_or_unit_relive. case_decide; trivial.
+            assert (multiset_le kappa (multiset_add plifetime kappa)) by
+                (apply multiset_le_add_right).
             intuition.
-            *)
-         
+         ** set_solver.
+         ** intros. apply dot_comm_right2.
+       * set_solver.
+   + setoid_rewrite build_rest_triv; trivial.
+     setoid_rewrite cell_of_pl_as_tree_lmap_relive_exc_other; trivial.
+      unfold "⋅", "≡", cell_op, cell_equiv, relive_cell.
+      unfold triv_cell.
+      full_generalize (cell_of_pl (as_tree l0) pl) as pcell. destruct pcell.
+      split.
+      * rewrite unit_dot_left.
+        setoid_replace (∅ ∪ l) with (l) by set_solver. trivial.
+      * set_solver.
+Qed.
     
 Lemma empty_op_lmap (l : lmap M RI) : as_tree (∅ ⋅ l) ≡ as_tree l. Admitted.
 
@@ -954,8 +969,25 @@ Qed.
 
 Lemma abcde_state (a b c d e : State M RI)
   : a ⋅ b ⋅ (c ⋅ (d ⋅ e)) ≡ a ⋅ d ⋅ (b ⋅ c ⋅ e). Admitted.
+
+Lemma not_le_of_nonempty (lt a b: multiset nat)
+  (lt_nonempty : lt ≠ empty_multiset)
+  (mnd : multiset_no_dupes (multiset_add lt (multiset_add a b)))
+       : ¬ multiset_le lt b.
+Admitted.
+  
+Lemma not_le_kappa_p kappa a b
+    (kappa_nonempty : kappa ≠ empty_lifetime)
+    (si: state_inv (active kappa ⋅ (a ⋅ b)))
+  : (match b with | StateCon p_active _ => ¬ multiset_le kappa p_active end).
+Proof.
+  unfold state_inv, active in si.  destruct a, b. unfold "⋅", state_op in si.
+  destruct_ands.
+  apply not_le_of_nonempty with (a := l); trivial.
+Qed.
   
 Lemma borrow_expire (m: M) gamma kappa p
+  (kappa_nonempty : kappa ≠ empty_lifetime)
   (si: state_valid (active kappa ⋅ reserved kappa gamma m ⋅ p))
      : state_valid (live gamma m ⋅ p).
 Proof.
@@ -963,10 +995,12 @@ Proof.
   setoid_rewrite <- state_assoc in si.
   setoid_rewrite <- state_assoc in si.
   
-  have ti := relive_preserves_inv _ _ _ si.
+  have ti := relive_preserves_inv _ _ si.
   
   have lir' := live_in_relive m kappa gamma (p ⋅ p0).
-  have lir := lir' state_op. clear lir'.
+  have lir := lir' state_op
+    (not_le_kappa_p kappa (reserved kappa gamma m) (p ⋅ p0) kappa_nonempty si).
+  clear lir'.
   
   deex.
   exists (r ⋅ reserved kappa gamma m ⋅ p0).
