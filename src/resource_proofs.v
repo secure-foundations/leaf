@@ -61,6 +61,9 @@ Global Instance state_op : Op (State M RI) := λ x y ,
       StateCon (multiset_add active1 active2) (lmap1 ⋅ lmap2)
   end.
 
+Lemma state_assoc (x y z : State M RI) : (x ⋅ (y ⋅ z)) ≡ ((x ⋅ y) ⋅ z). Admitted.
+
+Global Instance state_op_proper : Proper ((≡) ==> (≡) ==> (≡)) state_op. Admitted.
 
 Definition live (loc: Loc RI) (m: M) :=
       (*StateCon empty_lifetime (build loc (CellCon m empty)).*)
@@ -100,6 +103,8 @@ Definition state_inv (state: State M RI) : Prop :=
        multiset_no_dupes active /\
        valid_totals (refinement_of_nat M RI) (as_tree l) active
   end.
+
+Global Instance state_inv_proper : Proper ((≡) ==> impl) state_inv. Admitted.
 
 Global Instance state_valid : Valid (State M RI) :=
   λ v , ∃ p , state_inv (v ⋅ p).
@@ -199,6 +204,10 @@ Qed.
 Global Instance state_equiv_symm : Symmetric state_equiv.
 Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
   split. * symmetry. trivial. * Admitted.
+  
+Global Instance state_equiv_trans : Transitive state_equiv. Admitted.
+
+Global Instance state_equiv_refl : Reflexive state_equiv. Admitted.
     
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
   : as_tree {[loc := cell]} ≡ build loc cell.
@@ -775,5 +784,196 @@ Proof.
         rewrite <- H1 in bbcond1.
         apply tpcm_le_a_le_bc_of_a_le_b. trivial.
 Admitted.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow expire *)
+
+
+  (*si : state_inv (active kappa ⋅ q)
+                q contains (reserved kappa m)
+  ∃ p1 : State M RI, state_inv (live_stuff_from_q ⋅ q)
+                live gamma m <= live_stuff_from_q*)
+                
+Definition reserved_get_or_unit_relive (reserved: Lifetime * M) (old: Lifetime) (new: Lifetime) : M :=
+  match reserved with
+  | (my_lt, m) => if decide (multiset_le my_lt old /\ ¬ multiset_le my_lt new) then m else unit
+  end.
+
+Definition sum_reserved_over_lifetime_relive (reserved: listset (Lifetime * M)) (old: Lifetime) (new: Lifetime) :=
+  set_fold (λ reserved m , dot m (reserved_get_or_unit_relive reserved old new)) unit reserved.
+  
+Global Instance sum_reserved_over_lifetime_proper :
+  Proper ((≡) ==> (=) ==> (=) ==> (=)) (sum_reserved_over_lifetime_relive). Admitted.
+                
+Definition relive_cell (cell: Cell M) (old: Lifetime) (new: Lifetime) : Cell M :=
+  match cell with
+  | CellCon m res =>
+      CellCon (sum_reserved_over_lifetime_relive res old new) ∅
+  end.
+  
+Definition relive_cell_exc (cell: Cell M) (old: Lifetime) (new: Lifetime) (exc: Lifetime * M)
+      : Cell M :=
+  match cell with
+  | CellCon m res =>
+      CellCon (sum_reserved_over_lifetime_relive (res ∖ {[ exc ]}) old new) ∅
+  end.
+
+Global Instance relive_cell_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) relive_cell. Admitted.
+  
+Definition lmap_relive (lm: lmap M RI) (old: Lifetime) (new: Lifetime) : lmap M RI. Admitted.
+
+Definition lmap_relive_exc (lm: lmap M RI) (old: Lifetime) (new: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : lmap M RI. Admitted.
+                
+Definition relive (state: State M RI) (unactive: Lifetime) : State M RI :=
+  match state with
+  | StateCon active l =>
+      StateCon empty_multiset
+        (lmap_relive l (multiset_add active unactive) active)
+  end.
+   
+Definition relive_exc (state: State M RI) (unactive: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : State M RI :=
+  match state with
+  | StateCon active l =>
+      StateCon empty_multiset
+        (lmap_relive_exc l (multiset_add active unactive) active loc exc)
+  end.
+
+  
+Lemma cell_of_pl_as_tree_lmap_relive l old new pl
+    : cell_of_pl (as_tree (lmap_relive l old new)) pl
+    ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
+    Admitted.
+    
+Lemma cell_of_pl_as_tree_lmap_relive_exc_self l old new pl loc exc
+    : pl ∈ pls_of_loc loc ->
+      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
+        ≡ relive_cell_exc (cell_of_pl (as_tree l) pl) old new exc.
+    Admitted.
+     
+Lemma cell_of_pl_as_tree_lmap_relive_exc_other l old new pl loc exc
+    : pl ∉ pls_of_loc loc ->
+      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
+        ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
+    Admitted.
+
+Lemma multiset_no_dupes_of_multiset_no_dupes_add (a b: multiset nat)
+  (mnd : multiset_no_dupes (multiset_add a b))
+  : multiset_no_dupes b. Admitted.
+
+Lemma backslash_union (a l1 : (listset (Lifetime * M)))
+  : a ∪ l1 ≡ (l1 ∖ a) ∪ a.
+Proof. unfold "≡", set_equiv_instance. intro.
+    rewrite elem_of_union. rewrite elem_of_union.
+    rewrite elem_of_difference.
+    assert (Decision (x ∈ a)) by solve_decision. destruct H; intuition.
+Qed.
+
+(*
+Lemma live_in_relive m kappa gamma p
+  : exists r , live gamma m ⋅ r ≡ relive (reserved kappa gamma m ⋅ p) kappa.
+Proof.
+  exists (relive_exc p kappa gamma (kappa, m)).
+  unfold live, relive, "≡", "⋅", state_op, reserved, state_equiv. destruct p. split.
+  - rewrite multiset_add_empty. trivial.
+  - apply lmaps_equiv_of_tree_equiv.
+    setoid_rewrite as_tree_op.
+    setoid_rewrite as_tree_singleton.
+    apply equiv_extensionality_cells.
+    intros.
+    setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite cell_of_pl_as_tree_lmap_relive.
+    rewrite multiset_add_empty_left.
+    setoid_rewrite as_tree_op.
+    setoid_rewrite as_tree_singleton.
+    setoid_rewrite <- cell_of_pl_op.
+    unfold relive_cell.
+    assert (Decision (pl ∈ pls_of_loc gamma)) as plin by solve_decision.
+    destruct plin.
+    + setoid_rewrite build_spec; trivial.
+      setoid_rewrite cell_of_pl_as_tree_lmap_relive_exc_self; trivial.
+      unfold "⋅", "≡", cell_op, cell_equiv, relive_cell_exc.
+      full_generalize (cell_of_pl (as_tree l0) pl) as pcell. destruct pcell.
+      split.
+       * assert (({[(kappa, m)]} ∪ l1) ≡
+            ( (l1 ∖ {[(kappa, m)]}) ∪ {[(kappa,m)]} )) as bdeq by (apply backslash_union).
+         setoid_rewrite bdeq.
+         unfold sum_reserved_over_lifetime_relive.
+         rewrite set_fold_add_1_element; trivial.
+         ** rewrite tpcm_comm. f_equal.
+            unfold reserved_get_or_unit_relive. case_decide; trivial.
+            intuition.
+            *)
+         
+    
+Lemma empty_op_lmap (l : lmap M RI) : as_tree (∅ ⋅ l) ≡ as_tree l. Admitted.
+
+Lemma dot_xyz_impl (x y z c d : M)
+  : x = dot y z -> dot (dot c d) x = dot (dot c y) (dot d z). Admitted.
+
+Definition relive_preserves_inv kappa q
+  (si : state_inv (active kappa ⋅ q))
+      : state_inv (relive q kappa ⋅ q).
+Proof.
+  unfold state_inv, "⋅", state_op, relive, active in *. destruct q.
+  destruct_ands. split.
+  - rewrite multiset_add_empty_left.
+    apply multiset_no_dupes_of_multiset_no_dupes_add with (a := kappa). trivial.
+  - eapply valid_totals_of_preserved_cell_totals
+      with (b1 := (as_tree (∅ ⋅ l0))) (lt1 := multiset_add kappa l); trivial.
+    intros.
+    setoid_rewrite empty_op_lmap.
+    setoid_rewrite as_tree_op.
+    setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite cell_of_pl_as_tree_lmap_relive.
+    full_generalize (cell_of_pl (as_tree l0) pl) as c.
+    destruct c. unfold "⋅", cell_op, cell_total, relive_cell.
+    replace
+      (dot (sum_reserved_over_lifetime_relive l1 (multiset_add l kappa) l) m) with
+      (dot m (sum_reserved_over_lifetime_relive l1 (multiset_add l kappa) l))
+      by (apply tpcm_comm).
+    rewrite <- tpcm_assoc. f_equal.
+    setoid_replace (∅ ∪ l1) with l1 by set_solver.
+    unfold sum_reserved_over_lifetime.
+    unfold sum_reserved_over_lifetime_relive.
+    apply set_relate3 with (R := λ a b c , a = dot b c).
+    + rewrite unit_dot. trivial.
+    + intros. subst b. apply dot_xyz_impl.
+      unfold reserved_get_or_unit. unfold reserved_get_or_unit_relive. destruct a.
+      rewrite multiset_add_empty_left.
+      replace (multiset_add kappa l) with (multiset_add l kappa) by (apply multiset_add_comm).
+      repeat case_decide; intuition.
+      * rewrite unit_dot. trivial.
+      * rewrite unit_dot_left. trivial.
+      * exfalso. apply H1. apply multiset_le_transitive with (y := l); trivial.
+          apply multiset_le_add.
+      * rewrite unit_dot. trivial.
+Qed.
+
+Lemma abcde_state (a b c d e : State M RI)
+  : a ⋅ b ⋅ (c ⋅ (d ⋅ e)) ≡ a ⋅ d ⋅ (b ⋅ c ⋅ e). Admitted.
+  
+Lemma borrow_expire (m: M) gamma kappa p
+  (si: state_valid (active kappa ⋅ reserved kappa gamma m ⋅ p))
+     : state_valid (live gamma m ⋅ p).
+Proof.
+  unfold state_valid in *. deex.
+  setoid_rewrite <- state_assoc in si.
+  setoid_rewrite <- state_assoc in si.
+  
+  have ti := relive_preserves_inv _ _ _ si.
+  
+  have lir' := live_in_relive m kappa gamma (p ⋅ p0).
+  have lir := lir' state_op. clear lir'.
+  
+  deex.
+  exists (r ⋅ reserved kappa gamma m ⋅ p0).
+  
+  setoid_rewrite <- lir in ti.
+  setoid_rewrite abcde_state in ti.
+  trivial.
+Qed.
 
 End ResourceProofs.

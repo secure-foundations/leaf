@@ -26,6 +26,16 @@ Proof.
   - unfold foldr. apply ind. apply IHl.
 Qed.
 
+Lemma set_fold_add_1_element `{FinSet A T} {B}
+  (s: T)
+  (fn: A -> B -> B)
+  (x: A)
+  (x_not_in_s: x ∉ s)
+  (u: B)
+  (fn_assoc: ∀ a1 a2 b , fn a1 (fn a2 b) = fn a2 (fn a1 b))
+  : set_fold fn u (s ∪ {[x]}) = fn x (set_fold fn u s).
+Admitted.
+  
 Lemma set_relate `{Elements A T} {B} {C}
   (R : B -> C -> Prop)
   (s: T)
@@ -36,6 +46,24 @@ Lemma set_relate `{Elements A T} {B} {C}
   (R_u1_u2 : R u1 u2)
   (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
   : R (set_fold fn1 u1 s) (set_fold fn2 u2 s).
+Proof.
+  unfold set_fold. unfold "∘". induction (elements s).
+  - unfold foldr. trivial.
+  - unfold foldr. apply pro. apply IHl.
+Qed.
+
+Lemma set_relate3 `{Elements A T} {B} {C} {D}
+  (R : B -> C -> D -> Prop)
+  (s: T)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (fn3 : A -> D -> D)
+  (u1 : B)
+  (u2 : C)
+  (u3 : D)
+  (R_u1_u2_u3 : R u1 u2 u3)
+  (pro: ∀ a b c d , R b c d -> R (fn1 a b) (fn2 a c) (fn3 a d))
+  : R (set_fold fn1 u1 s) (set_fold fn2 u2 s) (set_fold fn3 u3 s).
 Proof.
   unfold set_fold. unfold "∘". induction (elements s).
   - unfold foldr. trivial.
@@ -237,6 +265,7 @@ Proof.
   - repeat (rewrite lookup_insert_ne; trivial). rewrite lookup_merge.
       unfold diag_None. trivial.
 Qed.
+
 
 Lemma map_fold_merge `{EqDecision K, Countable K} `{!Equiv B} {V}
     {tr: Transitive Equiv0}
