@@ -990,8 +990,6 @@ Proof.
   repeat split; trivial.
 Qed.
 
-Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
-
 Lemma valid_of_mov (x y : M) : m_valid x -> mov x y -> m_valid y.
 Proof.
   intros.

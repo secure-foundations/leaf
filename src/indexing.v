@@ -267,5 +267,6 @@ Lemma node_triv_of_triv_branch t p i
     : (branch_trivial (branch_of_pl t (p, i))) -> (node_of_pl t (p, i)) ≡ triv_node.
     Admitted.
 
+Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
   
 End Indexing.
