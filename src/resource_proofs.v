@@ -12,6 +12,8 @@ Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
 Require Import Burrow.tactics.
+Require Import Coq.Arith.Wf_nat. 
+           
 
 Require Import coq_tricks.Deex.
 
@@ -617,7 +619,7 @@ Qed.
 (****************************************************************)
 (* borrow(kappa, a, gamma) + borrow(kappa, b, gamma) -> borrow(kappa, c, gamma) *)
 
-(*Lemma borrow_nonseparating_conjunction a b c kappa gamma state1 state2
+Lemma borrow_nonseparating_conjunction a b c kappa gamma state1 state2
   (abcr: ∀ r , m_valid r -> tpcm_le a r -> tpcm_le b r -> tpcm_le c r)
     (b1: is_borrow kappa gamma a state1)
     (b2: is_borrow kappa gamma b state2)
@@ -626,8 +628,152 @@ Proof.
   unfold is_borrow in *. destruct state1, state2. unfold "⋅", state_op.
   unfold lmap_is_borrow in *.
   intros.
+  setoid_rewrite as_tree_op in H1.
+  setoid_rewrite <- node_of_pl_op in H1.
   apply abcr; trivial.
-  *)
+  - apply b1 with (pl := pl); trivial.
+    apply node_view_le with (b := node_of_pl (as_tree l2) pl). trivial.
+  - apply b2 with (pl := pl); trivial.
+    apply node_view_le with (b := node_of_pl (as_tree l0) pl).
+    setoid_rewrite node_op_comm. trivial.
+Qed.
+
+Lemma lmap_no_live_op l1 l2
+  (nl1: lmap_no_live l1)
+  (nl2: lmap_no_live l2)
+  : (lmap_no_live (l1 ⋅ l2)).
+Proof.
+  unfold lmap_no_live in *.
+  unfold branch_no_live in *.
+  intro.
+  setoid_rewrite as_tree_op.
+  have t1 := nl1 pl.
+  have t2 := nl2 pl.
+  setoid_rewrite <- cell_of_pl_op.
+  full_generalize (cell_of_pl (as_tree l1) pl) as c1.
+  full_generalize (cell_of_pl (as_tree l2) pl) as c2.
+  unfold "⋅", cell_op. unfold cell_live in *. destruct c1, c2.
+  rewrite t1. rewrite t2.
+  apply unit_dot.
+Qed.
+
+Lemma no_live_op state1 state2
+  (nl1: state_no_live state1)
+  (nl2: state_no_live state2)
+  : (state_no_live (state1 ⋅ state2)).
+Proof.
+  unfold state_no_live in *. destruct state1, state2. unfold "⋅", state_op.
+  destruct_ands. split.
+  - rewrite H. rewrite H1.
+      apply multiset_add_empty.
+  - apply lmap_no_live_op; trivial.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow back *)
+
+Lemma pl_in_pls_of_loc_extloc p i alpha ri (gamma: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma)
+  : (p++[i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma).
+Admitted.
+
+
+Lemma branch_view_includes_child (t: Branch M) p h i active : ∀ j y,
+  (j ≤ i) ->
+  (branch_view (refinement_of_nat M RI) (branch_of_pl t (p++[h], j)) active j y) ->
+  ∃ (r q w: M) , dot r q = y /\ Some r = rel M M (refinement_of_nat M RI i) w
+      /\ (node_view (refinement_of_nat M RI) (node_of_pl t (p++[h], i)) active w).
+Proof.
+  induction j as [j IHj] using (induction_ltof1 _ (λ k , i - k)); unfold ltof in IHj.
+  intros. rename H into j_le_i. rename H0 into bv.
+  destruct j_le_i.
+  - setoid_rewrite branchcons_pl in bv.
+      rewrite branch_view_rewrite in bv.
+      unfold project_fancy in bv.
+      unfold rel_project_fancy in bv.
+      unfold conjoin_umbrella in bv.
+      deex. destruct_ands. deex. destruct_ands.
+      unfold tpcm_le in H. deex.
+      exists a. exists (dot c y0). exists b.
+      repeat split; trivial.
+      + subst y. subst x. rewrite tpcm_assoc. trivial.
+      + symmetry. trivial.
+  -
+    assert (S m - (S j) < S m - j) as la by lia.
+    assert (S j ≤ S m) as la2 by lia.
     
+    setoid_rewrite branchcons_pl in bv. rewrite branch_view_rewrite in bv.
+    unfold conjoin_umbrella in bv. deex. destruct_ands.
+    rename H0 into bvsub.
+    
+    have IHji := IHj (S j) la y0 la2 bvsub.
+    deex. destruct_ands.
+    subst y. subst y0.
+    exists r. exists (dot x q). exists w. repeat split; trivial.
+    + rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
+Qed.
+
+Lemma node_view_includes_child (t: Branch M) p h i y active
+  (nv : node_view (refinement_of_nat M RI) (node_of_pl t (p, h)) active y)
+  : ∃ (r q w: M) , dot r q = y /\ Some r = rel M M (refinement_of_nat M RI i) w
+      /\ (node_view (refinement_of_nat M RI) (node_of_pl t (p++[h], i)) active w).
+Proof.
+  setoid_rewrite cellnode_pl in nv. rewrite node_view_rewrite in nv.
+  assert (0 ≤ i) as la by lia.
+  unfold conjoin_umbrella in nv.
+  deex. destruct_ands.
+  rename H0 into bvsub.
+  have Ib := branch_view_includes_child t p h i active 0 y0 la bvsub.
+  deex. destruct_ands.
+  subst y0. subst y.
+  exists r. exists (dot x q). exists w. repeat split; trivial.
+  rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
+Qed.
+
+Lemma ri_of_nat_nat_of_extstep alpha (ri: RI)
+  : (ri_of_nat RI (nat_of_extstep alpha ri) = ri). Admitted.
+  
+Lemma tpcm_le_a_le_bc_of_a_le_b m r q
+  : tpcm_le m r -> tpcm_le m (dot r q).
+Proof.
+  intros. unfold tpcm_le in *. deex. subst. exists (dot c q). apply tpcm_assoc.
+Qed.
+
+Lemma borrow_back alpha ri gamma f m kappa state
+  (sinv: state_inv state)
+  (bbcond: ∀ p: M, match rel M M (refinement_of ri) (dot f p)
+      with | Some x => tpcm_le m x | None => True end)
+  (ib: is_borrow kappa (ExtLoc alpha ri gamma) f state)
+  : is_borrow kappa gamma m state.
+Proof.
+  unfold is_borrow in *. destruct state.
+  unfold lmap_is_borrow in *. intros.
+  rename H0 into mval. rename H1 into nv.
+  destruct pl.
+  rename l1 into p. rename n into i.
+  assert ((p ++ [i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    as p_ext_in
+    by (apply pl_in_pls_of_loc_extloc; trivial).
+  
+  have nvic := node_view_includes_child (as_tree l0) p i (nat_of_extstep alpha ri) y
+      kappa nv.
+  have nvic1 := nvic EqDecision1 Countable0. clear nvic.
+  deex.
+  destruct_ands. subst.
+  
+  assert (m_valid w) as wval.
+    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_extstep alpha ri))) (m := r). symmetry. trivial.
+    
+    - have ibi := ib (p ++ [i], nat_of_extstep alpha ri) p_ext_in w wval H2.
+      unfold tpcm_le in ibi. deex. subst.
+      have bbcond1 := bbcond c.
+        unfold refinement_of_nat in H1.
+        rewrite ri_of_nat_nat_of_extstep in H1.
+        rewrite <- H1 in bbcond1.
+        apply tpcm_le_a_le_bc_of_a_le_b. trivial.
+Admitted.
 
 End ResourceProofs.

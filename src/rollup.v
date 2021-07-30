@@ -955,6 +955,15 @@ with branch_view (branch: Branch M) (lifetime: Lifetime) (idx: nat) : (M -> Prop
   end
 .
 
+Lemma branch_view_rewrite (branch: Branch M) (lifetime: Lifetime) (idx: nat)
+  : branch_view branch lifetime idx =
+  match branch with
+  | BranchNil => umbrella_unit
+  | BranchCons node branch => conjoin_umbrella (project_fancy idx (node_view node lifetime)) (branch_view branch lifetime (S idx))
+  end
+.
+Proof. unfold branch_view. destruct branch; trivial. Qed.
+
 Lemma node_view_rewrite (node: Node M) (lifetime: Lifetime)
   : node_view node lifetime =
     match node with
@@ -1369,6 +1378,9 @@ Global Instance cell_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
 
 Global Instance node_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi). Admitted.
+    
+Global Instance branch_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
+    Proper ((≡) ==> (=) ==> (=) ==> (=) ==> impl) (branch_view roi). Admitted.
     
 Global Instance cell_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
     Proper ((≡) ==> (=)) cell_live. Admitted.
