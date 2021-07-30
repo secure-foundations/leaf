@@ -322,6 +322,9 @@ Definition alloc_alpha : Branch M -> RI -> nat. Admitted.
 
 Lemma is_fresh_alloc branch ri : is_fresh_nat branch
     (nat_of_extstep (alloc_alpha branch ri) ri). Admitted.
+    
+Lemma is_fresh_alloc_base branch : is_fresh_nat branch
+    (nat_of_basestep RI (alloc_alpha branch (triv_ri RI))). Admitted.
 
 Lemma trivial_node_at_fresh (b: Branch M) p i
   (is_fresh: is_fresh_nat b i)
@@ -330,6 +333,10 @@ Lemma trivial_node_at_fresh (b: Branch M) p i
 Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
   (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
   : i = nat_of_extstep alpha ri. Admitted.
+  
+Lemma i_value_of_pls_of_base p i alpha
+  (in_pls: (p, i) ∈ pls_of_loc (BaseLoc RI alpha))
+  : i = nat_of_basestep RI alpha. Admitted.
 
 Lemma node_total_minus_live_of_trivial ref node lt
   (istriv: node_trivial node)
@@ -341,6 +348,12 @@ Lemma cell_triv_node_triv_op_right a b
 
 Lemma ri_of_nat_nat_of_extstep alpha ri
   : ri_of_nat RI (nat_of_extstep alpha ri) = ri. Admitted.
+  
+Lemma ri_of_nat_nat_of_basestep alpha
+  : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI. Admitted.
+  
+Lemma rel_refinement_of_triv_ri (m: M)
+  : rel M M (refinement_of (triv_ri RI)) m = Some unit. Admitted.
 
 Lemma initialize_ext gamma m f p ri
   (is_rel: rel M M (refinement_of ri) f = Some m)
@@ -465,3 +478,118 @@ Proof.
     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
 Qed.
 
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* nothing -> live(m, alpha) *)
+
+Lemma initialize_normal (m: M) p
+  (is_val: m_valid m)
+  (si: state_inv p)
+  : ∃ alpha , state_inv (live (BaseLoc RI alpha) m ⋅ p).
+Proof.
+  destruct p. unfold live in si. rename l0 into p.
+  exists (alloc_alpha (as_tree p) (triv_ri RI)).
+  unfold state_inv, live, "⋅", state_op in *. destruct_ands.
+  rewrite multiset_add_empty_left.
+  split; trivial.
+  
+  rename H0 into batird.
+  setoid_rewrite as_tree_op.
+  
+  setoid_rewrite as_tree_singleton.
+  
+  rename l into lt.
+  full_generalize (as_tree p) as q. clear p.
+  
+  eapply specific_flows_preserve_branch_all_total_in_refinement_domain
+    with (t := q)
+         (se := ∅)
+         (down := λ pl, unit)
+         (up   := λ pl, unit); trivial.
+         
+  - intros. split; trivial.
+  
+  - assert (is_fresh_nat q
+      (nat_of_basestep RI (alloc_alpha q (triv_ri RI))))
+      as is_fresh
+      by (apply is_fresh_alloc_base; trivial).
+  
+    full_generalize (alloc_alpha q (triv_ri RI)) as alpha.
+
+    unfold specific_flow_cond.
+    repeat (rewrite unit_dot_left).
+    repeat (rewrite unit_dot).
+
+    intros.
+    have the_case : Decision ((p, i) ∈ pls_of_loc (BaseLoc RI alpha)) by solve_decision.
+    destruct the_case.
+
+    (* interesting case: ext location *)
+  
+  + 
+    (*rewrite <- node_of_pl_op.
+    repeat (rewrite unit_dot).
+    repeat (rewrite unit_dot_left).
+    rewrite node_live_op.
+    rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+    
+    rewrite build_spec; trivial.
+    apply specific_exchange_cond_of_whatever.*)
+    
+    rewrite <- node_of_pl_op.
+    repeat (rewrite unit_dot).
+    repeat (rewrite unit_dot_left).
+    rewrite node_live_op.
+    rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+    
+    rewrite build_spec; trivial.
+    unfold cell_live, triv_cell.
+    
+    assert (node_trivial (node_of_pl q (p, i))) as EqTrivNode
+      by (apply trivial_node_at_fresh;
+      rewrite <- (i_value_of_pls_of_base p i) in is_fresh; trivial).
+    
+    rewrite node_total_minus_live_of_trivial; trivial.
+    
+    unfold cell_of_pl. destruct (node_of_pl q (p, i)).
+    unfold node_trivial in EqTrivNode. destruct c. destruct_ands.
+    unfold cell_trivial in H0. destruct_ands. subst m0.
+    rewrite unit_dot.
+    
+    unfold specific_exchange_cond.
+    
+    repeat (rewrite unit_dot).
+    exists m. exists unit. exists unit.
+    
+    rewrite rel_unit.
+    intros.
+    repeat (rewrite unit_dot).
+    repeat split; trivial.
+    
+    rewrite (i_value_of_pls_of_base p i alpha); trivial.
+    unfold refinement_of_nat.
+    rewrite ri_of_nat_nat_of_basestep.
+    rewrite rel_refinement_of_triv_ri.
+    
+    repeat (rewrite unit_dot).
+    apply reflex.
+    
+    (* uninteresting case *)
+  + 
+    rewrite <- node_of_pl_op.
+    rewrite node_live_op.
+    rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+    rewrite build_rest_triv; trivial.
+    unfold cell_live, triv_cell.
+    repeat (rewrite unit_dot_left).
+    apply specific_exchange_cond_of_whatever2.
+    
+  - setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite cell_total_minus_live_op.
+    intro.
+    repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty).
+    rewrite unit_dot_left.
+    trivial.
+Qed.
