@@ -192,7 +192,7 @@ Qed.
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
-(* borrow(kappa, gamma, z) . live(gamma, m) . live(alpha ref gamma, y)
+(* borrow(kappa, alpha ref gamma, z) . live(gamma, m) . live(alpha ref gamma, y)
                          --> live(gamma, m') . live(alpha ref gamma, y') *)
   
 Lemma cell_total_minus_live_cell_of_pl_build_empty (loc: Loc RI) (f:M) pl lt
@@ -309,6 +309,114 @@ Proof.
      repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
 Qed.
 
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow(kappa, gamma, z) . live(gamma, m)
+                         --> live(gamma, m') *)
+                          
+Lemma view_exchange_cond_of_borrow_exchange_cond_normal gamma z m m' p i borrow_branch
+  (i_matches : (p, i) ∈ pls_of_loc gamma)
+  (active_lifetime : multiset nat)
+  (exchange_cond : mov (dot m z) (dot m' z))
+  (isb : lmap_is_borrow active_lifetime gamma z borrow_branch)
+  : view_exchange_cond
+    (refinement_of_nat M RI i)
+    (node_view (refinement_of_nat M RI) (node_of_pl (as_tree borrow_branch) (p,i)) active_lifetime)
+    unit m unit unit unit m' unit unit.
+Proof.
+  unfold view_exchange_cond. unfold specific_exchange_cond. unfold borrow_exchange_cond in *.
+  unfold lmap_is_borrow in *.
+  intro extra. intro.
+  exists m'. exists unit. exists unit.
+  destruct (rel M M (refinement_of_nat M RI i) (dot m extra)) eqn:meqn; trivial.
+  assert (tpcm_le z extra).
+  - apply isb with (pl := (p,i)); trivial.
+    apply m_valid_of_right_dot with (a := m).
+    apply (rel_valid_left M M (refinement_of_nat M RI i) (dot m extra) (m0)).
+    trivial.
+  - unfold tpcm_le in H0. deex. rewrite <- H0.
+    rewrite tpcm_assoc. 
+    intros. repeat split.
+      + rewrite unit_dot. trivial.
+      + rewrite unit_dot. trivial.
+      + rewrite unit_dot. trivial.
+      + subst extra.
+        rewrite unit_dot.
+        rewrite tpcm_assoc in meqn.
+        assert (mov (dot (dot m z) c) (dot (dot m' z) c)) as themov.
+        * apply mov_monotonic; trivial.
+          have j := rel_valid_left M M (refinement_of_nat M RI i) _ _ meqn.
+          trivial.
+        * have mr := mov_refines M M (refinement_of_nat M RI i)
+            (dot (dot m z) c) (dot (dot m' z) c) m0 themov meqn.
+          deex. destruct_ands. rewrite H0.
+          repeat (rewrite unit_dot_left). trivial.
+Qed.
+  
+Lemma borrow_exchange_normal b kappa gamma (m z m' : M)
+  (isb: is_borrow kappa gamma z b)
+  (exchange_cond: mov (dot m z) (dot m' z))
+  (si: state_inv (active kappa ⋅ live gamma m ⋅ b))
+     : state_inv (active kappa ⋅ live gamma m' ⋅ b).
+Proof.
+  unfold state_inv in *. destruct b. unfold live in *. unfold "⋅", state_op in *. split.
+  - destruct si. trivial.
+  - destruct si. clear H. rename H0 into sinv.
+    repeat (rewrite multiset_add_empty).
+    repeat (rewrite multiset_add_empty in sinv).
+    setoid_rewrite as_tree_op.
+    setoid_rewrite empty_op_lmap.
+    repeat (setoid_rewrite as_tree_op).
+    setoid_rewrite as_tree_op in sinv.
+    setoid_rewrite empty_op_lmap in sinv.
+    setoid_rewrite (as_tree_singleton gamma (CellCon m' ∅)).
+    setoid_rewrite as_tree_singleton in sinv.
+    rename l0 into borrow_branch.
+    
+    assert (is_borrow (multiset_add kappa l) (gamma) z
+             (StateCon l borrow_branch)) by (apply is_borrow_weaken_lifetime; trivial).
+    clear isb; rename H into isb.
+    
+    unfold is_borrow in isb.
+    
+    full_generalize (multiset_add kappa l) as active_lifetime.
+    
+    apply flows_preserve_branch_all_total_in_refinement_domain
+      with (t := build gamma (CellCon m ∅))
+      (se := ∅)
+      (down := λ pl, unit)
+      (up   := λ pl, unit)
+      ; trivial.
+    + intros. split; trivial.
+
+    + intros. unfold view_flow_cond.
+      have the_case : Decision ((p, i) ∈ pls_of_loc gamma) by solve_decision.
+      destruct the_case.
+    
+    (* interesting case: main location *)
+    * 
+      repeat (rewrite unit_dot).
+      repeat (rewrite unit_dot_left).
+      rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+      rewrite build_spec; trivial.
+      rewrite build_spec; trivial.
+      unfold cell_live. unfold triv_cell.
+      repeat (rewrite unit_dot).
+      
+      apply (view_exchange_cond_of_borrow_exchange_cond_normal gamma z); trivial.
+      
+    * 
+      (* uninteresting case *)
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        unfold cell_live, triv_cell. repeat (rewrite unit_dot).
+        apply view_exchange_cond_of_no_change2.
+   + intro. 
+     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+Qed.
 
 (****************************************************************)
 (****************************************************************)
