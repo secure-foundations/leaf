@@ -44,25 +44,48 @@ Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up :
       (up q) (node_live (node_of_pl t' q))
       (up r) (up s).
     
-Lemma dot_kjha k j a : (dot (dot a k) j) = (dot (dot j a) k). Admitted.
+Lemma dot_kjha k j a : (dot (dot a k) j) = (dot (dot j a) k).
+Proof.  rewrite tpcm_comm. rewrite tpcm_assoc. trivial. Qed.
 
 Lemma valid_reduce m k a :
-  m_valid (dot (dot m k) a) -> m_valid (dot m a). Admitted.
+  m_valid (dot (dot m k) a) -> m_valid (dot m a). 
+Proof. intro. apply valid_monotonic with (y := k).
+  rewrite dot_comm_right2. trivial. Qed.
   
 Lemma dot_aklh a k l h
-  : (dot (dot a k) (dot l h)) = dot (dot l a) (dot k h). Admitted.
+  : (dot (dot a k) (dot l h)) = dot (dot l a) (dot k h).
+Proof.
+  rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal.
+  apply dot_kjha. Qed.
   
 Lemma dot_aklh2 a k l h
-    : (dot (dot (dot l h) k) a) = (dot (dot l a) (dot k h)). Admitted.
+    : (dot (dot (dot l h) k) a) = (dot (dot l a) (dot k h)).
+Proof.
+  rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal.
+  rewrite tpcm_assoc. rewrite tpcm_assoc. rewrite dot_kjha.
+  rewrite dot_comm_right2. trivial. Qed.
 
 Lemma dot_jszr (j s z r : M)
-        : dot (dot j s) (dot z r) = dot (dot r s) (dot j z). Admitted.
+        : dot (dot j s) (dot z r) = dot (dot r s) (dot j z).
+Proof.
+  replace (dot j s) with (dot s j) by (apply tpcm_comm).
+  replace (dot r s) with (dot s r) by (apply tpcm_comm).
+  rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal.
+  replace (dot z r) with (dot r z) by (apply tpcm_comm).
+  rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm. Qed.
         
 Lemma dot_jszr2 (j s z r : M)
-        : (dot (dot (dot j s) z) r) = dot(dot r s) (dot j z). Admitted.
+        : (dot (dot (dot j s) z) r) = dot (dot r s) (dot j z).
+Proof.
+  rewrite <- tpcm_assoc.
+  apply dot_jszr. Qed.
   
 Lemma dot_qklh (q k l h : M)
-  : dot (dot q k) (dot l h) = dot (dot k h) (dot q l). Admitted.
+  : dot (dot q k) (dot l h) = dot (dot k h) (dot q l).
+Proof.
+  replace (dot k h) with (dot h k) by (apply tpcm_comm).
+  apply dot_jszr.
+Qed.
   
 Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (mo: mov (dot r s) (dot r' s'))
@@ -179,13 +202,26 @@ Proof.
 Qed.
 
 Lemma m_valid_ca a b c
-: m_valid (dot (dot a b) c) -> m_valid (dot c a). Admitted.
+: m_valid (dot (dot a b) c) -> m_valid (dot c a).
+Proof.
+  intro. apply valid_monotonic with (y := b).
+  rewrite dot_kjha in H. trivial.
+Qed.
 
 Lemma m_valid_bd (a b c d : M)
-: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot b d). Admitted.
+: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot b d).
+Proof.
+  intro. apply valid_monotonic with (y := dot a c).
+  rewrite dot_aklh. replace (dot d c) with (dot c d) by (apply tpcm_comm). trivial. Qed.
 
 Lemma m_valid_db (a b c d : M)
-: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot d b). Admitted.
+: m_valid (dot (dot a b) (dot c d)) -> m_valid (dot d b).
+Proof.
+  intro. apply valid_monotonic with (y := dot a c).
+  rewrite <- dot_aklh.
+  replace (dot b a) with (dot a b) by (apply tpcm_comm).
+  replace (dot d c) with (dot c d) by (apply tpcm_comm). trivial.
+Qed.
 
 Lemma rec_m_valid_branch
   (t t' : Branch M)
@@ -301,46 +337,17 @@ Proof.
     + contradiction.
 Qed.
 
-(*Lemma transit_at_node
-  (t t' : Branch M)
-  (active : Lifetime)
-  (branch branch' : Branch M) p i
-  (c c' : Cell M)
-  (down up : PathLoc -> M)
-  (branch1_equiv : branch ≡ branch_of_pl t (p ++ [i], 0))
-  (branch2_equiv : branch' ≡ branch_of_pl t' (p ++ [i], 0))
-  (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
-  (amval : m_valid (dot (branch_total (refinement_of_nat M RI) branch active 0) (down (p ++ [i], 0))))
-  (batird : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch active 0)
-  (batird' : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active 0)
-  (mo : mov (dot (branch_total (refinement_of_nat M RI) branch active 0) (down (p ++ [i], 0)))
-         (dot (branch_total (refinement_of_nat M RI) branch' active 0) (up (p ++ [i], 0))))
-  (ird : in_refinement_domain (refinement_of_nat M RI) i
-          (dot (cell_total c active) (branch_total (refinement_of_nat M RI) branch active 0)))
-  : in_refinement_domain (refinement_of_nat M RI) i
-    (dot (cell_total c' active) (branch_total (refinement_of_nat M RI) branch' active 0)).
-Proof.
-  have fl := flow_update p i. clear flow_update.
-  unfold specific_flow_cond, specific_exchange_cond in fl.
-  
-  setoid_rewrite branch1_equiv in batird. Admitted.*)
-
 Lemma dot_cba a b c
-  : (dot (dot a b) c) = (dot (dot c b) a). Admitted.
+  : (dot (dot a b) c) = (dot (dot c b) a).
+Proof.
+  rewrite dot_kjha. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal.
+  apply tpcm_comm. Qed.
 
 Lemma listset_max_len (se : listset PathLoc)
   : ∃ lmax , ∀ p i , (p, i) ∈ se -> length p ≤ lmax. Admitted.
   
 Lemma listset_max_i (se : listset PathLoc)
   : ∃ imax , ∀ p i , (p, i) ∈ se -> i ≤ imax. Admitted.
-  
-Lemma resolve_trivial branch branch' active i
-  (bt : branch_trivial branch)
-  (bt' : branch_trivial branch)
-  : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
-  ∧ mov (dot (branch_total (refinement_of_nat M RI) branch active i) unit)
-      (dot (branch_total (refinement_of_nat M RI) branch' active i) unit).
-Admitted.
 
     
 Lemma batird_BranchNil active idx:
@@ -350,7 +357,26 @@ Proof. unfold branch_all_total_in_refinement_domain. trivial. Qed.
 Lemma branch_total_is_unit active i
  : branch_total (refinement_of_nat M RI) BranchNil active i = unit.
 Proof. unfold branch_total. trivial. Qed.
-
+  
+Lemma resolve_trivial branch branch' active i
+  (bt : branch_trivial branch)
+  (bt' : branch_trivial branch')
+  : branch_all_total_in_refinement_domain (refinement_of_nat M RI) branch' active i
+  ∧ mov (dot (branch_total (refinement_of_nat M RI) branch active i) unit)
+      (dot (branch_total (refinement_of_nat M RI) branch' active i) unit).
+Proof.
+  assert (branch ≡ BranchNil) as bn
+   by (apply branch_equiv_of_trivial; trivial; unfold branch_trivial; trivial).
+  assert (branch' ≡ BranchNil) as bn'
+   by (apply branch_equiv_of_trivial; trivial; unfold branch_trivial; trivial).
+  split.
+  - setoid_rewrite bn'.
+    apply batird_BranchNil.
+  - setoid_rewrite bn.
+    setoid_rewrite bn'.
+    rewrite branch_total_is_unit.
+    apply reflex.
+Qed.
 
 Lemma do_trivial_movs (m h s m' h' s': M) i
   (mov1 : mov h h')
