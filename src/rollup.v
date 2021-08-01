@@ -42,7 +42,7 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
   
   rel : R -> option M ;
   rel_valid_left : forall r m , rel r = Some m -> m_valid r ;
-  rel_valid_right : forall r m , rel r = Some m -> m_valid m ;
+  (*rel_valid_right : forall r m , rel r = Some m -> m_valid m ;*)
   rel_unit : rel unit = Some unit ;
   mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
 }.
@@ -149,9 +149,11 @@ exists (dot x x0). rewrite <- H. rewrite <- H0.
   apply tpcm_comm; trivial.
 Qed.
 
-Lemma unit_dot_left a : dot unit a = a. Admitted.
+Lemma unit_dot_left a : dot unit a = a. 
+Proof. rewrite tpcm_comm. apply unit_dot. Qed.
 
-Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a. Admitted.
+Lemma dot_comm_right2 (j a k : M) : dot (dot j a) k = dot (dot j k) a.
+Proof.  rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal. apply tpcm_comm. Qed.
     
 Lemma le_add_right_side a b c : tpcm_le a b -> tpcm_le a (dot b c).
 Proof.  unfold tpcm_le. intros. destruct H. exists (dot x c). rewrite tpcm_assoc.
@@ -430,7 +432,10 @@ Global Instance inst_branch_equiv_refl : Reflexive branch_equiv.
 unfold Reflexive. intro. apply branch_equiv_refl. Defined.
 
 Lemma op_trivial_cell (cell1: Cell M) (cell2: Cell M)
-  (istriv: cell_trivial cell2) : ((cell1 ⋅ cell2) ≡ cell1). Admitted.
+  (istriv: cell_trivial cell2) : ((cell1 ⋅ cell2) ≡ cell1). 
+Proof. unfold "⋅", "≡", cell_equiv, cell_op. destruct cell1, cell2.
+    unfold cell_trivial in istriv. destruct_ands. subst. split; trivial.
+    - apply unit_dot. - set_solver. Qed.
 
 Lemma op_trivial_node (node1: Node M) (node2: Node M)
   (istriv: node_trivial node2) : ((node1 ⋅ node2) ≡ node1)
@@ -797,10 +802,22 @@ Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 Lemma conjoin_umbrella_assoc a b c x
   : conjoin_umbrella (conjoin_umbrella a b) c x
   = conjoin_umbrella a (conjoin_umbrella b c) x. Admitted.*)
+  
+Lemma conjoin_umbrella_cassoc_uni a b c x :
+  conjoin_umbrella (conjoin_umbrella a b) c x ->
+  conjoin_umbrella (conjoin_umbrella a c) b x.
+Proof.
+  unfold conjoin_umbrella. intro. deex. destruct_ands. deex. destruct_ands. subst.
+    exists (dot x1 y). exists y0. repeat split; trivial.
+    - exists x1. exists y. repeat split; trivial.
+    - apply dot_comm_right2. Qed.
 
 Lemma conjoin_umbrella_cassoc a b c x :
   conjoin_umbrella (conjoin_umbrella a b) c x <->
-  conjoin_umbrella (conjoin_umbrella a c) b x. Admitted.
+  conjoin_umbrella (conjoin_umbrella a c) b x.
+Proof.
+  split; intro; apply conjoin_umbrella_cassoc_uni; trivial.
+Qed.
 
 (*Instance eqinst {A} : Equivalence (respectful eq iff)%signature.*)
 Local Instance eqinst : Equivalence (λ f g : M → Prop, ∀ x2 y2 : M, x2 = y2 → f x2 ↔ g y2).
@@ -931,10 +948,18 @@ Definition node_total_minus_live (node: Node M) (lifetime: Lifetime) : M :=
   match node with
   | CellNode cell branch => dot (cell_total_minus_live cell lifetime) (branch_total branch lifetime 0)
   end.
+  
+Lemma cell_live_plus_cell_total_minus_live (c: Cell M) (lifetime: Lifetime)
+  : dot (cell_live c) (cell_total_minus_live c lifetime) = (cell_total c lifetime).
+Proof.
+  unfold cell_live, cell_total_minus_live, cell_total. destruct c. trivial.
+Qed.
 
 Lemma node_live_plus_node_total_minus_live (node: Node M) (lifetime: Lifetime)
     : dot (node_live node) (node_total_minus_live node lifetime) = node_total node lifetime.
-    Admitted.
+Proof.
+  unfold node_live, node_total_minus_live, node_total. destruct node. fold branch_total.
+  rewrite <- cell_live_plus_cell_total_minus_live. apply tpcm_assoc. Qed.
 
 Definition project_umbrella
     (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
@@ -1293,29 +1318,36 @@ Qed.
 
 Global Instance branch_all_total_in_refinement_domain_proper :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (branch_all_total_in_refinement_domain).
-    Admitted.
+    Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+    apply branch_all_total_in_refinement_domain_of_equiv with (branch1 := x); trivial.
+    Qed.
     
 Global Instance node_all_total_in_refinement_domain_proper :
     Proper ((≡) ==> (=) ==> (=) ==> impl) (node_all_total_in_refinement_domain).
-    Admitted.
+    Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+    apply node_all_total_in_refinement_domain_of_equiv with (node1 := x); trivial.
+    Qed.
     
-Global Instance branch_total_in_refinement_domain_proper :
+Global Instance branch_total_proper :
     Proper ((≡) ==> (=) ==> (=) ==> (=)) branch_total.
-    Admitted.
+    Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+    apply branch_total_of_equiv. trivial. Qed.
     
-Global Instance node_total_in_refinement_domain_proper :
+Global Instance node_total_proper :
     Proper ((≡) ==> (=) ==> (=)) node_total.
-    Admitted.
+    Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+    apply node_total_of_equiv. trivial. Qed.
     
 Global Instance node_total_minus_live_proper :
     Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live). Admitted.
     
-Global Instance node_total_proper :
-    Proper ((≡) ==> (=) ==> (=)) (node_total). Admitted.
-    
 Lemma node_total_minus_live_triv active
  : node_total_minus_live triv_node active = unit.
- Admitted.
+Proof.
+  unfold node_total_minus_live, triv_node.
+    unfold branch_total. unfold cell_total_minus_live, triv_cell.
+    unfold sum_reserved_over_lifetime. rewrite set_fold_empty.
+    apply unit_dot. Qed.
 
 Lemma project_fancy_preserves_inclusion idx (a b : M -> Prop)
   (inc: ∀ y : M, a y -> b y)
@@ -1392,7 +1424,9 @@ Global Instance cell_total_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
     Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
     
 Lemma cell_total_split {M : Type} `{!EqDecision M} `{!TPCM M} (cell: Cell M) lt :
-  cell_total cell lt = dot (cell_live cell) (cell_total_minus_live cell lt). Admitted.
+  cell_total cell lt = dot (cell_live cell) (cell_total_minus_live cell lt).
+Proof.
+  rewrite <- cell_live_plus_cell_total_minus_live. trivial. Qed.
 
 Definition valid_totals {M : Type} `{!EqDecision M} `{!TPCM M} (refs: nat -> Refinement M M) (b: Branch M) (active: Lifetime) :=
     branch_all_total_in_refinement_domain refs b active 0
