@@ -40,17 +40,18 @@ Lemma specific_exchange_cond_add_stuff (ref: Refinement M M) (p m f h s m' f' h'
 Proof. unfold specific_exchange_cond. intro. rewrite <- tpcm_assoc.
 deex. exists (dot j stuff). exists l. exists l'.
 rewrite <- tpcm_assoc. assert (dot p stuff = dot stuff p) by (apply tpcm_comm).
-rewrite <- H0. trivial. destruct (rel M M ref (dot f (dot p stuff))); trivial.
-intro. have ab := H H1. destruct_ands; repeat split; trivial.
-- replace (dot stuff s') with (dot s' stuff).
-  + rewrite tpcm_assoc. f_equal. trivial.
-  + apply tpcm_comm.
-- replace ((dot (dot (dot j stuff) s) p)) with ((dot (dot j s) (dot p stuff))); trivial.
-  replace (dot p stuff) with (dot stuff p) by (apply tpcm_comm).
+rewrite <- H0. trivial.
+intros. have ab := H H1 H2.
+assert (((dot (dot (dot j stuff) s) p)) = ((dot (dot j s) (dot p stuff)))) as asdf.
+- replace (dot p stuff) with (dot stuff p) by (apply tpcm_comm).
   rewrite tpcm_assoc. f_equal.
   rewrite <-tpcm_assoc.
   rewrite <-tpcm_assoc.
   f_equal. apply tpcm_comm.
+- destruct_ands; repeat split; trivial.
+  + subst. rewrite <- tpcm_assoc. f_equal. apply tpcm_comm.
+  + rewrite asdf. trivial.
+  + rewrite asdf. trivial.
 Qed.
 
 Lemma flows_preserve_branch_all_total_in_refinement_domain b t t' active
@@ -112,7 +113,6 @@ Proof. unfold view_exchange_cond. intro.
   deex. unfold specific_exchange_cond.
   exists y. exists x. exists x. rewrite unit_dot.
   full_generalize (rel M M ref (dot y p)) as t.
-  destruct t; trivial.
   repeat split; trivial.
   - rewrite unit_dot. trivial.
   - rewrite unit_dot. trivial.
@@ -124,8 +124,8 @@ Lemma view_exchange_cond_of_no_change2 ref view x y z w
 Proof. unfold view_exchange_cond. intro.
   deex. unfold specific_exchange_cond. intro.
   exists unit. exists unit. exists unit.
-  repeat (rewrite unit_dot_left). destruct (rel M M ref (dot y p)); trivial.
-  intro. repeat split. apply reflex.
+  repeat (rewrite unit_dot_left).
+  intro. repeat split; trivial. apply reflex.
 Qed.
 
 Lemma specific_exchange_cond_of_whatever ref a x y m
@@ -133,8 +133,8 @@ Lemma specific_exchange_cond_of_whatever ref a x y m
 Proof.
   unfold specific_exchange_cond. exists y. exists unit. exists unit.
   replace (dot y m) with (dot m y) by (apply tpcm_comm).
-  repeat (rewrite unit_dot_left). destruct (rel M M ref (dot (dot m y) a)); trivial.
-  intro. repeat split.
+  repeat (rewrite unit_dot_left).
+  intro. repeat split; trivial.
   - apply unit_dot.
   - apply reflex.
 Qed.
@@ -144,7 +144,6 @@ Lemma specific_exchange_cond_of_whatever2 ref a x y
 Proof.
   unfold specific_exchange_cond. exists y. exists unit. exists unit.
   rewrite unit_dot.
-  destruct (rel M M ref (dot y a)); trivial.
   intro. repeat split; trivial.
   - rewrite unit_dot_left. trivial.
   - rewrite unit_dot. trivial.
@@ -166,26 +165,24 @@ Proof.
   rewrite h; trivial. clear h.
   unfold view_exchange_cond. unfold specific_exchange_cond. unfold borrow_exchange_cond in *.
   unfold lmap_is_borrow in *.
-  intro extra. intro.
+  intro extra. intros.
   exists f'. exists m. exists m'.
-  destruct (rel M M (refinement_of ri) (dot f extra)) eqn:meqn; trivial.
+  intros.
+  (*destruct (rel M M (refinement_of ri) (dot f extra)) eqn:meqn; trivial.*)
   assert (tpcm_le z extra).
   - apply isb with (pl := (p,i)); trivial.
     apply m_valid_of_right_dot with (a := f).
-    apply (rel_valid_left M M (refinement_of ri) (dot f extra) (m0)).
+    apply (rel_valid_left M M (refinement_of ri) (dot f extra)).
     trivial.
-  - unfold tpcm_le in H0. deex. rewrite <- H0.
-    rewrite tpcm_assoc. 
+  - unfold tpcm_le in H2. deex.
+    subst extra.
     have ec := exchange_cond c.
-    rewrite <- H0 in meqn.
-    rewrite tpcm_assoc in meqn. 
-    rewrite meqn in ec.
-    intro Q.
-    have ec2 := ec Q. repeat split.
-    + apply unit_dot.
-    + rewrite unit_dot. trivial.
-    + rewrite unit_dot. trivial.
-    + repeat (rewrite unit_dot). repeat (rewrite unit_dot_left). trivial.
+    rewrite tpcm_assoc in H0.
+    have ec2 := ec H0.
+    destruct_ands.
+    repeat (rewrite unit_dot). repeat split; trivial.
+    + rewrite tpcm_assoc. trivial.
+    + rewrite tpcm_assoc. rewrite tpcm_assoc. trivial.
 Qed.
 
 (****************************************************************)
@@ -330,29 +327,28 @@ Proof.
   unfold lmap_is_borrow in *.
   intro extra. intro.
   exists m'. exists unit. exists unit.
-  destruct (rel M M (refinement_of_nat M RI i) (dot m extra)) eqn:meqn; trivial.
+  intros.
   assert (tpcm_le z extra).
   - apply isb with (pl := (p,i)); trivial.
     apply m_valid_of_right_dot with (a := m).
-    apply (rel_valid_left M M (refinement_of_nat M RI i) (dot m extra) (m0)).
+    apply (rel_valid_left M M (refinement_of_nat M RI i) (dot m extra)).
     trivial.
-  - unfold tpcm_le in H0. deex. rewrite <- H0.
-    rewrite tpcm_assoc. 
-    intros. repeat split.
-      + rewrite unit_dot. trivial.
-      + rewrite unit_dot. trivial.
-      + rewrite unit_dot. trivial.
-      + subst extra.
-        rewrite unit_dot.
-        rewrite tpcm_assoc in meqn.
-        assert (mov (dot (dot m z) c) (dot (dot m' z) c)) as themov.
-        * apply mov_monotonic; trivial.
-          have j := rel_valid_left M M (refinement_of_nat M RI i) _ _ meqn.
-          trivial.
-        * have mr := mov_refines M M (refinement_of_nat M RI i)
-            (dot (dot m z) c) (dot (dot m' z) c) m0 themov meqn.
-          deex. destruct_ands. rewrite H0.
-          repeat (rewrite unit_dot_left). trivial.
+  - unfold tpcm_le in H2. deex. subst extra.
+    repeat (rewrite unit_dot).
+    
+    assert (mov (dot (dot m z) c) (dot (dot m' z) c)) as themov.
+      + apply mov_monotonic; trivial.
+        have j := rel_valid_left M M (refinement_of_nat M RI i) (dot m (dot z c)) H0.
+        rewrite <- tpcm_assoc. trivial.
+      + rewrite tpcm_assoc in H0.
+        have mr := mov_refines M M (refinement_of_nat M RI i)
+          (dot (dot m z) c) (dot (dot m' z) c) themov H0.
+        destruct_ands.
+        repeat split; trivial.
+        * rewrite tpcm_assoc. trivial.
+        * rewrite tpcm_assoc. rewrite tpcm_assoc.
+            repeat (rewrite unit_dot_left).
+            trivial.
 Qed.
   
 Lemma borrow_exchange_normal b kappa gamma (m z m' : M)
@@ -460,11 +456,15 @@ Lemma ri_of_nat_nat_of_extstep alpha ri
 Lemma ri_of_nat_nat_of_basestep alpha
   : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI. Admitted.
   
-Lemma rel_refinement_of_triv_ri (m: M)
-  : rel M M (refinement_of (triv_ri RI)) m = Some unit. Admitted.
+Lemma rel_refinement_of_triv_ri_defined (m: M)
+  : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
+  
+Lemma rel_refinement_of_triv_ri_eq_unit (m: M)
+  : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
 
 Lemma initialize_ext gamma m f p ri
-  (is_rel: rel M M (refinement_of ri) f = Some m)
+  (is_rel_def: rel_defined M M (refinement_of ri) f)
+  (is_rel: rel M M (refinement_of ri) f = m)
   (si: state_inv (live gamma m ⋅ p))
   : ∃ alpha , state_inv (live (ExtLoc alpha ri gamma) f ⋅ p).
 Proof.
@@ -675,14 +675,17 @@ Proof.
     intros.
     repeat (rewrite unit_dot).
     repeat split; trivial.
+    * rewrite (i_value_of_pls_of_base p i alpha); trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_basestep.
+      apply rel_refinement_of_triv_ri_defined.
+    * rewrite (i_value_of_pls_of_base p i alpha); trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_basestep.
+      rewrite rel_refinement_of_triv_ri_eq_unit.
     
-    rewrite (i_value_of_pls_of_base p i alpha); trivial.
-    unfold refinement_of_nat.
-    rewrite ri_of_nat_nat_of_basestep.
-    rewrite rel_refinement_of_triv_ri.
-    
-    repeat (rewrite unit_dot).
-    apply reflex.
+      repeat (rewrite unit_dot).
+      apply reflex.
     
     (* uninteresting case *)
   + 

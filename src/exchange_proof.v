@@ -22,15 +22,11 @@ Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
 Definition specific_exchange_cond (ref: Refinement M M) (p m f h s m' f' h' s' : M) :=
   ∃ j l l' ,
-  match rel M M ref (dot f p) with
-  | None => True
-  | Some i1 => m_valid (dot m i1) ->
+  rel_defined M M ref (dot f p) ->
+  m_valid (dot m (rel M M ref (dot f p))) ->
       dot j s' = f' /\ m = dot l h /\ m' = dot l' h' /\
-      match rel M M ref (dot (dot j s) p) with
-      | None => False
-      | Some i2 => mov (dot l i1) (dot l' i2)
-      end
-  end.
+      rel_defined M M ref (dot (dot j s) p) /\
+      mov (dot l (rel M M ref (dot f p))) (dot l' (rel M M ref (dot (dot j s) p))).
 
 
 Definition specific_flow_cond p i (t t': Branch M) (active: Lifetime) (down up : PathLoc -> M) :=
@@ -102,53 +98,63 @@ Proof.
   unfold project in *.
   assert ((dot (dot f z) r) = (dot f (dot z r))) as A by (rewrite tpcm_assoc; trivial).
   rewrite A in val. rewrite A. clear A.
-  destruct (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) eqn:fzr.
-  - rename m0 into a.
-    have myf := myflow (valid_reduce m k a val). clear myflow.
+  (*destruct (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) eqn:fzr.
+  - rename m0 into a.*)
+    have myf := myflow inr (valid_reduce m k _ val). clear myflow.
     destruct_ands.
     subst m.
-    subst m'.
-    destruct (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) eqn:jszr.
-    + rename m into a'.
+    subst m'. subst f'.
+    set a := (rel M M (refinement_of_nat M RI i) (dot f (dot z r))).
+    set a' := (rel M M (refinement_of_nat M RI i) ((dot (dot j s) (dot z r)))).
       assert (m_valid (dot (dot a' k) (dot l' h)) /\
         (mov (dot (dot a k) (dot l h)) (dot (dot a' k) (dot l' h)))).
       * assert (dot (dot a k) (dot l h) = dot (dot l a) (dot k h)) as r1 by (apply dot_aklh).
         assert (dot (dot a' k) (dot l' h) = dot (dot l' a') (dot k h)) as r2 by (apply dot_aklh).
         rewrite r1.
         rewrite r2.
+        subst a. subst a'.
         apply mov_monotonic; trivial.
         rewrite <- dot_aklh2. trivial.
       * destruct_ands.
         apply trans with (y := dot (dot a' k) (dot l' h)); trivial.
         
-        subst f'.
-        rewrite dot_jszr in jszr.
+        subst a. subst a'.
+        
+        rewrite dot_jszr in H2.
+        rewrite dot_jszr in H3.
+        
         rewrite dot_jszr2.
         
         assert (m_valid (dot (dot r s) (dot j z))) as m_valid_srjz
-         by (apply (rel_valid_left M M (refinement_of_nat M RI i) (dot (dot r s) (dot j z)) a'); trivial).
+         by ( apply (rel_valid_left M M (refinement_of_nat M RI i) (dot (dot r s) (dot j z))); trivial).
         assert (mov (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z))) as mov_rsjz
           by (apply mov_monotonic; trivial).
         
         have movr := mov_refines M M (refinement_of_nat M RI i)
-            (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z)) a' mov_rsjz jszr.
+            (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z)) mov_rsjz H2.
         deex. destruct_ands.
-        rewrite H.
         
-        assert (m_valid (dot (dot q' k) (dot l' h)) /\
-          (mov (dot (dot a' k) (dot l' h)) (dot (dot q' k) (dot l' h)))).
-          -- rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc in H0.
+        assert (m_valid (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) k) (dot l' h)) /\
+          (mov (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h)) (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) k) (dot l' h)))).
+          -- replace
+            ((dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h))) with
+            ((dot ((rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r)))) (dot k (dot l' h)))) by (apply tpcm_assoc).
+            replace
+            ((dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h))) with
+            ((dot ((rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r)))) (dot k (dot l' h)))) in H by (apply tpcm_assoc).
+             replace
+            ((dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) k) (dot l' h))) with
+            ((dot ((rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z)))) (dot k (dot l' h)))) by (apply tpcm_assoc).
+            rewrite <- dot_jszr in H4.
              apply mov_monotonic; trivial.
           -- destruct_ands.
-              apply trans with (y := (dot (dot q' k) (dot l' h))); trivial.
+              apply trans with (y := (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) k) (dot l' h))); trivial.
               rewrite dot_qklh.
-              rewrite dot_qklh in H4.
-              assert (dot (dot q' k') (dot l' h') = dot (dot k' h') (dot q' l'))
+              rewrite dot_qklh in H5.
+              assert (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) k') (dot l' h') = dot (dot k' h') (dot (rel M M (refinement_of_nat M RI i) (dot (dot r' s') (dot j z))) l'))
                   by (apply dot_qklh).
-              rewrite H6.
+              rewrite H7.
               apply mov_monotonic; trivial.
-    + contradiction.
-  - contradiction.
 Qed.
  
 Lemma all_the_movs_ird (z m f h s r k m' f' h' s' r' k' : M) i
@@ -164,41 +170,40 @@ Proof.
   unfold project in *.
   assert ((dot (dot f z) r) = (dot f (dot z r))) as A by (rewrite tpcm_assoc; trivial).
   rewrite A in val. clear A.
-  destruct (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) eqn:fzr.
-  - rename m0 into a.
-    have myf := myflow (valid_reduce m k a val). clear myflow.
+    have myf := myflow inr (valid_reduce m k _ val). clear myflow.
     destruct_ands.
     subst m.
     subst m'.
-    destruct (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) eqn:jszr.
-    + rename m into a'.
-      assert (m_valid (dot (dot a' k) (dot l' h)) /\
-        (mov (dot (dot a k) (dot l h)) (dot (dot a' k) (dot l' h)))).
-      * assert (dot (dot a k) (dot l h) = dot (dot l a) (dot k h)) as r1 by (apply dot_aklh).
-        assert (dot (dot a' k) (dot l' h) = dot (dot l' a') (dot k h)) as r2 by (apply dot_aklh).
+    subst f'.
+      assert (m_valid (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h)) /\
+        (mov (dot (dot (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) k) (dot l h)) (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h)))).
+      * assert (dot (dot (rel M M (refinement_of_nat M RI i) (dot f (dot z r))) k) (dot l h) = dot (dot l (rel M M (refinement_of_nat M RI i) (dot f (dot z r)))) (dot k h)) as r1 by (apply dot_aklh).
+        assert (dot (dot (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r))) k) (dot l' h) = dot (dot l' (rel M M (refinement_of_nat M RI i) (dot (dot j s) (dot z r)))) (dot k h)) as r2 by (apply dot_aklh).
         rewrite r1.
         rewrite r2.
         apply mov_monotonic; trivial.
         rewrite <- dot_aklh2. trivial.
       * destruct_ands.
         
-        subst f'.
-        rewrite dot_jszr in jszr.
+        (*rewrite dot_jszr in jszr.
+        rewrite dot_jszr2.*)
+        
+        rewrite dot_jszr in H2.
+        rewrite dot_jszr in H3.
+        
         rewrite dot_jszr2.
         
         assert (m_valid (dot (dot r s) (dot j z))) as m_valid_srjz
-         by (apply (rel_valid_left M M (refinement_of_nat M RI i) (dot (dot r s) (dot j z)) a'); trivial).
+         by (apply (rel_valid_left M M (refinement_of_nat M RI i) (dot (dot r s) (dot j z)) ); trivial).
         assert (mov (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z))) as mov_rsjz
           by (apply mov_monotonic; trivial).
         
         have movr := mov_refines M M (refinement_of_nat M RI i)
-            (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z)) a' mov_rsjz jszr.
+            (dot (dot r s) (dot j z)) (dot (dot r' s') (dot j z))  mov_rsjz H2.
         deex. destruct_ands.
         
         unfold in_refinement_domain.
-        rewrite H. trivial.
-   + contradiction.
- - contradiction.
+        trivial.
 Qed.
 
 Lemma m_valid_ca a b c
@@ -264,13 +269,11 @@ Proof.
      full_generalize (rel M M (refinement_of_nat M RI i)
           (dot (node_live (node_of_pl t (p, i)))
              (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) as x.
-     destruct x.
-     + have fl' := fl (m_valid_ca _ _ _ amval).
+     + have fl' := fl Y (m_valid_ca _ _ _ amval).
        destruct_ands.
        rewrite H1 in amval.
        have am := m_valid_bd _ _ _ _ amval.
        trivial.
-     + contradiction.
 Qed.
 
 Lemma rec_m_valid_node
@@ -321,20 +324,17 @@ Proof.
      full_generalize (rel M M (refinement_of_nat M RI i)
           (dot (node_live (node_of_pl t (p, i)))
              (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) as x.
-     destruct x.
-     + have fl' := fl (m_valid_ca _ _ _ amval).
+     + have fl' := fl Y (m_valid_ca _ _ _ amval).
        destruct_ands.
-       destruct (rel M M (refinement_of_nat M RI i)
+       (*destruct (rel M M (refinement_of_nat M RI i)
            (dot (dot j (down (p ++ [i], 0)))
-              (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) eqn:de.
-       * have rvl := rel_valid_left M M (refinement_of_nat M RI i) _ _ de.
+              (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) eqn:de.*)
+       * have rvl := rel_valid_left M M (refinement_of_nat M RI i) ((dot (dot j (down (p ++ [i], 0))) (node_total_minus_live (refinement_of_nat M RI) (node_of_pl t (p, i)) active))) H3.
          setoid_rewrite cellnode_pl in rvl.
          unfold node_total_minus_live in rvl.
          have q := m_valid_db _ _ _ _ rvl .
          setoid_rewrite branch_of_node_node_of_pl.
          trivial.
-       * contradiction.
-    + contradiction.
 Qed.
 
 Lemma dot_cba a b c
@@ -390,7 +390,7 @@ Proof.
     + rewrite unit_dot_left. rewrite unit_dot_left. trivial.
     + rewrite unit_dot_left. rewrite unit_dot_left. trivial.
     + rewrite unit_dot_left. rewrite unit_dot_left. 
-        unfold in_refinement_domain. rewrite rel_unit. trivial.
+        unfold in_refinement_domain. apply rel_defined_unit.
     + rewrite unit_dot_left. trivial.
     + repeat (rewrite unit_dot_left).
       repeat (rewrite unit_dot).

@@ -381,8 +381,7 @@ Proof.
   
   have ird := in_refinement_domain_of_natird _ _ _ _ isv.
   unfold in_refinement_domain in ird.
-  rename ird into ird'. have ird := exists_some_of_match _ ird'. clear ird'. deex.
-  have elem_is_val := rel_valid_left _ _ _ _ _ ird.
+  have elem_is_val := rel_valid_left _ _ _ _ ird.
   clear ird.
   
   assert (m_valid
@@ -406,14 +405,12 @@ Proof.
 Qed.
 
 Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
-  ∀ p , match rel M M ref (dot (dot f z) p) with
-  | None => True
-  | Some i1 => m_valid (dot m i1) ->
-      match rel M M ref (dot (dot f' z) p) with
-      | None => False
-      | Some i2 => mov (dot m i1) (dot m' i2)
-      end
-  end.
+  ∀ p ,
+  rel_defined M M ref (dot (dot f z) p) ->
+      rel_defined M M ref (dot (dot f' z) p)
+      /\ mov
+            (dot m (rel M M ref (dot (dot f z) p)))
+            (dot m' (rel M M ref (dot (dot f' z) p))).
 
 Lemma assoc_comm (a b c : Branch M) : (a ⋅ b) ⋅ c ≡ (a ⋅ c) ⋅ b.
 Proof.
@@ -777,7 +774,8 @@ Admitted.
 Lemma branch_view_includes_child (t: Branch M) p h i active : ∀ j y,
   (j ≤ i) ->
   (branch_view (refinement_of_nat M RI) (branch_of_pl t (p++[h], j)) active j y) ->
-  ∃ (r q w: M) , dot r q = y /\ Some r = rel M M (refinement_of_nat M RI i) w
+  ∃ (q w: M) , dot (rel M M (refinement_of_nat M RI i) w) q = y
+      /\ rel_defined M M (refinement_of_nat M RI i) w
       /\ (node_view (refinement_of_nat M RI) (node_of_pl t (p++[h], i)) active w).
 Proof.
   induction j as [j IHj] using (induction_ltof1 _ (λ k , i - k)); unfold ltof in IHj.
@@ -790,10 +788,9 @@ Proof.
       unfold conjoin_umbrella in bv.
       deex. destruct_ands. deex. destruct_ands.
       unfold tpcm_le in H. deex.
-      exists a. exists (dot c y0). exists b.
+      exists (dot c y0). exists b.
       repeat split; trivial.
       + subst y. subst x. rewrite tpcm_assoc. trivial.
-      + symmetry. trivial.
   -
     assert (S m - (S j) < S m - j) as la by lia.
     assert (S j ≤ S m) as la2 by lia.
@@ -805,13 +802,14 @@ Proof.
     have IHji := IHj (S j) la y0 la2 bvsub.
     deex. destruct_ands.
     subst y. subst y0.
-    exists r. exists (dot x q). exists w. repeat split; trivial.
+    exists (dot x q). exists w. repeat split; trivial.
     + rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
 Qed.
 
 Lemma node_view_includes_child (t: Branch M) p h i y active
   (nv : node_view (refinement_of_nat M RI) (node_of_pl t (p, h)) active y)
-  : ∃ (r q w: M) , dot r q = y /\ Some r = rel M M (refinement_of_nat M RI i) w
+  : ∃ (q w: M) , dot (rel M M (refinement_of_nat M RI i) w) q = y
+      /\ rel_defined M M (refinement_of_nat M RI i) w
       /\ (node_view (refinement_of_nat M RI) (node_of_pl t (p++[h], i)) active w).
 Proof.
   setoid_rewrite cellnode_pl in nv. rewrite node_view_rewrite in nv.
@@ -822,7 +820,7 @@ Proof.
   have Ib := branch_view_includes_child t p h i active 0 y0 la bvsub.
   deex. destruct_ands.
   subst y0. subst y.
-  exists r. exists (dot x q). exists w. repeat split; trivial.
+  exists (dot x q). exists w. repeat split; trivial.
   rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
 Qed.
 
@@ -843,8 +841,8 @@ Qed.
 
 Lemma borrow_back alpha ri gamma f m kappa state
   (sinv: state_inv state)
-  (bbcond: ∀ p: M, match rel M M (refinement_of ri) (dot f p)
-      with | Some x => tpcm_le m x | None => True end)
+  (bbcond: ∀ p: M, rel_defined M M (refinement_of ri) (dot f p) ->
+      tpcm_le m (rel M M (refinement_of ri) (dot f p)))
   (ib: is_borrow kappa (ExtLoc alpha ri gamma) f state)
   : is_borrow kappa gamma m state.
 Proof.
@@ -864,15 +862,16 @@ Proof.
   destruct_ands. subst.
   
   assert (m_valid w) as wval.
-    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_extstep alpha ri))) (m := r). symmetry. trivial.
+    - eapply rel_valid_left with (M := M). apply H1.
     
     - have ibi := ib (p ++ [i], nat_of_extstep alpha ri) p_ext_in w wval H2.
       unfold tpcm_le in ibi. deex. subst.
-      have bbcond1 := bbcond c.
-        unfold refinement_of_nat in H1.
-        rewrite ri_of_nat_nat_of_extstep in H1.
-        rewrite <- H1 in bbcond1.
-        apply tpcm_le_a_le_bc_of_a_le_b. trivial.
+      unfold refinement_of_nat in H1.
+      rewrite ri_of_nat_nat_of_extstep in H1.
+      have bbcond1 := bbcond c H1.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_extstep.
+      apply tpcm_le_a_le_bc_of_a_le_b. trivial.
 Qed.
 
 (****************************************************************)
@@ -900,14 +899,16 @@ Lemma borrow_back_left gamma1 gamma2 m1 m2 kappa state
   destruct_ands. subst.
   
   assert (m_valid w) as wval.
-    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_leftstep RI gamma2))) (m := r). symmetry. trivial.
+    - eapply rel_valid_left with (M := M). apply H1.
     
     - have ibi := ib (p ++ [i], nat_of_leftstep RI gamma2) p_ext_in w wval H2.
       unfold tpcm_le in ibi. deex. subst.
       unfold refinement_of_nat in H1.
       rewrite ri_of_nat_nat_of_leftstep in H1.
-      have lo := leftproject_le_left _ _ _ _ H1.
+      have lo := leftproject_le_left _ _ _ H1.
       have lo2 := lo EqDecision1 Countable0.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_leftstep.
       apply tpcm_le_a_le_bc_of_a_le_b. trivial.
 Qed.
 
@@ -930,14 +931,16 @@ Lemma borrow_back_right gamma1 gamma2 m1 m2 kappa state
   destruct_ands. subst.
   
   assert (m_valid w) as wval.
-    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_rightstep RI gamma1))) (m := r). symmetry. trivial.
+    - eapply rel_valid_left with (M := M). apply H1.
     
     - have ibi := ib (p ++ [i], nat_of_rightstep RI gamma1) p_ext_in w wval H2.
       unfold tpcm_le in ibi. deex. subst.
       unfold refinement_of_nat in H1.
       rewrite ri_of_nat_nat_of_rightstep in H1.
-      have lo := rightproject_le_right _ _ _ _ H1.
+      have lo := rightproject_le_right _ _ _ H1.
       have lo2 := lo EqDecision1 Countable0.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_rightstep.
       apply tpcm_le_a_le_bc_of_a_le_b. trivial.
 Qed.
 

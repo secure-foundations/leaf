@@ -40,11 +40,14 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
   mov_refines : forall b b' q , mov b b' -> rel b q -> exists q' , rel b' q' /\ mov q q' ;
   rel_self : forall b q q' , rel b q -> rel b q' -> mov q q' ;*)
   
-  rel : R -> option M ;
-  rel_valid_left : forall r m , rel r = Some m -> m_valid r ;
+  rel_defined : R -> Prop ;
+  rel : R -> M ;
+  rel_valid_left : forall r , rel_defined r -> m_valid r ;
   (*rel_valid_right : forall r m , rel r = Some m -> m_valid m ;*)
-  rel_unit : rel unit = Some unit ;
-  mov_refines : forall b b' q , mov b b' -> rel b = Some q -> exists q' , rel b' = Some q' /\ mov q q' ;
+  rel_defined_unit : rel_defined unit ;
+  rel_unit : rel unit = unit ;
+  mov_refines : forall b b' , mov b b' -> rel_defined b ->
+      rel_defined b' /\ mov (rel b) (rel b') ;
 }.
 
 Definition Lifetime := multiset nat.
@@ -908,8 +911,7 @@ Qed.
 
 Context (refs: nat -> Refinement M M).
 
-Definition project (idx: nat) (r: M) :=
-    match (rel M M (refs idx)) r with | Some t => t | None => unit end.
+Definition project (idx: nat) (r: M) := rel M M (refs idx) r.
 
 Fixpoint node_total (node: Node M) (lifetime: Lifetime) : M :=
   match node with
@@ -963,10 +965,10 @@ Proof.
 
 Definition project_umbrella
     (refinement: Refinement M M) (umbrella : M -> Prop) : (M -> Prop) :=
-    λ m , ∃ r t , umbrella r /\ (rel M M refinement r = Some t) /\ tpcm_le t m.
+    λ m , ∃ r , umbrella r /\ (rel_defined M M refinement r) /\ tpcm_le (rel M M refinement r) m.
     
 Definition rel_project_fancy (idx: nat) (um: M -> Prop) :=
-    λ x , ∃ a b , tpcm_le a x /\ rel M M (refs idx) b = Some a /\ um b.
+    λ x , ∃ b , tpcm_le (rel M M (refs idx) b) x /\ rel_defined M M (refs idx) b /\ um b.
   
 Definition project_fancy (idx: nat) (um: M -> Prop) : (M -> Prop) :=
   rel_project_fancy idx um
@@ -1000,7 +1002,7 @@ Lemma node_view_rewrite (node: Node M) (lifetime: Lifetime)
 Proof. unfold node_view. destruct node. trivial. Qed.
 
 Definition in_refinement_domain (idx: nat) (m : M) :=
-  match rel M M (refs idx) m with | Some _ => True | None => False end.
+  rel_defined M M (refs idx) m.
   
 Fixpoint node_all_total_in_refinement_domain (node: Node M) (lifetime: Lifetime) (idx: nat) : Prop :=
   match node with
@@ -1044,13 +1046,10 @@ Definition view_sat_projections (idx: nat) (view : M -> Prop) (m : M)
         (project           idx m).
 Proof. 
   unfold rel_project_fancy. unfold project. unfold view_sat. unfold tpcm_le.
-  exists (match rel M M (refs idx) m with | Some t => t | None => unit end).
   exists m.
   repeat split.
   - exists unit. apply unit_dot.
-  - unfold in_refinement_domain in vrv. destruct (rel M M (refs idx) m).
-    + trivial.
-    + contradiction.
+  - unfold in_refinement_domain in vrv. trivial.
   - unfold view_sat in vs. trivial.
 Qed.
 
@@ -1130,9 +1129,9 @@ Proof.
       clear node_view_of_trivial. clear branch_view_of_trivial.
       crush. 
       unfold conjoin_umbrella. exists unit. exists m. repeat split.
-      * unfold project_fancy. unfold rel_project_fancy. exists unit. exists unit. repeat split.
-        -- apply self_le_self.
-        -- apply rel_unit.
+      * unfold project_fancy. unfold rel_project_fancy. exists unit. repeat split.
+        -- rewrite rel_unit. apply self_le_self.
+        -- apply rel_defined_unit.
         -- apply ind_hyp_node. trivial.
       * apply ind_hyp_branch. trivial.
       * rewrite tpcm_comm. apply unit_dot.
@@ -1161,15 +1160,15 @@ Proof.
       * unfold conjoin_umbrella in *. unfold project_fancy in *.
           unfold rel_project_fancy in *.
           destruct H1. destruct H1. destruct H1. destruct H1. destruct H1.
-          exists x. exists x0. split.
-          ** exists x1. exists x2. rewrite <- ind_hyp_node; trivial.
-          ** rewrite <- ind_hyp_branch; trivial.
+          exists x. exists x0. destruct_ands. split.
+          ** exists x1. repeat split; trivial. rewrite <- ind_hyp_node; trivial.
+          ** rewrite <- ind_hyp_branch; trivial. split; trivial.
       * unfold conjoin_umbrella in *. unfold project_fancy in *.
           unfold rel_project_fancy in *.
           destruct H1. destruct H1. destruct H1. destruct H1. destruct H1.
-          exists x. exists x0. split.
-          ** exists x1. exists x2. rewrite ind_hyp_node; trivial.
-          ** rewrite ind_hyp_branch; trivial.
+          exists x. exists x0. destruct_ands. split.
+          ** exists x1. repeat split; trivial. rewrite ind_hyp_node; trivial.
+          ** rewrite ind_hyp_branch; trivial. split; trivial.
     + unfold branch_equiv in *. fold node_equiv in *. fold branch_equiv in *.
       split.
         * intros. unfold branch_view. unfold umbrella_unit. trivial.
@@ -1180,7 +1179,6 @@ Proof.
         * intros. unfold branch_view. unfold umbrella_unit. trivial.
     + trivial.
 Qed.
-
 
 Lemma node_total_of_trivial (node: Node M) (lifetime: Lifetime)
   (eq: node_trivial node)
@@ -1240,7 +1238,7 @@ Proof.
       rewrite cell_total_of_trivial; trivial.
       rewrite branch_total_of_trivial; trivial.
       rewrite unit_dot.
-      destruct c. unfold in_refinement_domain. rewrite rel_unit. trivial.
+      destruct c. unfold in_refinement_domain. apply rel_defined_unit.
   - destruct b.
     + have ind_hyp_branch := branch_all_total_in_refinement_domain_of_trivial b.
       have ind_hyp_node := node_all_total_in_refinement_domain_of_trivial n.
@@ -1355,7 +1353,7 @@ Lemma project_fancy_preserves_inclusion idx (a b : M -> Prop)
 Proof.
   unfold project_fancy, rel_project_fancy. intros.
     deex. destruct_ands. unfold tpcm_le in H. deex.
-        subst y. exists a0. exists b0. repeat split.
+        subst y. exists b0. repeat split.
   - unfold tpcm_le. exists c. trivial.
   - trivial.
   - apply inc; trivial.

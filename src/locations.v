@@ -79,16 +79,16 @@ Definition refinement_of_nat
 Lemma leftproject_le_left
         {M} `{!EqDecision M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-        (r m1 m2 c : M)
-  (sr: Some r = rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c))
-  : tpcm_le m1 r. Admitted.
+        (m1 m2 c : M)
+  (rdef: rel_defined M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c))
+  : tpcm_le m1 (rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c)). Admitted.
   
 Lemma rightproject_le_right
         {M} `{!EqDecision M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-        (r m1 m2 c : M)
-  (sr: Some r = rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c))
-  : tpcm_le m2 r. Admitted.
+        (m1 m2 c : M)
+  (rdef: rel_defined M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c))
+  : tpcm_le m2 (rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c)). Admitted.
 (*
 Global Instance loc_eqdec : EqDecision Loc.
 Proof. solve_decision. Defined.
