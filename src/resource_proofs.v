@@ -7,6 +7,7 @@ From stdpp Require Import gmap.
 From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
+From stdpp Require Import option.
 Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 Require Import Burrow.indexing.
@@ -60,10 +61,66 @@ Global Instance state_op : Op (State M RI) := λ x y ,
   | StateCon active1 lmap1, StateCon active2 lmap2 =>
       StateCon (multiset_add active1 active2) (lmap1 ⋅ lmap2)
   end.
+  
+Lemma lmap_op_assoc (x y z : gmap (Loc RI) (Cell M)) :
+    lmaps_equiv (x ⋅ (y ⋅ z)) ((x ⋅ y) ⋅ z).
+Proof.
+  unfold "⋅", "≡", lmap_op. unfold map_equiv. intro.
+  unfold lmap_lookup.
+  repeat (rewrite lookup_merge).
+  unfold diag_None, cell_op_opt. destruct (x !! l), (y !! l), (z !! l); trivial.
+  apply cell_op_assoc.
+Qed.
+  (*- unfold "≡", option_equiv. apply Some_Forall2. apply cell_op_assoc.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply Some_Forall2. trivial.
+  - unfold "≡", option_equiv. apply None_Forall2. Qed.*)
 
-Lemma state_assoc (x y z : State M RI) : (x ⋅ (y ⋅ z)) ≡ ((x ⋅ y) ⋅ z). Admitted.
+Lemma state_assoc (x y z : State M RI) : (x ⋅ (y ⋅ z)) ≡ ((x ⋅ y) ⋅ z).
+Proof.
+  unfold "⋅", "≡",state_equiv,state_op. destruct x, y, z. split.
+  - apply multiset_add_assoc.
+  - apply lmap_op_assoc.
+Qed.
 
-Global Instance state_op_proper : Proper ((≡) ==> (≡) ==> (≡)) state_op. Admitted.
+Global Instance lmaps_equiv_refl : Reflexive lmaps_equiv. 
+Proof. unfold Reflexive, lmaps_equiv. intros. trivial. Qed.
+
+Global Instance lmaps_equiv_symm : Symmetric lmaps_equiv.
+Proof. unfold Symmetric, lmaps_equiv. intros. symmetry. apply H. Qed.
+
+Global Instance lmaps_equiv_trans : Transitive lmaps_equiv.
+Proof. unfold Transitive, lmaps_equiv. intros. have a := H l. have b := H0 l.
+    setoid_rewrite <- a in b. trivial. Qed.
+
+Global Instance lmaps_op_proper
+    : Proper (lmaps_equiv ==> lmaps_equiv ==> lmaps_equiv) lmap_op.
+Proof.
+  unfold Proper, lmaps_equiv, "==>", lmap_op. intros. unfold lmap_lookup in *.
+      repeat (rewrite lookup_merge). unfold diag_None.
+      have a := H l. have b := H0 l. clear H. clear H0.
+      unfold cell_op_opt.
+      destruct (x !! l), (x0 !! l), (y !! l), (y0 !! l); trivial.
+      - setoid_rewrite a. setoid_rewrite b. trivial.
+      - setoid_rewrite a. setoid_rewrite b. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+      - setoid_rewrite a. setoid_rewrite b. setoid_rewrite cell_op_comm. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+      - setoid_rewrite a. setoid_rewrite b. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+      - setoid_rewrite a. setoid_rewrite <- b. symmetry. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+      - setoid_rewrite a. setoid_rewrite <- b. trivial.
+      - setoid_rewrite <- a. setoid_rewrite b. symmetry. setoid_rewrite cell_op_comm. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+      - setoid_rewrite <- a. setoid_rewrite b. trivial.
+      - setoid_rewrite <- a. setoid_rewrite <- b. symmetry. apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+Qed.
+
+Global Instance state_op_proper : Proper ((≡) ==> (≡) ==> (≡)) state_op.
+Proof. unfold Proper, equiv, "==>", state_equiv, state_op. intros. destruct x, y, x0, y0.
+  destruct_ands. subst. split; trivial. setoid_rewrite H2. setoid_rewrite H1.
+  apply lmaps_equiv_refl.
+Qed.
 
 Definition live (loc: Loc RI) (m: M) :=
       (*StateCon empty_lifetime (build loc (CellCon m empty)).*)
@@ -104,7 +161,14 @@ Definition state_inv (state: State M RI) : Prop :=
        valid_totals (refinement_of_nat M RI) (as_tree l) active
   end.
 
-Global Instance state_inv_proper : Proper ((≡) ==> impl) state_inv. Admitted.
+Global Instance as_tree_proper : Proper ((lmaps_equiv) ==> (≡)) as_tree. Admitted.
+
+Global Instance state_inv_proper : Proper ((≡) ==> impl) state_inv.
+Proof.
+  unfold Proper, equiv, "==>", impl, state_inv, state_equiv. destruct x, y. intros.
+  destruct_ands. subst. split; trivial.
+  setoid_rewrite <- H2. trivial.
+Qed.
 
 Global Instance state_valid : Valid (State M RI) :=
   λ v , ∃ p , state_inv (v ⋅ p).
@@ -203,11 +267,15 @@ Qed.
 
 Global Instance state_equiv_symm : Symmetric state_equiv.
 Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
-  split. * symmetry. trivial. * Admitted.
+  split. * symmetry. trivial. * symmetry. trivial. Qed.
   
-Global Instance state_equiv_trans : Transitive state_equiv. Admitted.
+Global Instance state_equiv_trans : Transitive state_equiv.
+Proof. unfold Transitive, state_equiv. destruct x, y, z. intros. destruct_ands. subst.
+  split; trivial. setoid_rewrite H2. setoid_rewrite <- H1. apply lmaps_equiv_refl. Qed.
 
-Global Instance state_equiv_refl : Reflexive state_equiv. Admitted.
+Global Instance state_equiv_refl : Reflexive state_equiv.
+Proof. unfold Reflexive, state_equiv. destruct x. split; trivial. apply lmaps_equiv_refl.
+Qed.
     
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
   : as_tree {[loc := cell]} ≡ build loc cell.
@@ -226,7 +294,10 @@ Lemma any_pl_of_loc_is_of_loc (loc: Loc RI)
 
 Lemma in_refinement_domain_of_natird roi (node: Node M) (lifetime: Lifetime) (idx: nat)
   (natird : node_all_total_in_refinement_domain roi node lifetime idx)
-      : in_refinement_domain roi idx (node_total roi node lifetime). Admitted.
+      : in_refinement_domain roi idx (node_total roi node lifetime).
+Proof.
+  unfold node_all_total_in_refinement_domain in natird.
+    destruct node. destruct_ands; trivial. Qed.
 
 Lemma exists_some_of_match {A} (t: option A) (is_some : match t with | Some _ => True | None => False end)
   : exists x , t = Some x. Proof. destruct t. - exists a; trivial. - contradiction. Qed.
@@ -278,7 +349,9 @@ Proof.
 Qed.
 
 Lemma m_valid_of_right_dot a b
-  : m_valid (dot a b) -> m_valid b. Admitted.
+  : m_valid (dot a b) -> m_valid b. 
+Proof.
+  rewrite tpcm_comm. intro. apply valid_monotonic with (y := a). trivial. Qed.
 
 Lemma live_and_borrow_implies_valid (gamma: Loc RI) (kappa: Lifetime) (m k: M) (b: State M RI)
     (isb: is_borrow kappa gamma k b)
@@ -449,7 +522,9 @@ Lemma sum_reserved_over_lifetime_union (a b: listset (Lifetime * M)) lt
       = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt). Admitted.
     
 Lemma sum_reserved_over_lifetime_singleton r lt
-  : sum_reserved_over_lifetime {[ r ]} lt = reserved_get_or_unit r lt. Admitted.
+  : sum_reserved_over_lifetime {[ r ]} lt = reserved_get_or_unit r lt.
+Proof. unfold sum_reserved_over_lifetime. rewrite set_fold_singleton.
+  apply unit_dot_left. Qed.
 
 Lemma sum_reserved_over_lifetime_eq_adding_singleton g active_lifetime (lt: Lifetime) alt
   (notin : ∀ r : multiset nat * M, r ∈ g → let (lt, _) := r in ¬ multiset_in lt alt)
@@ -783,7 +858,7 @@ Proof.
         rewrite ri_of_nat_nat_of_extstep in H1.
         rewrite <- H1 in bbcond1.
         apply tpcm_le_a_le_bc_of_a_le_b. trivial.
-Admitted.
+Qed.
 
 (****************************************************************)
 (****************************************************************)

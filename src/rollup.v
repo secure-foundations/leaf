@@ -429,6 +429,9 @@ unfold Reflexive. intro. apply node_equiv_refl. Defined.
 Global Instance inst_branch_equiv_refl : Reflexive branch_equiv.
 unfold Reflexive. intro. apply branch_equiv_refl. Defined.
 
+Lemma op_trivial_cell (cell1: Cell M) (cell2: Cell M)
+  (istriv: cell_trivial cell2) : ((cell1 ⋅ cell2) ≡ cell1). Admitted.
+
 Lemma op_trivial_node (node1: Node M) (node2: Node M)
   (istriv: node_trivial node2) : ((node1 ⋅ node2) ≡ node1)
 with op_trivial_branch (branch1: Branch M) (branch2: Branch M)
