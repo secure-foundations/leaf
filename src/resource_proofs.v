@@ -764,6 +764,15 @@ Lemma pl_in_pls_of_loc_extloc p i alpha ri (gamma: Loc RI)
   : (p++[i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma).
 Admitted.
 
+Lemma pl_in_pls_of_loc_cross_left p i (gamma1 gamma2: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma1)
+  : (p++[i], nat_of_leftstep RI gamma2) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Admitted.
+
+Lemma pl_in_pls_of_loc_cross_right p i (gamma1 gamma2: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma2)
+  : (p++[i], nat_of_rightstep RI gamma1) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Admitted.
 
 Lemma branch_view_includes_child (t: Branch M) p h i active : ∀ j y,
   (j ≤ i) ->
@@ -820,6 +829,12 @@ Qed.
 Lemma ri_of_nat_nat_of_extstep alpha (ri: RI)
   : (ri_of_nat RI (nat_of_extstep alpha ri) = ri). Admitted.
   
+Lemma ri_of_nat_nat_of_leftstep (gamma2 : Loc RI)
+  : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI. Admitted.
+  
+Lemma ri_of_nat_nat_of_rightstep (gamma1 : Loc RI)
+  : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI. Admitted.
+  
 Lemma tpcm_le_a_le_bc_of_a_le_b m r q
   : tpcm_le m r -> tpcm_le m (dot r q).
 Proof.
@@ -858,6 +873,72 @@ Proof.
         rewrite ri_of_nat_nat_of_extstep in H1.
         rewrite <- H1 in bbcond1.
         apply tpcm_le_a_le_bc_of_a_le_b. trivial.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow back (products) *)
+
+Lemma borrow_back_left gamma1 gamma2 m1 m2 kappa state
+  (sinv: state_inv state)
+  (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
+  : is_borrow kappa gamma1 m1 state.
+    unfold is_borrow in *. destruct state.
+  unfold lmap_is_borrow in *. intros.
+  rename H0 into mval. rename H1 into nv.
+  destruct pl.
+  rename l1 into p. rename n into i.
+  assert ((p ++ [i], nat_of_leftstep RI gamma2) ∈ pls_of_loc (CrossLoc gamma1 gamma2))
+    as p_ext_in
+    by (apply pl_in_pls_of_loc_cross_left; trivial).
+  
+  have nvic := node_view_includes_child (as_tree l0) p i (nat_of_leftstep RI gamma2) y
+      kappa nv.
+  deex.
+  destruct_ands. subst.
+  
+  assert (m_valid w) as wval.
+    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_leftstep RI gamma2))) (m := r). symmetry. trivial.
+    
+    - have ibi := ib (p ++ [i], nat_of_leftstep RI gamma2) p_ext_in w wval H2.
+      unfold tpcm_le in ibi. deex. subst.
+      unfold refinement_of_nat in H1.
+      rewrite ri_of_nat_nat_of_leftstep in H1.
+      have lo := leftproject_le_left _ _ _ _ H1.
+      have lo2 := lo EqDecision1 Countable0.
+      apply tpcm_le_a_le_bc_of_a_le_b. trivial.
+Qed.
+
+Lemma borrow_back_right gamma1 gamma2 m1 m2 kappa state
+  (sinv: state_inv state)
+  (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
+  : is_borrow kappa gamma2 m2 state.
+    unfold is_borrow in *. destruct state.
+  unfold lmap_is_borrow in *. intros.
+  rename H0 into mval. rename H1 into nv.
+  destruct pl.
+  rename l1 into p. rename n into i.
+  assert ((p ++ [i], nat_of_rightstep RI gamma1) ∈ pls_of_loc (CrossLoc gamma1 gamma2))
+    as p_ext_in
+    by (apply pl_in_pls_of_loc_cross_right; trivial).
+  
+  have nvic := node_view_includes_child (as_tree l0) p i (nat_of_rightstep RI gamma1) y
+      kappa nv.
+  deex.
+  destruct_ands. subst.
+  
+  assert (m_valid w) as wval.
+    - eapply rel_valid_left with (M := M) (r := (refinement_of_nat M RI (nat_of_rightstep RI gamma1))) (m := r). symmetry. trivial.
+    
+    - have ibi := ib (p ++ [i], nat_of_rightstep RI gamma1) p_ext_in w wval H2.
+      unfold tpcm_le in ibi. deex. subst.
+      unfold refinement_of_nat in H1.
+      rewrite ri_of_nat_nat_of_rightstep in H1.
+      have lo := rightproject_le_right _ _ _ _ H1.
+      have lo2 := lo EqDecision1 Countable0.
+      apply tpcm_le_a_le_bc_of_a_le_b. trivial.
 Qed.
 
 (****************************************************************)

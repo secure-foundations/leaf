@@ -19,8 +19,14 @@ Context (ref_map : RefinementIndex -> Refinement M M).*)
 Class RefinementIndex (M: Type) `{!EqDecision M} `{!TPCM M} (RI: Type) := {
     refinement_of : RI -> Refinement M M;
     triv_ri : RI;
+    left_ri : RI;
+    right_ri : RI;
+    pair_up : M -> M -> M;
 }.
 Global Arguments triv_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
+Global Arguments left_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
+Global Arguments right_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
+Global Arguments pair_up {M}%type_scope {EqDecision0 TPCM0} _%type_scope {RefinementIndex} _ _.
 
 Inductive Loc (RI: Type) `{!EqDecision RI, !Countable RI} :=
   | BaseLoc : nat -> Loc RI
@@ -40,6 +46,12 @@ Definition nat_of_extstep {RI} `{!EqDecision RI, !Countable RI} (alpha:nat) (ri:
 Admitted.
 
 Definition nat_of_basestep RI `{!EqDecision RI, !Countable RI} (alpha:nat) : nat.
+Admitted.
+
+Definition nat_of_leftstep RI `{!EqDecision RI, !Countable RI} (gamma2: Loc RI) : nat.
+Admitted.
+
+Definition nat_of_rightstep RI `{!EqDecision RI, !Countable RI} (gamma1: Loc RI) : nat.
 Admitted.
 
 Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
@@ -64,6 +76,19 @@ Definition refinement_of_nat
         RI `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
         (idx: nat) : Refinement M M := refinement_of (ri_of_nat RI idx).
 
+Lemma leftproject_le_left
+        {M} `{!EqDecision M, !TPCM M}
+        {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+        (r m1 m2 c : M)
+  (sr: Some r = rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c))
+  : tpcm_le m1 r. Admitted.
+  
+Lemma rightproject_le_right
+        {M} `{!EqDecision M, !TPCM M}
+        {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+        (r m1 m2 c : M)
+  (sr: Some r = rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c))
+  : tpcm_le m2 r. Admitted.
 (*
 Global Instance loc_eqdec : EqDecision Loc.
 Proof. solve_decision. Defined.
