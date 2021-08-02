@@ -139,14 +139,14 @@ Proof.
   - apply reflex.
 Qed.
 
-Lemma specific_exchange_cond_of_whatever2 ref a x y
-    : specific_exchange_cond ref a x y x unit unit y unit unit.
+Lemma specific_exchange_cond_of_whatever2 ref a x y z
+    : specific_exchange_cond ref a x y x unit z y z unit.
 Proof.
   unfold specific_exchange_cond. exists y. exists unit. exists unit.
   rewrite unit_dot.
   intro. repeat split; trivial.
   - rewrite unit_dot_left. trivial.
-  - rewrite unit_dot. trivial.
+  - rewrite unit_dot_left. trivial.
   - apply reflex.
 Qed.
 
@@ -704,3 +704,761 @@ Proof.
     rewrite unit_dot_left.
     trivial.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* live(m, gamma1) . live(m1 x m2, gamma1, gamma2) ->
+   live(m1, gamma1) . live(m x m2, gamma1, gamma2)
+*)
+
+Definition updo (m: M) (gamma: Loc RI) (idx: nat) : (PathLoc -> M) :=
+  λ (pl: PathLoc) , match pl with | (p, i) =>
+        if decide (p ≠ [] /\ (plsplit p) ∈ pls_of_loc gamma /\ i < idx) then
+          m
+        else
+          unit
+      end.
+ 
+Definition updo_se (gamma: Loc RI) (idx: nat) : listset PathLoc. Admitted.
+
+Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
+  : ∀ (p : list nat) (i : nat),
+    (p, i) ∉ updo_se gamma idx
+    → updo m gamma idx (p, i) = unit.
+    Admitted.
+    
+
+    
+Definition pls_of_loc_from_left (l r: Loc RI) : listset PathLoc. Admitted.
+Definition pls_of_loc_from_right (l r: Loc RI) : listset PathLoc. Admitted.
+
+Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
+  
+Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
+  
+Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
+  
+Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
+  
+Lemma pl_in_crossloc_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  
+Lemma pl_in_crossloc_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  
+Lemma updo_eq_m_left p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = m. Admitted.
+    
+Lemma updo_eq_unit_left p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p++[i], 0)) = unit. Admitted.
+    
+Lemma updo_eq_unit2_left p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)) = unit. Admitted.
+    
+Lemma updo_eq_unit3_left p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p++[i], 0)) = unit. Admitted.
+     
+Lemma updo_eq_m_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = m. Admitted.
+    
+Lemma updo_eq_unit_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
+    
+Lemma updo_eq_unit2_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)) = unit. Admitted.
+    
+Lemma updo_eq_unit3_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
+    
+Lemma y_is_pair_of_rel_defined_refinement_of_left x y
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
+  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+  
+Lemma y_is_pair_of_rel_defined_refinement_of_right x y
+  (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
+  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+
+Lemma dot_pair_up m1 m2 k1 k2
+  : dot (pair_up RI m1 m2) (pair_up RI k1 k2) = pair_up RI (dot m1 k1) (dot m2 k2).
+  Admitted.
+
+Lemma refinement_of_left_pair_up a b
+  : rel M M (refinement_of (left_ri RI)) (pair_up RI a b) = a. Admitted.
+  
+Lemma refinement_of_right_pair_up a b
+  : rel M M (refinement_of (right_ri RI)) (pair_up RI a b) = b. Admitted.
+  
+Lemma rel_defined_refinement_of_left_pair_up a b
+  (aval: m_valid a)
+  (bval: m_valid b)
+    : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)). Admitted.
+    
+Lemma rel_defined_refinement_of_right_pair_up a b
+  (aval: m_valid a)
+  (bval: m_valid b)
+    : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)). Admitted.
+    
+Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up a b
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
+  : m_valid a. Admitted.
+  
+Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up a b
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
+  : m_valid b. Admitted.
+  
+Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up a b
+  (rd: rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b))
+  : m_valid a. Admitted.
+    
+Lemma specific_exchange_cond_left_swap v m1 m2 m x
+ : specific_exchange_cond (refinement_of (left_ri RI))
+    v m (dot (pair_up RI m1 m2) x) unit unit
+      m1 (dot (pair_up RI m m2) x) unit unit.
+Proof.
+  unfold specific_exchange_cond.
+  exists (dot (pair_up RI m m2) x). exists m. exists m1. intros.
+  repeat (rewrite unit_dot).
+  repeat (rewrite <- tpcm_assoc).
+  repeat (rewrite <- tpcm_assoc in H).
+  repeat (rewrite <- tpcm_assoc in H0).
+  full_generalize (dot x v) as y.
+  have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
+  deex. subst y.
+  rewrite dot_pair_up.
+  rewrite dot_pair_up.
+  rewrite dot_pair_up in H0.
+  rewrite dot_pair_up in H.
+  rewrite refinement_of_left_pair_up in H0.
+  rewrite refinement_of_left_pair_up.
+  rewrite refinement_of_left_pair_up.
+  repeat split; trivial.
+  - apply rel_defined_refinement_of_left_pair_up.
+    + replace (dot m1 k1) with (dot k1 m1) in H0 by (apply tpcm_comm).
+      rewrite tpcm_assoc in H0. apply valid_monotonic with (y := m1). trivial.
+    + apply m_valid_right_of_rel_defined_refinement_of_left_pair_up with (a := dot m1 k1).
+      trivial.
+  - rewrite tpcm_assoc. rewrite tpcm_assoc.
+      replace (dot m1 m) with (dot m m1) by (apply tpcm_comm). apply reflex.
+Qed.
+
+Lemma specific_exchange_cond_right_swap v m1 m2 m x
+ : specific_exchange_cond (refinement_of (right_ri RI))
+    v m (dot (pair_up RI m1 m2) x) unit unit
+      m2 (dot (pair_up RI m1 m) x) unit unit.
+Proof.
+  unfold specific_exchange_cond.
+  exists (dot (pair_up RI m1 m) x). exists m. exists m2. intros.
+  repeat (rewrite unit_dot).
+  repeat (rewrite <- tpcm_assoc).
+  repeat (rewrite <- tpcm_assoc in H).
+  repeat (rewrite <- tpcm_assoc in H0).
+  full_generalize (dot x v) as y.
+  have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
+  deex. subst y.
+  rewrite dot_pair_up.
+  rewrite dot_pair_up.
+  rewrite dot_pair_up in H0.
+  rewrite dot_pair_up in H.
+  rewrite refinement_of_right_pair_up in H0.
+  rewrite refinement_of_right_pair_up.
+  rewrite refinement_of_right_pair_up.
+  repeat split; trivial.
+  - apply rel_defined_refinement_of_right_pair_up.
+    + apply m_valid_left_of_rel_defined_refinement_of_right_pair_up with (b := dot m2 k2).
+      trivial.
+    + replace (dot m2 k2) with (dot k2 m2) in H0 by (apply tpcm_comm).
+      rewrite tpcm_assoc in H0. apply valid_monotonic with (y := m2). trivial.
+  - rewrite tpcm_assoc. rewrite tpcm_assoc.
+      replace (dot m2 m) with (dot m m2) by (apply tpcm_comm). apply reflex.
+Qed.
+
+Lemma dot_mcmk (m c m1 k1 : M)
+  : dot (dot m c) (dot m1 k1) = dot (dot m k1) (dot m1 c). Admitted.
+
+Lemma specific_exchange_cond_left_swap2 m c d v x y m1 m2
+  (mv: m_valid (dot (dot m c) (rel M M (refinement_of (left_ri RI))
+                 (dot (dot (pair_up RI m1 m2) d) v))))
+  : specific_exchange_cond (refinement_of (right_ri RI)) v 
+    (x) (dot (pair_up RI m1 m2) d) (x) unit
+    (y) (dot (pair_up RI m m2) d) (y) unit.
+Proof.
+  unfold specific_exchange_cond.
+  exists (dot (pair_up RI m m2) d).
+  exists unit. exists unit.
+  intros.
+  repeat (rewrite unit_dot_left).
+  repeat (rewrite unit_dot).
+  
+  repeat (rewrite <- tpcm_assoc).
+  assert ((dot (dot (pair_up RI m1 m2) d) v)
+      = dot (pair_up RI m1 m2) (dot d v)) as r1 by (symmetry; apply tpcm_assoc).
+  rewrite r1 in mv.
+  rewrite r1 in H.
+  rewrite r1 in H0.
+  clear r1. full_generalize (dot d v) as z.
+  
+  have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
+  deex. subst z.
+  repeat (rewrite dot_pair_up).
+  repeat (rewrite dot_pair_up in H).
+  repeat (rewrite dot_pair_up in H0).
+  repeat (rewrite dot_pair_up in mv).
+  
+  rewrite refinement_of_left_pair_up in mv.
+  repeat (rewrite refinement_of_right_pair_up).
+  repeat (rewrite refinement_of_right_pair_up in H0).
+  
+  repeat split; trivial.
+  - apply rel_defined_refinement_of_right_pair_up.
+    + rewrite dot_mcmk in mv. apply valid_monotonic with (y0 := (dot m1 c)). trivial.
+    + rewrite tpcm_comm in H0. apply valid_monotonic with (y0 := x). trivial.
+  - apply reflex.
+Qed.
+
+Lemma specific_exchange_cond_right_swap2 m c d v x y m1 m2
+  (mv: m_valid (dot (dot m c) (rel M M (refinement_of (right_ri RI))
+                 (dot (dot (pair_up RI m1 m2) d) v))))
+  : specific_exchange_cond (refinement_of (left_ri RI)) v 
+    (x) (dot (pair_up RI m1 m2) d) (x) unit
+    (y) (dot (pair_up RI m1 m) d) (y) unit.
+Proof.
+  unfold specific_exchange_cond.
+  exists (dot (pair_up RI m1 m) d).
+  exists unit. exists unit.
+  intros.
+  repeat (rewrite unit_dot_left).
+  repeat (rewrite unit_dot).
+  
+  repeat (rewrite <- tpcm_assoc).
+  assert ((dot (dot (pair_up RI m1 m2) d) v)
+      = dot (pair_up RI m1 m2) (dot d v)) as r1 by (symmetry; apply tpcm_assoc).
+  rewrite r1 in mv.
+  rewrite r1 in H.
+  rewrite r1 in H0.
+  clear r1. full_generalize (dot d v) as z.
+  
+  have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
+  deex. subst z.
+  repeat (rewrite dot_pair_up).
+  repeat (rewrite dot_pair_up in H).
+  repeat (rewrite dot_pair_up in H0).
+  repeat (rewrite dot_pair_up in mv).
+  
+  rewrite refinement_of_right_pair_up in mv.
+  repeat (rewrite refinement_of_left_pair_up).
+  repeat (rewrite refinement_of_left_pair_up in H0).
+  
+  repeat split; trivial.
+  - apply rel_defined_refinement_of_left_pair_up.
+    + rewrite tpcm_comm in H0. apply valid_monotonic with (y0 := x). trivial.
+    + rewrite dot_mcmk in mv. apply valid_monotonic with (y0 := (dot m2 c)). trivial.
+  - apply reflex.
+Qed.
+
+Lemma i_value_of_pls_of_loc_from_left p i gamma1 gamma2
+  (in_pls: (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+  : i = nat_of_leftstep RI gamma2. Admitted.
+  
+Lemma i_value_of_pls_of_loc_from_right p i gamma1 gamma2
+  (in_pls: (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+  : i = nat_of_rightstep RI gamma2. Admitted.
+  
+Lemma updo_other_eq_both_left p i gamma1 gamma2 m
+  (is_not_in : (p, i) ∉ pls_of_loc_from_left gamma1 gamma2)
+  : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)). Admitted.
+  
+Lemma updo_other_eq_both_right p i gamma1 gamma2 m
+  (is_not_in : (p, i) ∉ pls_of_loc_from_right gamma1 gamma2)
+  : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)). Admitted.
+  
+Lemma updo_other_eq_unit p i idx gamma m
+  (is_not_in : (p, i) ∉ pls_of_loc gamma)
+    : (updo m gamma idx (p ++ [i], 0)) = unit. Admitted.
+  
+Lemma updo_base_eq_m p i idx gamma m
+  (is_in : (p, i) ∈ pls_of_loc gamma)
+    : (updo m gamma idx (p ++ [i], 0)) = m. Admitted.
+  
+(*Lemma cell_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : cell_of_pl (as_tree l) pl1 ≡ cell_of_pl (as_tree l) pl2. Admitted.*)
+  
+Lemma node_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : node_of_pl (as_tree l) pl1 ≡ node_of_pl (as_tree l) pl2. Admitted.
+  
+Lemma node_of_pl_build_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2. Admitted.
+  
+Lemma exists_in_pls_of_loc_from_left gamma1 gamma2
+  : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2. Admitted.
+  
+Lemma exists_in_pls_of_loc_from_right gamma1 gamma2
+  : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2. Admitted.
+
+Lemma valid_child_and_parent (t: Branch M) p i j lt_active
+  (vt: valid_totals (refinement_of_nat M RI) t lt_active)
+  : m_valid (dot (cell_live (cell_of_pl t (p, i)))
+      (rel M M (refinement_of_nat M RI j) (node_total (refinement_of_nat M RI) (node_of_pl t (p++[i], j)) lt_active))). Admitted.
+      
+Lemma plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 p i
+  (pi_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+  : plsplit p ∈ pls_of_loc gamma1. Admitted.
+  
+Lemma plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 p i
+  (pi_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+  : plsplit p ∈ pls_of_loc gamma2. Admitted.
+  
+Lemma q_eq_pi_of_plsplit_cross (gamma1 gamma2: Loc RI) (q p: list nat) i j
+  (q_in: (q, j) ∈ pls_of_loc (CrossLoc gamma1 gamma2) )
+  (eq: plsplit q = (p, i))
+  : q = p ++ [i]. Admitted.
+
+Lemma pl_not_in_pls_of_loc_cross_from_in_left pl (gamma1 gamma2: Loc RI)
+  (pl_in : pl ∈ pls_of_loc gamma1)
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  
+Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
+  (pl_in : pl ∈ pls_of_loc gamma2)
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+
+Lemma cell_live_op (c1 c2: Cell M)
+  : cell_live (c1 ⋅ c2) = dot (cell_live c1) (cell_live c2). Admitted.
+  
+Lemma specific_exchange_cond_of_no_change2 ref view x y z w
+  : specific_exchange_cond ref view x y x y z w z w.
+Proof. 
+  unfold specific_exchange_cond.
+  exists unit. exists unit. exists unit.
+  repeat (rewrite unit_dot_left).
+  intro. repeat split; trivial. apply reflex.
+Qed.
+
+Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl gamma1 gamma2
+  (not_in_l : pl ∉ pls_of_loc_from_left gamma1 gamma2)
+  (not_in_r : pl ∉ pls_of_loc_from_right gamma1 gamma2)
+        : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)). Admitted.
+  
+Lemma swap_cross_left (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
+  (si: state_inv (live gamma1 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
+     : state_inv (live gamma1 m1 ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m m2) ⋅ p).
+Proof.
+  unfold state_inv in *. destruct p. unfold live, "⋅", state_op in *. destruct_ands.
+  split; trivial.
+  full_generalize (multiset_add (multiset_add empty_lifetime empty_lifetime) l) as active_lt.
+  rename H0 into vt.
+  setoid_rewrite as_tree_op. 
+  setoid_rewrite as_tree_op. 
+  setoid_rewrite as_tree_singleton. 
+  setoid_rewrite as_tree_op in vt. 
+  setoid_rewrite as_tree_op in vt.
+  setoid_rewrite as_tree_singleton in vt.
+   
+  eapply specific_flows_preserve_branch_all_total_in_refinement_domain
+    with (t := build gamma1 (CellCon m ∅)
+          ⋅ build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅) ⋅ (as_tree l0))
+         (se := updo_se gamma1 (nat_of_leftstep RI gamma2))
+         (down := updo m gamma1 (nat_of_leftstep RI gamma2))
+         (up   := updo m1 gamma1 (nat_of_leftstep RI gamma2)); trivial.
+
+  - intros. split.
+    + apply updo_se_okay; trivial.
+    + apply updo_se_okay; trivial.
+  - intros.
+    unfold specific_flow_cond.
+    setoid_rewrite <- node_of_pl_op.
+    setoid_rewrite <- node_of_pl_op.
+    
+    have the_case : Decision ((p, i) ∈ pls_of_loc_from_left gamma1 gamma2) by solve_decision.
+    destruct the_case.
+    
+    + 
+      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_left with (gamma2:=gamma2); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_left with (gamma2:=gamma2); trivial).
+      repeat (rewrite node_live_op).
+      repeat (rewrite node_node_cell_cell).
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      unfold cell_live, triv_cell.
+      repeat (rewrite unit_dot_left).
+      rewrite updo_eq_m_left; trivial.
+      rewrite updo_eq_unit_left; trivial.
+      rewrite updo_eq_unit2_left; trivial.
+      rewrite updo_eq_m_left; trivial.
+      rewrite updo_eq_unit_left; trivial.
+      rewrite updo_eq_unit2_left; trivial.
+      rewrite (i_value_of_pls_of_loc_from_left p i gamma1 gamma2); trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_leftstep.
+      apply specific_exchange_cond_left_swap.
+      
+    + 
+    
+    have the_case : Decision ((p, i) ∈ pls_of_loc_from_right gamma1 gamma2) by solve_decision.
+    destruct the_case.
+
+    *
+    
+      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_right with (gamma2:=gamma2); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_right with (gamma1:=gamma1); trivial).
+      
+      have epl := exists_in_pls_of_loc_from_left gamma1 gamma2.
+      deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
+      
+      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_left with (gamma1:=gamma1); trivial).
+      
+      (*have ceq := cell_of_pl_as_tree_eq l0 (p, i) (other_p, other_i) (CrossLoc gamma1 gamma2) picl opicl.*)
+      destruct (plsplit other_p) eqn:plsplit_other_p. rename l1 into other_p_p. rename n0 into other_p_i.
+      
+      have vcap := valid_child_and_parent
+        (build gamma1 (CellCon m ∅) ⋅ build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅) ⋅ as_tree l0)
+        other_p_p other_p_i other_i active_lt vt.
+        
+      have pio := plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 other_p other_i epl.
+      
+      have qe := q_eq_pi_of_plsplit_cross gamma1 gamma2 other_p other_p_p other_p_i
+          other_i opicl plsplit_other_p. rewrite <- qe in vcap.
+          
+      assert (plsplit other_p ∉ pls_of_loc (CrossLoc gamma1 gamma2)) as npio
+          by (apply pl_not_in_pls_of_loc_cross_from_in_left; trivial).
+          
+      assert ((other_p, other_i) ∉ pls_of_loc gamma1) as onp1
+          by (apply pl_not_in_left_of_pl_in_left with (gamma2:=gamma2); trivial).
+      
+      rewrite <- plsplit_other_p in vcap.
+      
+      repeat (rewrite node_live_op).
+      repeat (rewrite node_node_cell_cell).
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      (*replace (cell_live triv_cell) with (unit) by (unfold cell_live, triv_cell; trivial).*)
+      unfold cell_live. unfold triv_cell.
+      repeat (rewrite unit_dot_left).
+      rewrite <- updo_other_eq_both_left; trivial.
+      rewrite <- updo_other_eq_both_left; trivial.
+      rewrite updo_eq_unit3_left; trivial.
+      rewrite updo_eq_unit3_left; trivial.
+
+      repeat (rewrite <- node_of_pl_op in vcap).
+      repeat (rewrite <- cell_of_pl_op in vcap).
+      rewrite build_spec in vcap; trivial.
+      rewrite build_rest_triv in vcap; trivial.
+      full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
+      rewrite <- node_live_plus_node_total_minus_live in vcap.
+      setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      setoid_rewrite (node_of_pl_build_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      full_generalize ((node_total_minus_live (refinement_of_nat M RI)
+                       (node_of_pl (build gamma1 (CellCon m ∅)) (p, i)
+                        ⋅ node_of_pl
+                            (build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅))
+                            (p, i) ⋅ node_of_pl (as_tree l0) (p, i)) active_lt)) as z.
+      (*full_generalize ((node_total_minus_live (refinement_of_nat M RI)
+                       (node_of_pl (build gamma1 (CellCon m ∅)) (other_p, other_i)
+                        ⋅ node_of_pl
+                            (build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅))
+                            (other_p, other_i) ⋅ node_of_pl (as_tree l0) (other_p, other_i))
+                       active_lt)) as z.*)
+      repeat (rewrite node_live_op in vcap).
+      repeat (rewrite node_node_cell_cell in vcap).
+      rewrite build_rest_triv in vcap; trivial.
+      rewrite build_spec in vcap; trivial.
+      repeat (rewrite cell_live_op in vcap).
+      unfold cell_live, triv_cell in vcap.
+      rewrite unit_dot in vcap.
+      rewrite unit_dot_left in vcap.
+      
+      rewrite (i_value_of_pls_of_loc_from_right p i gamma1 gamma2); trivial.
+      rewrite (i_value_of_pls_of_loc_from_right p i gamma1 gamma2) in vcap; trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_rightstep.
+      
+      rewrite (i_value_of_pls_of_loc_from_left other_p other_i gamma1 gamma2) in vcap; trivial.
+      unfold refinement_of_nat in vcap.
+      rewrite ri_of_nat_nat_of_leftstep in vcap.
+      
+      
+      apply (specific_exchange_cond_left_swap2)
+          with (c := match child_c with | CellCon m _ => m end).
+      trivial.
+      
+    * have the_case : Decision ((p, i) ∈ pls_of_loc gamma1) by solve_decision.
+      destruct the_case.
+    
+    --
+        assert ((p, i) ∉ pls_of_loc (CrossLoc gamma1 gamma2))
+            by (apply pl_not_in_pls_of_loc_cross_from_in_left; trivial).
+        
+        rewrite <- (updo_other_eq_both_left p i); trivial.
+        rewrite <- (updo_other_eq_both_left p i); trivial.
+        rewrite (updo_base_eq_m p i); trivial. rewrite (updo_base_eq_m p i); trivial.
+        
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_live_op. rewrite node_live_op.
+        repeat (rewrite unit_dot).
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell.
+        rewrite build_spec; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_spec; trivial.
+        rewrite build_rest_triv; trivial.
+        unfold cell_live, triv_cell.
+        repeat (rewrite unit_dot).
+        apply specific_exchange_cond_add_stuff.
+        apply specific_exchange_cond_of_no_change2.
+
+      (* uninteresting case *)
+      --
+        assert ((p, i) ∉ pls_of_loc (CrossLoc gamma1 gamma2))
+            by (apply pl_not_in_pls_of_loc_cross_from_not_in_both; trivial).
+      
+        rewrite <- (updo_other_eq_both_left p i); trivial.
+        rewrite <- (updo_other_eq_both_left p i); trivial.
+        rewrite updo_other_eq_unit; trivial.
+        rewrite updo_other_eq_unit; trivial.
+
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        unfold cell_live, triv_cell.
+        repeat (rewrite unit_dot).
+        repeat (rewrite unit_dot_left).
+        apply specific_exchange_cond_of_whatever2.
+   - setoid_rewrite <- cell_of_pl_op.
+     setoid_rewrite <- cell_of_pl_op.
+     setoid_rewrite cell_total_minus_live_op.
+     setoid_rewrite cell_total_minus_live_op.
+     intro.
+     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+Qed.
+
+Lemma swap_cross_right (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
+  (si: state_inv (live gamma2 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
+     : state_inv (live gamma2 m2 ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m) ⋅ p).
+Proof.
+  unfold state_inv in *. destruct p. unfold live, "⋅", state_op in *. destruct_ands.
+  split; trivial.
+  full_generalize (multiset_add (multiset_add empty_lifetime empty_lifetime) l) as active_lt.
+  rename H0 into vt.
+  setoid_rewrite as_tree_op. 
+  setoid_rewrite as_tree_op. 
+  setoid_rewrite as_tree_singleton. 
+  setoid_rewrite as_tree_op in vt. 
+  setoid_rewrite as_tree_op in vt.
+  setoid_rewrite as_tree_singleton in vt.
+   
+  eapply specific_flows_preserve_branch_all_total_in_refinement_domain
+    with (t := build gamma2 (CellCon m ∅)
+          ⋅ build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅) ⋅ (as_tree l0))
+         (se := updo_se gamma2 (nat_of_rightstep RI gamma1))
+         (down := updo m gamma2 (nat_of_rightstep RI gamma1))
+         (up   := updo m2 gamma2 (nat_of_rightstep RI gamma1)); trivial.
+
+  - intros. split.
+    + apply updo_se_okay; trivial.
+    + apply updo_se_okay; trivial.
+  - intros.
+    unfold specific_flow_cond.
+    setoid_rewrite <- node_of_pl_op.
+    setoid_rewrite <- node_of_pl_op.
+    
+    have the_case : Decision ((p, i) ∈ pls_of_loc_from_right gamma1 gamma2) by solve_decision.
+    destruct the_case.
+    
+    + 
+      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_right with (gamma1:=gamma1); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_right with (gamma1:=gamma1); trivial).
+      repeat (rewrite node_live_op).
+      repeat (rewrite node_node_cell_cell).
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      unfold cell_live, triv_cell.
+      repeat (rewrite unit_dot_left).
+      rewrite updo_eq_m_right; trivial.
+      rewrite updo_eq_unit_right; trivial.
+      rewrite updo_eq_unit2_right; trivial.
+      rewrite updo_eq_m_right; trivial.
+      rewrite updo_eq_unit_right; trivial.
+      rewrite updo_eq_unit2_right; trivial.
+      rewrite (i_value_of_pls_of_loc_from_right p i gamma1 gamma2); trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_rightstep.
+      apply specific_exchange_cond_right_swap.
+      
+    + 
+    
+    have the_case : Decision ((p, i) ∈ pls_of_loc_from_left gamma1 gamma2) by solve_decision.
+    destruct the_case.
+
+    *
+    
+      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_left with (gamma1:=gamma1); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_left with (gamma2:=gamma2); trivial).
+      
+      have epl := exists_in_pls_of_loc_from_right gamma1 gamma2.
+      deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
+      
+      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_right with (gamma2:=gamma2); trivial).
+      
+      (*have ceq := cell_of_pl_as_tree_eq l0 (p, i) (other_p, other_i) (CrossLoc gamma1 gamma2) picl opicl.*)
+      destruct (plsplit other_p) eqn:plsplit_other_p. rename l1 into other_p_p. rename n0 into other_p_i.
+      
+      have vcap := valid_child_and_parent
+        (build gamma2 (CellCon m ∅) ⋅ build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅) ⋅ as_tree l0)
+        other_p_p other_p_i other_i active_lt vt.
+        
+      have pio := plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 other_p other_i epl.
+      
+      have qe := q_eq_pi_of_plsplit_cross gamma1 gamma2 other_p other_p_p other_p_i
+          other_i opicl plsplit_other_p. rewrite <- qe in vcap.
+          
+      assert (plsplit other_p ∉ pls_of_loc (CrossLoc gamma1 gamma2)) as npio
+          by (apply pl_not_in_pls_of_loc_cross_from_in_right; trivial).
+          
+      assert ((other_p, other_i) ∉ pls_of_loc gamma2) as onp1
+          by (apply pl_not_in_right_of_pl_in_right with (gamma1:=gamma1); trivial).
+      
+      rewrite <- plsplit_other_p in vcap.
+      
+      repeat (rewrite node_live_op).
+      repeat (rewrite node_node_cell_cell).
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      rewrite build_rest_triv; trivial.
+      rewrite build_spec; trivial.
+      (*replace (cell_live triv_cell) with (unit) by (unfold cell_live, triv_cell; trivial).*)
+      unfold cell_live. unfold triv_cell.
+      repeat (rewrite unit_dot_left).
+      rewrite <- updo_other_eq_both_right; trivial.
+      rewrite <- updo_other_eq_both_right; trivial.
+      rewrite updo_eq_unit3_right; trivial.
+      rewrite updo_eq_unit3_right; trivial.
+
+      repeat (rewrite <- node_of_pl_op in vcap).
+      repeat (rewrite <- cell_of_pl_op in vcap).
+      rewrite build_spec in vcap; trivial.
+      rewrite build_rest_triv in vcap; trivial.
+      full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
+      rewrite <- node_live_plus_node_total_minus_live in vcap.
+      setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      setoid_rewrite (node_of_pl_build_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      full_generalize ((node_total_minus_live (refinement_of_nat M RI)
+                       (node_of_pl (build gamma2 (CellCon m ∅)) (p, i)
+                        ⋅ node_of_pl
+                            (build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅))
+                            (p, i) ⋅ node_of_pl (as_tree l0) (p, i)) active_lt)) as z.
+      (*full_generalize ((node_total_minus_live (refinement_of_nat M RI)
+                       (node_of_pl (build gamma1 (CellCon m ∅)) (other_p, other_i)
+                        ⋅ node_of_pl
+                            (build (CrossLoc gamma1 gamma2) (CellCon (pair_up RI m1 m2) ∅))
+                            (other_p, other_i) ⋅ node_of_pl (as_tree l0) (other_p, other_i))
+                       active_lt)) as z.*)
+      repeat (rewrite node_live_op in vcap).
+      repeat (rewrite node_node_cell_cell in vcap).
+      rewrite build_rest_triv in vcap; trivial.
+      rewrite build_spec in vcap; trivial.
+      repeat (rewrite cell_live_op in vcap).
+      unfold cell_live, triv_cell in vcap.
+      rewrite unit_dot in vcap.
+      rewrite unit_dot_left in vcap.
+      
+      rewrite (i_value_of_pls_of_loc_from_left p i gamma1 gamma2); trivial.
+      rewrite (i_value_of_pls_of_loc_from_left p i gamma1 gamma2) in vcap; trivial.
+      unfold refinement_of_nat.
+      rewrite ri_of_nat_nat_of_leftstep.
+      
+      rewrite (i_value_of_pls_of_loc_from_right other_p other_i gamma1 gamma2) in vcap; trivial.
+      unfold refinement_of_nat in vcap.
+      rewrite ri_of_nat_nat_of_rightstep in vcap.
+      
+      apply (specific_exchange_cond_right_swap2)
+          with (c := match child_c with | CellCon m _ => m end).
+      trivial.
+      
+    * have the_case : Decision ((p, i) ∈ pls_of_loc gamma2) by solve_decision.
+      destruct the_case.
+    
+    --
+        assert ((p, i) ∉ pls_of_loc (CrossLoc gamma1 gamma2))
+            by (apply pl_not_in_pls_of_loc_cross_from_in_right; trivial).
+        
+        rewrite <- (updo_other_eq_both_right p i); trivial.
+        rewrite <- (updo_other_eq_both_right p i); trivial.
+        rewrite (updo_base_eq_m p i); trivial. rewrite (updo_base_eq_m p i); trivial.
+        
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_live_op. rewrite node_live_op.
+        repeat (rewrite unit_dot).
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell.
+        rewrite build_spec; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_spec; trivial.
+        rewrite build_rest_triv; trivial.
+        unfold cell_live, triv_cell.
+        repeat (rewrite unit_dot).
+        apply specific_exchange_cond_add_stuff.
+        apply specific_exchange_cond_of_no_change2.
+
+      (* uninteresting case *)
+      --
+        assert ((p, i) ∉ pls_of_loc (CrossLoc gamma1 gamma2))
+            by (apply pl_not_in_pls_of_loc_cross_from_not_in_both; trivial).
+      
+        rewrite <- (updo_other_eq_both_right p i); trivial.
+        rewrite <- (updo_other_eq_both_right p i); trivial.
+        rewrite updo_other_eq_unit; trivial.
+        rewrite updo_other_eq_unit; trivial.
+
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_live_op. rewrite node_live_op.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell. rewrite node_node_cell_cell.
+        rewrite node_node_cell_cell.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        rewrite build_rest_triv; trivial.
+        unfold cell_live, triv_cell.
+        repeat (rewrite unit_dot).
+        repeat (rewrite unit_dot_left).
+        apply specific_exchange_cond_of_whatever2.
+   - setoid_rewrite <- cell_of_pl_op.
+     setoid_rewrite <- cell_of_pl_op.
+     setoid_rewrite cell_total_minus_live_op.
+     setoid_rewrite cell_total_minus_live_op.
+     intro.
+     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+Qed.
+
