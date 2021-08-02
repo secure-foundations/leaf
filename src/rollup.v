@@ -52,8 +52,14 @@ Record Refinement R M `{ TPCM R , TPCM M } :=
 
 Definition Lifetime := multiset nat.
 
-Global Instance eqdec_lifetime : EqDecision Lifetime. Admitted.
-Global Instance countable_lifetime : Countable Lifetime. Admitted.
+Global Instance eqdec_lifetime : EqDecision Lifetime.
+  Proof. unfold EqDecision. intros. solve_decision. Defined.
+
+Global Instance countable_lifetime : Countable Lifetime. 
+  refine (inj_countable'
+      (λ l, match l with MS _ g => g end)
+      (λ g, MS nat g) _).
+  intros. destruct x. trivial. Qed.
 
 Definition lifetime_intersect (l: Lifetime) (m: Lifetime) := multiset_add l m.
 Definition lifetime_included (l: Lifetime) (m: Lifetime) := multiset_le m l.
@@ -800,11 +806,11 @@ Global Instance inst_state_op_assoc : Assoc equiv state_op := state_op_assoc.
 *)
 
 (*Lemma conjoin_umbrella_comm a b x
-  : conjoin_umbrella a b x = conjoin_umbrella b a x. Admitted.
+  : conjoin_umbrella a b x = conjoin_umbrella b a x.
   
 Lemma conjoin_umbrella_assoc a b c x
   : conjoin_umbrella (conjoin_umbrella a b) c x
-  = conjoin_umbrella a (conjoin_umbrella b c) x. Admitted.*)
+  = conjoin_umbrella a (conjoin_umbrella b c) x. *)
   
 Lemma conjoin_umbrella_cassoc_uni a b c x :
   conjoin_umbrella (conjoin_umbrella a b) c x ->
@@ -1088,12 +1094,31 @@ Proof.
       + unfold view_sat, branch_view, branch_total. unfold umbrella_unit. trivial.
 Qed.
 
+Lemma cell_view_le_total_minus_live (cell: Cell M) (lt: Lifetime) (active: Lifetime)
+    (lt_is_active : lifetime_included active lt)
+    : view_sat (cell_view cell lt) (cell_total_minus_live cell active).
+Proof.
+  unfold cell_view. destruct cell. unfold cell_total_minus_live.
+    apply view_sat_with_le with (a := (sum_reserved_over_lifetime l lt)).
+    + apply conjoin_reserved_over_lifetime_is_closed.
+    + apply view_sat_reserved_over_lifetime.
+    + apply sum_reserved_over_lifetime_monotonic.
+        unfold lifetime_included in lt_is_active. trivial.
+Qed.
+
 Lemma node_view_le_total_minus_live (node: Node M) (lt: Lifetime) (active: Lifetime) (idx: nat)
     (lt_is_active : lifetime_included active lt)
     (ird: node_all_total_in_refinement_domain node active idx)
     : view_sat (node_view node lt) (node_total_minus_live node active).
-Admitted.
-
+Proof.
+  destruct node.
+  unfold node_view. unfold node_total. apply view_sat_conjoin.
+        * apply cell_view_le_total_minus_live. trivial.
+        * apply branch_view_le_total; trivial.
+          unfold node_all_total_in_refinement_domain in ird.
+              fold branch_all_total_in_refinement_domain in ird.
+              destruct c in ird. destruct ird. trivial.
+Qed.
 
 (*
 Definition state_inv (state: State M) :=
@@ -1336,8 +1361,21 @@ Global Instance node_total_proper :
     Proof. unfold Proper, equiv, "==>", impl. intros. subst.
     apply node_total_of_equiv. trivial. Qed.
     
+Global Instance cell_total_minus_live_proper :
+    Proper ((≡) ==> (=) ==> (=)) cell_total_minus_live.
+Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+  unfold cell_total_minus_live. destruct x, y. unfold cell_equiv in H.
+  destruct_ands.
+  setoid_rewrite H0. trivial.
+Qed.
+    
 Global Instance node_total_minus_live_proper :
-    Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live). Admitted.
+    Proper ((≡) ==> (=) ==> (=)) (node_total_minus_live).
+Proof. unfold Proper, equiv, "==>", impl. intros. subst.
+    unfold node_total_minus_live. destruct x, y.
+    unfold node_equiv in H. destruct_ands.
+    setoid_rewrite H. setoid_rewrite H0. trivial.
+Qed.
     
 Lemma node_total_minus_live_triv active
  : node_total_minus_live triv_node active = unit.
@@ -1396,30 +1434,81 @@ Local Instance valid_state : Valid (State M) := alls_valid_instance ref.
 Definition a (x: State M) := ✓ x.
 *)
 
-Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (=)) node_live. Admitted.
+Global Instance cell_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=)) cell_live.
+Proof. unfold Proper, "≡", cell_live, "==>". intros. destruct x, y.
+  unfold cell_equiv in H. destruct_ands. trivial.
+Qed.
 
+Global Instance node_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=)) node_live.
+Proof.
+  unfold Proper, "≡", "==>", node_live. intros. destruct x, y.
+  unfold node_equiv in H. destruct_ands. setoid_rewrite H. trivial. Qed.
 
 Global Instance branch_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (≡) ==> (≡)) (branch_op). Admitted.
+    Proper ((≡) ==> (≡) ==> (≡)) (branch_op).
+Proof.
+  unfold Proper, "==>". intros.
+  apply branch_equiv_trans with (branch2 := branch_op x y0).
+  - apply branch_op_equiv. trivial.
+  - apply branch_equiv_trans with (branch2 := branch_op y0 x).
+    + apply branch_op_comm.
+    + apply branch_equiv_trans with (branch2 := branch_op y0 y).
+      * apply branch_op_equiv. trivial.
+      * apply branch_op_comm.
+Qed.
     
 Global Instance node_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (≡) ==> (≡)) node_op. Admitted.
+    Proper ((≡) ==> (≡) ==> (≡)) node_op.
+Proof.
+  unfold Proper, "==>". intros.
+  apply node_equiv_trans with (node2 := node_op x y0).
+  - apply node_op_equiv. trivial.
+  - apply node_equiv_trans with (node2 := node_op y0 x).
+    + apply node_op_comm.
+    + apply node_equiv_trans with (node2 := node_op y0 y).
+      * apply node_op_equiv. trivial.
+      * apply node_op_comm.
+Qed.
     
 Global Instance cell_op_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (≡) ==> (≡)) cell_op. Admitted.
+    Proper ((≡) ==> (≡) ==> (≡)) cell_op.
+Proof.
+  unfold Proper, "==>". intros.
+  apply cell_equiv_trans with (cell2 := cell_op x y0).
+  - apply cell_op_equiv. trivial.
+  - apply cell_equiv_trans with (cell2 := cell_op y0 x).
+    + apply cell_op_comm.
+    + apply cell_equiv_trans with (cell2 := cell_op y0 y).
+      * apply cell_op_equiv. trivial.
+      * apply cell_op_comm.
+Qed.
 
 Global Instance node_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
-    Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi). Admitted.
+    Proper ((≡) ==> (=) ==> (=) ==> impl) (node_view roi).
+Proof.
+  unfold Proper, "==>", impl. intros.
+  apply node_view_of_equiv with (node1 := x); trivial.
+  subst. trivial.
+Qed.
     
 Global Instance branch_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
-    Proper ((≡) ==> (=) ==> (=) ==> (=) ==> impl) (branch_view roi). Admitted.
-    
-Global Instance cell_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (=)) cell_live. Admitted.
+    Proper ((≡) ==> (=) ==> (=) ==> (=) ==> impl) (branch_view roi).
+Proof.
+  unfold Proper, "==>", impl. intros.
+  apply branch_view_of_equiv with (branch1 := x); trivial.
+  subst. trivial.
+Qed.
     
 Global Instance cell_total_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (=) ==> (=)) cell_total. Admitted.
+    Proper ((≡) ==> (=) ==> (=)) cell_total.
+Proof.
+  unfold Proper, "==>", impl. intros.
+  unfold cell_total. destruct x, y.
+  unfold "≡", cell_equiv in H. destruct_ands.
+  subst. setoid_rewrite H1. trivial.
+Qed.
     
 Lemma cell_total_split {M : Type} `{!EqDecision M} `{!TPCM M} (cell: Cell M) lt :
   cell_total cell lt = dot (cell_live cell) (cell_total_minus_live cell lt).
@@ -1432,15 +1521,22 @@ Definition valid_totals {M : Type} `{!EqDecision M} `{!TPCM M} (refs: nat -> Ref
     
 Global Instance valid_totals_proper {M : Type} `{!EqDecision M} `{!TPCM M} roi :
     Proper ((≡) ==> (=) ==> impl) (valid_totals roi).
-  Admitted.
+Proof. unfold Proper, "==>", impl, valid_totals. intros.
+  destruct_ands. subst. split.
+  - setoid_rewrite H in H1. trivial.
+  - setoid_rewrite H in H2. trivial.
+Qed.
 
+Lemma cell_live_op {M : Type} `{!EqDecision M} `{!TPCM M} (c1 c2 : Cell M)
+    : cell_live (c1 ⋅ c2) = dot (cell_live c1) (cell_live c2).
+Proof.
+  unfold cell_live, "⋅", cell_op. destruct c1, c2. trivial. Qed.
  
 Lemma node_live_op {M : Type} `{!EqDecision M} `{!TPCM M} (n1 n2 : Node M) : node_live (n1 ⋅ n2) = dot (node_live n1) (node_live n2).
-Admitted.
+Proof.
+  unfold node_live, "⋅", node_op. destruct n1, n2. apply cell_live_op. Qed.
 
-Global Instance cell_total_minus_live_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (=) ==> (=)) (cell_total_minus_live). Admitted.
-    
 Lemma cell_total_minus_live_op {M : Type} `{!EqDecision M} `{!TPCM M} a b active
   : cell_total_minus_live (a ⋅ b) active =
-      dot (cell_total_minus_live a active) (cell_total_minus_live b active). Admitted.
+      dot (cell_total_minus_live a active) (cell_total_minus_live b active).
+Admitted.

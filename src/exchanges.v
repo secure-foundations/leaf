@@ -1040,9 +1040,6 @@ Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
   (pl_in : pl ∈ pls_of_loc gamma2)
   : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
 
-Lemma cell_live_op (c1 c2: Cell M)
-  : cell_live (c1 ⋅ c2) = dot (cell_live c1) (cell_live c2). Admitted.
-  
 Lemma specific_exchange_cond_of_no_change2 ref view x y z w
   : specific_exchange_cond ref view x y x y z w z w.
 Proof. 
