@@ -46,6 +46,7 @@ Global Instance state_equiv
       (lt1 = lt2 /\ lmaps_equiv m1 m2)
   end.
   
+  
 Definition cell_op_opt (c1 c2 : option (Cell M)) := match c1, c2 with
   | None, None => None
   | Some c, None => Some c
@@ -87,6 +88,13 @@ Proof.
   - apply lmap_op_assoc.
 Qed.
 
+Lemma state_comm (x y : State M RI) : (x ⋅ y) ≡ (y ⋅ x).
+Admitted.
+
+
+Global Instance state_op_assoc : Assoc state_equiv op. Admitted.
+Global Instance state_op_comm : Comm state_equiv op. Admitted.
+
 Global Instance lmaps_equiv_refl : Reflexive lmaps_equiv. 
 Proof. unfold Reflexive, lmaps_equiv. intros. trivial. Qed.
 
@@ -96,6 +104,19 @@ Proof. unfold Symmetric, lmaps_equiv. intros. symmetry. apply H. Qed.
 Global Instance lmaps_equiv_trans : Transitive lmaps_equiv.
 Proof. unfold Transitive, lmaps_equiv. intros. have a := H l. have b := H0 l.
     setoid_rewrite <- a in b. trivial. Qed.
+    
+Global Instance state_equiv_symm : Symmetric state_equiv.
+Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
+  split. * symmetry. trivial. * symmetry. trivial. Qed.
+  
+Global Instance state_equiv_trans : Transitive state_equiv.
+Proof. unfold Transitive, state_equiv. destruct x, y, z. intros. destruct_ands. subst.
+  split; trivial. setoid_rewrite H2. setoid_rewrite <- H1. apply lmaps_equiv_refl. Qed.
+
+Global Instance state_equiv_refl : Reflexive state_equiv.
+Proof. unfold Reflexive, state_equiv. destruct x. split; trivial. apply lmaps_equiv_refl.
+Qed.
+
 
 Global Instance lmaps_op_proper
     : Proper (lmaps_equiv ==> lmaps_equiv ==> lmaps_equiv) lmap_op.
@@ -133,6 +154,8 @@ Definition active (lt: Lifetime) : State M RI :=
       StateCon lt ∅.
 
 Definition state_unit : State M RI := StateCon empty_lifetime ∅.
+
+Lemma op_state_unit x : x ⋅ state_unit ≡ x. Admitted.
 
 Definition as_tree (l : lmap M RI) : Branch M :=
   map_fold (λ k cell b , b ⋅ build k cell) BranchNil l.
@@ -172,6 +195,14 @@ Qed.
 
 Global Instance state_valid : Valid (State M RI) :=
   λ v , ∃ p , state_inv (v ⋅ p).
+  
+Global Instance state_valid_proper : Proper ((≡) ==> impl) state_valid.
+Proof.
+  unfold Proper, equiv, "==>", impl, state_valid. destruct x, y. intros.
+  deex. exists p.
+  destruct_ands. subst. 
+  setoid_rewrite <- H. trivial.
+Qed.
   
 Lemma as_tree_op (a b: lmap M RI)
     : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
@@ -264,18 +295,6 @@ Qed.
 (****************************************************************)
 (****************************************************************)
 (* live(gamma, m) . borrow(kappa, gamma, k) --> valid (a . b) *)
-
-Global Instance state_equiv_symm : Symmetric state_equiv.
-Proof. unfold Symmetric. intros. unfold state_equiv in *. destruct x, y. destruct_ands.
-  split. * symmetry. trivial. * symmetry. trivial. Qed.
-  
-Global Instance state_equiv_trans : Transitive state_equiv.
-Proof. unfold Transitive, state_equiv. destruct x, y, z. intros. destruct_ands. subst.
-  split; trivial. setoid_rewrite H2. setoid_rewrite <- H1. apply lmaps_equiv_refl. Qed.
-
-Global Instance state_equiv_refl : Reflexive state_equiv.
-Proof. unfold Reflexive, state_equiv. destruct x. split; trivial. apply lmaps_equiv_refl.
-Qed.
     
 Lemma as_tree_singleton (loc: Loc RI) (cell: Cell M)
   : as_tree {[loc := cell]} ≡ build loc cell.
