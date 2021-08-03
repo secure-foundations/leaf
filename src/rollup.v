@@ -112,6 +112,11 @@ Definition cell_total_minus_live (cell: Cell M) (lifetime: Lifetime) :=
   match cell with
   | CellCon m reserved => (sum_reserved_over_lifetime reserved lifetime)
   end.
+  
+Definition cell_reserved (cell: Cell M) :=
+  match cell with
+  | CellCon m reserved => reserved
+  end.
  
 Definition umbrella : M -> (M -> Prop) := tpcm_le.
 
@@ -1536,7 +1541,10 @@ Lemma node_live_op {M : Type} `{!EqDecision M} `{!TPCM M} (n1 n2 : Node M) : nod
 Proof.
   unfold node_live, "⋅", node_op. destruct n1, n2. apply cell_live_op. Qed.
 
-Lemma cell_total_minus_live_op {M : Type} `{!EqDecision M} `{!TPCM M} a b active
-  : cell_total_minus_live (a ⋅ b) active =
-      dot (cell_total_minus_live a active) (cell_total_minus_live b active).
-Admitted.
+Global Instance cell_reserved_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (≡)) cell_reserved.
+Proof.
+  unfold Proper, "==>", impl. intros.
+  unfold cell_reserved. destruct x, y.
+  unfold "≡", cell_equiv in H. intuition.
+Qed.

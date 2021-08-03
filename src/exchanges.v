@@ -54,6 +54,11 @@ assert (((dot (dot (dot j stuff) s) p)) = ((dot (dot j s) (dot p stuff)))) as as
   + rewrite asdf. trivial.
 Qed.
 
+Lemma cell_reserved_op a b
+    : cell_reserved (a ⋅ b) ≡ cell_reserved a ∪ cell_reserved b.
+Proof. unfold cell_reserved, "⋅", cell_op. destruct a, b. trivial.
+Qed.
+
 Lemma flows_preserve_branch_all_total_in_refinement_domain b t t' active
   (se: listset PathLoc)
   (down up : PathLoc -> M)
@@ -61,7 +66,8 @@ Lemma flows_preserve_branch_all_total_in_refinement_domain b t t' active
   (flow_update : ∀ p i , view_flow_cond p i b t t' active down up)
   (down_0 : down ([], 0) = unit)
   (up_0 : up ([], 0) = unit)
-  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (reserved_untouched : ∀ pl, cell_reserved (cell_of_pl t pl)
+                            ≡ cell_reserved (cell_of_pl t' pl))
   (batird : valid_totals (refinement_of_nat M RI) (t⋅b) active)
           : valid_totals (refinement_of_nat M RI) (t'⋅b) active.
 Proof.
@@ -101,11 +107,10 @@ Proof.
           intro. apply H.
     + unfold view_sat in H. trivial.
  - intro. setoid_rewrite <- cell_of_pl_op.
-    rewrite cell_total_minus_live_op.
-    rewrite cell_total_minus_live_op.
-    rewrite reserved_untouched. trivial.
+    setoid_rewrite cell_reserved_op.
+    setoid_rewrite reserved_untouched.
+    trivial.
 Qed.
-
  
 Lemma view_exchange_cond_of_no_change ref view x y
   : view_exchange_cond ref view x y unit unit x y unit unit.
@@ -192,9 +197,10 @@ Qed.
 (* borrow(kappa, alpha ref gamma, z) . live(gamma, m) . live(alpha ref gamma, y)
                          --> live(gamma, m') . live(alpha ref gamma, y') *)
   
-Lemma cell_total_minus_live_cell_of_pl_build_empty (loc: Loc RI) (f:M) pl lt
-  : cell_total_minus_live (cell_of_pl (build loc (CellCon f ∅)) pl) lt = unit.
+Lemma cell_reserved_cell_of_pl_build_empty (loc: Loc RI) (f:M) pl
+  : cell_reserved (cell_of_pl (build loc (CellCon f ∅)) pl) ≡ ∅.
   Admitted.
+
   
 Lemma borrow_exchange b kappa gamma (m f z m' f': M) alpha (ri: RI)
   (isb: is_borrow kappa (ExtLoc alpha ri gamma) z b)
@@ -301,9 +307,9 @@ Proof.
         unfold cell_live, triv_cell. repeat (rewrite unit_dot).
         apply view_exchange_cond_of_no_change2.
    + setoid_rewrite <- cell_of_pl_op.
-     setoid_rewrite cell_total_minus_live_op.
+     setoid_rewrite cell_reserved_op.
      intro.
-     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+     repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
 (****************************************************************)
@@ -411,7 +417,7 @@ Proof.
         unfold cell_live, triv_cell. repeat (rewrite unit_dot).
         apply view_exchange_cond_of_no_change2.
    + intro. 
-     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+     repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
 (****************************************************************)
@@ -581,9 +587,9 @@ Proof.
         repeat (rewrite unit_dot_left).
         apply specific_exchange_cond_of_whatever2.
   - setoid_rewrite <- cell_of_pl_op.
-    setoid_rewrite cell_total_minus_live_op.
+    setoid_rewrite cell_reserved_op.
     intro.
-    repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+    repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
 (****************************************************************)
@@ -698,11 +704,10 @@ Proof.
     apply specific_exchange_cond_of_whatever2.
     
   - setoid_rewrite <- cell_of_pl_op.
-    setoid_rewrite cell_total_minus_live_op.
+    setoid_rewrite cell_reserved_op.
     intro.
-    repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty).
-    rewrite unit_dot_left.
-    trivial.
+    repeat (rewrite cell_reserved_cell_of_pl_build_empty).
+    set_solver.
 Qed.
 
 (****************************************************************)
@@ -1251,10 +1256,10 @@ Proof.
         apply specific_exchange_cond_of_whatever2.
    - setoid_rewrite <- cell_of_pl_op.
      setoid_rewrite <- cell_of_pl_op.
-     setoid_rewrite cell_total_minus_live_op.
-     setoid_rewrite cell_total_minus_live_op.
+     setoid_rewrite cell_reserved_op.
+     setoid_rewrite cell_reserved_op.
      intro.
-     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+     setoid_rewrite cell_reserved_cell_of_pl_build_empty. trivial.
 Qed.
 
 Lemma swap_cross_right (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
@@ -1453,9 +1458,9 @@ Proof.
         apply specific_exchange_cond_of_whatever2.
    - setoid_rewrite <- cell_of_pl_op.
      setoid_rewrite <- cell_of_pl_op.
-     setoid_rewrite cell_total_minus_live_op.
-     setoid_rewrite cell_total_minus_live_op.
+     setoid_rewrite cell_reserved_op.
+     setoid_rewrite cell_reserved_op.
      intro.
-     repeat (rewrite cell_total_minus_live_cell_of_pl_build_empty). trivial.
+     setoid_rewrite cell_reserved_cell_of_pl_build_empty. trivial.
 Qed.
 

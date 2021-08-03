@@ -90,8 +90,7 @@ Lemma all_the_movs (z m f h s r k m' f' h' s' r' k' : M) i
   (myflow : specific_exchange_cond (refinement_of_nat M RI i) (dot z r) m f h s m' f' h' s')
   (val : m_valid (dot (dot m k) (project (refinement_of_nat M RI) i (dot (dot f z) r))))
   : mov (dot (dot (project (refinement_of_nat M RI) i (dot (dot f z) r)) k) m)
-        
-    (dot (dot (project (refinement_of_nat M RI) i (dot (dot f' z) r')) k') m').
+        (dot (dot (project (refinement_of_nat M RI) i (dot (dot f' z) r')) k') m').
 Proof.
   unfold specific_exchange_cond in myflow. deex.
   unfold in_refinement_domain in inr.
@@ -1008,13 +1007,24 @@ Lemma specific_flows_preserve_branch_all_total_in_refinement_domain
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
   (down_0 : down ([], 0) = unit)
   (up_0 : up ([], 0) = unit)
-  (reserved_untouched : ∀ pl, cell_total_minus_live (cell_of_pl t pl) active = cell_total_minus_live (cell_of_pl t' pl) active)
+  (reserved_untouched : ∀ pl, cell_reserved (cell_of_pl t pl) ≡ cell_reserved (cell_of_pl t' pl))
   (vts : valid_totals (refinement_of_nat M RI) t active)
        : valid_totals (refinement_of_nat M RI) t' active.
 Proof.
   unfold valid_totals in *. destruct_ands.
+  assert ((∀ pl : PathLoc,
+         cell_total_minus_live (cell_of_pl t pl) active =
+         cell_total_minus_live (cell_of_pl t' pl) active)) as ru2.
+  - intros. have ru := reserved_untouched pl.
+        unfold cell_reserved in ru.
+        unfold cell_total_minus_live.
+        destruct (cell_of_pl t pl).
+        destruct (cell_of_pl t' pl).
+        setoid_rewrite ru.
+        trivial.
+  - 
   have h := specexc_branch t t' active t t' se [] 0 down up flow_se flow_update
-      (branch_of_pl_zero t) (branch_of_pl_zero t') reserved_untouched _ _.
+      (branch_of_pl_zero t) (branch_of_pl_zero t') ru2 _ _.
   rewrite down_0 in h.
   rewrite up_0 in h.
   rewrite unit_dot in h.
