@@ -13,8 +13,6 @@ Require Import Burrow.indexing.
 Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
 
-Print Is_true.
-
 #[refine]
 Global Instance pair_tpcm (M: Type) (N: Type)
     `{!EqDecision M} `{!TPCM M}
@@ -25,6 +23,43 @@ Global Instance pair_tpcm (M: Type) (N: Type)
   mov p1 p2 := match p1 with (m1, n1) => match p2 with (m2, n2) => mov m1 m2 /\ mov n1 n2
                 end end ;
   unit := (unit, unit) ; 
+}.
+Proof.
+  - intros. destruct x, y. destruct_ands. split.
+      + apply valid_monotonic with (y := m0). trivial.
+      + apply valid_monotonic with (y := n0). trivial.
+  - split; apply unit_valid; trivial.
+  - intros. destruct x. repeat (rewrite unit_dot). trivial.
+  - intros. destruct x, y. rewrite tpcm_comm. f_equal. rewrite tpcm_comm. trivial.
+  - intros. destruct x, y, z. rewrite tpcm_assoc. f_equal. rewrite tpcm_assoc. trivial.
+  - intros. destruct x. split; apply reflex.
+  - intros. destruct x, y, z. destruct_ands. split.
+      + apply trans with (y := m0); trivial.
+      + apply trans with (y := n0); trivial.
+  - intros. destruct x, y, z. destruct_ands.
+      have j := mov_monotonic m m0 m1 H H0.
+      have k := mov_monotonic n n0 n1 H2 H1.
+      intuition.
+Defined.
+
+Inductive InternalProduct (M: Type) (N: Type) :=
+  | InternalProductC : M -> N -> InternalProduct M N.
+Arguments InternalProductC {_ _}%type_scope _ _.
+
+Global Instance iprod_eqdec M `{EqDecision M} N `{EqDecision N}
+    : EqDecision (InternalProduct M N).
+  Proof. unfold EqDecision. intros. solve_decision. Defined.
+  
+#[refine]
+Global Instance iprod_tpcm (M: Type) (N: Type)
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision N} `{!TPCM N} : TPCM (InternalProduct M N) := {
+  m_valid p := match p with InternalProductC m n => m_valid m /\ m_valid n end ;
+  dot p1 p2 := match p1 with InternalProductC m1 n1 => match p2 with InternalProductC m2 n2 => InternalProductC (dot m1 m2) (dot n1 n2)
+                end end ;
+  mov p1 p2 := match p1 with InternalProductC m1 n1 => match p2 with InternalProductC m2 n2 => mov m1 m2 /\ mov n1 n2
+                end end ;
+  unit := InternalProductC unit unit ;
 }.
 Proof.
   - intros. destruct x, y. destruct_ands. split.
@@ -60,60 +95,27 @@ Class TPCMEmbed (M: Type) (B: Type)
 }.
 
 #[refine]
-Global Instance pair_tpcm_embed_self (M: Type)
+Global Instance embed_transitive (M N P : Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N}
-  : TPCMEmbed M M := {
-    embed := λ m , m ;
-    eproject := λ m , m ;
+    `{!EqDecision P} `{!TPCM P}
+    (m_embed: TPCMEmbed M N)
+    (n_embed: TPCMEmbed N P)
+    : TPCMEmbed M P := {
+  embed := λ m , embed (embed m) ;
+  eproject := λ p , eproject (eproject p) ;
 }.
-Proof.
-  - intro. trivial.
-  - intros. trivial.
-  - intros. trivial.
-  - intros. trivial.
-  - intros. trivial.
-  - intros. trivial.
-  - intros. trivial.
+  - intros. apply valid_embed. apply valid_embed. trivial.
+  - intros. apply valid_eproject. apply valid_eproject. trivial.
+  - intros. rewrite eproject_dot. rewrite eproject_dot. trivial.
+  - intros. apply mov_embed. apply mov_embed. trivial.
+  - intros. apply mov_eproject. apply mov_eproject. trivial.
+  - intros. rewrite unit_embed. apply unit_embed.
+  - intros. rewrite eproject_embed. rewrite eproject_embed. trivial.
 Qed.
+    
+Global Remove Hints embed_transitive : typeclass_instances.
 
-#[refine]
-Global Instance pair_tpcm_embed_left (M: Type) (N: Type)
-    `{!EqDecision M} `{!TPCM M}
-    `{!EqDecision N} `{!TPCM N}
-  : TPCMEmbed M (M * N) := {
-    embed := λ m , (m, unit) ;
-    eproject := λ p , match p with (m, _) => m end ;
-}.
-Proof.
-  - intros. split; trivial. apply unit_valid.
-  - intros. destruct a.
-    unfold m_valid in H. unfold pair_tpcm in H. destruct_ands. trivial.
-  - intros. destruct a, b. unfold dot. unfold pair_tpcm. trivial.
-  - intros. unfold mov, pair_tpcm. split; trivial. apply reflex.
-  - intros. destruct a, b. unfold mov, pair_tpcm in H. destruct_ands; trivial.
-  - unfold unit at 3. unfold pair_tpcm. trivial.
-  - trivial.
-Defined.
-
-#[refine]
-Global Instance pair_tpcm_embed_right (M: Type) (N: Type)
-    `{!EqDecision M} `{!TPCM M}
-    `{!EqDecision N} `{!TPCM N}
-  : TPCMEmbed N (M * N) := {
-    embed := λ n , (unit, n) ;
-    eproject := λ p , match p with (_, n) => n end ;
-}.
-Proof.
-  - intros. split; trivial. apply unit_valid.
-  - intros. destruct a.
-    unfold m_valid in H. unfold pair_tpcm in H. destruct_ands. trivial.
-  - intros. destruct a, b. unfold dot. unfold pair_tpcm. trivial.
-  - intros. unfold mov, pair_tpcm. split; trivial. apply reflex.
-  - intros. destruct a, b. unfold mov, pair_tpcm in H. destruct_ands; trivial.
-  - unfold unit at 3. unfold pair_tpcm. trivial.
-  - trivial.
-Defined.
 
 Definition refinement_embed_src R M B
     `{!EqDecision R} `{!TPCM R}
@@ -142,6 +144,86 @@ Proof. refine ({|
     + assert (mov (eproject b) (eproject b')) as me by (apply mov_eproject; trivial).
       apply (mov_refines _ _ _ (eproject b)); trivial.
 Defined.
+
+Definition refinement_embed_dst R M B
+    `{!EqDecision R} `{!TPCM R}
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision B} `{!TPCM B}
+    `{!TPCMEmbed M B} (ref: Refinement R M) : Refinement R B.
+Proof. refine ({|
+  rel_defined := λ r , rel_defined R M ref r ;
+  rel := λ r , embed (rel R M ref r) ;
+  rel_valid_left := _ ;
+  rel_defined_unit := _ ;
+  rel_unit := _ ;
+  mov_refines := _ ;
+|}).
+ - intros. apply (rel_valid_left R M ref r H).
+ - apply rel_defined_unit.
+ - rewrite rel_unit. apply unit_embed.
+ - intros. split.
+   + apply mov_refines with (b := b); trivial.
+   + apply mov_embed. apply mov_refines with (b := b); trivial.
+Qed.
+
+#[refine]
+Global Instance tpcm_embed_self (M: Type)
+    `{!EqDecision M} `{!TPCM M}
+  : TPCMEmbed M M := {
+    embed := λ m , m ;
+    eproject := λ m , m ;
+}.
+Proof.
+  - intro. trivial.
+  - intros. trivial.
+  - intros. trivial.
+  - intros. trivial.
+  - intros. trivial.
+  - intros. trivial.
+  - intros. trivial.
+Qed.
+
+#[refine]
+Global Instance iprod_tpcm_embed_left (M: Type) (N: Type)
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision N} `{!TPCM N}
+  : TPCMEmbed M (InternalProduct M N) := {
+    embed := λ m , InternalProductC m unit ;
+    eproject := λ p , match p with InternalProductC m _ => m end ;
+}.
+Proof.
+  - intros. split; trivial. apply unit_valid.
+  - intros. destruct a.
+    unfold m_valid in H. unfold iprod_tpcm in H. destruct_ands. trivial.
+  - intros. destruct a, b. unfold dot. unfold iprod_tpcm. trivial.
+  - intros. unfold mov, iprod_tpcm. split; trivial. apply reflex.
+  - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
+  - unfold unit at 3. unfold iprod_tpcm. trivial.
+  - trivial.
+Defined.
+
+Global Remove Hints iprod_tpcm_embed_left : typeclass_instances.
+
+#[refine]
+Global Instance iprod_tpcm_embed_right (M: Type) (N: Type)
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision N} `{!TPCM N}
+  : TPCMEmbed N (InternalProduct M N) := {
+    embed := λ n , InternalProductC unit n ;
+    eproject := λ p , match p with InternalProductC _ n => n end ;
+}.
+Proof.
+  - intros. split; trivial. apply unit_valid.
+  - intros. destruct a.
+    unfold m_valid in H. unfold iprod_tpcm in H. destruct_ands. trivial.
+  - intros. destruct a, b. unfold dot. unfold iprod_tpcm. trivial.
+  - intros. unfold mov, iprod_tpcm. split; trivial. apply reflex.
+  - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
+  - unfold unit at 3. unfold iprod_tpcm. trivial.
+  - trivial.
+Defined.
+
+Global Remove Hints iprod_tpcm_embed_right : typeclass_instances.
 
 Definition ic_wf M `{!EqDecision M} `{!TPCM M} (ic_obj: gmap nat M) :=
   bool_decide (map_Forall (λ _ m, m ≠ unit) ic_obj).
@@ -287,3 +369,256 @@ Global Instance ic_tpcm (M: Type)
       rewrite ic_get_ic_dot in j2.
       apply mov_monotonic with (x0 := ic_get x i); trivial.
 Defined.
+
+(*Definition gmap_key_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
+    (fn: K -> L) (m: gmap K V) : gmap L V. Admitted.*)
+    
+Definition ic_key_opt_map `{!EqDecision M} `{!TPCM M}
+    (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M. Admitted.
+
+Definition ic_key_map `{!EqDecision M} `{!TPCM M}
+    (fn: nat -> nat) (m: InfiniteCopies M) : InfiniteCopies M :=
+  ic_key_opt_map (λ n , Some (fn n)) m.
+
+Definition ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) :=
+  dot (ic_key_map (λ n , 2*n) a) (ic_key_map (λ n, 2*n + 1) b).
+
+Inductive Parity :=
+| Even : nat -> Parity
+| Odd : nat -> Parity.
+
+Definition parity (n: nat) : Parity. Admitted.
+Definition even_get (n: nat) : option nat :=
+    match parity n with Even k => Some k | Odd _ => None end.
+Definition odd_get (n: nat) : option nat :=
+    match parity n with Odd k => Some k | Even _ => None end.
+    
+Lemma parity_2i (i: nat) : parity (2*i) = Even i. Admitted.
+Lemma parity_2i_1 (i: nat) : parity (2*i + 1) = Odd i. Admitted.
+Lemma even_or_odd (i: nat) : (∃ k , i = 2*k) \/ (∃ k , i = 2*k + 1). Admitted.
+  
+Definition ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) :=
+  (ic_key_opt_map even_get a).
+  
+Definition ic_right {M} `{!EqDecision M} `{!TPCM M} (b : InfiniteCopies M) :=
+  (ic_key_opt_map odd_get b).
+
+Lemma ic_get_ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
+  : ic_get (ic_left a) i = ic_get a (2 * i). Admitted.
+  
+Lemma ic_get_ic_right {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
+  : ic_get (ic_right a) i = ic_get a (2 * i + 1). Admitted.
+  
+Lemma ic_get_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) (i: nat)
+  : ic_get (ic_pair a b) i = match parity i with
+    | Even k => ic_get a k
+    | Odd k => ic_get b k
+    end. Admitted.
+
+Lemma ic_left_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M)
+  : ic_left (ic_pair a b) = a.
+Proof.
+  apply ic_extens. intros.
+  rewrite ic_get_ic_left.
+  rewrite ic_get_ic_pair.
+  rewrite parity_2i. trivial.
+Qed.
+
+Lemma ic_right_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M)
+  : ic_right (ic_pair a b) = b.
+Proof.
+  apply ic_extens. intros.
+  rewrite ic_get_ic_right.
+  rewrite ic_get_ic_pair.
+  rewrite parity_2i_1. trivial.
+Qed.
+
+Lemma ic_pair_ic_left_ic_right {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M)
+  : ic_pair (ic_left a) (ic_right a) = a.
+Proof.
+  apply ic_extens. intros.
+  rewrite ic_get_ic_pair.
+  have j := even_or_odd i. destruct j.
+  - deex. subst i. rewrite parity_2i. rewrite ic_get_ic_left. trivial.
+  - deex. subst i. rewrite parity_2i_1. rewrite ic_get_ic_right. trivial.
+Qed.
+
+Lemma ic_left_unit {M} `{!EqDecision M} `{!TPCM M}
+  : ic_left unit = unit.
+Proof.
+  apply ic_extens. intros. rewrite ic_get_ic_left.
+  rewrite ic_get_ic_unit. rewrite ic_get_ic_unit. trivial.
+Qed.
+
+Lemma ic_right_unit {M} `{!EqDecision M} `{!TPCM M}
+  : ic_right unit = unit.
+Proof.
+  apply ic_extens. intros. rewrite ic_get_ic_right.
+  rewrite ic_get_ic_unit. rewrite ic_get_ic_unit. trivial.
+Qed.
+
+Definition refinement_left 
+    `{!EqDecision M} `{!TPCM M}
+    : Refinement (InfiniteCopies M) (InfiniteCopies M).
+Proof. refine ({|
+  rel_defined := m_valid ;
+  rel := ic_left ;
+  rel_valid_left := _ ;
+  rel_defined_unit := _ ;
+  rel_unit := _ ;
+  mov_refines := _ ;
+|}).
+ - intros. trivial.
+ - intros. apply unit_valid.
+ - apply ic_left_unit.
+ - intros. split.
+    + rewrite <- unit_dot. apply mov_monotonic with (x := b); trivial.
+        rewrite unit_dot. trivial.
+    + unfold mov in *. unfold ic_tpcm in *. unfold ic_mov in *. intros.
+        rewrite ic_get_ic_left. rewrite ic_get_ic_left.
+        apply H.
+Qed.
+
+Definition refinement_right
+    `{!EqDecision M} `{!TPCM M}
+    : Refinement (InfiniteCopies M) (InfiniteCopies M).
+Proof. refine ({|
+  rel_defined := m_valid ;
+  rel := ic_right ;
+  rel_valid_left := _ ;
+  rel_defined_unit := _ ;
+  rel_unit := _ ;
+  mov_refines := _ ;
+|}).
+ - intros. trivial.
+ - intros. apply unit_valid.
+ - apply ic_right_unit.
+ - intros. split.
+    + rewrite <- unit_dot. apply mov_monotonic with (x := b); trivial.
+        rewrite unit_dot. trivial.
+    + unfold mov in *. unfold ic_tpcm in *. unfold ic_mov in *. intros.
+        rewrite ic_get_ic_right. rewrite ic_get_ic_right.
+        apply H.
+Qed.
+
+Definition refinement_trivial
+    `{!EqDecision M} `{!TPCM M}
+    : Refinement M M.
+    Proof. refine ({|
+  rel_defined := m_valid ;
+  rel := λ m, unit ;
+  rel_valid_left := _ ;
+  rel_defined_unit := _ ;
+  rel_unit := _ ;
+  mov_refines := _ ;
+|}).
+ - intros. trivial.
+ - intros. apply unit_valid.
+ - trivial.
+ - intros. split.
+    + rewrite <- unit_dot. apply mov_monotonic with (x := b); trivial.
+        rewrite unit_dot. trivial.
+    + apply reflex.
+Qed.
+
+Definition ic_singleton {M} `{!EqDecision M} `{!TPCM M} (m : M) : InfiniteCopies M.
+Proof.
+refine ({|
+  ic_obj := if (decide (m = unit)) then empty else {[ 0 := m ]} ;
+  ic_prf := _ ;
+|}).
+ - unfold ic_wf.
+    rewrite bool_decide_spec.
+    unfold map_Forall. intros.
+    case_decide.
+    + rewrite lookup_empty in H. discriminate.
+    + have eq : Decision (i = 0) by solve_decision.
+      destruct eq.
+      * subst i. rewrite lookup_singleton in H. crush.
+      * rewrite lookup_singleton_ne in H; crush.
+Defined.
+
+Lemma ic_get_ic_singleton {M} `{!EqDecision M} `{!TPCM M} (m : M)
+  : ic_get (ic_singleton m) 0 = m.
+Proof.
+  unfold ic_singleton, ic_get, ic_obj. case_decide.
+  - rewrite lookup_empty. symmetry. trivial.
+  - rewrite lookup_singleton. trivial.
+Qed.
+
+Lemma ic_get_ic_singleton_ne {M} `{!EqDecision M} `{!TPCM M} (m : M) (i: nat)
+  (ne_0: i ≠ 0) : ic_get (ic_singleton m) i = unit.
+Proof.
+  unfold ic_singleton, ic_get, ic_obj. case_decide.
+  - rewrite lookup_empty. symmetry. trivial.
+  - rewrite lookup_singleton_ne; trivial. lia.
+Qed.
+
+#[refine]
+Global Instance ic_tpcm_embed (M: Type)
+    `{!EqDecision M} `{!TPCM M}
+  : TPCMEmbed M (InfiniteCopies M) := {
+    embed := ic_singleton ;
+    eproject := λ a, ic_get a 0 ;
+}.
+Proof.
+  - intros. unfold m_valid, ic_tpcm. intro.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst. rewrite ic_get_ic_singleton. trivial.
+    + rewrite ic_get_ic_singleton_ne; trivial. apply unit_valid.
+  - intros. unfold m_valid, ic_tpcm in H. have h := H 0. trivial.
+  - intros. rewrite ic_get_ic_dot. trivial.
+  - intros. unfold mov, ic_tpcm, ic_mov. intros.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst. rewrite ic_get_ic_singleton. rewrite ic_get_ic_singleton. trivial.
+    + rewrite ic_get_ic_singleton_ne; trivial.
+      rewrite ic_get_ic_singleton_ne; trivial.
+      apply reflex.
+  - intros. unfold mov, ic_tpcm, ic_mov in H. have h := H 0. trivial.
+  - apply ic_extens. intros.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst. rewrite ic_get_ic_singleton. rewrite ic_get_ic_unit. trivial.
+    + rewrite ic_get_ic_singleton_ne; trivial.
+  - intros. rewrite ic_get_ic_singleton. trivial.
+Qed.
+
+Lemma m_valid_ic_pair `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M)
+    : m_valid a -> m_valid b -> m_valid (ic_pair a b).
+Proof. intros. unfold m_valid, ic_tpcm in *. intros.
+    rewrite ic_get_ic_pair. have h := even_or_odd i. destruct h.
+    + deex. subst. rewrite parity_2i. apply H.
+    + deex. subst. rewrite parity_2i_1. apply H0.
+Qed.
+
+Lemma m_valid_ic_left `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M)
+    : m_valid a -> m_valid (ic_left a).
+Proof. intros. unfold m_valid, ic_tpcm in *. intros.
+    rewrite ic_get_ic_left. apply H.
+Qed.
+
+Lemma m_valid_ic_right `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M)
+    : m_valid a -> m_valid (ic_right a).
+Proof. intros. unfold m_valid, ic_tpcm in *. intros.
+    rewrite ic_get_ic_right. apply H.
+Qed.
+
+#[refine]
+Global Instance ic_tpcm_embed_two (M N B: Type)
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision N} `{!TPCM N}
+    `{!EqDecision B} `{!TPCM B}
+    (m_embed: TPCMEmbed M (InfiniteCopies B))
+    (n_embed: TPCMEmbed N (InfiniteCopies B))
+    : TPCMEmbed (M * N) (InfiniteCopies B) := {
+  embed := λ p , match p with (m, n) => ic_pair (embed m) (embed n) end ;
+  eproject := λ b , (eproject (ic_left b), eproject (ic_right b)) ;
+}.
+Proof.
+  - intros. destruct a. unfold m_valid, ic_tpcm. intros. apply m_valid_ic_pair.
+     + apply valid_embed. unfold m_valid, pair_tpcm in H. destruct_ands. trivial.
+     + apply valid_embed. unfold m_valid, pair_tpcm in H. destruct_ands. trivial.
+  - intros. unfold m_valid, pair_tpcm. split.
+     + apply valid_eproject. apply m_valid_ic_left. trivial.
+     + apply valid_eproject. apply m_valid_ic_right. trivial.
+  - intros. unfold dot, pair_tpcm, ic_tpcm. f_equal.
+     + rewrite ic_left_ic_dot. apply eproject_dot.
