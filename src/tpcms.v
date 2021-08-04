@@ -11,6 +11,8 @@ Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.tactics.
+Require Import Burrow.locations.
+Require Import Burrow.resource_proofs.
 Require Import coq_tricks.Deex.
 
 #[refine]
@@ -88,6 +90,7 @@ Class TPCMEmbed (M: Type) (B: Type)
   valid_embed: ∀ a , m_valid a -> m_valid (embed a) ;
   valid_eproject: ∀ a , m_valid a -> m_valid (eproject a) ;
   eproject_dot: ∀ a b , dot (eproject a) (eproject b) = eproject (dot a b) ;
+  embed_dot: ∀ a b , dot (embed a) (embed b) = embed (dot a b) ;
   mov_embed: ∀ a b , mov a b -> mov (embed a) (embed b) ;
   mov_eproject: ∀ a b , mov a b -> mov (eproject a) (eproject b) ;
   unit_embed: embed unit = unit ;
@@ -108,6 +111,7 @@ Global Instance embed_transitive (M N P : Type)
   - intros. apply valid_embed. apply valid_embed. trivial.
   - intros. apply valid_eproject. apply valid_eproject. trivial.
   - intros. rewrite eproject_dot. rewrite eproject_dot. trivial.
+  - intros. rewrite embed_dot. rewrite embed_dot. trivial.
   - intros. apply mov_embed. apply mov_embed. trivial.
   - intros. apply mov_eproject. apply mov_eproject. trivial.
   - intros. rewrite unit_embed. apply unit_embed.
@@ -181,6 +185,7 @@ Proof.
   - intros. trivial.
   - intros. trivial.
   - intros. trivial.
+  - intros. trivial.
 Qed.
 
 #[refine]
@@ -196,6 +201,7 @@ Proof.
   - intros. destruct a.
     unfold m_valid in H. unfold iprod_tpcm in H. destruct_ands. trivial.
   - intros. destruct a, b. unfold dot. unfold iprod_tpcm. trivial.
+  - intros. unfold dot. unfold iprod_tpcm. f_equal. apply unit_dot.
   - intros. unfold mov, iprod_tpcm. split; trivial. apply reflex.
   - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
   - unfold unit at 3. unfold iprod_tpcm. trivial.
@@ -217,6 +223,7 @@ Proof.
   - intros. destruct a.
     unfold m_valid in H. unfold iprod_tpcm in H. destruct_ands. trivial.
   - intros. destruct a, b. unfold dot. unfold iprod_tpcm. trivial.
+  - intros. unfold dot. unfold iprod_tpcm. f_equal. apply unit_dot.
   - intros. unfold mov, iprod_tpcm. split; trivial. apply reflex.
   - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
   - unfold unit at 3. unfold iprod_tpcm. trivial.
@@ -241,7 +248,7 @@ Proof.
   f_equal; apply proof_irrel.
 Qed.
 
-Global Instance ic_eq_eq {M} `{!EqDecision M} `{!TPCM M} : EqDecision (InfiniteCopies M). 
+Global Instance ic_eq_dec {M} `{!EqDecision M} `{!TPCM M} : EqDecision (InfiniteCopies M). 
 Proof.
  refine (λ m1 m2, cast_if (decide (ic_obj m1 = ic_obj m2)));
   abstract (by rewrite ic_eq).
@@ -568,6 +575,10 @@ Proof.
     + rewrite ic_get_ic_singleton_ne; trivial. apply unit_valid.
   - intros. unfold m_valid, ic_tpcm in H. have h := H 0. trivial.
   - intros. rewrite ic_get_ic_dot. trivial.
+  - intros. apply ic_extens. intros. rewrite ic_get_ic_dot.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst. repeat (rewrite ic_get_ic_singleton). trivial.
+    + repeat (rewrite ic_get_ic_singleton_ne; trivial). apply unit_dot.
   - intros. unfold mov, ic_tpcm, ic_mov. intros.
     have h : Decision (i = 0) by solve_decision. destruct h.
     + subst. rewrite ic_get_ic_singleton. rewrite ic_get_ic_singleton. trivial.
@@ -621,4 +632,114 @@ Proof.
      + apply valid_eproject. apply m_valid_ic_left. trivial.
      + apply valid_eproject. apply m_valid_ic_right. trivial.
   - intros. unfold dot, pair_tpcm, ic_tpcm. f_equal.
-     + rewrite ic_left_ic_dot. apply eproject_dot.
+     (*+ rewrite ic_left_ic_dot. apply eproject_dot.*)
+  Admitted.
+
+Global Instance ic_tpcm_embed_extend (M: Type) (B: Type)
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision B} `{!TPCM B}
+    (m_embed: TPCMEmbed M B) : TPCMEmbed M (InfiniteCopies B) :=
+      embed_transitive M B (InfiniteCopies B) m_embed (ic_tpcm_embed B).
+
+Record RefinementEmbedding (B: Type) `{!EqDecision B} `{TPCM B} := {
+  re_R: Type;
+  re_M: Type;
+  re_R_eqdec: EqDecision re_R;
+  re_R_tpcm: TPCM re_R;
+  re_M_eqdec: EqDecision re_M;
+  re_M_tpcm: TPCM re_M;
+  re_ref: Refinement re_R re_M;
+  re_R_embed: TPCMEmbed re_R B;
+  re_M_embed: TPCMEmbed re_M B;
+}.
+
+Class BurrowCtx := {
+  bc_small_M: Type ;
+  bc_small_RI: Type ;
+  
+  bc_small_M_eqdec :> EqDecision bc_small_M ;
+  bc_small_M_tpcm :> TPCM bc_small_M ;
+  bc_small_RI_eqdec :> EqDecision bc_small_RI ;
+  bc_small_RI_countable :> Countable bc_small_RI ;
+  
+  bc_refs: bc_small_RI -> RefinementEmbedding bc_small_M ;
+}.
+
+Definition bc_M (𝜇: BurrowCtx) : Type := InfiniteCopies bc_small_M.
+
+Inductive FinalRI (small_RI: Type) :=
+  | FinalRILeft : FinalRI small_RI
+  | FinalRIRight : FinalRI small_RI
+  | FinalRITriv : FinalRI small_RI
+  | FinalRINormal : small_RI -> FinalRI small_RI
+.
+
+(*Definition bc_RI (𝜇: BurrowCtx) : Type := FinalRI bc_small_RI.*)
+
+Global Instance bc_FinalRI_eqdec (small_RI: Type) `{!EqDecision small_RI}
+    : EqDecision (FinalRI small_RI).
+Proof. solve_decision. Qed.
+
+Global Instance bc_FinalRI_countable (small_RI: Type) `{!EqDecision small_RI, !Countable small_RI}
+    : Countable (FinalRI small_RI).
+Admitted.
+
+Global Instance bc_refinement_index (small_M small_RI: Type)
+    `{!EqDecision small_M, TPCM small_M}
+    `{!EqDecision small_RI, !Countable small_RI}
+    : RefinementIndex (InfiniteCopies small_M) (FinalRI small_RI).
+Admitted.
+
+Definition BurrowState (𝜇: BurrowCtx)
+    := State (InfiniteCopies bc_small_M) (FinalRI bc_small_RI).
+
+Class HasTPCM (𝜇: BurrowCtx) (M: Type) `{!EqDecision M, TPCM M}
+    := { inctx_embed :> TPCMEmbed M bc_small_M }.
+  
+Class HasRef (𝜇: BurrowCtx) {R M: Type}
+      `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
+      `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
+      `{r_hastpcm: !HasTPCM 𝜇 R} `{m_hastpcm: !HasTPCM 𝜇 M}
+      (ref: Refinement R M)
+    := {
+        hasref_ri: bc_small_RI ; 
+        hasref_is: (bc_refs hasref_ri) = {|
+          re_R := R;
+          re_M := M;
+          re_R_eqdec := r_eqdec;
+          re_R_tpcm := r_tpcm;
+          re_M_eqdec := m_eqdec;
+          re_M_tpcm := m_tpcm;
+          re_ref := ref;
+          re_R_embed := inctx_embed;
+          re_M_embed := inctx_embed;
+        |}
+       }.
+
+Definition BurrowLoc (𝜇: BurrowCtx) := Loc (FinalRI bc_small_RI).
+
+Definition extend_loc {𝜇: BurrowCtx}
+    `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
+    `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
+    `{r_hastpcm: !HasTPCM 𝜇 R} `{m_hastpcm: !HasTPCM 𝜇 M}
+    (𝛼: nat) (ref: Refinement R M) (𝛾: BurrowLoc 𝜇)
+    `{hr: !HasRef 𝜇 ref} : BurrowLoc 𝜇
+    := (ExtLoc 𝛼 (FinalRINormal bc_small_RI (@hasref_ri
+        𝜇 R M r_eqdec r_tpcm m_eqdec m_tpcm r_hastpcm m_hastpcm ref hr
+    )) 𝛾).
+
+Definition cross_loc {𝜇: BurrowCtx} (𝛾1 𝛾2: BurrowLoc 𝜇) := CrossLoc 𝛾1 𝛾2.
+
+Definition live' {𝜇: BurrowCtx} {M}
+    `{!EqDecision M} `{!TPCM M}
+    `{!HasTPCM 𝜇 M} (loc: BurrowLoc 𝜇) (m: M) : BurrowState 𝜇
+    := live loc (embed m).
+
+Lemma live_dot_live' {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  (𝛾: BurrowLoc 𝜇) (m1 m2: M)
+    : live' 𝛾 m1 ⋅ live' 𝛾 m2 ≡ live' 𝛾 (dot m1 m2).
+Proof.
+  unfold live'. setoid_rewrite live_dot_live. rewrite embed_dot. trivial.
+Qed.
+    
+  

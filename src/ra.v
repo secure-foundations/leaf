@@ -91,8 +91,6 @@ Global Instance subG_gen_burrowGpreS {Σ} :
   subG (gen_burrowΣ) Σ → gen_burrowGpreS Σ.
 Proof. solve_inG. Qed.
 
-Context `{hG : !gen_burrowGS Σ}.
-    
 Definition L (𝛾: Loc RI) (m: M) : iProp Σ
     := own (gen_burrow_name hG) (live 𝛾 m).
     
