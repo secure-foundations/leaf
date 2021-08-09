@@ -423,13 +423,15 @@ Proof.
   trivial.
 Qed.
 
-Definition borrow_exchange_cond (ref: Refinement M M) (z m f m' f' : M) :=
+Definition borrow_exchange_cond
+    {R} `{!EqDecision R, !TPCM R}
+    (ref: Refinement R M) (z:R) (m:M) (f:R) (m':M) (f':R) :=
   ∀ p ,
-  rel_defined M M ref (dot (dot f z) p) ->
-      rel_defined M M ref (dot (dot f' z) p)
+  rel_defined R M ref (dot (dot f z) p) ->
+      rel_defined R M ref (dot (dot f' z) p)
       /\ mov
-            (dot m (rel M M ref (dot (dot f z) p)))
-            (dot m' (rel M M ref (dot (dot f' z) p))).
+            (dot m (rel R M ref (dot (dot f z) p)))
+            (dot m' (rel R M ref (dot (dot f' z) p))).
 
 Lemma assoc_comm (a b c : Branch M) : (a ⋅ b) ⋅ c ≡ (a ⋅ c) ⋅ b.
 Proof.

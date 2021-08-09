@@ -17,6 +17,8 @@ Require Import Burrow.resource_proofs.
 
 Require Import coq_tricks.Deex.
 
+Section Exchanges.
+
 Context {M} `{!EqDecision M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
@@ -312,6 +314,14 @@ Proof.
      repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
+Lemma borrow_exchange_valid b kappa gamma (m f z m' f': M) alpha (ri: RI) (p : State M RI)
+  (isb: is_borrow kappa (ExtLoc alpha ri gamma) z b)
+  (exchange_cond: borrow_exchange_cond (refinement_of ri) z m f m' f')
+  (si: ✓ (active kappa ⋅ live (ExtLoc alpha ri gamma) f ⋅ b ⋅ live gamma m ⋅ p))
+     : ✓ (active kappa ⋅ live (ExtLoc alpha ri gamma) f' ⋅ b ⋅ live gamma m' ⋅ p).
+Proof.
+  unfold "✓", state_valid in *. Admitted.
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -419,6 +429,13 @@ Proof.
    + intro. 
      repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
+
+Lemma borrow_exchange_normal_valid b kappa gamma (m z m' : M) (p: State M RI)
+  (isb: is_borrow kappa gamma z b)
+  (exchange_cond: mov (dot m z) (dot m' z))
+  (si: state_valid (active kappa ⋅ live gamma m ⋅ b ⋅ p))
+     : state_valid (active kappa ⋅ live gamma m' ⋅ b ⋅ p).
+Admitted.
 
 (****************************************************************)
 (****************************************************************)
@@ -592,6 +609,19 @@ Proof.
     repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
+Lemma initialize_ext_valid gamma m f p ri
+  (is_rel_def: rel_defined M M (refinement_of ri) f)
+  (is_rel: rel M M (refinement_of ri) f = m)
+  (si: ✓(live gamma m ⋅ p))
+  : ∃ alpha , ✓(live (ExtLoc alpha ri gamma) f ⋅ p).
+Proof.
+  unfold "✓", state_valid in *.
+  setoid_rewrite <- state_assoc. deex.
+  setoid_rewrite <- state_assoc in si.
+  have h := initialize_ext gamma m f (p⋅p0) ri is_rel_def is_rel si.
+  deex. exists alpha. exists p0. trivial.
+Qed.
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -708,6 +738,17 @@ Proof.
     intro.
     repeat (rewrite cell_reserved_cell_of_pl_build_empty).
     set_solver.
+Qed.
+
+Lemma initialize_normal_valid (m: M) p
+  (is_val: m_valid m)
+  (si: ✓ p)
+  : ∃ alpha , ✓ (live (BaseLoc RI alpha) m ⋅ p).
+Proof.
+  unfold "✓",state_valid in *.
+  setoid_rewrite <- state_assoc. deex.
+  have h := initialize_normal m (p ⋅ p0) is_val si. deex. exists alpha. exists p0.
+  trivial.
 Qed.
 
 (****************************************************************)
@@ -833,7 +874,7 @@ Lemma specific_exchange_cond_left_swap v m1 m2 m x
  : specific_exchange_cond (refinement_of (left_ri RI))
     v m (dot (pair_up RI m1 m2) x) unit unit
       m1 (dot (pair_up RI m m2) x) unit unit.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   unfold specific_exchange_cond.
   exists (dot (pair_up RI m m2) x). exists m. exists m1. intros.
   repeat (rewrite unit_dot).
@@ -864,7 +905,7 @@ Lemma specific_exchange_cond_right_swap v m1 m2 m x
  : specific_exchange_cond (refinement_of (right_ri RI))
     v m (dot (pair_up RI m1 m2) x) unit unit
       m2 (dot (pair_up RI m1 m) x) unit unit.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   unfold specific_exchange_cond.
   exists (dot (pair_up RI m1 m) x). exists m. exists m2. intros.
   repeat (rewrite unit_dot).
@@ -900,7 +941,7 @@ Lemma specific_exchange_cond_left_swap2 m c d v x y m1 m2
   : specific_exchange_cond (refinement_of (right_ri RI)) v 
     (x) (dot (pair_up RI m1 m2) d) (x) unit
     (y) (dot (pair_up RI m m2) d) (y) unit.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   unfold specific_exchange_cond.
   exists (dot (pair_up RI m m2) d).
   exists unit. exists unit.
@@ -940,7 +981,7 @@ Lemma specific_exchange_cond_right_swap2 m c d v x y m1 m2
   : specific_exchange_cond (refinement_of (left_ri RI)) v 
     (x) (dot (pair_up RI m1 m2) d) (x) unit
     (y) (dot (pair_up RI m1 m) d) (y) unit.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   unfold specific_exchange_cond.
   exists (dot (pair_up RI m1 m) d).
   exists unit. exists unit.
@@ -1464,3 +1505,28 @@ Proof.
      setoid_rewrite cell_reserved_cell_of_pl_build_empty. trivial.
 Qed.
 
+Lemma swap_cross_left_valid (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
+  (si: ✓(live gamma1 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
+     : ✓(live gamma1 m1 ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m m2) ⋅ p).
+Proof.
+  unfold "✓", state_valid in *.
+  setoid_rewrite <- state_assoc.
+  setoid_rewrite <- state_assoc in si.
+  deex.
+  have h := swap_cross_left gamma1 gamma2 m m1 m2 (p ⋅ p0) si.
+  exists p0. trivial.
+Qed.
+
+Lemma swap_cross_right_valid (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
+  (si: ✓(live gamma2 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
+     : ✓(live gamma2 m2 ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m) ⋅ p).
+Proof.
+  unfold "✓", state_valid in *.
+  setoid_rewrite <- state_assoc.
+  setoid_rewrite <- state_assoc in si.
+  deex.
+  have h := swap_cross_right gamma1 gamma2 m m1 m2 (p ⋅ p0) si.
+  exists p0. trivial.
+Qed.
+
+End Exchanges.
