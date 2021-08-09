@@ -639,6 +639,22 @@ Proof. intros. unfold m_valid, ic_tpcm in *. intros.
     rewrite ic_get_ic_right. apply H.
 Qed.
 
+Lemma ic_left_ic_dot `{!EqDecision M} `{!TPCM M} (a b: InfiniteCopies M)
+    : ic_left (ic_dot a b) = ic_dot (ic_left a) (ic_left b). Admitted.
+    
+Lemma ic_right_ic_dot `{!EqDecision M} `{!TPCM M} (a b: InfiniteCopies M)
+    : ic_right (ic_dot a b) = ic_dot (ic_right a) (ic_right b). Admitted.
+    
+Lemma ic_pair_ic_dot `{!EqDecision M} `{!TPCM M} (a b c d: InfiniteCopies M)
+    : ic_pair (ic_dot a b) (ic_dot c d)
+    = ic_dot (ic_pair a c) (ic_pair b d). Admitted.
+    
+Lemma mov_ic_get_of_mov `{!EqDecision M} `{!TPCM M} a b (k: nat)
+  : mov a b -> mov (ic_get a k) (ic_get b k). Admitted.
+
+Lemma ic_pair_unit `{!EqDecision M} `{!TPCM M}
+  : ic_pair unit unit = unit. Admitted.
+
 #[refine]
 Global Instance ic_tpcm_embed_two (M N B: Type)
     `{!EqDecision M} `{!TPCM M}
@@ -657,10 +673,55 @@ Proof.
   - intros. unfold m_valid, pair_tpcm. split.
      + apply valid_eproject. apply m_valid_ic_left. trivial.
      + apply valid_eproject. apply m_valid_ic_right. trivial.
-  - intros. unfold dot, pair_tpcm, ic_tpcm. f_equal.
-     (*+ rewrite ic_left_ic_dot. apply eproject_dot.*)
-  Admitted.
-
+  - intros. unfold dot, pair_tpcm. f_equal.
+    + unfold ic_tpcm. rewrite ic_left_ic_dot. rewrite eproject_dot.
+        unfold dot. trivial.
+    + unfold ic_tpcm. rewrite ic_right_ic_dot. rewrite eproject_dot.
+        unfold dot. trivial.
+  - intros. destruct a, b. unfold dot, ic_tpcm, pair_tpcm.
+    rewrite <- embed_dot.
+    rewrite <- embed_dot.
+    rewrite <- ic_pair_ic_dot.
+    unfold dot. trivial.
+  - intros. destruct a, b. unfold mov,ic_tpcm. unfold ic_mov.
+      intros. rewrite ic_get_ic_pair. rewrite ic_get_ic_pair.
+      unfold mov, pair_tpcm in H. destruct_ands.
+      have eoo := even_or_odd i. destruct eoo.
+      + deex. rewrite H1. rewrite parity_2i.
+          apply mov_ic_get_of_mov. apply mov_embed. trivial.
+      + deex. rewrite H1. rewrite parity_2i_1.
+          apply mov_ic_get_of_mov. apply mov_embed. trivial.
+  - intros. unfold mov, pair_tpcm. split.
+    + unfold mov, ic_tpcm, ic_mov in H.
+      apply mov_eproject. unfold mov, ic_tpcm, ic_mov. intro.
+        rewrite ic_get_ic_left.
+        rewrite ic_get_ic_left. apply H.
+    + unfold mov, ic_tpcm, ic_mov in H.
+      apply mov_eproject. unfold mov, ic_tpcm, ic_mov. intro.
+        rewrite ic_get_ic_right.
+        rewrite ic_get_ic_right. apply H.
+  - unfold unit, pair_tpcm, ic_tpcm.
+    rewrite unit_embed. rewrite unit_embed.
+    rewrite ic_pair_unit. trivial.
+  - destruct a. f_equal.
+      + rewrite ic_left_ic_pair. rewrite eproject_embed. trivial.
+      + rewrite ic_right_ic_pair. rewrite eproject_embed. trivial.
+  - intros. 
+    have j := @embed_eproject M (InfiniteCopies B) _ _ _ _ m_embed (ic_left b).
+    have k := @embed_eproject N (InfiniteCopies B) _ _ _ _ n_embed (ic_right b).
+    deex.
+    rename c0 into a1. rename c into a2.
+    exists (ic_pair a1 a2).
+    unfold dot, ic_tpcm.
+    rewrite <- ic_pair_ic_dot.
+    replace b with (ic_pair (ic_left b) (ic_right b)) by (apply ic_pair_ic_left_ic_right).
+    f_equal.
+    + rewrite j. f_equal. f_equal. f_equal.
+      rewrite <- j. rewrite ic_pair_ic_left_ic_right. trivial.
+    + rewrite k. f_equal. f_equal. f_equal.
+      rewrite <- k. rewrite ic_pair_ic_left_ic_right. trivial.
+Defined.
+     
 Global Instance ic_tpcm_embed_extend (M: Type) (B: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision B} `{!TPCM B}
@@ -676,7 +737,7 @@ Record BurrowCtx := {
   bc_small_RI_eqdec : EqDecision bc_small_RI ;
   bc_small_RI_countable : Countable bc_small_RI ;
   
-  bc_refs: bc_small_RI -> Refinement bc_small_M bc_small_M ;
+  bc_refs: bc_small_RI -> Refinement (InfiniteCopies bc_small_M) (InfiniteCopies bc_small_M) ;
 }.
 
 Instance bc_small_M_eqdec_inst (𝜇: BurrowCtx) : EqDecision (bc_small_M 𝜇).
@@ -713,10 +774,7 @@ Global Instance bc_refinement_index (𝜇: BurrowCtx)
     | FinalRILeft _ => refinement_left
     | FinalRIRight _ => refinement_right
     | FinalRITriv _ => refinement_trivial
-    | FinalRINormal _ sri => 
-            refinement_embed_dst (InfiniteCopies (bc_small_M 𝜇)) (bc_small_M 𝜇) (InfiniteCopies (bc_small_M 𝜇))
-            (refinement_embed_src (bc_small_M 𝜇) (bc_small_M 𝜇) 
-                (InfiniteCopies (bc_small_M 𝜇)) (bc_refs 𝜇 sri))
+    | FinalRINormal _ sri => bc_refs 𝜇 sri
   end) ;    
   triv_ri := FinalRITriv (bc_small_RI 𝜇);
   left_ri := FinalRILeft (bc_small_RI 𝜇);
@@ -733,14 +791,15 @@ Instance ref_equiv {M} `{EqDecision M} `{TPCM M}
       /\ (∀ r , rel M M ref1 r = rel M M ref2 r).
 
 Class HasTPCM (𝜇: BurrowCtx) (M: Type) `{!EqDecision M, TPCM M}
-    := { inctx_embed :> TPCMEmbed M (bc_small_M 𝜇) }.
+    := { inctx_embed :> TPCMEmbed M (InfiniteCopies (bc_small_M 𝜇)) }.
 
 Instance product_hastpcm (𝜇: BurrowCtx) (M: Type) (N: Type)
     `{!EqDecision M, TPCM M}
     `{!EqDecision N, TPCM N}
     `{m_ht: !HasTPCM 𝜇 M} `{n_ht: !HasTPCM 𝜇 N} : HasTPCM 𝜇 (M * N) := {
-  inctx_embed := 
-}
+  inctx_embed := ic_tpcm_embed_two M N (bc_small_M 𝜇)
+      (inctx_embed) (inctx_embed) ;
+}.
   
 Class HasRef (𝜇: BurrowCtx) {R M: Type}
       `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
@@ -750,8 +809,8 @@ Class HasRef (𝜇: BurrowCtx) {R M: Type}
     := {
         hasref_ri: (bc_small_RI 𝜇) ; 
         hasref_is: (bc_refs 𝜇 hasref_ri) ≡ 
-            refinement_embed_dst (bc_small_M 𝜇) M (bc_small_M 𝜇)
-            (refinement_embed_src R M (bc_small_M 𝜇) ref)
+            refinement_embed_dst (InfiniteCopies (bc_small_M 𝜇)) M (InfiniteCopies (bc_small_M 𝜇))
+            (refinement_embed_src R M (InfiniteCopies (bc_small_M 𝜇)) ref)
         }.
 
 Definition BurrowLoc (𝜇: BurrowCtx) := Loc (FinalRI (bc_small_RI 𝜇)).
@@ -929,10 +988,7 @@ Proof.
   rewrite H.
   unfold refinement_embed_dst, rel_defined.
   unfold refinement_embed_src, rel_defined.
-  unfold eproject, ic_tpcm_embed_extend.
-  unfold embed_transitive.
-  unfold eproject. intuition.
-  apply valid_eproject. trivial.
+  trivial.
 Qed.
 
 Lemma rel_mu
@@ -956,9 +1012,7 @@ Proof.
   rewrite H0.
   unfold refinement_embed_dst, rel.
   unfold refinement_embed_src, rel.
-  unfold eproject, ic_tpcm_embed_extend.
-  unfold embed_transitive.
-  unfold eproject. trivial.
+  trivial.
 Qed.
 
 Lemma borrow_back'
@@ -990,6 +1044,17 @@ Proof.
   trivial.
 Qed.
 
+Lemma mu_embed_product
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (m1: M) (m2: N)
+  : (mu_embed (M * N) 𝜇 (m1, m2)) = (ic_pair (mu_embed M 𝜇 m1) (mu_embed N 𝜇 m2)).
+Proof.
+  unfold mu_embed. unfold embed. unfold inctx_embed, product_hastpcm.
+  unfold ic_tpcm_embed_two. trivial.
+Qed.
+
 Lemma borrow_back_left'
   {𝜇: BurrowCtx}
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -997,5 +1062,52 @@ Lemma borrow_back_left'
   (𝛾1 𝛾2 : BurrowLoc 𝜇) (m1 : M) (m2 : N) 𝜅 (state : BurrowState 𝜇)
   (ib: is_borrow' 𝜅 (cross_loc 𝛾1 𝛾2) (m1, m2) state)
   : is_borrow' 𝜅 𝛾1 m1 state.
-
+Proof. unfold is_borrow' in *.
+  apply (borrow_back_left 𝛾1 𝛾2 (mu_embed M 𝜇 m1) (mu_embed N 𝜇 m2) 𝜅 state).
+  unfold cross_loc in ib.
+  unfold pair_up, bc_refinement_index.
+  unfold mu_embed in ib.
+  unfold embed in ib.
+  rewrite <- mu_embed_product. unfold mu_embed. trivial.
+Qed.
   
+Lemma borrow_back_right'
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2 : BurrowLoc 𝜇) (m1 : M) (m2 : N) 𝜅 (state : BurrowState 𝜇)
+  (ib: is_borrow' 𝜅 (cross_loc 𝛾1 𝛾2) (m1, m2) state)
+  : is_borrow' 𝜅 𝛾2 m2 state.
+Proof. unfold is_borrow' in *.
+  apply (borrow_back_right 𝛾1 𝛾2 (mu_embed M 𝜇 m1) (mu_embed N 𝜇 m2) 𝜅 state).
+  unfold cross_loc in ib.
+  unfold pair_up, bc_refinement_index.
+  unfold mu_embed in ib.
+  unfold embed in ib.
+  rewrite <- mu_embed_product. unfold mu_embed. trivial.
+Qed.
+  
+Lemma borrow_expire'
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  (m: M) 𝛾 𝜅 (p: BurrowState 𝜇)
+  (kappa_nonempty : 𝜅 ≠ empty_lifetime)
+  (si: ✓(active 𝜅 ⋅ reserved' 𝜅 𝛾 m ⋅ p))
+     : ✓(live' 𝛾 m ⋅ p).
+Proof.
+  unfold live', reserved' in *.
+  apply borrow_expire with (kappa:=𝜅); trivial.
+Qed.
+
+Lemma borrow_exchange'
+  {𝜇: BurrowCtx} {R M: Type}
+    `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
+    `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
+    `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
+    (ref : Refinement R M)
+    `{hr: !HasRef 𝜇 ref}
+      b 𝜅 𝛾 (m m' : M) (f z f': R) 𝛼
+  (isb: is_borrow' 𝜅 (extend_loc 𝛼 ref 𝛾) z b)
+  (exchange_cond: borrow_exchange_cond (refinement_of ri) z m f m' f')
+  (si: state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f ⋅ b ⋅ live gamma m))
+     : state_inv (active kappa ⋅ live (ExtLoc alpha ri gamma) f' ⋅ b ⋅ live gamma m').
