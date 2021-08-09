@@ -58,6 +58,11 @@ Canonical Structure burrowO
 Canonical Structure burrowR
     (𝜇: BurrowCtx)
     := discreteR (BurrowState 𝜇) (burrow_ra_mixin 𝜇).
+
+Global Instance burrow_unit 𝜇 : Unit (BurrowState 𝜇) := state_unit.
+Lemma burrow_ucmra_mixin 𝜇 : UcmraMixin (BurrowState 𝜇).
+Proof. split. Admitted.
+Canonical Structure burrowUR 𝜇 : ucmra := Ucmra (BurrowState 𝜇) (burrow_ucmra_mixin 𝜇).
     
 Context {𝜇: BurrowCtx}.
     
@@ -110,6 +115,24 @@ Proof. unfold CmraTotal. intros. unfold pcore, cmra_pcore, burrowR, state_pcore.
   unfold is_Some. exists state_unit. trivial.
 Qed.
 
+Lemma L_op
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m n: M)
+  : L 𝛾 (dot m n) ⊣⊢ L 𝛾 m ∗ L 𝛾 n.
+Proof.
+  unfold L.
+  setoid_rewrite <- live_dot_live'.
+  apply own_op.
+Qed.
+
+Lemma L_unit
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝛾
+  : ⊢ |==> L 𝛾 (unit: M).
+Proof.
+  unfold L. setoid_rewrite live_unit'. apply own_unit.
+Qed.
+
 Lemma BorrowExpire
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝜅: Lifetime) (𝛾: BurrowLoc 𝜇) (m: M)
@@ -120,6 +143,26 @@ Proof. unfold A, R, L.
   iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live' 𝛾 m) with "H") as "$".
   - have h := cmra_discrete_update.
     rewrite cmra_discrete_update.
-    intro. apply borrow_expire. trivial.
+    intro. apply borrow_expire'. trivial.
   - done.
 Qed.
+
+Lemma LiveAndBorrowValid
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
+  : A 𝜅 ∗ L 𝛾 m ∗ B 𝜅 𝛾 k ⊢ ⌜ m_valid (dot m k) ⌝.
+Proof.
+  unfold A, L, B.
+  iIntros "[H1 [H2 H3]]".
+  iDestruct "H3" as (rstate) "[H4 %H5]".
+  iDestruct (own_valid_3 with "H1 H2 H4") as "%H". 
+  iPureIntro.
+  destruct_ands.
+  apply (live_and_borrow_implies_valid' _ _ _ _ _ H0 H).
+Qed.
+
+Lemma BorrowBegin
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
+    (si: state_valid (live' 𝛾 m ⋅ p))
+     : exists 𝜅 , state_valid (active 𝜅 ⋅ reserved' 𝜅 𝛾 m ⋅ p).
