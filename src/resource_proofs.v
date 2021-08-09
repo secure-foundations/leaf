@@ -552,7 +552,8 @@ Lemma sum_reserved_over_lifetime_eq_adding_singleton g active_lifetime (lt: Life
 
 Lemma borrow_begin (m: M) gamma p
   (si: state_inv (live gamma m ⋅ p))
-     : exists kappa , state_inv (active kappa ⋅ reserved kappa gamma m ⋅ p).
+     : exists kappa , state_inv (active kappa ⋅ reserved kappa gamma m ⋅ p)
+        /\ kappa ≠ empty_lifetime.
 Proof.
   destruct p. rename l into active_lifetime. rename l0 into p.
   
@@ -565,12 +566,13 @@ Proof.
   
   unfold state_inv in *. unfold "⋅", state_op, active, reserved, live in *.
     destruct_ands. split.
+  - split.
   
-  - rewrite multiset_add_empty.
+  + rewrite multiset_add_empty.
     rewrite multiset_add_empty_left in H.
     apply multiset_no_dupes_of_add_larger_elem; trivial.
   
-  - setoid_rewrite as_tree_op.
+  + setoid_rewrite as_tree_op.
     setoid_rewrite as_tree_op.
     rewrite multiset_add_empty.
     setoid_rewrite as_tree_singleton.
@@ -583,7 +585,7 @@ Proof.
     intro.
     
     have h : Decision (pl ∈ pls_of_loc gamma) by solve_decision. destruct h.
-    + setoid_rewrite <- cell_of_pl_op.
+    * setoid_rewrite <- cell_of_pl_op.
       setoid_rewrite build_spec; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op.
@@ -591,19 +593,19 @@ Proof.
       have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
       rewrite cellpl in h.
       assert ({[(lt_singleton alt, m)]} ∩ l ≡ ∅) as disjoint_empty.
-      * unfold "≡". intro. rewrite elem_of_empty. rewrite elem_of_intersection.
+      -- unfold "≡". intro. rewrite elem_of_empty. rewrite elem_of_intersection.
           rewrite elem_of_singleton. split. ** intro. destruct_ands. have h' := h x H2.
           rewrite H1 in h'. apply h'. apply multiset_in_lt_singleton. ** intro. contradiction.
-      * rewrite sum_reserved_over_lifetime_union; trivial.
+      -- rewrite sum_reserved_over_lifetime_union; trivial.
         rewrite sum_reserved_over_lifetime_singleton.
         unfold reserved_get_or_unit.
         case_decide.
-        -- rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
+        ++ rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
            rewrite unit_dot_left.
            rewrite tpcm_assoc. trivial.
            assert (dot m m0 = dot m0 m) as co by (apply tpcm_comm). rewrite co. trivial.
-        -- exfalso. apply H1. apply multiset_le_add.
-    + setoid_rewrite <- cell_of_pl_op.
+        ++ exfalso. apply H1. apply multiset_le_add.
+    * setoid_rewrite <- cell_of_pl_op.
       setoid_rewrite build_rest_triv; trivial.
       destruct (cell_of_pl (as_tree p) pl) eqn:cellpl.
       unfold cell_total, "⋅", cell_op, triv_cell.
@@ -611,15 +613,22 @@ Proof.
       have h := lt_singleton_not_eq_to_cell_lt alt (as_tree p) pl ineq1.
       rewrite cellpl in h.
       rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
+  - unfold lt_singleton, empty_lifetime, empty_multiset.
+    intro. assert ({[alt := 0]} ≠ (∅ : gmap nat nat)).
+    + intro. assert ((∅: gmap nat nat) !! alt = None) by (apply lookup_empty).
+      rewrite <- H2 in H3.
+      rewrite lookup_singleton in H3. discriminate.
+    + crush.
 Qed.
 
 Lemma borrow_begin_valid (m: M) gamma p
   (si: ✓(live gamma m ⋅ p))
-     : exists kappa , ✓(active kappa ⋅ reserved kappa gamma m ⋅ p).
+     : exists kappa , ✓(active kappa ⋅ reserved kappa gamma m ⋅ p)
+        /\ kappa ≠ empty_lifetime.
 Proof.
   unfold "✓", state_valid in si. deex. setoid_rewrite <- state_assoc in si.
   have bb := borrow_begin m gamma (p ⋅ p0) si. deex. exists kappa.
-  unfold "✓", state_valid. exists p0. setoid_rewrite <- state_assoc.
+  unfold "✓", state_valid. destruct_ands. split; trivial. exists p0. setoid_rewrite <- state_assoc.
   trivial.
 Qed.
 

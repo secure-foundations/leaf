@@ -917,7 +917,8 @@ Lemma borrow_begin'
     {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (m : M) (p : BurrowState 𝜇)
     (si: state_valid (live' 𝛾 m ⋅ p))
-     : exists 𝜅 , state_valid (active 𝜅 ⋅ reserved' 𝜅 𝛾 m ⋅ p).
+     : exists 𝜅 , state_valid (active 𝜅 ⋅ reserved' 𝜅 𝛾 m ⋅ p)
+        /\ 𝜅 ≠ empty_lifetime.
 Proof.
   unfold live' in si.
   unfold reserved' in si.

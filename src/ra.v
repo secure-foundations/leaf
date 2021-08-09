@@ -161,8 +161,23 @@ Proof.
   apply (live_and_borrow_implies_valid' _ _ _ _ _ H0 H).
 Qed.
 
-Lemma BorrowBegin
+Lemma BorrowBegin_1
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
-    (si: state_valid (live' 𝛾 m ⋅ p))
-     : exists 𝜅 , state_valid (active 𝜅 ⋅ reserved' 𝜅 𝛾 m ⋅ p).
+    (𝛾: BurrowLoc 𝜇) (m : M)
+     : L 𝛾 m ==∗ (∃ 𝜅 , A 𝜅 ∗ R 𝜅 𝛾 m).
+Proof.
+  iIntros "L". unfold L, A, R.
+  iDestruct (own_updateP (λ a': BurrowState 𝜇, ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime) with "L") as "T".
+    (*Focus 2. iModIntro.
+    iModIntro. 
+    iDestruct "T" as (a) "X".*)
+   - rewrite cmra_discrete_updateP.
+      intros.
+      have j := borrow_begin' 𝛾 m z H. deex.
+      exists (active 𝜅 ⋅ reserved' 𝜅 𝛾 m). destruct_ands.
+      split; trivial. exists 𝜅. split; trivial.
+   - 
+    
+  iAssert (∃ a': BurrowState 𝜇, ⌜ ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime ⌝ ∗ own (gen_burrow_name hG) a')%I
+      with "L" as "Q".
+  iMod (own_updateP with "L") as "$".
