@@ -49,12 +49,12 @@ Inductive InternalProduct (M: Type) (N: Type) :=
   | InternalProductC : M -> N -> InternalProduct M N.
 Arguments InternalProductC {_ _}%type_scope _ _.
 
-Global Instance iprod_eqdec M `{EqDecision M} N `{EqDecision N}
+Local Instance iprod_eqdec M `{EqDecision M} N `{EqDecision N}
     : EqDecision (InternalProduct M N).
   Proof. unfold EqDecision. intros. solve_decision. Defined.
   
 #[refine]
-Global Instance iprod_tpcm (M: Type) (N: Type)
+Local Instance iprod_tpcm (M: Type) (N: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N} : TPCM (InternalProduct M N) := {
   m_valid p := match p with InternalProductC m n => m_valid m /\ m_valid n end ;
@@ -112,7 +112,7 @@ Proof.
 Qed.
 
 #[refine]
-Global Instance embed_transitive (M N P : Type)
+Local Instance embed_transitive (M N P : Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N}
     `{!EqDecision P} `{!TPCM P}
@@ -147,7 +147,7 @@ Global Instance embed_transitive (M N P : Type)
     apply valid_eproject. trivial.
 Defined.
     
-Global Remove Hints embed_transitive : typeclass_instances.
+Local Remove Hints embed_transitive : typeclass_instances.
 
 
 Definition refinement_embed_src R M B
@@ -200,7 +200,7 @@ Proof. refine ({|
 Defined.
 
 #[refine]
-Global Instance tpcm_embed_self (M: Type)
+Local Instance tpcm_embed_self (M: Type)
     `{!EqDecision M} `{!TPCM M}
   : TPCMEmbed M M := {
     embed := λ m , m ;
@@ -220,10 +220,10 @@ Proof.
   - intros. rewrite unit_dot. trivial.
 Qed.
 
-Global Remove Hints tpcm_embed_self : typeclass_instances.
+Local Remove Hints tpcm_embed_self : typeclass_instances.
 
 #[refine]
-Global Instance iprod_tpcm_embed_left (M: Type) (N: Type)
+Local Instance iprod_tpcm_embed_left (M: Type) (N: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N}
   : TPCMEmbed M (InternalProduct M N) := {
@@ -244,10 +244,10 @@ Proof.
   - Admitted.*)
 (*Defined.*)
 
-Global Remove Hints iprod_tpcm_embed_left : typeclass_instances.
+Local Remove Hints iprod_tpcm_embed_left : typeclass_instances.
 
 #[refine]
-Global Instance iprod_tpcm_embed_right (M: Type) (N: Type)
+Local Instance iprod_tpcm_embed_right (M: Type) (N: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N}
   : TPCMEmbed N (InternalProduct M N) := {
@@ -268,7 +268,7 @@ Proof.
   - Admitted.*)
 (*Defined.*)
 
-Global Remove Hints iprod_tpcm_embed_right : typeclass_instances.
+Local Remove Hints iprod_tpcm_embed_right : typeclass_instances.
 
 Definition ic_wf M `{!EqDecision M} `{!TPCM M} (ic_obj: gmap nat M) :=
   bool_decide (map_Forall (λ _ m, m ≠ unit) ic_obj).
@@ -286,7 +286,7 @@ Proof.
   f_equal; apply proof_irrel.
 Qed.
 
-Global Instance ic_eq_dec {M} `{!EqDecision M} `{!TPCM M} : EqDecision (InfiniteCopies M). 
+Local Instance ic_eq_dec {M} `{!EqDecision M} `{!TPCM M} : EqDecision (InfiniteCopies M). 
 Proof.
  refine (λ m1 m2, cast_if (decide (ic_obj m1 = ic_obj m2)));
   abstract (by rewrite ic_eq).
@@ -382,7 +382,7 @@ Proof.
 Qed.
 
 #[refine]
-Global Instance ic_tpcm (M: Type)
+Local Instance ic_tpcm (M: Type)
     `{!EqDecision M} `{!TPCM M} : TPCM (InfiniteCopies M) := {
   m_valid p := ∀ i , m_valid (ic_get p i) ;
   dot p1 p2 := ic_dot p1 p2 ;
@@ -600,7 +600,7 @@ Proof.
 Qed.
 
 #[refine]
-Global Instance ic_tpcm_embed (M: Type)
+Local Instance ic_tpcm_embed (M: Type)
     `{!EqDecision M} `{!TPCM M}
   : TPCMEmbed M (InfiniteCopies M) := {
     embed := ic_singleton ;
@@ -670,7 +670,7 @@ Lemma ic_pair_unit `{!EqDecision M} `{!TPCM M}
   : ic_pair unit unit = unit. Admitted.
 
 #[refine]
-Global Instance ic_tpcm_embed_two (M N B: Type)
+Local Instance ic_tpcm_embed_two (M N B: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision N} `{!TPCM N}
     `{!EqDecision B} `{!TPCM B}
@@ -751,7 +751,7 @@ Proof.
         apply j; trivial. apply m_valid_ic_right. trivial.
 Defined.
      
-Global Instance ic_tpcm_embed_extend (M: Type) (B: Type)
+Local Instance ic_tpcm_embed_extend (M: Type) (B: Type)
     `{!EqDecision M} `{!TPCM M}
     `{!EqDecision B} `{!TPCM B}
     (m_embed: TPCMEmbed M B) : TPCMEmbed M (InfiniteCopies B) :=
@@ -789,7 +789,7 @@ Inductive FinalRI (small_RI: Type) :=
 
 (*Definition bc_RI (𝜇: BurrowCtx) : Type := FinalRI bc_small_RI.*)
 
-Global Instance bc_FinalRI_eqdec (small_RI: Type) `{!EqDecision small_RI}
+Local Instance bc_FinalRI_eqdec (small_RI: Type) `{!EqDecision small_RI}
     : EqDecision (FinalRI small_RI).
 Proof. solve_decision. Qed.
 
@@ -822,7 +822,7 @@ Instance ref_equiv {M} `{!EqDecision M} `{!TPCM M}
 Class HasTPCM (𝜇: BurrowCtx) (M: Type) `{!EqDecision M, !TPCM M}
     := { inctx_embed :> TPCMEmbed M (InfiniteCopies (bc_small_M 𝜇)) }.
 
-Instance product_hastpcm (𝜇: BurrowCtx) (M: Type) (N: Type)
+Global Instance product_hastpcm (𝜇: BurrowCtx) (M: Type) (N: Type)
     `{!EqDecision M, TPCM M}
     `{!EqDecision N, TPCM N}
     `{m_ht: !HasTPCM 𝜇 M} `{n_ht: !HasTPCM 𝜇 N} : HasTPCM 𝜇 (M * N) := {
