@@ -611,6 +611,16 @@ Proof.
       rewrite <- sum_reserved_over_lifetime_eq_adding_singleton; trivial.
 Qed.
 
+Lemma borrow_begin_valid (m: M) gamma p
+  (si: ✓(live gamma m ⋅ p))
+     : exists kappa , ✓(active kappa ⋅ reserved kappa gamma m ⋅ p).
+Proof.
+  unfold "✓", state_valid in si. deex. setoid_rewrite <- state_assoc in si.
+  have bb := borrow_begin m gamma (p ⋅ p0) si. deex. exists kappa.
+  unfold "✓", state_valid. exists p0. setoid_rewrite <- state_assoc.
+  trivial.
+Qed.
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -859,7 +869,6 @@ Proof.
 Qed.
 
 Lemma borrow_back alpha ri gamma f m kappa state
-  (sinv: state_inv state)
   (bbcond: ∀ p: M, rel_defined M M (refinement_of ri) (dot f p) ->
       tpcm_le m (rel M M (refinement_of ri) (dot f p)))
   (ib: is_borrow kappa (ExtLoc alpha ri gamma) f state)
@@ -900,7 +909,6 @@ Qed.
 (* borrow back (products) *)
 
 Lemma borrow_back_left gamma1 gamma2 m1 m2 kappa state
-  (sinv: state_inv state)
   (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
   : is_borrow kappa gamma1 m1 state.
     unfold is_borrow in *. destruct state.
@@ -932,7 +940,6 @@ Lemma borrow_back_left gamma1 gamma2 m1 m2 kappa state
 Qed.
 
 Lemma borrow_back_right gamma1 gamma2 m1 m2 kappa state
-  (sinv: state_inv state)
   (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
   : is_borrow kappa gamma2 m2 state.
     unfold is_borrow in *. destruct state.
