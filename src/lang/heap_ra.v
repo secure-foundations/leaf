@@ -1,12 +1,12 @@
-From iris.algebra Require Import gmap_view frac.
-From iris.algebra Require Export dfrac.
-From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import tactics.
 From iris.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
 Require Import Burrow.ra.
 Require Import Burrow.tpcms.
+
+Require Import Tpcms.auth_frag.
+Require Import Tpcms.gmap.
 
 (*|
 ========
@@ -38,6 +38,7 @@ precondition. See primitive_laws.v for where that happens.
 
 Class gen_heapGpreS (L V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{Countable L} := {
   gen_burrow_inG :> @gen_burrowGpreS 𝜇 Σ;
+  gen_heapGpreS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap L V));
   (*gen_heapGpreS_inG :> inG Σ (gmap_viewR L (leibnizO V));*)
 }.
 
