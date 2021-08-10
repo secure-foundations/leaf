@@ -3,6 +3,7 @@ From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
 From BurrowLang Require Import notation tactics class_instances.
 From BurrowLang Require Import heap_ra.
+From BurrowLang Require Import lang.
 From iris Require Import options.
 
 Require Import Burrow.ra.
@@ -129,6 +130,18 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+Lemma wp_load_borrow s E l v 𝜅 :
+  {{{ A 𝜅 ∗ l &{𝜅}↦ v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; A 𝜅 ∗ l &{𝜅}↦ v }}}.
+Proof.
+  iIntros (Φ) "[Ha Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid_borrow with "Hσ Ha Hl") as %?.
+  iSplit; first by eauto with head_step.
+  iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
+  iModIntro; iSplit=> //. iFrame.
+  iCombine "Ha Hl" as "H".
+  by iApply "HΦ".
+Qed.
+
 Lemma wp_store s E l v w :
   {{{ l ↦ v }}} Store (Val $ LitV $ LitInt l) (Val $ w) @ s; E {{{ RET #(); l ↦ w }}}.
 Proof.
@@ -153,16 +166,18 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
-Lemma wp_load_borrow s E l v 𝜅 :
-  {{{ A 𝜅 ∗ l &{𝜅}↦ v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; A 𝜅 ∗ l &{𝜅}↦ v }}}.
+Lemma wp_cas s E l (v_actual v_old v_new: base_lit) :
+  {{{ l ↦ (LitV v_actual) }}}
+    CAS (Val $ LitV $ LitInt l) (Val $ LitV $ v_old) (Val $ LitV $ v_new) @ s; E
+  {{{ RET (LitV $ LitBool (bool_decide (v_actual = v_old))) ;
+      l ↦ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) }}}.
 Proof.
-  iIntros (Φ) "[Ha Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
-  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid_borrow with "Hσ Ha Hl") as %?.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
-  iModIntro; iSplit=> //. iFrame.
-  iCombine "Ha Hl" as "H".
-  by iApply "HΦ".
+  iMod (gen_heap_update _ _ _ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) with "Hσ Hl") as "[Hσ Hl]".
+  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 End lifting.

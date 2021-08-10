@@ -455,7 +455,7 @@ Inductive head_step : expr → state → list observation → expr → state →
               []
               (Val $ LitV $ LitBool $ (bool_decide (v_actual = v_old)))
               (state_upd_heap <[l:=LitV $
-                (if decide (v_actual = v_old) then v_new else v_old)]> σ)
+                (if decide (v_actual = v_old) then v_new else v_actual)]> σ)
               []
   .
 
