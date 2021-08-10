@@ -1,14 +1,28 @@
--Q src Burrow
+-Q src/burrow Burrow
 
-src/tactics.v
-src/gmap_utils.v
-src/rollup.v
-src/CpdtTactics.v
-src/indexing.v
-src/locations.v
-src/exchange_proof.v
-src/exchanges.v
-src/resource_proofs.v
+src/burrow/tactics.v
+src/burrow/gmap_utils.v
+src/burrow/rollup.v
+src/burrow/CpdtTactics.v
+src/burrow/indexing.v
+src/burrow/locations.v
+src/burrow/exchange_proof.v
+src/burrow/exchanges.v
+src/burrow/resource_proofs.v
+src/burrow/tpcms.v
+src/burrow/ra.v
+
+-Q src/lang BurrowLang
+
+src/lang/adequacy.v
+src/lang/class_instances.v
+src/lang/heap_ra.v
+src/lang/lang.v
+src/lang/notation.v
+src/lang/primitive_laws.v
+src/lang/proofmode.v
+src/lang/simp.v
+src/lang/tactics.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
