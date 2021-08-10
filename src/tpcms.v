@@ -1331,3 +1331,12 @@ Proof.
   trivial.
 Qed.
 
+Lemma state_no_live_reserved'
+  {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  𝜅 𝛾 m : state_no_live (reserved' 𝜅 𝛾 m).
+Proof. unfold reserved'. apply state_no_live_reserved. Qed.
+
+Lemma is_borrow_reserved'
+  {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  𝜅 𝛾 m : is_borrow' 𝜅 𝛾 m (reserved' 𝜅 𝛾 m).
+Proof. unfold reserved', is_borrow'. apply is_borrow_reserved. Qed.

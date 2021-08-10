@@ -133,20 +133,6 @@ Proof.
   unfold L. setoid_rewrite live_unit'. apply own_unit.
 Qed.
 
-Lemma BorrowExpire
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    (𝜅: Lifetime) (𝛾: BurrowLoc 𝜇) (m: M)
-  : A 𝜅 ∗ R 𝜅 𝛾 m ==∗ L 𝛾 m.
-Proof. unfold A, R, L.
-  iIntros "[H1 [H2 %H3]]". 
-  iCombine "H1" "H2" as "H".
-  iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live' 𝛾 m) with "H") as "$".
-  - have h := cmra_discrete_update.
-    rewrite cmra_discrete_update.
-    intro. apply borrow_expire'. trivial.
-  - done.
-Qed.
-
 Lemma LiveAndBorrowValid
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
@@ -167,17 +153,96 @@ Lemma BorrowBegin_1
      : L 𝛾 m ==∗ (∃ 𝜅 , A 𝜅 ∗ R 𝜅 𝛾 m).
 Proof.
   iIntros "L". unfold L, A, R.
-  iDestruct (own_updateP (λ a': BurrowState 𝜇, ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime) with "L") as "T".
-    (*Focus 2. iModIntro.
-    iModIntro. 
-    iDestruct "T" as (a) "X".*)
+  iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime) with "L") as "T".
    - rewrite cmra_discrete_updateP.
       intros.
       have j := borrow_begin' 𝛾 m z H. deex.
       exists (active 𝜅 ⋅ reserved' 𝜅 𝛾 m). destruct_ands.
       split; trivial. exists 𝜅. split; trivial.
-   - 
-    
-  iAssert (∃ a': BurrowState 𝜇, ⌜ ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime ⌝ ∗ own (gen_burrow_name hG) a')%I
-      with "L" as "Q".
-  iMod (own_updateP with "L") as "$".
+   - iDestruct "T" as (a') "[%E T]".
+      deex. destruct_ands. subst a'.
+      iModIntro. iExists 𝜅. 
+      rewrite own_op. iDestruct "T" as "[Q R]". iFrame.
+      iPureIntro. trivial.
+Qed.
+
+Lemma DupeR
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m : M)
+     : R 𝜅 𝛾 m ⊣⊢ R 𝜅 𝛾 m ∗ R 𝜅 𝛾 m.
+Proof.
+  unfold R.
+  have h := state_no_live_reserved' 𝜅 𝛾 m.
+  have h' := h EqDecision0 TPCM0 HasTPCM0.
+  have j := no_live_duplicable (reserved' 𝜅 𝛾 m) h'.
+  iIntros. iSplit.
+    - iIntros "[T %ne]".
+      pattern (own (gen_burrow_name hG) (reserved' 𝜅 𝛾 m)) at 2.
+      pattern (own (gen_burrow_name hG) (reserved' 𝜅 𝛾 m)) at 2.
+      setoid_rewrite <- j.
+      rewrite own_op.
+      iDestruct "T" as "[Q R]".
+      iFrame.
+      iSplit; iPureIntro; trivial.
+    - iIntros "[Q R]". iFrame.
+Qed.
+
+Lemma R_to_B
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m : M)
+     : R 𝜅 𝛾 m ⊢ B 𝜅 𝛾 m.
+Proof.
+  unfold R, B.
+  iIntros "[T %ne]".
+  iExists (reserved' 𝜅 𝛾 m).
+  iFrame. iPureIntro. split.
+  - apply is_borrow_reserved'.
+  - apply state_no_live_reserved'.
+Qed.
+  
+Lemma BorrowBegin
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m : M)
+     : L 𝛾 m ==∗ (∃ 𝜅 , A 𝜅 ∗ R 𝜅 𝛾 m ∗ B 𝜅 𝛾 m).
+Proof.
+  unfold L, A, R, B.
+  iIntros "T".
+  iMod (BorrowBegin_1 with "T") as (𝜅) "[X Y]".
+  rewrite DupeR. 
+  iDestruct "Y" as "[Y Z]".
+  iDestruct (R_to_B with "Z") as "Z".
+  iModIntro. iExists 𝜅. iFrame.
+Qed.
+
+Lemma BorrowExpire
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝜅: Lifetime) (𝛾: BurrowLoc 𝜇) (m: M)
+  : A 𝜅 ∗ R 𝜅 𝛾 m ==∗ L 𝛾 m.
+Proof. unfold A, R, L.
+  iIntros "[H1 [H2 %H3]]". 
+  iCombine "H1" "H2" as "H".
+  iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live' 𝛾 m) with "H") as "$".
+  - have h := cmra_discrete_update.
+    rewrite cmra_discrete_update.
+    intro. apply borrow_expire'. trivial.
+  - done.
+Qed.
+
+Lemma DupeB
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m : M)
+     : B 𝜅 𝛾 m ⊢ B 𝜅 𝛾 m ∗ B 𝜅 𝛾 m.
+Proof.
+  unfold B.
+  (*have h := state_no_live_reserved' 𝜅 𝛾 m.
+  have h' := h EqDecision0 TPCM0 HasTPCM0.
+  have j := no_live_duplicable (reserved' 𝜅 𝛾 m) h'.*)
+  iIntros "T".
+    - iDestruct "T" as (rstate) "[T %h]". destruct_ands.
+      rewrite <- no_live_duplicable; trivial.
+      rewrite own_op.
+      iDestruct "T" as "[S T]".
+      iSplitL "S".
+      + iExists rstate. iFrame. iPureIntro. split; trivial.
+      + iExists rstate. iFrame. iPureIntro. split; trivial.
+Qed.
