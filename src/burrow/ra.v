@@ -63,6 +63,8 @@ Global Instance burrow_unit 𝜇 : Unit (BurrowState 𝜇) := state_unit.
 Lemma burrow_ucmra_mixin 𝜇 : UcmraMixin (BurrowState 𝜇).
 Proof. split. Admitted.
 Canonical Structure burrowUR 𝜇 : ucmra := Ucmra (BurrowState 𝜇) (burrow_ucmra_mixin 𝜇).
+
+Section BurrowLaws.
     
 Context {𝜇: BurrowCtx}.
     
@@ -603,3 +605,4 @@ Proof.
   iModIntro. iFrame.
 Qed.
 
+End BurrowLaws.

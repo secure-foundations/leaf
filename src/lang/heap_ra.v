@@ -5,6 +5,9 @@ From iris.proofmode Require Import tactics.
 From iris.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
 
+Require Import Burrow.ra.
+Require Import Burrow.tpcms.
+
 (*|
 ========
 Heap RA
@@ -33,8 +36,9 @@ precondition. See primitive_laws.v for where that happens.
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapGpreS (L V : Type) (Σ : gFunctors) `{Countable L} := {
-  gen_heapGpreS_inG :> inG Σ (gmap_viewR L (leibnizO V));
+Class gen_heapGpreS (L V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{Countable L} := {
+  gen_burrow_inG :> @gen_burrowGpreS 𝜇 Σ;
+  (*gen_heapGpreS_inG :> inG Σ (gmap_viewR L (leibnizO V));*)
 }.
 
 Class gen_heapGS (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {

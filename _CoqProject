@@ -12,6 +12,11 @@ src/burrow/resource_proofs.v
 src/burrow/tpcms.v
 src/burrow/ra.v
 
+-Q src/tpcms Tpcms
+
+src/tpcms/gmap.v
+src/tpcms/auth_frag.v
+
 -Q src/lang BurrowLang
 
 src/lang/adequacy.v
