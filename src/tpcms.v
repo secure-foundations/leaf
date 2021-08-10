@@ -1274,7 +1274,7 @@ Proof.
 Qed.
 
 Lemma initialize_normal'
-  {𝜇: BurrowCtx} {R M: Type}
+  {𝜇: BurrowCtx} {M: Type}
     `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
     `{m_hastpcm: !HasTPCM 𝜇 M}
   (m: M) p

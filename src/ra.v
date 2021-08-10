@@ -340,3 +340,99 @@ Proof.
   - repeat (rewrite unit_dot). trivial.
   - iFrame. done.
 Qed.
+
+Lemma FrameExchangeWithBorrow
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    𝛼 𝜅 𝛾 (m m' : M) (f f' z: R)
+    (exchange_cond: borrow_exchange_cond ref z m f m' f')
+    : A 𝜅 -∗ L (extend_loc 𝛼 ref 𝛾) f -∗ L 𝛾 m -∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z ==∗
+      A 𝜅  ∗ L (extend_loc 𝛼 ref 𝛾) f' ∗ L 𝛾 m' ∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z.
+Proof.
+  iIntros "A F L B".
+  unfold A, L, B.
+  iDestruct "B" as (rstate) "[B %h]". destruct_ands.
+  iCombine "A F" as "AF".
+  iMod (own_update_3 _ _ _ _ (
+    ((active 𝜅 : BurrowState 𝜇) ⋅ live' (extend_loc 𝛼 ref 𝛾) f' ⋅ rstate ⋅ live' 𝛾 m')
+  ) with "AF B L") as "X".
+  - rewrite cmra_discrete_update.
+    intros. apply borrow_exchange' with (m0:=m) (z1:=z) (f0:=f); trivial.
+  - rewrite own_op. rewrite own_op. rewrite own_op. iDestruct "X" as "[[[A L] B] L2]".
+    iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+Qed.
+
+Definition normal_exchange_cond
+    {R} `{!EqDecision R, !TPCM R}
+    {M} `{!EqDecision M, !TPCM M}
+    (ref: Refinement R M) (m:M) (f:R) (m':M) (f':R) :=
+  ∀ p ,
+  rel_defined R M ref (dot f p) ->
+      rel_defined R M ref (dot f' p)
+      /\ mov
+            (dot m (rel R M ref (dot f p)))
+            (dot m' (rel R M ref (dot f' p))).
+
+Lemma FrameExchange
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    𝛼 𝛾 (m m' : M) (f f': R)
+    (exchange_cond: normal_exchange_cond ref m f m' f')
+    : L (extend_loc 𝛼 ref 𝛾) f -∗ L 𝛾 m ==∗
+      L (extend_loc 𝛼 ref 𝛾) f' ∗ L 𝛾 m'.
+Proof.
+  iIntros "Lf L".
+  iMod (L_unit (extend_loc 𝛼 ref 𝛾)) as "U".
+  iMod (BorrowBegin with "U") as (𝜅) "[A [R B]]".
+  iMod (FrameExchangeWithBorrow ref 𝛼 𝜅 𝛾 m m' f f' unit with "A Lf L B") as "[A [Lf [L B]]]".
+  - unfold normal_exchange_cond in exchange_cond. unfold borrow_exchange_cond.
+      repeat (rewrite unit_dot). trivial.
+  - iModIntro. iFrame.
+Qed.
+
+Lemma InitializeExt 
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    (𝛾: BurrowLoc 𝜇) (m: M) (f: R)
+    (is_rel_def: rel_defined R M ref f)
+    (is_rel: rel R M ref f = m)
+    : L 𝛾 m ==∗ ∃ 𝛼 , L (extend_loc 𝛼 ref 𝛾) f.
+Proof.
+  iIntros "L". unfold L.
+  iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛼 , a' = live' (extend_loc 𝛼 ref 𝛾) f) with "L") as "T".
+  - rewrite cmra_discrete_updateP. intros.
+    have j := initialize_ext' ref 𝛾 m f z is_rel_def is_rel H.
+    have j0 := j HasTPCM1 hr. deex.
+    intros. exists (live' (extend_loc 𝛼 ref 𝛾) f). split; trivial.
+    exists 𝛼. trivial.
+  - iDestruct "T" as (a') "[%E T]".
+    deex. destruct_ands. subst a'.
+    iModIntro. iExists 𝛼.
+    iFrame.
+Qed.
+
+Lemma InitializeNormal
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (m: M)
+    (is_val: m_valid m)
+    : ⊢ |==> ∃ 𝛾 , L 𝛾 m.
+Proof.
+  iIntros. unfold L.
+  iMod (own_unit _ (gen_burrow_name hG)) as "U".
+  iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛾 , a' = live' 𝛾 m) with "U") as "T".
+  - rewrite cmra_discrete_updateP. intros.
+    have j := initialize_normal' m z is_val.
+    have j0 := j HasTPCM0.
+    setoid_rewrite state_comm in H.
+    setoid_rewrite op_state_unit in H.
+    have j1 := j0 H. deex.
+    exists (live' 𝛾 m). split; trivial. exists 𝛾. trivial.
+  - iDestruct "T" as (a') "[%E T]".
+    deex. subst a'.
+    iModIntro. iExists 𝛾.
+    iFrame.
+Qed.
+
