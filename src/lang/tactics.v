@@ -1,5 +1,5 @@
 From stdpp Require Import fin_maps.
-From iris_simp_lang Require Import lang.
+From BurrowLang Require Import lang.
 From iris Require Import options.
 
 (*|

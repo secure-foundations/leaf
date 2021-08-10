@@ -1,4 +1,4 @@
-From iris_simp_lang Require Import notation tactics.
+From BurrowLang Require Import notation tactics.
 From iris.prelude Require Import options.
 
 (*|

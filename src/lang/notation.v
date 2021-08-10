@@ -1,5 +1,5 @@
 From stdpp Require Export binders strings.
-From iris_simp_lang Require Export lang.
+From BurrowLang Require Export lang.
 From iris Require Import options.
 
 (*|
