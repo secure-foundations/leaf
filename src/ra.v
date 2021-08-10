@@ -158,6 +158,8 @@ Lemma ActiveJoin 𝜅1 𝜅2
 Proof.
   unfold A. unfold lifetime_intersect.
   rewrite <- own_op.
+  setoid_rewrite active_additive. trivial.
+Qed.
 
 (* TPCM-Valid *)
 
@@ -172,6 +174,8 @@ Proof.
   iPureIntro.
   apply (live_implies_valid' _ _ H).
 Qed.
+
+(* BorrowValid *)
 
 Lemma LiveAndBorrowValid
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -272,6 +276,8 @@ Proof. unfold A, R, L.
   - done.
 Qed.
 
+(* BorrowDupe *)
+
 Lemma DupeB
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m : M)
@@ -291,7 +297,30 @@ Proof.
       + iExists rstate. iFrame. iPureIntro. split; trivial.
 Qed.
 
-Lemma BorrowLifetimeInclusion
+(* BorrowDupe *)
+
+Lemma BorrowSub
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (a b : M)
+     : B 𝜅 𝛾 (dot a b) ⊢ B 𝜅 𝛾 a.
+Proof.
+  unfold B. iIntros "B".
+  iDestruct "B" as (rstate) "[B %h]". destruct_ands.
+  iExists rstate. iFrame. iPureIntro. split; trivial.
+  apply is_borrow_weaken' with (b0 := b). trivial.
+Qed.
+
+(* LifetimeInclusion *)
+
+Lemma LifetimeInclusion (lt1 lt2 : Lifetime)
+  : lifetime_included (lifetime_intersect lt1 lt2) lt1.
+Proof.
+  unfold lifetime_included, lifetime_intersect. apply multiset_le_add.
+Qed.
+
+(* BorrowShorten *)
+
+Lemma BorrowShorten
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     𝜅 𝜅' 𝛾 (m: M) (state: BurrowState 𝜇)
     (li: lifetime_included 𝜅' 𝜅)
@@ -301,6 +330,8 @@ Proof. iIntros "T". unfold B.
   iExists rstate. iFrame. iPureIntro. split; trivial.
   apply borrow_lifetime_inclusion' with (𝜅0:=𝜅); trivial.
 Qed.
+
+(* BorrowCombine *)
 
 Lemma BorrowCombine
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -317,6 +348,8 @@ Proof.
    - apply borrow_nonseparating_conjunction' with (a0:=a) (b0:=b); trivial.
    - apply no_live_op; trivial.
 Qed.
+
+(* Ext-BorrowBack *)
 
 Lemma BorrowBack
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -354,6 +387,23 @@ Proof. iIntros "T". unfold B.
   apply borrow_back_right' with (𝛾3:=𝛾1) (m3:=m1); trivial.
 Qed.
 
+(* ProductBorrow *)
+
+Lemma BorrowBackBoth
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2 : BurrowLoc 𝜇) (m1 : M) (m2 : N) 𝜅
+  : B 𝜅 (cross_loc 𝛾1 𝛾2) (m1, m2) ⊢ B 𝜅 𝛾1 m1 ∗ B 𝜅 𝛾2 m2.
+Proof.
+  iIntros "B".
+  iDestruct (DupeB with "B") as "[B1 B2]".
+  iDestruct (BorrowBackLeft with "B1") as "B1".
+  iDestruct (BorrowBackRight with "B2") as "B2".
+  iFrame.
+Qed.
+
+(* BorrowFrameUpdate *)
+
 Lemma FrameUpdateWithBorrow
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     𝜅 𝛾 (m z m' : M)
@@ -388,6 +438,8 @@ Proof.
   - iFrame. done.
 Qed.
 
+(* Ext-Exchange-Borrow *)
+
 Lemma FrameExchangeWithBorrow
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
@@ -421,6 +473,8 @@ Definition normal_exchange_cond
             (dot m (rel R M ref (dot f p)))
             (dot m' (rel R M ref (dot f' p))).
 
+(* Ext-Exchange *)
+
 Lemma FrameExchange
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
@@ -438,6 +492,8 @@ Proof.
       repeat (rewrite unit_dot). trivial.
   - iModIntro. iFrame.
 Qed.
+
+(* Ext-Init *)
 
 Lemma InitializeExt 
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -516,6 +572,8 @@ Proof.
     intros. apply swap_cross_right'; trivial.
   - rewrite own_op. iFrame. done.
 Qed.
+
+(* Product *)
 
 Lemma CrossJoin
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}

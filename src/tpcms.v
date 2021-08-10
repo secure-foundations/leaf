@@ -1359,3 +1359,14 @@ Lemma is_borrow_unit'
   : is_borrow' lt loc (unit: M) state_unit.
 Proof. unfold is_borrow'. unfold mu_embed. rewrite unit_embed. apply is_borrow_unit.
 Qed.
+
+Lemma is_borrow_weaken'
+  {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  𝜅 𝛾 (a b: M) state
+  : is_borrow' 𝜅 𝛾 (dot a b) state -> is_borrow' 𝜅 𝛾 a state.
+Proof.
+  intros. unfold is_borrow' in *.
+  rewrite mu_embed_dot in H.
+  apply is_borrow_weaken with (b0 := mu_embed M 𝜇 b). trivial.
+Qed.
+

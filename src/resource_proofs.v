@@ -331,6 +331,21 @@ Lemma active_empty_unit
   : active empty_lifetime ≡ state_unit.
 Proof.
   unfold active, state_unit. trivial. Qed.
+  
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow (a . b) -> borrow a *)
+
+Lemma is_borrow_weaken kappa gamma (a b: M) state
+  : is_borrow kappa gamma (dot a b) state -> is_borrow kappa gamma a state.
+Proof.
+  intros. unfold is_borrow in *. destruct state. unfold lmap_is_borrow in *.
+  intros.
+  have h := H pl H0 y H1 H2.
+  unfold tpcm_le in *. deex. exists (dot b c). rewrite tpcm_assoc. trivial.
+Qed.
     
 (****************************************************************)
 (****************************************************************)
