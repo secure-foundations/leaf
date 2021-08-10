@@ -5,6 +5,8 @@ From BurrowLang Require Import notation tactics class_instances.
 From BurrowLang Require Import heap_ra.
 From iris Require Import options.
 
+Require Import Burrow.ra.
+
 (*|
 This is one of the most interesting parts of the instantiation. Now that we have
 a syntax and semantics, we want a program logic. There's exactly one more thing
@@ -59,15 +61,15 @@ them in `adequacy.v`.
 |*)
 
 
-Class simpGS Σ := SimpGS {
+Class simpGS 𝜇 Σ := SimpGS {
   simp_invG : invGS Σ;
-  simp_gen_heapG :> gen_heapGS loc val Σ;
+  simp_gen_heapG :> gen_heapGS loc val 𝜇 Σ;
 }.
 
 (* Observe that this instance assumes [simpGS Σ], which already has a fixed ghost
 name for the heap ghost state. We'll see in adequacy.v how to obtain a [simpGS Σ]
 after allocating that ghost state. *)
-Global Instance simpG_irisG `{!simpGS Σ} : irisGS simp_lang Σ := {
+Global Instance simpG_irisG `{!simpGS 𝜇 Σ} : irisGS simp_lang Σ := {
   iris_invG := simp_invG;
   state_interp σ _ κs _ := (gen_heap_interp σ.(heap))%I;
   fork_post _ := True%I;
@@ -79,13 +81,15 @@ Global Instance simpG_irisG `{!simpGS Σ} : irisGS simp_lang Σ := {
   state_interp_mono _ _ _ _ := fupd_intro _ _
 }.
 
-Notation "l ↦{ dq } v" := (mapsto l dq v)
-  (at level 20, format "l  ↦{ dq }  v") : bi_scope.
-Notation "l ↦ v" := (mapsto l (DfracOwn 1) v)
-  (at level 20, format "l  ↦  v") : bi_scope.
+Notation "p $↦ v" := (cmapsto p v)
+  (at level 20, format "p  $↦  v").
+Notation "p ↦ v" := (mapsto p v)
+  (at level 20, format "p  ↦  v") : bi_scope.
+Notation "p &{ k }↦ v" := (bmapsto k p v)
+  (at level 20, format "p  &{ k }↦  v") : bi_scope.
 
 Section lifting.
-Context `{!simpGS Σ}.
+Context `{!simpGS 𝜇 Σ}.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ Ψ : val → iProp Σ.
 Implicit Types efs : list expr.
@@ -115,14 +119,26 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
-Lemma wp_load s E l dq v :
-  {{{ l ↦{dq} v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; l ↦{dq} v }}}.
+Lemma wp_load s E l v :
+  {{{ l ↦ v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; l ↦ v }}}.
 Proof.
   iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+Qed.
+
+Lemma wp_load_borrow s E l v 𝜅 :
+  {{{ A 𝜅 ∗ l &{𝜅}↦ v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; A 𝜅 ∗ l &{𝜅}↦ v }}}.
+Proof.
+  iIntros (Φ) "[Ha Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid_borrow with "Hσ Ha Hl") as %?.
+  iSplit; first by eauto with head_step.
+  iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
+  iModIntro; iSplit=> //. iFrame.
+  iCombine "Ha Hl" as "H".
+  by iApply "HΦ".
 Qed.
 
 Lemma wp_store s E l v w :

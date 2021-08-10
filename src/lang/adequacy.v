@@ -2,6 +2,12 @@ From iris.program_logic Require Export adequacy.
 From BurrowLang Require Import simp heap_ra.
 From iris.prelude Require Import options.
 
+Require Import Tpcms.auth_frag.
+Require Import Tpcms.gmap.
+Require Import Tpcms.heap.
+Require Import Burrow.ra.
+Require Import Burrow.tpcms.
+
 (*|
 ===========
 Adequacy
@@ -32,20 +38,23 @@ ghost name and associated state.
 
 (** These assumptions are just functors in Σ, unlike simpGS which also has a
 ghost name. *)
-Class simpGpreS Σ := SimpPreG {
+Class simpGpreS 𝜇 Σ := SimpPreG {
   simp_preG_iris :> invGpreS Σ;
-  simp_preG_heap :> gen_heapGpreS loc val Σ;
+  simp_preG_heap :> gen_heapGpreS loc val 𝜇 Σ;
 }.
 
-Definition simpΣ : gFunctors :=
-  #[invΣ; gen_heapΣ loc val].
+Definition simpΣ 𝜇 `{!HasTPCM 𝜇 (AuthFrag (gmap loc (option val)))} : gFunctors :=
+  #[invΣ; gen_heapΣ loc val 𝜇].
 
-Global Instance subG_heapGpreS {Σ} : subG simpΣ Σ → simpGpreS Σ.
+Global Instance subG_heapGpreS {𝜇} `{!HasTPCM 𝜇 (AuthFrag (gmap loc (option val)))} {Σ}
+    : subG (simpΣ 𝜇) Σ → simpGpreS 𝜇 Σ.
 Proof. solve_inG. Qed.
 
-Definition simp_adequacy Σ `{!simpGpreS Σ}
+Definition simp_adequacy Σ
+            {𝜇} `{!HasTPCM 𝜇 (AuthFrag (gmap loc (option val)))}
+            `{!simpGpreS 𝜇 Σ}
            (s: stuckness) (e: expr) (σ: state) (φ: val → Prop) :
-  (∀ (simpGS0: simpGS Σ), ⊢ WP e @ s; ⊤ {{ v, ⌜φ v⌝ }}) →
+  (∀ (simpGS0: simpGS 𝜇 Σ), ⊢ WP e @ s; ⊤ {{ v, ⌜φ v⌝ }}) →
   adequate s e σ (λ (v: val) _, φ v).
 Proof.
   intros Hwp; eapply (wp_adequacy _ _); iIntros (??) "".
@@ -53,7 +62,7 @@ Proof.
   iModIntro. iExists
     (λ σ κs, (gen_heap_interp σ.(heap))%I),
     (λ _, True%I).
-  iFrame. iApply (Hwp (SimpGS _ _ _)).
+  iFrame. iApply (Hwp (SimpGS _ _ _ _)).
 Qed.
 
 (*|

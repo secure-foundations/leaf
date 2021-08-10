@@ -16,6 +16,7 @@ src/burrow/ra.v
 
 src/tpcms/gmap.v
 src/tpcms/auth_frag.v
+src/tpcms/heap.v
 
 -Q src/lang BurrowLang
 

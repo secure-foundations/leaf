@@ -13,7 +13,7 @@ tactics like `wp_rec` and `wp_let` and such, while `wp_bind` is what powers
 `wp_apply`.
 |*)
 
-Lemma tac_wp_expr_eval `{!simpGS Σ} Δ s E Φ e e' :
+Lemma tac_wp_expr_eval `{!simpGS 𝜇 Σ} Δ s E Φ e e' :
   (∀ (e'':=e'), e = e'') →
   envs_entails Δ (WP e' @ s; E {{ Φ }}) → envs_entails Δ (WP e @ s; E {{ Φ }}).
 Proof. by intros ->. Qed.
@@ -28,7 +28,7 @@ Tactic Notation "wp_expr_eval" tactic3(t) :=
   end.
 Ltac wp_expr_simpl := wp_expr_eval simpl.
 
-Lemma tac_wp_pure `{!simpGS Σ} Δ Δ' s E K e1 e2 φ n Φ :
+Lemma tac_wp_pure `{!simpGS 𝜇 Σ} Δ Δ' s E K e1 e2 φ n Φ :
   PureExec φ n e1 e2 →
   φ →
   MaybeIntoLaterNEnvs n Δ Δ' →
@@ -41,11 +41,11 @@ Proof.
   rewrite HΔ' -lifting.wp_pure_step_later //.
 Qed.
 
-Lemma tac_wp_value_nofupd `{!simpGS Σ} Δ s E Φ v :
+Lemma tac_wp_value_nofupd `{!simpGS 𝜇 Σ} Δ s E Φ v :
   envs_entails Δ (Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
 Proof. rewrite envs_entails_eq=> ->. by apply wp_value. Qed.
 
-Lemma tac_wp_value `{!simpGS Σ} Δ s E (Φ : val → iPropI Σ) v :
+Lemma tac_wp_value `{!simpGS 𝜇 Σ} Δ s E (Φ : val → iPropI Σ) v :
   envs_entails Δ (|={E}=> Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
 Proof. rewrite envs_entails_eq=> ->. by rewrite wp_value_fupd. Qed.
 
@@ -133,7 +133,7 @@ Tactic Notation "wp_proj" := wp_pure (Fst _) || wp_pure (Snd _).
 Tactic Notation "wp_pair" := wp_pure (Pair _ _).
 Tactic Notation "wp_closure" := wp_pure (Rec _ _ _).
 
-Lemma tac_wp_bind `{!simpGS Σ} K Δ s E Φ e f :
+Lemma tac_wp_bind `{!simpGS 𝜇 Σ} K Δ s E Φ e f :
   f = (λ e, fill K e) → (* as an eta expanded hypothesis so that we can `simpl` it *)
   envs_entails Δ (WP e @ s; E {{ v, WP f (Val v) @ s; E {{ Φ }} }})%I →
   envs_entails Δ (WP fill K e @ s; E {{ Φ }}).
@@ -165,15 +165,15 @@ Convenience tactics
 
 (** Heap tactics *)
 Section heap.
-Context `{!simpGS Σ}.
+Context `{!simpGS 𝜇 Σ}.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ : val → iProp Σ.
 Implicit Types Δ : envs (uPredI (iResUR Σ)).
 Implicit Types (l: loc) (v : val) (z : Z).
 
-Lemma tac_wp_load Δ Δ' s E i K b (l: loc) q v Φ :
+Lemma tac_wp_load Δ Δ' s E i K b (l: loc) v Φ :
   MaybeIntoLaterNEnvs 1 Δ Δ' →
-  envs_lookup i Δ' = Some (b, l ↦{q} v)%I →
+  envs_lookup i Δ' = Some (b, l ↦ v)%I →
   envs_entails Δ' (WP fill K (Val v) @ s; E {{ Φ }}) →
   envs_entails Δ (WP fill K (Load (LitV l)) @ s; E {{ Φ }}).
 Proof.
@@ -214,7 +214,7 @@ Tactic Notation "wp_apply" open_constr(lem) :=
 
 Tactic Notation "wp_load" :=
   let solve_mapsto _ :=
-    let l := match goal with |- _ = Some (_, (?l ↦{_} _)%I) => l end in
+    let l := match goal with |- _ = Some (_, (?l ↦ _)%I) => l end in
     iAssumptionCore || fail "wp_load: cannot find" l "↦ ?" in
   wp_pures;
   lazymatch goal with

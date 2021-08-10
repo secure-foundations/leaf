@@ -38,7 +38,6 @@ precondition. See primitive_laws.v for where that happens.
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Print HasTPCM.
 Class gen_heapGpreS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} := {
   gen_burrow_pre_inG :> @gen_burrowGpreS 𝜇 Σ;
   gen_heapGpreS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap P (option V)));
@@ -151,7 +150,6 @@ Section gen_heap.
     iDestruct (LiveValid_2 with "Hσ Hl") as "%va".
     iPureIntro.
     unfold cmapsto_def in va.
-    Print auth_frag_agree.
     apply auth_frag_agree with (EqDecision0 := EqDecision0). trivial.
   Qed.
   
@@ -162,7 +160,6 @@ Section gen_heap.
     iDestruct (LiveAndBorrowValid with "A Hσ Hl") as "%va".
     iPureIntro.
     unfold cmapsto_def in va.
-    Print auth_frag_agree.
     apply auth_frag_agree with (EqDecision0 := EqDecision0). trivial.
   Qed.
 
