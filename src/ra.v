@@ -222,8 +222,7 @@ Proof. unfold A, R, L.
   iIntros "[H1 [H2 %H3]]". 
   iCombine "H1" "H2" as "H".
   iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live' 𝛾 m) with "H") as "$".
-  - have h := cmra_discrete_update.
-    rewrite cmra_discrete_update.
+  - rewrite cmra_discrete_update.
     intro. apply borrow_expire'. trivial.
   - done.
 Qed.
@@ -245,4 +244,99 @@ Proof.
       iSplitL "S".
       + iExists rstate. iFrame. iPureIntro. split; trivial.
       + iExists rstate. iFrame. iPureIntro. split; trivial.
+Qed.
+
+Lemma BorrowLifetimeInclusion
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝜅 𝜅' 𝛾 (m: M) (state: BurrowState 𝜇)
+    (li: lifetime_included 𝜅' 𝜅)
+    : B 𝜅 𝛾 m ⊢ B 𝜅' 𝛾 m.
+Proof. iIntros "T". unfold B.
+  iDestruct "T" as (rstate) ["[T %h]"]. destruct_ands.
+  iExists rstate. iFrame. iPureIntro. split; trivial.
+  apply borrow_lifetime_inclusion' with (𝜅0:=𝜅); trivial.
+Qed.
+
+Lemma BorrowCombine
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝜅 𝛾 (a b c: M)
+    (abcr: ∀ r , m_valid r -> tpcm_le a r -> tpcm_le b r -> tpcm_le c r)
+    : B 𝜅 𝛾 a ∗ B 𝜅 𝛾 b ⊢ B 𝜅 𝛾 c.
+Proof.
+ unfold B.
+ iIntros "[S T]".
+  iDestruct "S" as (rstate1) ["[S %h]"]. destruct_ands.
+  iDestruct "T" as (rstate2) ["[T %h]"]. destruct_ands.
+  iCombine "S" "T" as "S".
+  iExists (rstate1 ⋅ rstate2). iFrame. iPureIntro. split.
+   - apply borrow_nonseparating_conjunction' with (a0:=a) (b0:=b); trivial.
+   - apply no_live_op; trivial.
+Qed.
+
+Lemma BorrowBack
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
+    (ref: Refinement R M) `{hr: !HasRef 𝜇 ref}
+    𝛼 𝛾 f m 𝜅
+    (bbcond : ∀ p: R, rel_defined R M ref (dot f p) ->
+        tpcm_le m (rel R M ref (dot f p)))
+    : B 𝜅 (extend_loc 𝛼 ref 𝛾) f ⊢ B 𝜅 𝛾 m.
+Proof. iIntros "T". unfold B.
+  iDestruct "T" as (rstate) ["[T %h]"]. destruct_ands.
+  iExists rstate. iFrame. iPureIntro. split; trivial.
+  apply borrow_back' with (ref0 := ref) (hr0 := hr) (𝛼0 := 𝛼) (f0 := f); trivial.
+Qed.
+
+Lemma BorrowBackLeft
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2 : BurrowLoc 𝜇) (m1 : M) (m2 : N) 𝜅
+  : B 𝜅 (cross_loc 𝛾1 𝛾2) (m1, m2) ⊢ B 𝜅 𝛾1 m1.
+Proof. iIntros "T". unfold B.
+  iDestruct "T" as (rstate) ["[T %h]"]. destruct_ands.
+  iExists rstate. iFrame. iPureIntro. split; trivial.
+  apply borrow_back_left' with (𝛾4:=𝛾2) (m4:=m2); trivial.
+Qed.
+
+Lemma BorrowBackRight
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2 : BurrowLoc 𝜇) (m1 : M) (m2 : N) 𝜅
+  : B 𝜅 (cross_loc 𝛾1 𝛾2) (m1, m2) ⊢ B 𝜅 𝛾2 m2.
+Proof. iIntros "T". unfold B.
+  iDestruct "T" as (rstate) ["[T %h]"]. destruct_ands.
+  iExists rstate. iFrame. iPureIntro. split; trivial.
+  apply borrow_back_right' with (𝛾3:=𝛾1) (m3:=m1); trivial.
+Qed.
+
+Lemma FrameUpdateWithBorrow
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝜅 𝛾 (m z m' : M)
+    (exchange_cond: mov (dot m z) (dot m' z))
+    : A 𝜅 -∗ L 𝛾 m -∗ B 𝜅 𝛾 z ==∗ A 𝜅 ∗ L 𝛾 m' ∗ B 𝜅 𝛾 z.
+Proof.
+  iIntros "A L B".
+  unfold A, L, B.
+  iDestruct "B" as (rstate) "[B %h]". destruct_ands.
+  iMod (own_update_3 _ _ _ _ (
+    ((active 𝜅 : BurrowState 𝜇) ⋅ live' 𝛾 m' ⋅ rstate)
+  ) with "A L B") as "X".
+  - rewrite cmra_discrete_update.
+    intros. apply borrow_exchange_normal' with (m0:=m) (z1:=z); trivial.
+  - rewrite own_op. rewrite own_op. iDestruct "X" as "[[A L] B]".
+    iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+Qed.
+
+Lemma FrameUpdate
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝛾 (m m' : M)
+    (exchange_cond: mov m m')
+    : L 𝛾 m ==∗ L 𝛾 m'.
+Proof.
+  iIntros "L".
+  iMod (L_unit 𝛾) as "U".
+  iMod (BorrowBegin with "U") as (𝜅) "[A [R B]]".
+  iMod (FrameUpdateWithBorrow 𝜅 𝛾 m unit m' with "A L B") as "[A [L B]]".
+  - repeat (rewrite unit_dot). trivial.
+  - iFrame. done.
 Qed.

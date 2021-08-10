@@ -1134,7 +1134,7 @@ Proof.
 Qed.
 
 Lemma borrow_exchange_normal'
-  {𝜇: BurrowCtx} {R M: Type}
+  {𝜇: BurrowCtx} {M: Type}
     `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
     `{m_hastpcm: !HasTPCM 𝜇 M}
       b 𝜅 𝛾 (m z m' : M) (p: BurrowState 𝜇)
