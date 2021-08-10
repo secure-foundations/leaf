@@ -115,6 +115,8 @@ Proof. unfold CmraTotal. intros. unfold pcore, cmra_pcore, burrowR, state_pcore.
   unfold is_Some. exists state_unit. trivial.
 Qed.
 
+(* TPCM-Compose *)
+
 Lemma L_op
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (m n: M)
@@ -125,12 +127,50 @@ Proof.
   apply own_op.
 Qed.
 
+(* TPCM-Unit *)
+
 Lemma L_unit
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    M `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     𝛾
   : ⊢ |==> L 𝛾 (unit: M).
 Proof.
   unfold L. setoid_rewrite live_unit'. apply own_unit.
+Qed.
+
+(* BorrowUnit *)
+
+Lemma B_unit
+    M `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝜅 𝛾
+  : ⊢ |==> B 𝜅 𝛾 (unit: M).
+Proof.
+  iIntros. unfold B.
+  iMod (own_unit _ (gen_burrow_name hG)) as "U".
+  iModIntro. iExists state_unit. iFrame. iPureIntro. split.
+  - apply is_borrow_unit'.
+  - apply state_no_live_unit.
+Qed.
+
+(* ActiveJoin *)
+
+Lemma ActiveJoin 𝜅1 𝜅2
+  : A (lifetime_intersect 𝜅1 𝜅2) ⊣⊢ A (𝜅1) ∗ A(𝜅2).
+Proof.
+  unfold A. unfold lifetime_intersect.
+  rewrite <- own_op.
+
+(* TPCM-Valid *)
+
+Lemma LiveValid
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m : M)
+  : L 𝛾 m  ⊢ ⌜ m_valid m ⌝.
+Proof.
+  unfold L.
+  iIntros "L".
+  iDestruct (own_valid with "L") as "%H". 
+  iPureIntro.
+  apply (live_implies_valid' _ _ H).
 Qed.
 
 Lemma LiveAndBorrowValid
@@ -147,6 +187,7 @@ Proof.
   apply (live_and_borrow_implies_valid' _ _ _ _ _ H0 H).
 Qed.
 
+(* helper for BorrowBegin *)
 Lemma BorrowBegin_1
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (m : M)
@@ -199,6 +240,8 @@ Proof.
   - apply is_borrow_reserved'.
   - apply state_no_live_reserved'.
 Qed.
+
+(* BorrowBegin *)
   
 Lemma BorrowBegin
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -213,6 +256,8 @@ Proof.
   iDestruct (R_to_B with "Z") as "Z".
   iModIntro. iExists 𝜅. iFrame.
 Qed.
+
+(* BorrowExpire *)
 
 Lemma BorrowExpire
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -327,6 +372,8 @@ Proof.
     iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
 Qed.
 
+(* TPCM-FrameUpdate *)
+
 Lemma FrameUpdate
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     𝛾 (m m' : M)
@@ -334,7 +381,7 @@ Lemma FrameUpdate
     : L 𝛾 m ==∗ L 𝛾 m'.
 Proof.
   iIntros "L".
-  iMod (L_unit 𝛾) as "U".
+  iMod (L_unit M 𝛾) as "U".
   iMod (BorrowBegin with "U") as (𝜅) "[A [R B]]".
   iMod (FrameUpdateWithBorrow 𝜅 𝛾 m unit m' with "A L B") as "[A [L B]]".
   - repeat (rewrite unit_dot). trivial.
@@ -384,7 +431,7 @@ Lemma FrameExchange
       L (extend_loc 𝛼 ref 𝛾) f' ∗ L 𝛾 m'.
 Proof.
   iIntros "Lf L".
-  iMod (L_unit (extend_loc 𝛼 ref 𝛾)) as "U".
+  iMod (L_unit R (extend_loc 𝛼 ref 𝛾)) as "U".
   iMod (BorrowBegin with "U") as (𝜅) "[A [R B]]".
   iMod (FrameExchangeWithBorrow ref 𝛼 𝜅 𝛾 m m' f f' unit with "A Lf L B") as "[A [Lf [L B]]]".
   - unfold normal_exchange_cond in exchange_cond. unfold borrow_exchange_cond.
@@ -414,6 +461,8 @@ Proof.
     iFrame.
 Qed.
 
+(* TPCM-Alloc *)
+
 Lemma InitializeNormal
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (m: M)
@@ -434,5 +483,65 @@ Proof.
     deex. subst a'.
     iModIntro. iExists 𝛾.
     iFrame.
+Qed.
+
+Lemma SwapCrossLeft
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2: BurrowLoc 𝜇) (m m1: M) (m2 : N)
+    : L 𝛾1 m -∗ L (cross_loc 𝛾1 𝛾2) (m1, m2) ==∗
+      L 𝛾1 m1 ∗ L (cross_loc 𝛾1 𝛾2) (m, m2).
+Proof.
+  iIntros "L C". unfold L.
+  iMod (own_update_2 _ _ _ (
+    (live' 𝛾1 m1 ⋅ live' (cross_loc 𝛾1 𝛾2) (m, m2))
+  ) with "L C") as "X".
+  - rewrite cmra_discrete_update.
+    intros. apply swap_cross_left'; trivial.
+  - rewrite own_op. iFrame. done.
+Qed.
+
+Lemma SwapCrossRight
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2: BurrowLoc 𝜇) (m: N) (m1: M) (m2 : N)
+    : L 𝛾2 m -∗ L (cross_loc 𝛾1 𝛾2) (m1, m2) ==∗
+      L 𝛾2 m2 ∗ L (cross_loc 𝛾1 𝛾2) (m1, m).
+Proof.
+  iIntros "L C". unfold L.
+  iMod (own_update_2 _ _ _ (
+    (live' 𝛾2 m2 ⋅ live' (cross_loc 𝛾1 𝛾2) (m1, m))
+  ) with "L C") as "X".
+  - rewrite cmra_discrete_update.
+    intros. apply swap_cross_right'; trivial.
+  - rewrite own_op. iFrame. done.
+Qed.
+
+Lemma CrossJoin
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2: BurrowLoc 𝜇) (m: M) (n: N)
+    : L 𝛾1 m -∗ L 𝛾2 n ==∗ L (cross_loc 𝛾1 𝛾2) (m, n).
+Proof.
+  iIntros "m n".
+  iMod (L_unit (M * N) (cross_loc 𝛾1 𝛾2)) as "P".
+  unfold unit, pair_tpcm.
+  iMod (SwapCrossLeft 𝛾1 𝛾2 m unit unit with "m P") as "[m P]".
+  iMod (SwapCrossRight 𝛾1 𝛾2 n m unit with "n P") as "[n P]".
+  iModIntro. iFrame.
+Qed.
+
+Lemma CrossSplit
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2: BurrowLoc 𝜇) (m: M) (n: N)
+    : L (cross_loc 𝛾1 𝛾2) (m, n) ==∗ L 𝛾1 m ∗ L 𝛾2 n.
+Proof.
+  iIntros "P".
+  iMod (L_unit M 𝛾1) as "m".
+  iMod (L_unit N 𝛾2) as "n".
+  iMod (SwapCrossLeft 𝛾1 𝛾2 unit m n with "m P") as "[m P]".
+  iMod (SwapCrossRight 𝛾1 𝛾2 unit unit n with "n P") as "[n P]".
+  iModIntro. iFrame.
 Qed.
 

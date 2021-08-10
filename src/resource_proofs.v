@@ -289,6 +289,48 @@ Proof.
   - rewrite lookup_singleton_ne; trivial. rewrite lookup_empty. unfold triv_cell.
     apply cell_equiv_refl.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* active(k1) . active(k2) = active(k1 . k2) *)
+
+Lemma active_additive (lt1 lt2: Lifetime)
+  : active (multiset_add lt1 lt2) ≡ active lt1 ⋅ active lt2.
+Proof.
+  unfold active, "⋅", state_op. unfold "≡", state_equiv. split; trivial.
+  unfold lmaps_equiv. intros. unfold "⋅", lmap_op, lmap_lookup.
+  rewrite lookup_merge. unfold diag_None. rewrite lookup_empty. trivial.
+Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* borrow(kappa, gamma, unit) is unit *)
+
+Lemma is_borrow_unit (lt: Lifetime) (loc: Loc RI)
+  : is_borrow lt loc unit state_unit.
+Proof. unfold is_borrow. unfold state_unit. unfold lmap_is_borrow.
+  intros. apply unit_le. Qed.
+  
+Lemma cell_live_cell_of_pl_as_tree_empty
+  pl : cell_live (cell_of_pl (as_tree ∅) pl) = unit. Admitted.
+  
+Lemma state_no_live_unit
+  : state_no_live state_unit.
+Proof.
+  unfold state_no_live, state_unit. split; trivial. unfold lmap_no_live.
+  unfold branch_no_live. intros.
+  unfold as_tree. rewrite map_fold_empty.
+  apply cell_live_cell_of_pl_as_tree_empty.
+Qed.
+
+Lemma active_empty_unit
+  : active empty_lifetime ≡ state_unit.
+Proof.
+  unfold active, state_unit. trivial. Qed.
     
 (****************************************************************)
 (****************************************************************)
@@ -422,6 +464,28 @@ Proof.
   have res := valid_monotonic _ _ elem_is_val.
   trivial.
 Qed.
+
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(****************************************************************)
+(* live(gamma, m) --> valid m *)
+
+Lemma live_implies_valid (gamma: Loc RI) (m: M)
+    (isv: ✓(live gamma m))
+    : m_valid m.
+Proof.
+  rewrite <- unit_dot.
+  apply live_and_borrow_implies_valid with (gamma := gamma) (kappa := empty_lifetime) (b := state_unit).
+  - apply is_borrow_unit.
+  - setoid_rewrite op_state_unit.
+    setoid_rewrite active_empty_unit.
+    setoid_rewrite state_comm.
+    setoid_rewrite op_state_unit.
+    trivial.
+Qed.
+
+(**** exchange stuff ****)
 
 Definition borrow_exchange_cond
     {R} `{!EqDecision R, !TPCM R}

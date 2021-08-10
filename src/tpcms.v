@@ -913,6 +913,18 @@ Proof.
   apply live_and_borrow_implies_valid with (gamma:=𝛾) (kappa:=𝜅) (b0:=b); trivial.
 Qed.
 
+Lemma live_implies_valid'
+    {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m : M)
+    (isv: ✓(live' 𝛾 m))
+    : m_valid m.
+Proof.
+  unfold live' in isv. 
+  apply m_valid_of_m_valid_mu_embed with (𝜇:=𝜇) (HasTPCM0:=HasTPCM0).
+  unfold mu_embed in *.
+  apply live_implies_valid with (gamma:=𝛾); trivial.
+Qed.
+
 Lemma borrow_begin'
     {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (m : M) (p : BurrowState 𝜇)
@@ -1340,3 +1352,10 @@ Lemma is_borrow_reserved'
   {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
   𝜅 𝛾 m : is_borrow' 𝜅 𝛾 m (reserved' 𝜅 𝛾 m).
 Proof. unfold reserved', is_borrow'. apply is_borrow_reserved. Qed.
+
+Lemma is_borrow_unit'
+  {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (lt: Lifetime) (loc: BurrowLoc 𝜇)
+  : is_borrow' lt loc (unit: M) state_unit.
+Proof. unfold is_borrow'. unfold mu_embed. rewrite unit_embed. apply is_borrow_unit.
+Qed.
