@@ -63,6 +63,6 @@ Global Instance gmap_tpcm : TPCM (gmap K (option V)) := {
         rewrite <- gmap_dot_assoc.
         rewrite <- gmap_dot_assoc.
         apply H.
-Qed.
+Defined.
 
 End GmapTPCM.

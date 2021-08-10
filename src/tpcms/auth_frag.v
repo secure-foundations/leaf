@@ -4,8 +4,6 @@ From stdpp Require Import gmap.
 Require Import Burrow.CpdtTactics.
 Require Import coq_tricks.Deex.
 
-Section AuthFragTPCM.
-
 Inductive AuthFrag (M: Type) :=
   | AF : option (option M) -> M -> AuthFrag M
 .
@@ -77,6 +75,10 @@ Global Instance af_tpcm M `{!EqDecision M} `{!TPCM M} : TPCM (AuthFrag M) := {
       rewrite <- af_dot_assoc.
       rewrite <- af_dot_assoc.
       apply H.
-Qed.
+Defined.
 
-End AuthFragTPCM.
+Definition auth {M} `{!EqDecision M} `{!TPCM M} (m: M) :=
+    AF (Some (Some m)) unit.
+    
+Definition frag {M} `{!EqDecision M} `{!TPCM M} (m: M) :=
+    AF None m.

@@ -87,6 +87,17 @@ Global Instance subG_gen_burrowGpreS {Σ} :
   subG (gen_burrowΣ) Σ → gen_burrowGpreS Σ.
 Proof. solve_inG. Qed.
 
+Lemma state_valid_state_unit : state_valid (state_unit : BurrowState 𝜇). Admitted.
+
+Lemma gen_burrow_init {Σ: gFunctors} `{!gen_burrowGpreS Σ}
+   : ⊢ |==> ∃ _ : gen_burrowGS Σ, ( ⌜ True ⌝ : iProp Σ ).
+Proof.
+  iIntros.
+  iMod (own_alloc (state_unit : BurrowState 𝜇)) as (γ) "Hσ".
+  - apply state_valid_state_unit.
+  - iExists (GenBurrowGS Σ γ). done.
+Qed.
+   
 Context `{hG : !gen_burrowGS Σ}.
 
 Definition L
@@ -128,6 +139,12 @@ Proof.
   setoid_rewrite <- live_dot_live'.
   apply own_op.
 Qed.
+
+Lemma L_join
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m n: M)
+  : L 𝛾 m -∗ L 𝛾 n -∗ L 𝛾 (dot m n).
+Proof. rewrite L_op. trivial. iIntros. iFrame. Qed.
 
 (* TPCM-Unit *)
 
@@ -177,15 +194,26 @@ Proof.
   apply (live_implies_valid' _ _ H).
 Qed.
 
+Lemma LiveValid_2
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m1 m2 : M)
+  : L 𝛾 m1 -∗ L 𝛾 m2 -∗ ⌜ m_valid (dot m1 m2) ⌝.
+Proof.
+  iIntros "L1 L2".
+  iDestruct (L_join with "L1 L2") as "L".
+  iDestruct (LiveValid with "L") as "L".
+  iFrame.
+Qed.
+
 (* BorrowValid *)
 
 Lemma LiveAndBorrowValid
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
-  : A 𝜅 ∗ L 𝛾 m ∗ B 𝜅 𝛾 k ⊢ ⌜ m_valid (dot m k) ⌝.
+  : A 𝜅 -∗ L 𝛾 m -∗ B 𝜅 𝛾 k -∗ ⌜ m_valid (dot m k) ⌝.
 Proof.
   unfold A, L, B.
-  iIntros "[H1 [H2 H3]]".
+  iIntros "H1 H2 H3".
   iDestruct "H3" as (rstate) "[H4 %H5]".
   iDestruct (own_valid_3 with "H1 H2 H4") as "%H". 
   iPureIntro.

@@ -4,9 +4,11 @@ From iris.prelude Require Import options.
 
 Require Import Burrow.ra.
 Require Import Burrow.tpcms.
+Require Import Burrow.rollup.
 
 Require Import Tpcms.auth_frag.
 Require Import Tpcms.gmap.
+Require Import Tpcms.heap.
 
 (*|
 ========
@@ -36,29 +38,34 @@ precondition. See primitive_laws.v for where that happens.
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapGpreS (L V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{Countable L} := {
-  gen_burrow_inG :> @gen_burrowGpreS 𝜇 Σ;
-  gen_heapGpreS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap L V));
-  (*gen_heapGpreS_inG :> inG Σ (gmap_viewR L (leibnizO V));*)
+Print HasTPCM.
+Class gen_heapGpreS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} := {
+  gen_burrow_pre_inG :> @gen_burrowGpreS 𝜇 Σ;
+  gen_heapGpreS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap P (option V)));
 }.
 
-Class gen_heapGS (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
-  gen_heap_inG :> gen_heapGpreS L V Σ;
-  gen_heap_name : gname;
+Class gen_heapGS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} := GenHeapGS {
+  (*gen_heap_inG :> gen_heapGpreS P V 𝜇 Σ;*)
+  gen_burrow_inG :> @gen_burrowGS 𝜇 Σ;
+  gen_heapGS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap P (option V)));
+  gen_heap_name : BurrowLoc 𝜇;
 }.
-Global Arguments GenHeapGS L V Σ {_ _ _} _ : assert.
-Global Arguments gen_heap_name {L V Σ _ _} _ : assert.
+Global Arguments GenHeapGS P V 𝜇 Σ {_ _ _ _ _} _ : assert.
+Global Arguments gen_heap_name {P V 𝜇 Σ _ _ _} _ : assert.
 
-Definition gen_heapΣ (L V : Type) `{Countable L} : gFunctors := #[
-  GFunctor (gmap_viewR L (leibnizO V))
+Definition gen_heapΣ (P V : Type) (𝜇: BurrowCtx) `{Countable P} `{EqDecision V}
+    `{HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}
+    : gFunctors := #[
+  @gen_burrowΣ 𝜇
 ].
 
-Global Instance subG_gen_heapGpreS {Σ L V} `{Countable L} :
-  subG (gen_heapΣ L V) Σ → gen_heapGpreS L V Σ.
+Global Instance subG_gen_heapGpreS {𝜇 Σ P V} `{Countable P} `{EqDecision V}
+    `{!HasTPCM 𝜇 (AuthFrag (gmap P (option V)))} :
+  subG (gen_heapΣ P V 𝜇) Σ → gen_heapGpreS P V 𝜇 Σ.
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{Countable L, hG : !gen_heapGS L V Σ}.
+  Context `{!EqDecision V, Countable P, hG : !gen_heapGS P V 𝜇 Σ}.
 
 (*|
 These two definitions are the key idea behind the state interpretation.
@@ -68,35 +75,48 @@ the state interpretation and are owned by threads. `l ↦ v` will be notation fo
 `mapsto`, with a full 1 fraction.
 |*)
 
-  Definition gen_heap_interp (σ : gmap L V) : iProp Σ :=
-    own (gen_heap_name hG) (gmap_view_auth 1 (σ : gmap L (leibnizO V))).
-
-  Definition mapsto_def (l : L) (dq : dfrac) (v: V) : iProp Σ :=
-    own (gen_heap_name hG) (gmap_view_frag l dq (v : leibnizO V)).
-  Definition mapsto_aux : seal (@mapsto_def). Proof. by eexists. Qed.
-  Definition mapsto := mapsto_aux.(unseal).
-  Definition mapsto_eq : @mapsto = @mapsto_def := mapsto_aux.(seal_eq).
+  Definition gen_heap_interp (σ : gmap P V) : iProp Σ :=
+    L (gen_heap_name hG) (auth (map_somes σ)).
+    
+  Definition cmapsto_def (p : P) (v: V) : HeapT P V :=
+    frag ({[ p := Some v ]} : gmap P (option V)).
+    
+  Definition cmapsto_aux : seal (@cmapsto_def). Proof. by eexists. Qed.
+  Definition cmapsto := cmapsto_aux.(unseal).
+  Definition cmapsto_eq : @cmapsto = @cmapsto_def := cmapsto_aux.(seal_eq).
+  
 End definitions.
 
-Notation "l ↦{ dq } v" := (mapsto l dq v)
-  (at level 20, format "l  ↦{ dq }  v") : bi_scope.
-Notation "l ↦ v" := (mapsto l (DfracOwn 1) v)
-  (at level 20, format "l  ↦  v") : bi_scope.
+Notation "p $↦ v" := (cmapsto p v)
+  (at level 20, format "p  $↦  v").
+  
+Section definitions2.
+  Context `{!EqDecision V, Countable P, hG : !gen_heapGS P V 𝜇 Σ}.
+  
+  Definition mapsto (p: P) (v: V) := L (gen_heap_name hG) (p $↦ v).
+  Definition bmapsto (𝜅: Lifetime) (p: P) (v: V) := B 𝜅 (gen_heap_name hG) (p $↦ v).
+End definitions2.
+
+Notation "p ↦ v" := (mapsto p v)
+  (at level 20, format "p  ↦  v") : bi_scope.
+Notation "p &{ k }↦ v" := (bmapsto k p v)
+  (at level 20, format "p  &{ k }↦  v") : bi_scope.
 
 Section gen_heap.
-  Context {L V} `{Countable L, !gen_heapGS L V Σ}.
+  Context {P V} `{!EqDecision V} `{Countable P, !gen_heapGS P V 𝜇 Σ}.
   Implicit Types (P Q : iProp Σ).
   Implicit Types (Φ : V → iProp Σ).
-  Implicit Types (σ : gmap L V) (l : L) (v : V).
+  Implicit Types (σ : gmap P V) (l : P) (v : V).
 
   (** General properties of mapsto *)
-  Global Instance mapsto_timeless l dq v : Timeless (l ↦{dq} v).
-  Proof. rewrite mapsto_eq. apply _. Qed.
+  Global Instance mapsto_timeless l v : Timeless (l ↦ v).
+  Proof. unfold mapsto. rewrite cmapsto_eq. apply _. Qed.
 
+  (*
   Lemma mapsto_valid_2 l dq1 dq2 v1 v2 : l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ ⌜✓ (dq1 ⋅ dq2) ∧ v1 = v2⌝.
   Proof.
     rewrite mapsto_eq. iIntros "H1 H2".
-    iDestruct (own_valid_2 with "H1 H2") as %[??]%gmap_view_frag_op_valid_L.
+    iDestruct (own_valid_2 with "H1 H2") as %[??]%gmap_view_frag_op_valid_P.
     auto.
   Qed.
   (** Almost all the time, this is all you really need. *)
@@ -106,43 +126,68 @@ Section gen_heap.
     iDestruct (mapsto_valid_2 with "H1 H2") as %[_ ?].
     done.
   Qed.
+  *)
 
   (** Update lemmas *)
   Lemma gen_heap_alloc σ l v :
     σ !! l = None →
     gen_heap_interp σ ==∗ gen_heap_interp (<[l:=v]>σ) ∗ l ↦ v.
   Proof.
-    iIntros (Hσl). rewrite /gen_heap_interp mapsto_eq /mapsto_def /=.
+    iIntros (Hσl). rewrite /gen_heap_interp /mapsto cmapsto_eq /cmapsto_def /=.
     iIntros "Hσ".
-    iMod (own_update with "Hσ") as "[Hσ Hl]".
-    { eapply (gmap_view_alloc _ l (DfracOwn 1)); done. }
-    iModIntro. iFrame.
+    rewrite <- L_op.
+    iMod (FrameUpdate _ _
+        (dot (auth (map_somes (<[l:=v]> σ))) (frag {[l := Some v]}))
+    with "Hσ") as "Hσ".
+    - rewrite map_somes_insert. apply heapt_alloc.
+        rewrite lookup_fmap. unfold "<$>", option_fmap, option_map. rewrite Hσl. trivial.
+    - iModIntro. iFrame.
   Qed.
 
-  Lemma gen_heap_valid σ l dq v : gen_heap_interp σ -∗ l ↦{dq} v -∗ ⌜σ !! l = Some v⌝.
+  Lemma gen_heap_valid σ l v : gen_heap_interp σ -∗ l ↦ v -∗ ⌜σ !! l = Some v⌝.
   Proof.
     iIntros "Hσ Hl".
-    rewrite /gen_heap_interp mapsto_eq.
-    by iDestruct (own_valid_2 with "Hσ Hl") as %[??]%gmap_view_both_valid_L.
+    rewrite /gen_heap_interp /mapsto cmapsto_eq.
+    iDestruct (LiveValid_2 with "Hσ Hl") as "%va".
+    iPureIntro.
+    unfold cmapsto_def in va.
+    Print auth_frag_agree.
+    apply auth_frag_agree with (EqDecision0 := EqDecision0). trivial.
+  Qed.
+  
+  Lemma gen_heap_valid_borrow σ 𝜅 l v : gen_heap_interp σ -∗ A 𝜅 -∗ l &{𝜅}↦ v -∗ ⌜σ !! l = Some v⌝.
+  Proof.
+    iIntros "Hσ A Hl".
+    rewrite /gen_heap_interp /bmapsto cmapsto_eq.
+    iDestruct (LiveAndBorrowValid with "A Hσ Hl") as "%va".
+    iPureIntro.
+    unfold cmapsto_def in va.
+    Print auth_frag_agree.
+    apply auth_frag_agree with (EqDecision0 := EqDecision0). trivial.
   Qed.
 
   Lemma gen_heap_update σ l v1 v2 :
     gen_heap_interp σ -∗ l ↦ v1 ==∗ gen_heap_interp (<[l:=v2]>σ) ∗ l ↦ v2.
   Proof.
     iIntros "Hσ Hl".
-    rewrite /gen_heap_interp mapsto_eq /mapsto_def.
-    iDestruct (own_valid_2 with "Hσ Hl") as %[_ Hl]%gmap_view_both_valid_L.
-    iMod (own_update_2 with "Hσ Hl") as "[Hσ Hl]".
-    { eapply gmap_view_update. }
-    iModIntro. iFrame.
+    iDestruct (gen_heap_valid with "Hσ Hl") as "%va".
+    rewrite /gen_heap_interp /mapsto cmapsto_eq /cmapsto_def.
+    iDestruct (L_join with "Hσ Hl") as "H".
+    iMod (FrameUpdate _ _ (
+      dot (auth (map_somes (<[l:=v2]> σ))) (frag {[l := Some v2]})  
+    ) with "H") as "H".
+    - apply auth_frag_update. trivial.
+    - rewrite L_op. iModIntro. iFrame.
   Qed.
 End gen_heap.
 
-Lemma gen_heap_init `{Countable L, !gen_heapGpreS L V Σ} σ :
-  ⊢ |==> ∃ _ : gen_heapGS L V Σ, gen_heap_interp σ.
+Lemma gen_heap_init `{EqDecision V, Countable P, !gen_heapGpreS P V 𝜇 Σ} σ :
+  ⊢ |==> ∃ _ : gen_heapGS P V 𝜇 Σ, gen_heap_interp σ.
 Proof.
-  iMod (own_alloc (gmap_view_auth 1 (σ : gmap L (leibnizO V)))) as (γ) "Hσ".
-  { exact: gmap_view_auth_valid.  }
-  iExists (GenHeapGS _ _ _ γ).
-  done.
+  iIntros.
+  iMod (gen_burrow_init) as (gb) "gbi".
+  iMod (InitializeNormal (auth (map_somes σ))) as (𝛾) "H".
+  - apply auth_map_somes.
+  - iExists (GenHeapGS P V 𝜇 Σ 𝛾).
+    unfold gen_heap_interp. unfold gen_heap_name. iModIntro. done.
 Qed.
