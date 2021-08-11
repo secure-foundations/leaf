@@ -357,11 +357,14 @@ Proof.
   setoid_rewrite op_state_unit.
   apply state_inv_state_unit.
 Qed.
+
+Lemma build_op (i: Loc RI) (x y: Cell M) : build i (x ⋅ y) ≡ build i x ⋅ build i y.
+Admitted.
   
 Lemma as_tree_op (a b: lmap M RI)
     : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
-Proof. unfold as_tree.
-    symmetry.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  unfold as_tree. symmetry.
   apply map_fold_merge.
   - intros. setoid_rewrite branch_op_comm. apply op_trivial_branch.
       unfold branch_trivial. trivial.
@@ -381,7 +384,11 @@ Proof. unfold as_tree.
       setoid_replace (build i x ⋅ s) with (s ⋅ build i x).
       + setoid_rewrite <- branch_op_assoc.
         setoid_replace ((build i x ⋅ build i y)) with (build i z); trivial.
-        Admitted.
+        unfold cell_op_opt in H. inversion H. subst z.
+        setoid_rewrite build_op. trivial.
+      + apply branch_op_comm.
+  - intros. solve_assoc_comm.
+Qed.
 
 (****************************************************************)
 (****************************************************************)
@@ -469,8 +476,17 @@ Lemma is_borrow_unit (lt: Lifetime) (loc: Loc RI)
 Proof. unfold is_borrow. unfold state_unit. unfold lmap_is_borrow.
   intros. apply unit_le. Qed.
   
+Lemma cell_of_pl_BranchNil (pl: PathLoc)
+  : cell_of_pl (BranchNil : Branch M) pl ≡ triv_cell.
+Admitted.
+  
 Lemma cell_live_cell_of_pl_as_tree_empty
-  pl : cell_live (cell_of_pl (as_tree ∅) pl) = unit. Admitted.
+  pl : cell_live (cell_of_pl (as_tree ∅) pl) = unit.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  setoid_rewrite as_tree_empty.
+  setoid_rewrite cell_of_pl_BranchNil.
+  unfold cell_live, triv_cell. trivial.
+Qed.
   
 Lemma state_no_live_unit
   : state_no_live state_unit.
