@@ -13,19 +13,21 @@ Context `{!Symmetric ((≡) : M -> M -> Prop)}.
 Context `{!Reflexive ((≡) : M -> M -> Prop)}.
 Context `{!Proper ((≡) ==> (≡) ==> (≡)) (op: M -> M -> M)}.
 
-
 Lemma do_comm (a b : M)
-  : (a ⋅ b) ≡ (b ⋅ a). Admitted.
+  : (a ⋅ b) ≡ (b ⋅ a). apply Comm0. Qed.
   
 Lemma do_assoc (a b c : M)
-  : (a ⋅ (b ⋅ c)) ≡ ((a ⋅ b) ⋅ c). Admitted.
+  : (a ⋅ (b ⋅ c)) ≡ ((a ⋅ b) ⋅ c). apply Assoc0. Qed.
 
 Lemma comm2 (a b c : M)
   : (a ⋅ b) ⋅ c ≡ (a ⋅ c) ⋅ b.
-  Admitted.
+Proof. setoid_rewrite <- do_assoc.
+  setoid_replace (b ⋅ c) with (c ⋅ b) by (apply do_comm).
+  trivial. Qed.
   
 Lemma from_r (a b x : M)
-  : a ≡ b -> (a ⋅ x) ≡ (b ⋅ x). Admitted.
+  : a ≡ b -> (a ⋅ x) ≡ (b ⋅ x).
+Proof. intro. setoid_rewrite H. trivial. Qed.
   
 Lemma from_1 (a b x : M)
   : a ≡ b -> (x ⋅ a) ≡ (b ⋅ x).
@@ -33,39 +35,62 @@ Proof. intro. setoid_rewrite H. apply do_comm. Qed.
 
 Lemma from_2_r (a b a1 b1 x : M)
   : (a1 ⋅ a) ≡ (b1 ⋅ b) -> ((a1 ⋅ x) ⋅ a) ≡ ((b1 ⋅ b) ⋅ x).
-Admitted.
+Proof. intro.
+  setoid_replace (a1 ⋅ x ⋅ a) with (a1 ⋅ a ⋅ x) by (apply comm2).
+  apply from_r. trivial. Qed.
 
 Lemma from_2_l (a b a1 b1 x : M)
   : (a1 ⋅ a) ≡ (b1 ⋅ b) -> ((x ⋅ a1) ⋅ a) ≡ ((b1 ⋅ b) ⋅ x).
-Admitted.
+Proof. intro.
+  setoid_replace (x ⋅ a1) with (a1 ⋅ x) by (apply do_comm).
+  apply from_2_r. trivial.
+Qed.
 
 Lemma from_3_r (a b a1 b1 a2 b2 x : M)
   : ((a2 ⋅ a1) ⋅ a) ≡ ((b2 ⋅ b1) ⋅ b) -> ((a2 ⋅ x) ⋅ a1) ⋅ a ≡ ((b2 ⋅ b1) ⋅ b) ⋅ x.
-Admitted.
+Proof. intro.
+  setoid_replace (a2 ⋅ x ⋅ a1) with (a2 ⋅ a1 ⋅ x) by (apply comm2).
+  apply from_2_r. trivial.
+Qed.
 
 Lemma from_3_l (a b a1 b1 a2 b2 x : M)
   : ((a2 ⋅ a1) ⋅ a) ≡ ((b2 ⋅ b1) ⋅ b) -> ((x ⋅ a2) ⋅ a1) ⋅ a ≡ ((b2 ⋅ b1) ⋅ b) ⋅ x.
-Admitted.
+Proof. intro.
+  setoid_replace (x ⋅ a2) with (a2 ⋅ x) by (apply do_comm).
+  apply from_3_r. trivial.
+Qed.
 
 Lemma from_4_r (a b a1 b1 a2 b2 a3 b3 x : M)
-  : a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a3 ⋅ b2 ⋅ b1 ⋅ b
+  : a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b3 ⋅ b2 ⋅ b1 ⋅ b
     -> a3 ⋅ x ⋅ a2 ⋅ a1 ⋅ a ≡ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
-Admitted.
+Proof. intro.
+  setoid_replace (a3 ⋅ x ⋅ a2) with (a3 ⋅ a2 ⋅ x) by (apply comm2).
+  apply from_3_r. trivial.
+Qed.
 
 Lemma from_4_l (a b a1 b1 a2 b2 a3 b3 x : M)
-  : a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a3 ⋅ b2 ⋅ b1 ⋅ b
+  : a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b3 ⋅ b2 ⋅ b1 ⋅ b
     -> x ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
-Admitted.
+Proof. intro.
+  setoid_replace (x ⋅ a3) with (a3 ⋅ x) by (apply do_comm).
+  apply from_4_r. trivial.
+Qed.
 
-Lemma from_5_l (a b a1 b1 a2 b2 a3 b3 a4 a5 x : M)
-  : a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a4 ⋅ a3 ⋅ b2 ⋅ b1 ⋅ b
-    -> a4 ⋅ x ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
-Admitted.
+Lemma from_5_r (a b a1 b1 a2 b2 a3 b3 a4 b4 x : M)
+  : a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b
+    -> a4 ⋅ x ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
+Proof. intro.
+  setoid_replace (a4 ⋅ x ⋅ a3) with (a4 ⋅ a3 ⋅ x) by (apply comm2).
+  apply from_4_r. trivial.
+Qed.
 
-Lemma from_5_r (a b a1 b1 a2 b2 a3 b3 a4 a5 x : M)
-  : a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a4 ⋅ a3 ⋅ b2 ⋅ b1 ⋅ b
-    -> x ⋅ a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ a4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
-Admitted.
+Lemma from_5_l (a b a1 b1 a2 b2 a3 b3 a4 b4 x : M)
+  : a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b
+    -> x ⋅ a4 ⋅ a3 ⋅ a2 ⋅ a1 ⋅ a ≡ b4 ⋅ b3 ⋅ b2 ⋅ b1 ⋅ b ⋅ x.
+Proof. intro.
+  setoid_replace (x ⋅ a4) with (a4 ⋅ x) by (apply do_comm).
+  apply from_5_r. trivial.
+Qed.
 
 End CommAssocTac.
 
