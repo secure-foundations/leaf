@@ -43,3 +43,9 @@ Proof. induction i.
     + right. deex. exists k. lia.
     + left. deex. exists (k+1). lia.
 Qed.
+
+Lemma eq_of_even_get_eq (x y : nat)
+  : (even_get x = even_get y) -> x = y. Admitted.
+  
+Lemma eq_of_odd_get_eq (x y : nat)
+  : (odd_get x = odd_get y) -> x = y. Admitted.

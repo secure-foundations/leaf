@@ -456,18 +456,52 @@ Definition ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) :=
   
 Definition ic_right {M} `{!EqDecision M} `{!TPCM M} (b : InfiniteCopies M) :=
   (ic_key_opt_map odd_get b).
+  
+Lemma ic_get_ic_key_opt_map `{!EqDecision M} `{!TPCM M}
+    (fn: nat -> option nat) (m: InfiniteCopies M) (x y: nat)
+    (x_eq: fn y = Some x)
+    (inj: ∀ x y , fn x = fn y -> x = y)
+  : ic_get (ic_key_opt_map fn m) x = ic_get m y. Admitted.
+  
+Lemma ic_get_ic_key_opt_map_unit `{!EqDecision M} `{!TPCM M}
+    (fn: nat -> option nat) (m: InfiniteCopies M) (x: nat)
+    (inj: ∀ y , fn y ≠ Some x)
+  : ic_get (ic_key_opt_map fn m) x = unit. Admitted.
 
 Lemma ic_get_ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
-  : ic_get (ic_left a) i = ic_get a (2 * i). Admitted.
+  : ic_get (ic_left a) i = ic_get a (2 * i).
+Proof.
+  unfold ic_left. apply ic_get_ic_key_opt_map.
+    - unfold even_get. rewrite parity_2i. trivial.
+    - intros. apply eq_of_even_get_eq. trivial.
+Qed.
   
 Lemma ic_get_ic_right {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
-  : ic_get (ic_right a) i = ic_get a (2 * i + 1). Admitted.
+  : ic_get (ic_right a) i = ic_get a (2 * i + 1).
+Proof.
+  unfold ic_right. apply ic_get_ic_key_opt_map.
+    - unfold odd_get. rewrite parity_2i_1. trivial.
+    - intros. apply eq_of_odd_get_eq. trivial.
+Qed.
   
 Lemma ic_get_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) (i: nat)
   : ic_get (ic_pair a b) i = match parity i with
     | Even k => ic_get a k
     | Odd k => ic_get b k
-    end. Admitted.
+    end.
+Proof.
+  have eoe := even_or_odd i. destruct eoe; deex; subst i.
+  - rewrite parity_2i. unfold ic_pair. rewrite ic_get_ic_dot.
+    replace (ic_get a k) with (dot (ic_get a k) unit) by (rewrite unit_dot; trivial).
+    f_equal.
+    + unfold ic_key_map. apply ic_get_ic_key_opt_map; trivial. intros. crush.
+    + unfold ic_key_map. apply ic_get_ic_key_opt_map_unit. crush.
+  - rewrite parity_2i_1. unfold ic_pair. rewrite ic_get_ic_dot.
+    replace (ic_get b k) with (dot unit (ic_get b k)) by (rewrite unit_dot_left; trivial).
+    f_equal.
+    + unfold ic_key_map. apply ic_get_ic_key_opt_map_unit. crush.
+    + unfold ic_key_map. apply ic_get_ic_key_opt_map; trivial. intros. crush.
+Qed.
 
 Lemma ic_left_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M)
   : ic_left (ic_pair a b) = a.
@@ -663,20 +697,36 @@ Proof. intros. unfold m_valid, ic_tpcm in *. intros.
 Qed.
 
 Lemma ic_left_ic_dot `{!EqDecision M} `{!TPCM M} (a b: InfiniteCopies M)
-    : ic_left (ic_dot a b) = ic_dot (ic_left a) (ic_left b). Admitted.
+    : ic_left (ic_dot a b) = ic_dot (ic_left a) (ic_left b).
+Proof. apply ic_extens. intro. rewrite ic_get_ic_left. rewrite ic_get_ic_dot.
+    rewrite ic_get_ic_dot. rewrite ic_get_ic_left. rewrite ic_get_ic_left.
+    trivial. Qed.
     
 Lemma ic_right_ic_dot `{!EqDecision M} `{!TPCM M} (a b: InfiniteCopies M)
-    : ic_right (ic_dot a b) = ic_dot (ic_right a) (ic_right b). Admitted.
+    : ic_right (ic_dot a b) = ic_dot (ic_right a) (ic_right b).
+Proof. apply ic_extens. intro. rewrite ic_get_ic_right. rewrite ic_get_ic_dot.
+    rewrite ic_get_ic_dot. rewrite ic_get_ic_right. rewrite ic_get_ic_right.
+    trivial. Qed.
     
 Lemma ic_pair_ic_dot `{!EqDecision M} `{!TPCM M} (a b c d: InfiniteCopies M)
     : ic_pair (ic_dot a b) (ic_dot c d)
-    = ic_dot (ic_pair a c) (ic_pair b d). Admitted.
+    = ic_dot (ic_pair a c) (ic_pair b d).
+Proof. apply ic_extens. intro. rewrite ic_get_ic_pair. rewrite ic_get_ic_dot.
+    rewrite ic_get_ic_pair. rewrite ic_get_ic_pair. destruct (parity i).
+    - rewrite ic_get_ic_dot. trivial.
+    - rewrite ic_get_ic_dot. trivial.
+Qed.
     
 Lemma mov_ic_get_of_mov `{!EqDecision M} `{!TPCM M} a b (k: nat)
-  : mov a b -> mov (ic_get a k) (ic_get b k). Admitted.
+  : mov a b -> mov (ic_get a k) (ic_get b k).
+Proof. intro. unfold mov, ic_tpcm, ic_mov in H. apply H. Qed.
 
 Lemma ic_pair_unit `{!EqDecision M} `{!TPCM M}
-  : ic_pair unit unit = unit. Admitted.
+  : ic_pair unit unit = unit.
+Proof.
+  apply ic_extens. intro. rewrite ic_get_ic_pair.
+  destruct (parity i); repeat (rewrite ic_get_ic_unit); trivial.
+Qed.
 
 #[refine]
 Local Instance ic_tpcm_embed_two (M N B: Type)
