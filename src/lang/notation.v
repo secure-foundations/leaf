@@ -56,6 +56,8 @@ Notation "e1 <- e2" := (Store e1%E e2%E) (at level 80) : expr_scope.
 
 Notation "e1 + e2" := (BinOp PlusOp e1%E e2%E) : expr_scope.
 
+Definition op_eq e1 e2 := BinOp EqOp e1 e2.
+
 (* The breaking point '/  ' makes sure that the body of the rec is indented
 by two spaces in case the whole rec does not fit on a single line. *)
 Notation "'rec:' f x := e" := (Rec f%binder x%binder e%E)
