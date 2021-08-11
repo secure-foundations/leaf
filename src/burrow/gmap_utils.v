@@ -184,8 +184,8 @@ Qed.
 (*Print elements_disj_union.
 Lemma set_fold_disj_union `{EqDecision A, Countable A} {B}
     (f : A → B → B) (b : B) (X Y : gset A) : 
-  (*Comm (=) f →
-  Assoc (=) f →*)
+  Comm (=) f →
+  Assoc (=) f →
   X ## Y →
   set_fold f b (X ∪ Y) = set_fold f (set_fold f b X) Y.                                              
 Proof.
@@ -193,8 +193,7 @@ Proof.
   apply foldr_permutation.
   rewrite elements_disj_union.
   by rewrite elements_disj_union. <- foldr_app, (comm (++)).
-Qed.
-*)
+Qed.*)
 
 Lemma set_subset_relate `{FinSet A T} {B} {C}
   (R : B -> C -> Prop)

@@ -182,14 +182,14 @@ Lemma umbrella_closed_umbrella a : umbrella_is_closed (umbrella a).
 Proof. unfold umbrella_is_closed. unfold umbrella. intros. apply le_add_right_side. trivial.
 Qed.
 
-Lemma umbrella_closed_conjoin um1 um2 : umbrella_is_closed um1 -> umbrella_is_closed um2 ->
+Lemma umbrella_closed_conjoin um1 um2 :
+  umbrella_is_closed um1 ->
     umbrella_is_closed (conjoin_umbrella um1 um2).
 Proof. unfold umbrella_is_closed. unfold conjoin_umbrella. intros.
-  destruct H1. destruct H1. destruct H1. destruct H2. exists x. exists (dot x0 b). split.
-    - trivial.
-    - split.
-      + apply H0. trivial.
-      + rewrite <- H3. apply tpcm_assoc.
+  deex. destruct_ands. subst. exists (dot x b). exists y.
+  repeat split; trivial.
+  - apply H. trivial.
+  - apply dot_comm_right2.
 Qed.
 
 Lemma sum_reserved_over_lifetime_monotonic (g: listset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
@@ -294,7 +294,14 @@ Proof. unfold cell_view. unfold conjoin_reserved_over_lifetime.
   - apply umbrella_closed_umbrella_unit.
   - intros. apply umbrella_closed_conjoin.
     + trivial.
-    + apply umbrella_closed_umbrella.
+Qed.
+
+Lemma cell_view_closed (c: Cell M) x y lt
+  : cell_view c lt y -> cell_view c lt (dot x y).
+Proof. intro. unfold cell_view in *. destruct c.
+  have j := conjoin_reserved_over_lifetime_is_closed l lt.
+  unfold umbrella_is_closed in j.
+  rewrite tpcm_comm. apply j. trivial.
 Qed.
 
 Lemma cell_view_le_total (cell: Cell M) (lt: Lifetime) (active: Lifetime)
@@ -643,7 +650,8 @@ Qed.
 Global Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
 Global Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
 
-Global Instance branch_equiv_preorder : PreOrder branch_equiv. Admitted.
+Global Instance branch_equiv_preorder : PreOrder branch_equiv.
+Proof. split; typeclasses eauto. Defined.
 
 (*
 Lemma state_equiv_trans (state1: State M) (state2: State M) (state3: State M)
@@ -923,6 +931,24 @@ Lemma cell_total_of_equiv (cell1: Cell M) (cell2: Cell M) (lifetime: Lifetime)
 Proof. destruct cell1, cell2. unfold cell_equiv in *. unfold cell_total.
     destruct eq. setoid_rewrite H0. rewrite H. trivial.
 Qed.
+
+Lemma cell_view_le_op (c c1: Cell M) y lt
+  : cell_view (c ⋅ c1) lt y -> cell_view c lt y.
+Proof. intro. unfold cell_view in *. destruct c, c1. unfold "⋅", cell_op in H.
+  unfold conjoin_reserved_over_lifetime in *.
+  have j := conjoin_reserved_over_lifetime_is_closed l lt.
+  unfold umbrella_is_closed in j.
+  apply ( set_subset_relate (λ (b c: M -> Prop) , ∀ (x: M) , c x -> b x) l (l ∪ l0)
+    (λ (reserved : Lifetime * M) (um : M → Prop),
+           conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt)))
+    (λ (reserved : Lifetime * M) (um : M → Prop),
+       conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt)))
+    umbrella_unit umbrella_unit
+  ).
+  - trivial.
+  - set_solver.
+  - intros. apply conjoin_umbrella_monotonic with (a := c) (b := (umbrella (reserved_get_or_unit a lt))); trivial.
+  - intros. apply H0. unfold conjoin_umbrella in H1. deex. Admitted.
 
 Context (refs: nat -> Refinement M M).
 
@@ -1427,14 +1453,46 @@ Proof.
   + intro. unfold branch_view. intro. trivial.
 Qed.
 
-Lemma node_view_le a b lt y : node_view (a ⋅ b) lt y -> node_view a lt y.
-Admitted.
+Lemma node_view_le a b lt y : node_view (a ⋅ b) lt y -> node_view a lt y
+with branch_view_le a b lt i y : branch_view (a ⋅ b) lt i y -> branch_view a lt i y.
+Proof.
+  - intro. destruct a, b.
+    have IHb := branch_view_le b0 b lt 0. clear node_view_le. clear branch_view_le.
+    unfold "⋅", cell_op, node_op in H.
+    rewrite node_view_rewrite.
+    rewrite node_view_rewrite in H.
+    apply conjoin_umbrella_monotonic
+        with (a := cell_view (c ⋅ c0) lt) (b := branch_view (b0 ⋅ b) lt 0); trivial.
+    + intros. eapply cell_view_le_op. apply H0.
+  - intro. destruct a, b.
+    + have IHb := branch_view_le a b lt (S i). clear branch_view_le.
+      have IHn := node_view_le n n0 lt. clear node_view_le.
+      rewrite branch_view_rewrite.
+      rewrite branch_view_rewrite in H. unfold "⋅", branch_op in H.
+      apply conjoin_umbrella_monotonic
+        with (a := (project_fancy i (node_view (n ⋅ n0) lt)))
+        (b := (branch_view (a ⋅ b) lt (S i))); trivial.
+      apply project_fancy_preserves_inclusion. trivial. 
+    + unfold "⋅", branch_op in H. trivial.
+    + unfold "⋅", branch_op. unfold branch_view, umbrella_unit. trivial.
+    + unfold "⋅", branch_op. unfold branch_view, umbrella_unit. trivial.
+Qed.
 
 Lemma node_view_le2 a lt y z : node_view a lt y -> node_view a lt (dot y z).
-Admitted.
+Proof. rewrite node_view_rewrite. destruct a.
+  have t := umbrella_closed_conjoin (cell_view c lt) (branch_view b lt 0).
+  unfold umbrella_is_closed in t. apply t.
+  intros. rewrite tpcm_comm. apply cell_view_closed. trivial.
+Qed.
 
 Lemma cell_view_of_node_view node lt y :
-  node_view node lt y -> cell_view (cell_of_node node) lt y. Admitted.
+  node_view node lt y -> cell_view (cell_of_node node) lt y.
+Proof. destruct node. unfold cell_of_node. rewrite node_view_rewrite.
+  intro.
+  unfold conjoin_umbrella in H. deex. destruct_ands.
+  subst y. rewrite tpcm_comm.
+  eapply cell_view_closed. trivial.
+Qed.
 
 End RollupRA.
 
