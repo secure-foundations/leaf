@@ -42,19 +42,35 @@ Proof. solve_decision. Defined.
 
 Global Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.
 
-Definition nat_of_extstep {RI} `{!EqDecision RI, !Countable RI} (alpha:nat) (ri: RI) : nat.
-Admitted.
+Inductive StepDesc (RI: Type) `{!EqDecision RI, !Countable RI} :=
+  | SDBase : nat -> StepDesc RI
+  | SDExt : nat -> RI -> StepDesc RI
+  | SDLeft : Loc RI -> StepDesc RI
+  | SDRight : Loc RI -> StepDesc RI
+.
+(*Arguments SDBase {_}%type_scope {EqDecision0 Countable0} _%nat_scope.*)
+Arguments SDExt {_}%type_scope {EqDecision0 Countable0} _%nat_scope _.
+Arguments SDLeft {_}%type_scope {EqDecision0 Countable0} _.
+Arguments SDRight {_}%type_scope {EqDecision0 Countable0} _.
 
-Definition nat_of_basestep RI `{!EqDecision RI, !Countable RI} (alpha:nat) : nat.
-Admitted.
+Global Instance stepdesc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (StepDesc RI). Proof. solve_decision. Defined.
 
-Definition nat_of_leftstep RI `{!EqDecision RI, !Countable RI} (gamma2: Loc RI) : nat.
-Admitted.
+Global Instance stepdesc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (StepDesc RI). Admitted.
 
-Definition nat_of_rightstep RI `{!EqDecision RI, !Countable RI} (gamma1: Loc RI) : nat.
-Admitted.
+Definition nat_of_basestep RI `{!EqDecision RI, !Countable RI} (alpha:nat) : nat :=
+  encode_nat (SDBase RI alpha).
 
-Definition pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI} (loc: Loc RI) : (listset PathLoc). Admitted.
+Definition nat_of_extstep {RI} `{!EqDecision RI, !Countable RI} (alpha:nat) (ri: RI) : nat :=
+  encode_nat (SDExt alpha ri).
+
+Definition nat_of_leftstep RI `{!EqDecision RI, !Countable RI} (gamma2: Loc RI) : nat :=
+  encode_nat (SDLeft gamma2).
+
+Definition nat_of_rightstep RI `{!EqDecision RI, !Countable RI} (gamma1: Loc RI) : nat :=
+  encode_nat (SDRight gamma1).
+
+Fixpoint pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI}
+    (loc: Loc RI) : (listset PathLoc).
 
 Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !TPCM M}
     (loc: Loc RI) (cell: Cell M) : Branch M. Admitted.
