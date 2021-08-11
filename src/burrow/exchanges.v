@@ -13,6 +13,7 @@ Require Import Burrow.indexing.
 Require Import Burrow.locations.
 Require Import Burrow.tactics.
 Require Import Burrow.exchange_proof.
+Require Import Burrow.assoc_comm.
 Require Import Burrow.resource_proofs.
 
 Require Import coq_tricks.Deex.
@@ -201,8 +202,11 @@ Qed.
   
 Lemma cell_reserved_cell_of_pl_build_empty (loc: Loc RI) (f:M) pl
   : cell_reserved (cell_of_pl (build loc (CellCon f ∅)) pl) ≡ ∅.
-  Admitted.
-
+Proof.
+  have h : Decision (pl ∈ pls_of_loc loc) by solve_decision. destruct h.
+  - setoid_rewrite build_spec; trivial.
+  - setoid_rewrite build_rest_triv; trivial.
+Qed.
   
 Lemma borrow_exchange b kappa gamma (m f z m' f': M) alpha (ri: RI)
   (isb: is_borrow kappa (ExtLoc alpha ri gamma) z b)
@@ -314,13 +318,32 @@ Proof.
      repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
+Lemma bev_move (a b c d e f : State M RI)
+  : a ⋅ b ⋅ c ⋅ d ⋅ e ⋅ f ≡ a ⋅ b ⋅ (c ⋅ (e ⋅ f)) ⋅ d.
+Proof. solve_assoc_comm. Qed.
+
+Lemma is_borrow_op kappa gamma z b b'
+  : is_borrow kappa gamma z b -> is_borrow kappa gamma z (b ⋅ b').
+Proof. intros. unfold is_borrow in *. destruct b, b'.
+  unfold "⋅", state_op, lmap_is_borrow in *.
+  intros. apply H with (pl := pl); trivial.
+  setoid_rewrite as_tree_op in H2.
+  setoid_rewrite <- node_of_pl_op in H2.
+  eapply node_view_le. apply H2.
+Qed.
+
 Lemma borrow_exchange_valid b kappa gamma (m f z m' f': M) alpha (ri: RI) (p : State M RI)
   (isb: is_borrow kappa (ExtLoc alpha ri gamma) z b)
   (exchange_cond: borrow_exchange_cond (refinement_of ri) z m f m' f')
   (si: ✓ (active kappa ⋅ live (ExtLoc alpha ri gamma) f ⋅ b ⋅ live gamma m ⋅ p))
      : ✓ (active kappa ⋅ live (ExtLoc alpha ri gamma) f' ⋅ b ⋅ live gamma m' ⋅ p).
 Proof.
-  unfold "✓", state_valid in *. Admitted.
+  unfold "✓", state_valid in *. deex. exists p0.
+  setoid_rewrite bev_move.
+  setoid_rewrite bev_move in si.
+  apply borrow_exchange with (m := m) (f := f) (z := z); trivial.
+  apply is_borrow_op; trivial.
+Qed.
 
 (****************************************************************)
 (****************************************************************)
@@ -430,12 +453,22 @@ Proof.
      repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
+Lemma bev_move2 (a b c d e : State M RI)
+  : a ⋅ b ⋅ c ⋅ d ⋅ e ≡ a ⋅ b ⋅ (c ⋅ (d ⋅ e)).
+Proof. solve_assoc_comm. Qed.
+
 Lemma borrow_exchange_normal_valid b kappa gamma (m z m' : M) (p: State M RI)
   (isb: is_borrow kappa gamma z b)
   (exchange_cond: mov (dot m z) (dot m' z))
   (si: state_valid (active kappa ⋅ live gamma m ⋅ b ⋅ p))
      : state_valid (active kappa ⋅ live gamma m' ⋅ b ⋅ p).
-Admitted.
+Proof.
+  unfold "✓", state_valid in *. deex. exists p0.
+  setoid_rewrite bev_move2.
+  setoid_rewrite bev_move2 in si.
+  apply borrow_exchange_normal with (m:=m) (z:=z); trivial.
+  apply is_borrow_op; trivial.
+Qed.
 
 (****************************************************************)
 (****************************************************************)

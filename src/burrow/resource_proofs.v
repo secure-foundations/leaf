@@ -13,8 +13,8 @@ Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
 Require Import Burrow.tactics.
+Require Import Burrow.assoc_comm.
 Require Import Coq.Arith.Wf_nat. 
-           
 
 Require Import coq_tricks.Deex.
 
@@ -1247,7 +1247,8 @@ Proof.
 Qed.
 
 Lemma abcde_state (a b c d e : State M RI)
-  : a ⋅ b ⋅ (c ⋅ (d ⋅ e)) ≡ a ⋅ d ⋅ (b ⋅ c ⋅ e). Admitted.
+  : a ⋅ b ⋅ (c ⋅ (d ⋅ e)) ≡ a ⋅ d ⋅ (b ⋅ c ⋅ e).
+Proof. solve_assoc_comm. Qed.
 
 Lemma not_le_of_nonempty (lt a b: multiset nat)
   (lt_nonempty : lt ≠ empty_multiset)
