@@ -500,11 +500,27 @@ Lemma i_value_of_pls_of_base p i alpha
 
 Lemma node_total_minus_live_of_trivial ref node lt
   (istriv: node_trivial node)
-  : node_total_minus_live ref node lt = unit. Admitted.
+  : node_total_minus_live ref node lt = unit.
+Proof. unfold node_total_minus_live. destruct node. unfold node_trivial in istriv.
+  destruct_ands. unfold cell_trivial in H. destruct c. destruct_ands.
+  unfold cell_total_minus_live. rewrite H.
+  unfold sum_reserved_over_lifetime. rewrite set_fold_empty.
+  rewrite branch_total_of_trivial; trivial. rewrite unit_dot. trivial. Qed.
 
 Lemma cell_triv_node_triv_op_right a b
   (nodetriv: node_trivial (a ⋅ b))
-  : cell_trivial (match b with CellNode c _ => c end). Admitted.
+  : cell_trivial (match b with CellNode c _ => c end).
+Admitted.
+(*
+Proof. unfold node_trivial in nodetriv. destruct a, b.
+  unfold "⋅", node_op in nodetriv. destruct_ands.
+  clear H0. unfold "⋅" in H. unfold cell_op in H. destruct c, c0.
+  unfold cell_trivial in *. destruct_ands. split.
+  - set_solver.
+  -  *)
+
+Lemma is_fresh_nat_of_op (a b : Branch M) (i: nat)
+  : is_fresh_nat (a ⋅ b) i -> is_fresh_nat b i. Admitted.
 
 Lemma ri_of_nat_nat_of_extstep alpha ri
   : ri_of_nat RI (nat_of_extstep alpha ri) = ri. Admitted.
@@ -578,17 +594,27 @@ Proof.
     rewrite build_spec; trivial.
     unfold cell_live, triv_cell.
     
+    assert (is_fresh_nat (q) (nat_of_extstep alpha ri))
+      as is_fresh_q by (eapply is_fresh_nat_of_op; apply is_fresh).
+    
+    assert (node_trivial (node_of_pl (q) (p, i))) as EqTrivNode_q by (
+      apply trivial_node_at_fresh;
+      rewrite <- (i_value_of_pls_of_loc_ext p i gamma) in is_fresh_q; trivial).
+      
     assert (node_trivial (node_of_pl ((build gamma (CellCon m ∅)) ⋅ q) (p, i))) as EqTrivNode by (
       apply trivial_node_at_fresh;
       rewrite <- (i_value_of_pls_of_loc_ext p i gamma) in is_fresh; trivial).
     
     rewrite <- node_of_pl_op in EqTrivNode.
-    
     rewrite node_total_minus_live_of_trivial; trivial.
     
-    have h := (cell_triv_node_triv_op_right _ _ EqTrivNode).
+    (*assert (cell_trivial (cell_of_pl q (p, i))) as EqTrivCell_q by
+     (unfold cell_of_pl; destruct (node_of_pl q (p, i)); unfold node_trivial in EqTrivNode_q;
+      destruct_ands; trivial).*)
+    
     unfold cell_of_pl. destruct (node_of_pl q (p, i)).
-    unfold cell_trivial in h. destruct c. destruct_ands.
+    unfold node_trivial in EqTrivNode_q. destruct_ands.
+    unfold cell_trivial in H1. destruct c. destruct_ands.
     subst m0.
     repeat (rewrite unit_dot).
     
@@ -966,7 +992,17 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
 Qed.
 
 Lemma dot_mcmk (m c m1 k1 : M)
-  : dot (dot m c) (dot m1 k1) = dot (dot m k1) (dot m1 c). Admitted.
+  : dot (dot m c) (dot m1 k1) = dot (dot m k1) (dot m1 c).
+Proof.
+  rewrite <- tpcm_assoc.
+  rewrite <- tpcm_assoc. f_equal.
+  replace (dot m1 k1) with (dot k1 m1) by (apply tpcm_comm).
+  rewrite tpcm_assoc.
+  replace (dot c k1) with (dot k1 c) by (apply tpcm_comm).
+  rewrite <- tpcm_assoc.
+  f_equal.
+  apply tpcm_comm.
+Qed.
 
 Lemma specific_exchange_cond_left_swap2 m c d v x y m1 m2
   (mv: m_valid (dot (dot m c) (rel M M (refinement_of (left_ri RI))
