@@ -845,11 +845,6 @@ Qed.
 (****************************************************************)
 (* reserved(kappa, m, gamma) is a borrow *)
 
-Definition cell_of_node (n: Node M) := match n with | CellNode c _ => c end.
-
-Lemma cell_view_of_node_view roi node lt y :
-  node_view roi node lt y -> cell_view (cell_of_node node) lt y. Admitted.
-
 Lemma cell_of_node_node_of_pl b pl
   : cell_of_node (node_of_pl b pl) = cell_of_pl b pl.
 Proof. unfold cell_of_pl. unfold cell_of_node. trivial. Qed.
@@ -1003,21 +998,6 @@ Qed.
 (****************************************************************)
 (* borrow back *)
 
-Lemma pl_in_pls_of_loc_extloc p i alpha ri (gamma: Loc RI)
-  (pi_in: (p, i) ∈ pls_of_loc gamma)
-  : (p++[i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma).
-Admitted.
-
-Lemma pl_in_pls_of_loc_cross_left p i (gamma1 gamma2: Loc RI)
-  (pi_in: (p, i) ∈ pls_of_loc gamma1)
-  : (p++[i], nat_of_leftstep RI gamma2) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
-Admitted.
-
-Lemma pl_in_pls_of_loc_cross_right p i (gamma1 gamma2: Loc RI)
-  (pi_in: (p, i) ∈ pls_of_loc gamma2)
-  : (p++[i], nat_of_rightstep RI gamma1) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
-Admitted.
-
 Lemma branch_view_includes_child (t: Branch M) p h i active : ∀ j y,
   (j ≤ i) ->
   (branch_view (refinement_of_nat M RI) (branch_of_pl t (p++[h], j)) active j y) ->
@@ -1070,15 +1050,6 @@ Proof.
   exists (dot x q). exists w. repeat split; trivial.
   rewrite tpcm_assoc. rewrite tpcm_assoc. f_equal. apply tpcm_comm.
 Qed.
-
-Lemma ri_of_nat_nat_of_extstep alpha (ri: RI)
-  : (ri_of_nat RI (nat_of_extstep alpha ri) = ri). Admitted.
-  
-Lemma ri_of_nat_nat_of_leftstep (gamma2 : Loc RI)
-  : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI. Admitted.
-  
-Lemma ri_of_nat_nat_of_rightstep (gamma1 : Loc RI)
-  : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI. Admitted.
   
 Lemma tpcm_le_a_le_bc_of_a_le_b m r q
   : tpcm_le m r -> tpcm_le m (dot r q).
@@ -1264,10 +1235,6 @@ Lemma cell_of_pl_as_tree_lmap_relive_exc_other l old new pl loc exc
         ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
     Admitted.
 
-Lemma multiset_no_dupes_of_multiset_no_dupes_add (a b: multiset nat)
-  (mnd : multiset_no_dupes (multiset_add a b))
-  : multiset_no_dupes b. Admitted.
-
 Lemma backslash_union (a l1 : (listset (Lifetime * M)))
   : a ∪ l1 ≡ (l1 ∖ a) ∪ a.
 Proof. unfold "≡", set_equiv_instance. intro.
@@ -1375,12 +1342,6 @@ Qed.
 Lemma abcde_state (a b c d e : State M RI)
   : a ⋅ b ⋅ (c ⋅ (d ⋅ e)) ≡ a ⋅ d ⋅ (b ⋅ c ⋅ e).
 Proof. solve_assoc_comm. Qed.
-
-Lemma not_le_of_nonempty (lt a b: multiset nat)
-  (lt_nonempty : lt ≠ empty_multiset)
-  (mnd : multiset_no_dupes (multiset_add lt (multiset_add a b)))
-       : ¬ multiset_le lt b.
-Admitted.
   
 Lemma not_le_kappa_p kappa a b
     (kappa_nonempty : kappa ≠ empty_lifetime)

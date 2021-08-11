@@ -490,14 +490,6 @@ Lemma trivial_node_at_fresh (b: Branch M) p i
   (is_fresh: is_fresh_nat b i)
   : node_trivial (node_of_pl b (p, i)). Admitted.
     
-Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
-  (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-  : i = nat_of_extstep alpha ri. Admitted.
-  
-Lemma i_value_of_pls_of_base p i alpha
-  (in_pls: (p, i) ∈ pls_of_loc (BaseLoc RI alpha))
-  : i = nat_of_basestep RI alpha. Admitted.
-
 Lemma node_total_minus_live_of_trivial ref node lt
   (istriv: node_trivial node)
   : node_total_minus_live ref node lt = unit.
@@ -507,10 +499,6 @@ Proof. unfold node_total_minus_live. destruct node. unfold node_trivial in istri
   unfold sum_reserved_over_lifetime. rewrite set_fold_empty.
   rewrite branch_total_of_trivial; trivial. rewrite unit_dot. trivial. Qed.
 
-Lemma cell_triv_node_triv_op_right a b
-  (nodetriv: node_trivial (a ⋅ b))
-  : cell_trivial (match b with CellNode c _ => c end).
-Admitted.
 (*
 Proof. unfold node_trivial in nodetriv. destruct a, b.
   unfold "⋅", node_op in nodetriv. destruct_ands.
@@ -521,18 +509,6 @@ Proof. unfold node_trivial in nodetriv. destruct a, b.
 
 Lemma is_fresh_nat_of_op (a b : Branch M) (i: nat)
   : is_fresh_nat (a ⋅ b) i -> is_fresh_nat b i. Admitted.
-
-Lemma ri_of_nat_nat_of_extstep alpha ri
-  : ri_of_nat RI (nat_of_extstep alpha ri) = ri. Admitted.
-  
-Lemma ri_of_nat_nat_of_basestep alpha
-  : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI. Admitted.
-  
-Lemma rel_refinement_of_triv_ri_defined (m: M)
-  : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
-  
-Lemma rel_refinement_of_triv_ri_eq_unit (m: M)
-  : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
 
 Lemma initialize_ext gamma m f p ri
   (is_rel_def: rel_defined M M (refinement_of ri) f)
@@ -833,29 +809,6 @@ Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
     (p, i) ∉ updo_se gamma idx
     → updo m gamma idx (p, i) = unit.
     Admitted.
-    
-
-    
-Definition pls_of_loc_from_left (l r: Loc RI) : gset PathLoc. Admitted.
-Definition pls_of_loc_from_right (l r: Loc RI) : gset PathLoc. Admitted.
-
-Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
-  
-Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
-  
-Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
-  
-Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
-  
-Lemma pl_in_crossloc_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
-  
-Lemma pl_in_crossloc_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
   
 Lemma updo_eq_m_left p i gamma1 gamma2 m
   (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
@@ -889,46 +842,6 @@ Lemma updo_eq_unit3_right p i gamma1 gamma2 m
   (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
     : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
     
-Lemma y_is_pair_of_rel_defined_refinement_of_left x y
-  (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
-  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
-  
-Lemma y_is_pair_of_rel_defined_refinement_of_right x y
-  (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
-  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
-
-Lemma dot_pair_up m1 m2 k1 k2
-  : dot (pair_up RI m1 m2) (pair_up RI k1 k2) = pair_up RI (dot m1 k1) (dot m2 k2).
-  Admitted.
-
-Lemma refinement_of_left_pair_up a b
-  : rel M M (refinement_of (left_ri RI)) (pair_up RI a b) = a. Admitted.
-  
-Lemma refinement_of_right_pair_up a b
-  : rel M M (refinement_of (right_ri RI)) (pair_up RI a b) = b. Admitted.
-  
-Lemma rel_defined_refinement_of_left_pair_up a b
-  (aval: m_valid a)
-  (bval: m_valid b)
-    : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)). Admitted.
-    
-Lemma rel_defined_refinement_of_right_pair_up a b
-  (aval: m_valid a)
-  (bval: m_valid b)
-    : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)). Admitted.
-    
-Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up a b
-  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
-  : m_valid a. Admitted.
-  
-Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up a b
-  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
-  : m_valid b. Admitted.
-  
-Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up a b
-  (rd: rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b))
-  : m_valid a. Admitted.
-    
 Lemma specific_exchange_cond_left_swap v m1 m2 m x
  : specific_exchange_cond (refinement_of (left_ri RI))
     v m (dot (pair_up RI m1 m2) x) unit unit
@@ -942,6 +855,7 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   repeat (rewrite <- tpcm_assoc in H0).
   full_generalize (dot x v) as y.
   have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
+  have yp' := yp EqDecision1 Countable0.
   deex. subst y.
   rewrite dot_pair_up.
   rewrite dot_pair_up.
@@ -973,6 +887,7 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   repeat (rewrite <- tpcm_assoc in H0).
   full_generalize (dot x v) as y.
   have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
+  have yp' := yp EqDecision1 Countable0.
   deex. subst y.
   rewrite dot_pair_up.
   rewrite dot_pair_up.
@@ -1027,6 +942,7 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   clear r1. full_generalize (dot d v) as z.
   
   have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
+  have yp' := yp EqDecision1 Countable0.
   deex. subst z.
   repeat (rewrite dot_pair_up).
   repeat (rewrite dot_pair_up in H).
@@ -1067,6 +983,7 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   clear r1. full_generalize (dot d v) as z.
   
   have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
+  have yp' := yp EqDecision1 Countable0.
   deex. subst z.
   repeat (rewrite dot_pair_up).
   repeat (rewrite dot_pair_up in H).
@@ -1083,14 +1000,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
     + rewrite dot_mcmk in mv. apply valid_monotonic with (y0 := (dot m2 c)). trivial.
   - apply reflex.
 Qed.
-
-Lemma i_value_of_pls_of_loc_from_left p i gamma1 gamma2
-  (in_pls: (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-  : i = nat_of_leftstep RI gamma2. Admitted.
-  
-Lemma i_value_of_pls_of_loc_from_right p i gamma1 gamma2
-  (in_pls: (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-  : i = nat_of_rightstep RI gamma2. Admitted.
   
 Lemma updo_other_eq_both_left p i gamma1 gamma2 m
   (is_not_in : (p, i) ∉ pls_of_loc_from_left gamma1 gamma2)
@@ -1112,48 +1021,11 @@ Lemma updo_base_eq_m p i idx gamma m
   (pl1_in: pl1 ∈ pls_of_loc loc)
   (pl2_in: pl2 ∈ pls_of_loc loc)
   : cell_of_pl (as_tree l) pl1 ≡ cell_of_pl (as_tree l) pl2. Admitted.*)
-  
-Lemma node_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
-  (pl1_in: pl1 ∈ pls_of_loc loc)
-  (pl2_in: pl2 ∈ pls_of_loc loc)
-  : node_of_pl (as_tree l) pl1 ≡ node_of_pl (as_tree l) pl2. Admitted.
-  
-Lemma node_of_pl_build_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
-  (pl1_in: pl1 ∈ pls_of_loc loc)
-  (pl2_in: pl2 ∈ pls_of_loc loc)
-  : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2. Admitted.
-  
-Lemma exists_in_pls_of_loc_from_left gamma1 gamma2
-  : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2. Admitted.
-  
-Lemma exists_in_pls_of_loc_from_right gamma1 gamma2
-  : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2. Admitted.
 
 Lemma valid_child_and_parent (t: Branch M) p i j lt_active
   (vt: valid_totals (refinement_of_nat M RI) t lt_active)
   : m_valid (dot (cell_live (cell_of_pl t (p, i)))
       (rel M M (refinement_of_nat M RI j) (node_total (refinement_of_nat M RI) (node_of_pl t (p++[i], j)) lt_active))). Admitted.
-      
-Lemma plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 p i
-  (pi_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-  : plsplit p ∈ pls_of_loc gamma1. Admitted.
-  
-Lemma plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 p i
-  (pi_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-  : plsplit p ∈ pls_of_loc gamma2. Admitted.
-  
-Lemma q_eq_pi_of_plsplit_cross (gamma1 gamma2: Loc RI) (q p: list nat) i j
-  (q_in: (q, j) ∈ pls_of_loc (CrossLoc gamma1 gamma2) )
-  (eq: plsplit q = (p, i))
-  : q = p ++ [i]. Admitted.
-
-Lemma pl_not_in_pls_of_loc_cross_from_in_left pl (gamma1 gamma2: Loc RI)
-  (pl_in : pl ∈ pls_of_loc gamma1)
-  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
-  
-Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
-  (pl_in : pl ∈ pls_of_loc gamma2)
-  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
 
 Lemma specific_exchange_cond_of_no_change2 ref view x y z w
   : specific_exchange_cond ref view x y x y z w z w.
@@ -1164,10 +1036,13 @@ Proof.
   intro. repeat split; trivial. apply reflex.
 Qed.
 
-Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl gamma1 gamma2
-  (not_in_l : pl ∉ pls_of_loc_from_left gamma1 gamma2)
-  (not_in_r : pl ∉ pls_of_loc_from_right gamma1 gamma2)
-        : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)). Admitted.
+Lemma node_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : node_of_pl (as_tree l) pl1 ≡ node_of_pl (as_tree l) pl2.
+  (* call node_of_pl_build_eq *)
+  Admitted.
+  
   
 Lemma swap_cross_left (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
   (si: state_inv (live gamma1 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
@@ -1203,8 +1078,8 @@ Proof.
     destruct the_case.
     
     + 
-      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_left with (gamma2:=gamma2); trivial).
-      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_left with (gamma2:=gamma2); trivial).
+      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_left with (gamma4:=gamma2); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_left with (gamma4:=gamma2); trivial).
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
       rewrite build_rest_triv; trivial.
@@ -1231,13 +1106,15 @@ Proof.
 
     *
     
-      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_right with (gamma2:=gamma2); trivial).
-      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_right with (gamma1:=gamma1); trivial).
+      assert ((p, i) ∉ pls_of_loc gamma1) by (apply pl_not_in_left_of_pl_in_right with (gamma4:=gamma2); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_right with (gamma3:=gamma1); trivial).
       
       have epl := exists_in_pls_of_loc_from_left gamma1 gamma2.
+      have epl' := epl M EqDecision0 TPCM0 RefinementIndex0.
+      clear epl. rename epl' into epl.
       deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
       
-      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_left with (gamma1:=gamma1); trivial).
+      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_left with (gamma3:=gamma1); trivial).
       
       (*have ceq := cell_of_pl_as_tree_eq l0 (p, i) (other_p, other_i) (CrossLoc gamma1 gamma2) picl opicl.*)
       destruct (plsplit other_p) eqn:plsplit_other_p. rename l1 into other_p_p. rename n0 into other_p_i.
@@ -1249,13 +1126,13 @@ Proof.
       have pio := plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 other_p other_i epl.
       
       have qe := q_eq_pi_of_plsplit_cross gamma1 gamma2 other_p other_p_p other_p_i
-          other_i opicl plsplit_other_p. rewrite <- qe in vcap.
+          other_i opicl plsplit_other_p. rewrite <- qe in vcap; try (typeclasses eauto).
           
       assert (plsplit other_p ∉ pls_of_loc (CrossLoc gamma1 gamma2)) as npio
           by (apply pl_not_in_pls_of_loc_cross_from_in_left; trivial).
           
       assert ((other_p, other_i) ∉ pls_of_loc gamma1) as onp1
-          by (apply pl_not_in_left_of_pl_in_left with (gamma2:=gamma2); trivial).
+          by (apply pl_not_in_left_of_pl_in_left with (gamma4:=gamma2); trivial).
       
       rewrite <- plsplit_other_p in vcap.
       
@@ -1280,7 +1157,7 @@ Proof.
       full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
       rewrite <- node_live_plus_node_total_minus_live in vcap.
       setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
-      setoid_rewrite (node_of_pl_build_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      setoid_rewrite (node_of_pl_build_eq (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
       full_generalize ((node_total_minus_live (refinement_of_nat M RI)
                        (node_of_pl (build gamma1 (CellCon m ∅)) (p, i)
                         ⋅ node_of_pl
@@ -1406,8 +1283,8 @@ Proof.
     destruct the_case.
     
     + 
-      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_right with (gamma1:=gamma1); trivial).
-      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_right with (gamma1:=gamma1); trivial).
+      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_right with (gamma3:=gamma1); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_right with (gamma3:=gamma1); trivial).
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
       rewrite build_rest_triv; trivial.
@@ -1434,13 +1311,15 @@ Proof.
 
     *
     
-      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_left with (gamma1:=gamma1); trivial).
-      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_left with (gamma2:=gamma2); trivial).
+      assert ((p, i) ∉ pls_of_loc gamma2) by (apply pl_not_in_right_of_pl_in_left with (gamma3:=gamma1); trivial).
+      assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_left with (gamma4:=gamma2); trivial).
       
       have epl := exists_in_pls_of_loc_from_right gamma1 gamma2.
+      have epl' := epl M EqDecision0 TPCM0 RefinementIndex0.
+      clear epl. rename epl' into epl.
       deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
       
-      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_right with (gamma2:=gamma2); trivial).
+      assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_right with (gamma4:=gamma2); trivial).
       
       (*have ceq := cell_of_pl_as_tree_eq l0 (p, i) (other_p, other_i) (CrossLoc gamma1 gamma2) picl opicl.*)
       destruct (plsplit other_p) eqn:plsplit_other_p. rename l1 into other_p_p. rename n0 into other_p_i.
@@ -1452,13 +1331,13 @@ Proof.
       have pio := plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 other_p other_i epl.
       
       have qe := q_eq_pi_of_plsplit_cross gamma1 gamma2 other_p other_p_p other_p_i
-          other_i opicl plsplit_other_p. rewrite <- qe in vcap.
+          other_i opicl plsplit_other_p. rewrite <- qe in vcap; try (typeclasses eauto).
           
       assert (plsplit other_p ∉ pls_of_loc (CrossLoc gamma1 gamma2)) as npio
           by (apply pl_not_in_pls_of_loc_cross_from_in_right; trivial).
           
       assert ((other_p, other_i) ∉ pls_of_loc gamma2) as onp1
-          by (apply pl_not_in_right_of_pl_in_right with (gamma1:=gamma1); trivial).
+          by (apply pl_not_in_right_of_pl_in_right with (gamma3:=gamma1); trivial).
       
       rewrite <- plsplit_other_p in vcap.
       
@@ -1483,7 +1362,7 @@ Proof.
       full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
       rewrite <- node_live_plus_node_total_minus_live in vcap.
       setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
-      setoid_rewrite (node_of_pl_build_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
+      setoid_rewrite (node_of_pl_build_eq (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
       full_generalize ((node_total_minus_live (refinement_of_nat M RI)
                        (node_of_pl (build gamma2 (CellCon m ∅)) (p, i)
                         ⋅ node_of_pl

@@ -577,3 +577,13 @@ Admitted.
     
 Lemma multiset_no_dupes_empty {A} `{Countable A} : multiset_no_dupes
     (empty_multiset : multiset A). Admitted.
+
+Lemma multiset_no_dupes_of_multiset_no_dupes_add (a b: multiset nat)
+  (mnd : multiset_no_dupes (multiset_add a b))
+  : multiset_no_dupes b. Admitted.
+
+Lemma not_le_of_nonempty (lt a b: multiset nat)
+  (lt_nonempty : lt ≠ empty_multiset)
+  (mnd : multiset_no_dupes (multiset_add lt (multiset_add a b)))
+       : ¬ multiset_le lt b.
+Admitted.

@@ -125,6 +125,16 @@ Global Instance build_proper
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
   (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
 
+Definition pls_of_loc_from_left
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+  (l r: Loc RI) : gset PathLoc. Admitted.
+
+Definition pls_of_loc_from_right
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+  (l r: Loc RI) : gset PathLoc. Admitted.
+
 Lemma branch_is_trivial_build_triv_cell
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
@@ -135,27 +145,178 @@ Lemma build_op
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     (i: Loc RI) (x y: Cell M) : build i (x ⋅ y) ≡ build i x ⋅ build i y.
 Admitted.
-  
+
+Section LocationsLemmas.
+
+Context {M} `{!EqDecision M, !TPCM M}.
+Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
+
 Definition any_pl_of_loc
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     (loc: Loc RI) : PathLoc. Admitted.
 
 Lemma any_pl_of_loc_is_of_loc
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
   (loc: Loc RI) : any_pl_of_loc loc ∈ pls_of_loc loc. Admitted.
 
 Lemma pl_not_in_of_pl_in_extloc
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     pl alpha (ri: RI) gamma
   : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
   
 Lemma refinement_of_nat_eq_refinement_of_of_in_pls_of_loc
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     p i alpha ri gamma
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
     : refinement_of_nat M RI i = refinement_of ri.
     Admitted.
+
+Lemma pl_in_pls_of_loc_extloc
+  p i alpha ri (gamma: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma)
+  : (p++[i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma).
+Admitted.
+
+Lemma pl_in_pls_of_loc_cross_left
+  p i (gamma1 gamma2: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma1)
+  : (p++[i], nat_of_leftstep RI gamma2) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Admitted.
+
+Lemma pl_in_pls_of_loc_cross_right
+  p i (gamma1 gamma2: Loc RI)
+  (pi_in: (p, i) ∈ pls_of_loc gamma2)
+  : (p++[i], nat_of_rightstep RI gamma1) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Admitted.
+
+Lemma ri_of_nat_nat_of_extstep
+  alpha (ri: RI)
+  : (ri_of_nat RI (nat_of_extstep alpha ri) = ri). Admitted.
+  
+Lemma ri_of_nat_nat_of_leftstep
+  (gamma2 : Loc RI)
+  : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI. Admitted.
+  
+Lemma ri_of_nat_nat_of_rightstep
+  (gamma1 : Loc RI)
+  : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI. Admitted.
+
+Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
+  (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+  : i = nat_of_extstep alpha ri. Admitted.
+  
+Lemma i_value_of_pls_of_base p i alpha
+  (in_pls: (p, i) ∈ pls_of_loc (BaseLoc RI alpha))
+  : i = nat_of_basestep RI alpha. Admitted.
+
+Lemma ri_of_nat_nat_of_basestep alpha
+  : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI. Admitted.
+  
+Lemma rel_refinement_of_triv_ri_defined (m: M)
+  : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
+  
+Lemma rel_refinement_of_triv_ri_eq_unit (m: M)
+  : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
+
+
+Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
+  
+Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
+  
+Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
+  
+Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
+  
+Lemma pl_in_crossloc_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  
+Lemma pl_in_crossloc_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+
+Lemma y_is_pair_of_rel_defined_refinement_of_left x y
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
+  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+  
+Lemma y_is_pair_of_rel_defined_refinement_of_right x y
+  (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
+  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+
+Lemma dot_pair_up m1 m2 k1 k2
+  : dot (pair_up RI m1 m2) (pair_up RI k1 k2) = pair_up RI (dot m1 k1) (dot m2 k2).
+  Admitted.
+   
+Lemma refinement_of_left_pair_up a b
+  : rel M M (refinement_of (left_ri RI)) (pair_up RI a b) = a. Admitted.
+  
+Lemma refinement_of_right_pair_up a b
+  : rel M M (refinement_of (right_ri RI)) (pair_up RI a b) = b. Admitted.
+
+Lemma rel_defined_refinement_of_left_pair_up a b
+  (aval: m_valid a)
+  (bval: m_valid b)
+    : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)). Admitted.
+    
+Lemma rel_defined_refinement_of_right_pair_up a b
+  (aval: m_valid a)
+  (bval: m_valid b)
+    : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)). Admitted.
+    
+Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up a b
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
+  : m_valid a. Admitted.
+  
+Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up a b
+  (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
+  : m_valid b. Admitted.
+  
+Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up a b
+  (rd: rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b))
+  : m_valid a. Admitted.
+
+
+Lemma i_value_of_pls_of_loc_from_left p i gamma1 gamma2
+  (in_pls: (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+  : i = nat_of_leftstep RI gamma2. Admitted.
+  
+Lemma i_value_of_pls_of_loc_from_right p i gamma1 gamma2
+  (in_pls: (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+  : i = nat_of_rightstep RI gamma2. Admitted.
+
+Lemma node_of_pl_build_eq (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2. Admitted.
+  
+Lemma exists_in_pls_of_loc_from_left gamma1 gamma2
+  : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2. Admitted.
+  
+Lemma exists_in_pls_of_loc_from_right gamma1 gamma2
+  : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2. Admitted.
+
+Lemma plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 p i
+  (pi_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
+  : plsplit p ∈ pls_of_loc gamma1. Admitted.
+  
+Lemma plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 p i
+  (pi_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+  : plsplit p ∈ pls_of_loc gamma2. Admitted.
+  
+Lemma q_eq_pi_of_plsplit_cross (gamma1 gamma2: Loc RI) (q p: list nat) i j
+  (q_in: (q, j) ∈ pls_of_loc (CrossLoc gamma1 gamma2) )
+  (eq: plsplit q = (p, i))
+  : q = p ++ [i]. Admitted.
+
+Lemma pl_not_in_pls_of_loc_cross_from_in_left pl (gamma1 gamma2: Loc RI)
+  (pl_in : pl ∈ pls_of_loc gamma1)
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  
+Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
+  (pl_in : pl ∈ pls_of_loc gamma2)
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+
+Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl gamma1 gamma2
+  (not_in_l : pl ∉ pls_of_loc_from_left gamma1 gamma2)
+  (not_in_r : pl ∉ pls_of_loc_from_right gamma1 gamma2)
+        : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)). Admitted.
+
+End LocationsLemmas.

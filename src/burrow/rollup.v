@@ -81,6 +81,8 @@ Arguments CellNode {M}%type_scope {EqDecision0 TPCM0} _ _.
 Arguments BranchCons {M}%type_scope {EqDecision0 TPCM0} _ _.
 Arguments BranchNil {M}%type_scope {EqDecision0 TPCM0}.
 
+Definition cell_of_node {M} `{!EqDecision M} `{!TPCM M} (n: Node M) := match n with | CellNode c _ => c end.
+
 Definition triv_cell `{!EqDecision M} `{!TPCM M} : Cell M := CellCon unit empty.
 Definition triv_node `{!EqDecision M} `{!TPCM M} : Node M := CellNode triv_cell BranchNil.
 
@@ -1430,6 +1432,9 @@ Admitted.
 
 Lemma node_view_le2 a lt y z : node_view a lt y -> node_view a lt (dot y z).
 Admitted.
+
+Lemma cell_view_of_node_view node lt y :
+  node_view node lt y -> cell_view (cell_of_node node) lt y. Admitted.
 
 End RollupRA.
 
