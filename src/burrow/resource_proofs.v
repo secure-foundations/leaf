@@ -63,10 +63,20 @@ Global Instance state_op : Op (State M RI) := λ x y ,
       StateCon (multiset_add active1 active2) (lmap1 ⋅ lmap2)
   end.
   
+Lemma lmap_op_comm (x y : gmap (Loc RI) (Cell M)) :
+    lmaps_equiv (x ⋅ y) (y ⋅ x).
+Proof.
+  unfold "⋅", "≡", lmap_op. intro.
+  unfold lmap_lookup.
+  repeat (rewrite lookup_merge).
+  unfold diag_None, cell_op_opt. destruct (x !! l), (y !! l); trivial.
+  apply cell_op_comm.
+Qed.
+  
 Lemma lmap_op_assoc (x y z : gmap (Loc RI) (Cell M)) :
     lmaps_equiv (x ⋅ (y ⋅ z)) ((x ⋅ y) ⋅ z).
 Proof.
-  unfold "⋅", "≡", lmap_op. unfold map_equiv. intro.
+  unfold "⋅", "≡", lmap_op. intro.
   unfold lmap_lookup.
   repeat (rewrite lookup_merge).
   unfold diag_None, cell_op_opt. destruct (x !! l), (y !! l), (z !! l); trivial.
@@ -89,11 +99,14 @@ Proof.
 Qed.
 
 Lemma state_comm (x y : State M RI) : (x ⋅ y) ≡ (y ⋅ x).
-Admitted.
+Proof.
+  unfold "⋅", "≡", state_equiv, state_op. destruct x, y. split.
+  - apply multiset_add_comm.
+  - apply lmap_op_comm.
+Qed.
 
-
-Global Instance state_op_assoc : Assoc state_equiv op. Admitted.
-Global Instance state_op_comm : Comm state_equiv op. Admitted.
+Global Instance state_op_assoc : Assoc state_equiv op := state_assoc.
+Global Instance state_op_comm : Comm state_equiv op := state_comm.
 
 Global Instance lmaps_equiv_refl : Reflexive lmaps_equiv. 
 Proof. unfold Reflexive, lmaps_equiv. intros. trivial. Qed.
@@ -155,7 +168,33 @@ Definition active (lt: Lifetime) : State M RI :=
 
 Definition state_unit : State M RI := StateCon empty_lifetime ∅.
 
-Lemma op_state_unit x : x ⋅ state_unit ≡ x. Admitted.
+Lemma stuffx T (x: option T) :
+  match x with
+  | Some _ => match x with
+              | Some c => Some c
+              | None => None
+              end
+  | None => None
+  end = x. Proof. destruct x; trivial. Qed.
+
+Lemma lmap_op_empty_lookup (l: lmap M RI) i : (l ⋅ ∅) !! i = l !! i.
+Proof.
+  unfold "⋅", lmap_op. rewrite lookup_merge. unfold diag_None. rewrite lookup_empty.
+  unfold cell_op_opt. apply stuffx. Qed.
+
+Lemma lmaps_op_empty l : lmaps_equiv (l ⋅ ∅) l.
+Proof.
+  unfold lmaps_equiv. intro. unfold lmap_lookup.
+  assert ((l ⋅ ∅) !! l0 = l !! l0).
+  * apply lmap_op_empty_lookup.
+  * rewrite H. trivial.
+Qed.
+
+Lemma op_state_unit x : x ⋅ state_unit ≡ x.
+Proof. unfold state_unit, "⋅", state_op. destruct x. unfold "≡", state_equiv. split.
+  - apply multiset_add_empty.
+  - apply lmaps_op_empty.
+Qed.
 
 Definition as_tree (l : lmap M RI) : Branch M :=
   map_fold (λ k cell b , b ⋅ build k cell) BranchNil l.
@@ -183,8 +222,100 @@ Definition state_inv (state: State M RI) : Prop :=
        multiset_no_dupes active /\
        valid_totals (refinement_of_nat M RI) (as_tree l) active
   end.
+  
+Global Instance build_proper (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
 
-Global Instance as_tree_proper : Proper ((lmaps_equiv) ==> (≡)) as_tree. Admitted.
+Global Instance branch_equiv_preorder : PreOrder branch_equiv. Admitted.
+
+Lemma branch_is_trivial_build_triv_cell (loc: Loc RI)
+  : branch_trivial (build loc triv_cell). Admitted.
+  
+Lemma as_tree_equal_empty y
+  (le : lmaps_equiv y ∅) : as_tree y ≡ as_tree ∅.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  generalize le. clear le.
+  apply map_ind with (P := λ (y: gmap (Loc RI) (Cell M)),
+      lmaps_equiv y ∅ → as_tree y ≡ as_tree ∅).
+  - intros. trivial.
+  - intros.
+    unfold as_tree.
+    assert (
+      map_fold (λ (k : Loc RI) (cell : Cell M) (b : Branch M), b ⋅ build k cell)
+        BranchNil (<[i:=x]> m)
+        ≡
+      map_fold (λ (k : Loc RI) (cell : Cell M) (b : Branch M), b ⋅ build k cell)
+        BranchNil m ⋅ build i x
+      ).
+    + apply (map_fold_insert (≡)
+        (λ (k : Loc RI) (cell : Cell M) (b : Branch M), b ⋅ build k cell)).
+      * intros. unfold Proper, "==>". intros. setoid_rewrite H2. trivial.
+      * intros. solve_assoc_comm.
+      * trivial.
+    + setoid_rewrite H2. clear H2.
+      unfold lmaps_equiv in H1. have h := H1 i.
+        unfold lmap_lookup in h. rewrite lookup_empty in h. rewrite lookup_insert in h.
+        setoid_rewrite h.
+        have q := branch_is_trivial_build_triv_cell i.
+        setoid_rewrite op_trivial_branch; trivial.
+        apply H0.
+        unfold lmaps_equiv. intro.
+        have t := H1 l.
+        have e : Decision (l = i) by solve_decision. destruct e.
+        * subst l. unfold lmap_lookup. rewrite H. rewrite lookup_empty. trivial.
+        * unfold lmap_lookup in *. rewrite lookup_insert_ne in t; trivial.
+            crush.
+Qed.
+
+Lemma rewrite_map_fold_builder i x (m: gmap (Loc RI) (Cell M))
+  (m_i_None: m !! i = None) :
+      as_tree (<[i:=x]> m) ≡ as_tree m ⋅ build i x.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+unfold as_tree.
+apply (map_fold_insert (≡)
+        (λ (k : Loc RI) (cell : Cell M) (b : Branch M), b ⋅ build k cell)).
+  - intros. unfold Proper, "==>". intros. setoid_rewrite H. trivial.
+  - intros. solve_assoc_comm.
+  - trivial.
+Qed.
+
+Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
+  (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None. Admitted.
+
+Global Instance as_tree_proper : Proper ((lmaps_equiv) ==> (≡)) as_tree.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+unfold Proper, "==>". intro.
+  apply map_ind with (P := λ x,
+      ∀ y : gmap (Loc RI) (Cell M), lmaps_equiv x y → as_tree x ≡ as_tree y).
+  - intros. symmetry. apply as_tree_equal_empty. apply lmaps_equiv_symm. trivial.
+  - intros. destruct (y !! i) eqn:y_i.
+    + have rmai := rewrite_map_as_insertion y i c y_i. deex. destruct_ands.
+      subst y. rename y' into y.
+      clear y_i.
+      setoid_rewrite rewrite_map_fold_builder; trivial.
+      unfold lmaps_equiv in H1. have h := H1 i. unfold lmap_lookup in h.
+        rewrite lookup_insert in h. rewrite lookup_insert in h.
+        setoid_rewrite h.
+        setoid_rewrite (H0 y); trivial.
+        unfold lmaps_equiv. intro. have j := H1 l.
+        have e : Decision (l = i) by solve_decision. destruct e.
+        * subst l. unfold lmap_lookup. rewrite H. rewrite H3. trivial.
+        * unfold lmap_lookup in *.
+          assert (i ≠ l) by crush.
+          rewrite lookup_insert_ne in j; trivial.
+          rewrite lookup_insert_ne in j; trivial.
+    + setoid_rewrite rewrite_map_fold_builder; trivial.
+      unfold lmaps_equiv in H1. have j := H1 i.
+      unfold lmap_lookup in j. rewrite lookup_insert in j. rewrite y_i in j.
+      setoid_rewrite j.
+      have q := branch_is_trivial_build_triv_cell i.
+      setoid_rewrite op_trivial_branch; trivial.
+      apply H0.
+      unfold lmaps_equiv. intro.
+      have e : Decision (i = l) by solve_decision. destruct e.
+      * subst l. unfold lmap_lookup. rewrite H. rewrite y_i. trivial.
+      * have r := H1 l. unfold lmap_lookup in *.
+        rewrite lookup_insert_ne in r; trivial.
+Qed.
 
 Global Instance state_inv_proper : Proper ((≡) ==> impl) state_inv.
 Proof.
