@@ -641,6 +641,8 @@ Qed.
 Global Instance inst_node_equiv_trans : Transitive node_equiv := node_equiv_trans.
 Global Instance inst_branch_equiv_trans : Transitive branch_equiv := branch_equiv_trans.
 
+Global Instance branch_equiv_preorder : PreOrder branch_equiv. Admitted.
+
 (*
 Lemma state_equiv_trans (state1: State M) (state2: State M) (state3: State M)
   (iseq: state1 ≡ state2)
@@ -1422,6 +1424,12 @@ Proof.
     apply project_fancy_preserves_inclusion; trivial.
   + intro. unfold branch_view. intro. trivial.
 Qed.
+
+Lemma node_view_le a b lt y : node_view (a ⋅ b) lt y -> node_view a lt y.
+Admitted.
+
+Lemma node_view_le2 a lt y z : node_view a lt y -> node_view a lt (dot y z).
+Admitted.
 
 End RollupRA.
 

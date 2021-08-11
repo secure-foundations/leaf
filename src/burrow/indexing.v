@@ -268,5 +268,17 @@ Lemma node_triv_of_triv_branch t p i
     Admitted.
 
 Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
+
+Lemma cell_of_pl_BranchNil (pl: PathLoc)
+  : cell_of_pl (BranchNil : Branch M) pl ≡ triv_cell.
+Admitted.
+
+Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
+  : branch_all_total_in_refinement_domain roi branch lt idx
+    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
+    
+Definition plsplit (ln: list nat) : PathLoc. Admitted.
+
   
 End Indexing.
+

@@ -119,3 +119,43 @@ Qed.
 
 Inductive ILoc
 *)
+
+Global Instance build_proper
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+  (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
+
+Lemma branch_is_trivial_build_triv_cell
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+  (loc: Loc RI) : branch_trivial (build loc triv_cell). Admitted.
+
+Lemma build_op
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    (i: Loc RI) (x y: Cell M) : build i (x ⋅ y) ≡ build i x ⋅ build i y.
+Admitted.
+  
+Definition any_pl_of_loc
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    (loc: Loc RI) : PathLoc. Admitted.
+
+Lemma any_pl_of_loc_is_of_loc
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+  (loc: Loc RI) : any_pl_of_loc loc ∈ pls_of_loc loc. Admitted.
+
+Lemma pl_not_in_of_pl_in_extloc
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    pl alpha (ri: RI) gamma
+  : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
+  
+Lemma refinement_of_nat_eq_refinement_of_of_in_pls_of_loc
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    p i alpha ri gamma
+  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
+    : refinement_of_nat M RI i = refinement_of ri.
+    Admitted.

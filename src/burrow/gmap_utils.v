@@ -36,7 +36,6 @@ Lemma set_fold_add_1_element `{FinSet A T} {B}
   : set_fold fn u (s ∪ {[x]}) = fn x (set_fold fn u s).
 Proof.
   unfold set_fold, "∘".
-  Print foldr_permutation.
   enough (fn x (foldr fn u (elements s)) = (foldr fn u (x :: elements s))).
   - rewrite H7.
     apply foldr_permutation.
@@ -251,6 +250,9 @@ Proof. apply (set_relate (=)).
   - trivial.
   - intros. rewrite H7. apply equiv.
 Qed.
+
+Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
+  (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None. Admitted.
 
 Lemma merge_assign `{!EqDecision K, !Countable K} {V}
     (z:V) op (i:K) (x y:V) (m m' : gmap K V)
@@ -573,3 +575,5 @@ Lemma multiset_no_dupes_of_add_larger_elem lt y
   : multiset_no_dupes (multiset_add (lt_singleton y) lt).
 Admitted. 
     
+Lemma multiset_no_dupes_empty {A} `{Countable A} : multiset_no_dupes
+    (empty_multiset : multiset A). Admitted.

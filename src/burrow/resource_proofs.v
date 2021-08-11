@@ -223,13 +223,6 @@ Definition state_inv (state: State M RI) : Prop :=
        valid_totals (refinement_of_nat M RI) (as_tree l) active
   end.
   
-Global Instance build_proper (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
-
-Global Instance branch_equiv_preorder : PreOrder branch_equiv. Admitted.
-
-Lemma branch_is_trivial_build_triv_cell (loc: Loc RI)
-  : branch_trivial (build loc triv_cell). Admitted.
-  
 Lemma as_tree_equal_empty y
   (le : lmaps_equiv y ∅) : as_tree y ≡ as_tree ∅.
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
@@ -255,7 +248,8 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
       unfold lmaps_equiv in H1. have h := H1 i.
         unfold lmap_lookup in h. rewrite lookup_empty in h. rewrite lookup_insert in h.
         setoid_rewrite h.
-        have q := branch_is_trivial_build_triv_cell i.
+        have q0 := branch_is_trivial_build_triv_cell i.
+        have q := q0 M EqDecision0 TPCM0 RefinementIndex0.
         setoid_rewrite op_trivial_branch; trivial.
         apply H0.
         unfold lmaps_equiv. intro.
@@ -277,9 +271,6 @@ apply (map_fold_insert (≡)
   - intros. solve_assoc_comm.
   - trivial.
 Qed.
-
-Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
-  (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None. Admitted.
 
 Global Instance as_tree_proper : Proper ((lmaps_equiv) ==> (≡)) as_tree.
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
@@ -307,7 +298,8 @@ unfold Proper, "==>". intro.
       unfold lmaps_equiv in H1. have j := H1 i.
       unfold lmap_lookup in j. rewrite lookup_insert in j. rewrite y_i in j.
       setoid_rewrite j.
-      have q := branch_is_trivial_build_triv_cell i.
+      have q0 := branch_is_trivial_build_triv_cell i.
+      have q := q0 M EqDecision0 TPCM0 RefinementIndex0.
       setoid_rewrite op_trivial_branch; trivial.
       apply H0.
       unfold lmaps_equiv. intro.
@@ -339,9 +331,6 @@ Lemma as_tree_empty : as_tree ∅ = BranchNil.
 Proof.
   unfold as_tree. rewrite map_fold_empty. trivial. Qed.
 
-Lemma multiset_no_dupes_empty {A} `{Countable A} : multiset_no_dupes
-    (empty_multiset : multiset A). Admitted.
-
 Lemma state_inv_state_unit : state_inv state_unit.
 Proof.
   unfold state_inv, state_unit. split.
@@ -358,9 +347,6 @@ Proof.
   apply state_inv_state_unit.
 Qed.
 
-Lemma build_op (i: Loc RI) (x y: Cell M) : build i (x ⋅ y) ≡ build i x ⋅ build i y.
-Admitted.
-  
 Lemma as_tree_op (a b: lmap M RI)
     : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
@@ -476,10 +462,6 @@ Lemma is_borrow_unit (lt: Lifetime) (loc: Loc RI)
 Proof. unfold is_borrow. unfold state_unit. unfold lmap_is_borrow.
   intros. apply unit_le. Qed.
   
-Lemma cell_of_pl_BranchNil (pl: PathLoc)
-  : cell_of_pl (BranchNil : Branch M) pl ≡ triv_cell.
-Admitted.
-  
 Lemma cell_live_cell_of_pl_as_tree_empty
   pl : cell_live (cell_of_pl (as_tree ∅) pl) = unit.
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
@@ -529,15 +511,6 @@ Proof. unfold as_tree. unfold map_fold. unfold foldr, curry. unfold "∘".
   rewrite map_to_list_singleton. unfold Datatypes.uncurry.
   unfold "⋅". unfold branch_op. trivial. Qed.
 
-Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
-  : branch_all_total_in_refinement_domain roi branch lt idx
-    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
-
-Definition any_pl_of_loc (loc: Loc RI) : PathLoc. Admitted.
-
-Lemma any_pl_of_loc_is_of_loc (loc: Loc RI)
-  : any_pl_of_loc loc ∈ pls_of_loc loc. Admitted.
-
 Lemma in_refinement_domain_of_natird roi (node: Node M) (lifetime: Lifetime) (idx: nat)
   (natird : node_all_total_in_refinement_domain roi node lifetime idx)
       : in_refinement_domain roi idx (node_total roi node lifetime).
@@ -556,12 +529,6 @@ Lemma exists_some_of_match {A} (t: option A) (is_some : match t with | Some _ =>
                   (any_pl_of_loc gamma))
                (multiset_add (multiset_add (multiset_add kappa empty_lifetime) l1) l))*)
 
-Lemma node_view_le roi a b lt y : node_view roi (a ⋅ b) lt y -> node_view roi a lt y.
-Admitted.
-
-Lemma node_view_le2 roi a lt y z : node_view roi a lt y -> node_view roi a lt (dot y z).
-Admitted.
-
 Lemma node_view_strip roi a b c loc kappa x :
   node_view roi (node_of_pl (a ⋅ b ⋅ c) loc) kappa x ->
   node_view roi (node_of_pl b loc) kappa x.
@@ -569,10 +536,10 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   intro.
   setoid_rewrite <- node_of_pl_op in H.
   assert (node_view roi (node_of_pl (a ⋅ b) loc) kappa x).
-  - apply node_view_le with (b := node_of_pl c loc). trivial.
+  - apply node_view_le with (b0 := node_of_pl c loc). trivial.
   - setoid_rewrite <- node_of_pl_op in H0.
     setoid_rewrite node_op_comm in H0.
-    apply node_view_le with (b := node_of_pl a loc). trivial.
+    apply node_view_le with (b0 := node_of_pl a loc). trivial.
 Qed.
 
 Lemma node_node_cell_cell b pl : node_live (node_of_pl b pl) = cell_live (cell_of_pl b pl).
@@ -617,13 +584,14 @@ Proof.
   
   rename isb into isb'. have isb := isb' (any_pl_of_loc gamma) (any_pl_of_loc_is_of_loc gamma). clear isb'.
   rename isv into isv'. have isv := isv' (any_pl_of_loc gamma). clear isv'.
+  have isv' := isv M EqDecision0 TPCM0 RefinementIndex0. clear isv. rename isv' into isv.
   have nvlt := node_view_le_total_minus_live _ _ _ _ _ _ isv.
   unfold lifetime_included in *.
   have nvlt' := nvlt kappa (multiset_add_chain_included _ _ _ _). clear nvlt.
   unfold view_sat in nvlt'.
   
   have nvlt'' := node_view_strip _ _ _ _ _ _ _ nvlt'.
-  have ineq := isb _ _ nvlt''.
+  have ineq := isb M EqDecision0 TPCM0 RefinementIndex0 _ _ nvlt''.
   
   have ird := in_refinement_domain_of_natird _ _ _ _ isv.
   unfold in_refinement_domain in ird.
@@ -693,8 +661,6 @@ Proof.
   trivial.
 Qed.
 
-Definition plsplit (ln: list nat) : PathLoc. Admitted.
-
 (*Global Instance thing_dec (p:PathLoc) (gamma: Loc RI) (i alpha:nat) (ri:RI) :
   Decision (p ∈ pls_of_loc gamma /\ i < nat_of_extstep alpha ri). solve_decision. Defined.*)
 
@@ -748,14 +714,6 @@ Lemma updog_other_eq_unit p i alpha ri gamma m
     
 (*Lemma specific_exchange_cond_of_no_change ref p x y h s
   : specific_exchange_cond ref p x y h s x y h s. Admitted.*)
-  
-Lemma pl_not_in_of_pl_in_extloc pl alpha (ri: RI) gamma
-  : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
-  
-Lemma refinement_of_nat_eq_refinement_of_of_in_pls_of_loc p i alpha ri gamma
-  (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-    : refinement_of_nat M RI i = refinement_of ri.
-    Admitted.
     
 (****************************************************************)
 (****************************************************************)
@@ -1002,9 +960,9 @@ Proof.
   setoid_rewrite <- node_of_pl_op in H1.
   apply abcr; trivial.
   - apply b1 with (pl := pl); trivial.
-    apply node_view_le with (b := node_of_pl (as_tree l2) pl). trivial.
+    apply node_view_le with (b0 := node_of_pl (as_tree l2) pl). trivial.
   - apply b2 with (pl := pl); trivial.
-    apply node_view_le with (b := node_of_pl (as_tree l0) pl).
+    apply node_view_le with (b0 := node_of_pl (as_tree l0) pl).
     setoid_rewrite node_op_comm. trivial.
 Qed.
 
@@ -1012,7 +970,7 @@ Lemma lmap_no_live_op l1 l2
   (nl1: lmap_no_live l1)
   (nl2: lmap_no_live l2)
   : (lmap_no_live (l1 ⋅ l2)).
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   unfold lmap_no_live in *.
   unfold branch_no_live in *.
   intro.
