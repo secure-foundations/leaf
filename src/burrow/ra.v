@@ -61,7 +61,12 @@ Canonical Structure burrowR
 
 Global Instance burrow_unit 𝜇 : Unit (BurrowState 𝜇) := state_unit.
 Lemma burrow_ucmra_mixin 𝜇 : UcmraMixin (BurrowState 𝜇).
-Proof. split. Admitted.
+Proof. split.
+  - apply state_valid_state_unit.
+  - unfold LeftId. intros. unfold "⋅".
+      setoid_rewrite state_comm. setoid_rewrite op_state_unit. trivial.
+  - unfold pcore, state_pcore. trivial.
+Qed.
 Canonical Structure burrowUR 𝜇 : ucmra := Ucmra (BurrowState 𝜇) (burrow_ucmra_mixin 𝜇).
 
 Section BurrowLaws.
@@ -86,8 +91,6 @@ Definition gen_burrowΣ : gFunctors := #[
 Global Instance subG_gen_burrowGpreS {Σ} :
   subG (gen_burrowΣ) Σ → gen_burrowGpreS Σ.
 Proof. solve_inG. Qed.
-
-Lemma state_valid_state_unit : state_valid (state_unit : BurrowState 𝜇). Admitted.
 
 Lemma gen_burrow_init {Σ: gFunctors} `{!gen_burrowGpreS Σ}
    : ⊢ |==> ∃ _ : gen_burrowGS Σ, ( ⌜ True ⌝ : iProp Σ ).

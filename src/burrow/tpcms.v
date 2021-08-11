@@ -14,6 +14,7 @@ Require Import Burrow.tactics.
 Require Import Burrow.locations.
 Require Import Burrow.resource_proofs.
 Require Import Burrow.exchanges.
+Require Import Burrow.parity.
 Require Import coq_tricks.Deex.
 
 #[refine]
@@ -418,8 +419,30 @@ Defined.
 (*Definition gmap_key_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
     (fn: K -> L) (m: gmap K V) : gmap L V. Admitted.*)
     
+Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
+    (fn: K -> option L) (m: gmap K V) : gmap L V. Admitted.
+
+Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
+    (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
+      | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
+      | None => True
+    end. Admitted.
+    
+    Print nat_countable.
 Definition ic_key_opt_map `{!EqDecision M} `{!TPCM M}
-    (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M. Admitted.
+    (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M.
+Proof.
+refine ({|
+  ic_obj := gmap_key_opt_map fn (ic_obj m) ;
+  ic_prf := _ ; 
+|}).
+  - unfold ic_wf. rewrite bool_decide_spec. unfold map_Forall. intros.
+    have j := gmap_key_opt_map_rev_key_exists fn (ic_obj m) i.
+    have j0 := j nat_eq_dec nat_countable.
+    rewrite H in j0. deex. destruct_ands.
+    destruct m. unfold ic_obj in H1.
+    have t := elem_ne_unit_of_ic_wf (ic_obj0) k ic_prf0. rewrite H1 in t. trivial.
+Defined.
 
 Definition ic_key_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> nat) (m: InfiniteCopies M) : InfiniteCopies M :=
@@ -427,20 +450,6 @@ Definition ic_key_map `{!EqDecision M} `{!TPCM M}
 
 Definition ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) :=
   dot (ic_key_map (λ n , 2*n) a) (ic_key_map (λ n, 2*n + 1) b).
-
-Inductive Parity :=
-| Even : nat -> Parity
-| Odd : nat -> Parity.
-
-Definition parity (n: nat) : Parity. Admitted.
-Definition even_get (n: nat) : option nat :=
-    match parity n with Even k => Some k | Odd _ => None end.
-Definition odd_get (n: nat) : option nat :=
-    match parity n with Odd k => Some k | Even _ => None end.
-    
-Lemma parity_2i (i: nat) : parity (2*i) = Even i. Admitted.
-Lemma parity_2i_1 (i: nat) : parity (2*i + 1) = Odd i. Admitted.
-Lemma even_or_odd (i: nat) : (∃ k , i = 2*k) \/ (∃ k , i = 2*k + 1). Admitted.
   
 Definition ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) :=
   (ic_key_opt_map even_get a).

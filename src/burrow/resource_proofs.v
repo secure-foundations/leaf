@@ -203,6 +203,8 @@ Proof.
   destruct_ands. subst. 
   setoid_rewrite <- H. trivial.
 Qed.
+
+Lemma state_valid_state_unit : state_valid state_unit. Admitted.
   
 Lemma as_tree_op (a b: lmap M RI)
     : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
