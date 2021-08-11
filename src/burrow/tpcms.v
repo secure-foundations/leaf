@@ -459,7 +459,7 @@ Definition ic_right {M} `{!EqDecision M} `{!TPCM M} (b : InfiniteCopies M) :=
 Lemma ic_get_ic_key_opt_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) (x y: nat)
     (x_eq: fn y = Some x)
-    (inj: ∀ x y , fn x = fn y -> x = y)
+    (inj: ∀ x y , fn x = fn y -> fn x ≠ None -> x = y)
   : ic_get (ic_key_opt_map fn m) x = ic_get m y. Admitted.
   
 Lemma ic_get_ic_key_opt_map_unit `{!EqDecision M} `{!TPCM M}
@@ -472,7 +472,7 @@ Lemma ic_get_ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: 
 Proof.
   unfold ic_left. apply ic_get_ic_key_opt_map.
     - unfold even_get. rewrite parity_2i. trivial.
-    - intros. apply eq_of_even_get_eq. trivial.
+    - intros. apply eq_of_even_get_eq; trivial.
 Qed.
   
 Lemma ic_get_ic_right {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
@@ -480,7 +480,7 @@ Lemma ic_get_ic_right {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i:
 Proof.
   unfold ic_right. apply ic_get_ic_key_opt_map.
     - unfold odd_get. rewrite parity_2i_1. trivial.
-    - intros. apply eq_of_odd_get_eq. trivial.
+    - intros. apply eq_of_odd_get_eq; trivial.
 Qed.
   
 Lemma ic_get_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) (i: nat)

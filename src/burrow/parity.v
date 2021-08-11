@@ -9,10 +9,9 @@ Inductive Parity :=
 Fixpoint parity (n: nat) : Parity :=
   match n with
   | 0 => Even 0
-  | S 0 => Odd 0
-  | S (S i) => match parity i with
-      | Even k => Even (k + 1)
-      | Odd k => Odd (k + 1)
+  | S i => match parity i with
+      | Even k => Odd k
+      | Odd k => Even (k + 1)
       end
   end.
 
@@ -44,8 +43,46 @@ Proof. induction i.
     + left. deex. exists (k+1). lia.
 Qed.
 
+Lemma eq_0_of_parity0 (y: nat)
+  : parity y = parity 0 -> y = 0.
+Proof.
+  intros. destruct y; trivial. exfalso. unfold parity in H. destruct y.
+  - discriminate. - fold parity in H. destruct (parity y). * inversion H. lia.
+    * discriminate.
+Qed.
+  
+Lemma eq_of_parity_eq (x : nat)
+  : ∀ y , parity x = parity y -> x = y.
+Proof. induction x; destruct y.
+  - trivial.
+  - symmetry. apply eq_0_of_parity0. symmetry. trivial.
+  - apply eq_0_of_parity0.
+  - intro. f_equal. apply IHx. 
+      unfold parity in H. fold parity in H.
+      destruct (parity x), (parity y).
+      * inversion H. subst. trivial.
+      * discriminate.
+      * discriminate.
+      * inversion H. subst. replace n with n0 by lia. trivial.
+Qed.
+
 Lemma eq_of_even_get_eq (x y : nat)
-  : (even_get x = even_get y) -> x = y. Admitted.
+  : (even_get x = even_get y) -> (even_get x ≠ None) -> x = y.
+Proof. unfold even_get.
+  destruct (parity x) eqn:a; destruct (parity y) eqn:b.
+  - intros. inversion H. subst. apply eq_of_parity_eq. rewrite a, b. trivial.
+  - intro. discriminate.
+  - intro. discriminate.
+  - intros. contradiction.
+Qed.
   
 Lemma eq_of_odd_get_eq (x y : nat)
-  : (odd_get x = odd_get y) -> x = y. Admitted.
+  : (odd_get x = odd_get y) -> (odd_get x ≠ None) -> x = y. 
+Proof.  unfold odd_get.
+  destruct (parity x) eqn:a; destruct (parity y) eqn:b.
+  - intros. contradiction.
+  - intros. contradiction.
+  - intros. discriminate.
+  - intros. inversion H. subst. apply eq_of_parity_eq. rewrite a, b. trivial.
+Qed.
+
