@@ -252,7 +252,12 @@ Proof. apply (set_relate (=)).
 Qed.
 
 Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
-  (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None. Admitted.
+  (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None.
+Proof.
+  exists (delete i y). split.
+  - rewrite insert_delete; trivial.
+  - apply lookup_delete.
+Qed.
 
 Lemma merge_assign `{!EqDecision K, !Countable K} {V}
     (z:V) op (i:K) (x y:V) (m m' : gmap K V)
@@ -499,7 +504,7 @@ Qed.
 
 Definition multiset_no_dupes `{EqDecision A, Countable A} (x : multiset A) :=
   match x with
-    | (MS _ x) => map_fold (λ k a b , a = 0 /\ b) True x
+    | (MS _ x) => ∀ i , match x !! i with Some 0 => True | None => True | _ => False end
   end.
 
 Lemma empty_add_empty_eq_empty `{EqDecision A, Countable A}
@@ -573,17 +578,50 @@ Lemma multiset_no_dupes_of_add_larger_elem lt y
   (mnd : multiset_no_dupes lt)
   (larger: y > max_ltunit_in_lt lt)
   : multiset_no_dupes (multiset_add (lt_singleton y) lt).
-Admitted. 
+Proof.
+  unfold lt_singleton, multiset_no_dupes, multiset_add. destruct lt. intro.
+  rewrite lookup_merge. unfold diag_None.
+  have h : Decision (y = i) by solve_decision. destruct h.
+  - subst y. rewrite lookup_singleton. unfold multiset_add_merge.
+    destruct (g !! i) eqn:ab; trivial.
+    assert (i ≤ max_ltunit_in_lt (MS nat g)).
+    + apply max_ltunit_in_lt_ge. unfold multiset_in. crush.
+    + lia.
+  - rewrite lookup_singleton_ne; trivial. unfold multiset_add_merge.
+    unfold multiset_no_dupes in mnd.
+    have t := mnd i.
+    destruct (g !! i); trivial.
+Qed.
     
 Lemma multiset_no_dupes_empty {A} `{Countable A} : multiset_no_dupes
-    (empty_multiset : multiset A). Admitted.
+    (empty_multiset : multiset A).
+Proof. unfold multiset_no_dupes, empty_multiset. intro. rewrite lookup_empty. trivial. Qed.
 
 Lemma multiset_no_dupes_of_multiset_no_dupes_add (a b: multiset nat)
   (mnd : multiset_no_dupes (multiset_add a b))
-  : multiset_no_dupes b. Admitted.
+  : multiset_no_dupes b.
+Proof. unfold multiset_no_dupes, multiset_add in *. destruct a, b. intro.
+  have h := mnd i. rewrite lookup_merge in h. unfold diag_None, multiset_add_merge in h.
+    destruct (g !! i), (g0 !! i); trivial. destruct n0; trivial.
+    replace (n + S n0 + 1) with (S (n + n0 + 1)) in h by lia.
+    contradiction.
+Qed.
 
 Lemma not_le_of_nonempty (lt a b: multiset nat)
   (lt_nonempty : lt ≠ empty_multiset)
   (mnd : multiset_no_dupes (multiset_add lt (multiset_add a b)))
        : ¬ multiset_le lt b.
-Admitted.
+Proof. intro. apply lt_nonempty.
+  unfold multiset_le, multiset_no_dupes, multiset_add, empty_multiset in *.
+  destruct lt, a, b.
+  apply f_equal. apply map_eq. intro. rewrite lookup_empty.
+  have t := H i. have s := mnd i. clear H. clear mnd.
+  rewrite lookup_merge in s. unfold diag_None, multiset_add_merge in s.
+  rewrite lookup_merge in s. unfold diag_None in *.
+  destruct (g !! i), (g0 !! i), (g1 !! i); trivial.
+  - replace (n + (n0 + n1 + 1) + 1) with (S (n + n0 + n1 + 1)) in s by lia.
+    contradiction.
+  - replace (n + n0 + 1) with (S (n + n0)) in s by lia. contradiction.
+  - replace (n + n0 + 1) with (S (n + n0)) in s by lia. contradiction.
+  - contradiction.
+Qed.
