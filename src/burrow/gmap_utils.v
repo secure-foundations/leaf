@@ -34,7 +34,20 @@ Lemma set_fold_add_1_element `{FinSet A T} {B}
   (u: B)
   (fn_assoc: ∀ a1 a2 b , fn a1 (fn a2 b) = fn a2 (fn a1 b))
   : set_fold fn u (s ∪ {[x]}) = fn x (set_fold fn u s).
-Admitted.
+Proof.
+  unfold set_fold, "∘".
+  Print foldr_permutation.
+  enough (fn x (foldr fn u (elements s)) = (foldr fn u (x :: elements s))).
+  - rewrite H7.
+    apply foldr_permutation.
+    + typeclasses eauto.
+    + intro. unfold Proper, "==>". intros. subst. trivial.
+    + intros. apply fn_assoc.
+    + setoid_replace (s ∪ {[x]}) with ({[x]} ∪ s).
+      * apply elements_union_singleton. trivial.
+      * set_solver.
+  - unfold foldr. trivial.
+Qed.
   
 Lemma set_relate `{Elements A T} {B} {C}
   (R : B -> C -> Prop)

@@ -341,13 +341,33 @@ Lemma dot_cba a b c
 Proof.
   rewrite dot_kjha. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal.
   apply tpcm_comm. Qed.
-
-Lemma listset_max_len (se : listset PathLoc)
-  : ∃ lmax , ∀ p i , (p, i) ∈ se -> length p ≤ lmax. Admitted.
   
-Lemma listset_max_i (se : listset PathLoc)
-  : ∃ imax , ∀ p i , (p, i) ∈ se -> i ≤ imax. Admitted.
+Lemma listset_max_fn (se : gset PathLoc) (fn: PathLoc -> nat)
+  : ∃ lmax , ∀ pl , pl ∈ se -> fn pl ≤ lmax.
+Proof. exists (set_fold (λ r k, k `max` fn r) 1 se).
+  intros.
+  replace (se) with ((se ∖ {[ pl ]}) ∪ {[ pl ]}).
+  - rewrite set_fold_add_1_element.
+    + lia.
+    + set_solver.
+    + intros. lia.
+  - apply set_eq. intros. rewrite elem_of_union.
+    rewrite elem_of_difference. rewrite elem_of_singleton. intuition.
+    + subst. trivial.
+    + have h : Decision (x = pl) by solve_decision. destruct h; intuition.
+Qed.
 
+Lemma listset_max_len (se : gset PathLoc)
+  : ∃ lmax , ∀ p i , (p, i) ∈ se -> length p ≤ lmax.
+Proof. have h := listset_max_fn se (λ pl , match pl with (p, i) => length p end).
+  deex. exists lmax. intros. have q := h (p, i). apply q. trivial.
+Qed.
+  
+Lemma listset_max_i (se : gset PathLoc)
+  : ∃ imax , ∀ p i , (p, i) ∈ se -> i ≤ imax.
+Proof. have h := listset_max_fn se (λ pl , match pl with (p, i) => i end).
+  deex. exists lmax. intros. have q := h (p, i). apply q. trivial.
+Qed.
     
 Lemma batird_BranchNil active idx:
   branch_all_total_in_refinement_domain (refinement_of_nat M RI) BranchNil active idx.
@@ -404,7 +424,7 @@ Proof.
     trivial.
 Qed.
 
-Lemma specexc_branch_tt_ind t t' active (se: listset PathLoc) : ∀ len_add i_add p i
+Lemma specexc_branch_tt_ind (t t': Branch M) (active: Lifetime) (se: gset PathLoc) : ∀ len_add i_add p i
   branch branch'
   (indl: ∀ p0 i0 , (p0, i0) ∈ se -> length p0 < len_add + length p)
   (indi: ∀ p0 i0 , (p0, i0) ∈ se -> i0 < i_add + i)
@@ -533,7 +553,7 @@ Proof.
         rewrite unit_dot_left in amval. trivial.
 Qed.
         
-Lemma specexc_branch_tt t t' active (se: listset PathLoc) p i
+Lemma specexc_branch_tt (t t': Branch M) (active: Lifetime) (se: gset PathLoc) p i
   branch branch'
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
@@ -560,7 +580,7 @@ Proof.
       branch'_is reserved_untouched amval branch_is_trivial branch'_is_trivial batird).
 Qed.
 
-Lemma specexc_branch_t t t' active (branch branch': Branch M) (se: listset PathLoc) p i
+Lemma specexc_branch_t (t t': Branch M) (active: Lifetime) (branch branch': Branch M) (se: gset PathLoc) p i
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
@@ -574,7 +594,7 @@ Lemma specexc_branch_t t t' active (branch branch': Branch M) (se: listset PathL
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
         (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i)))
-with specexc_node_t t t' active (node node': Node M) (se: listset PathLoc) p i
+with specexc_node_t (t t': Branch M) (active: Lifetime) (node node': Node M) (se: gset PathLoc) p i
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
@@ -788,7 +808,7 @@ Proof.
 Admitted.
 
 
-Lemma specexc_branch t t' active (branch branch': Branch M) (se: listset PathLoc) p i
+Lemma specexc_branch (t t': Branch M) (active: Lifetime) (branch branch': Branch M) (se: gset PathLoc) p i
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
@@ -801,7 +821,7 @@ Lemma specexc_branch t t' active (branch branch': Branch M) (se: listset PathLoc
       /\ mov
         (dot (branch_total (refinement_of_nat M RI) branch active i) (down (p, i)))
         (dot (branch_total (refinement_of_nat M RI) branch' active i) (up (p, i)))
-with specexc_node t t' active (node node': Node M) (se: listset PathLoc) p i
+with specexc_node (t t': Branch M) (active: Lifetime) (node node': Node M) (se: gset PathLoc) p i
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)
@@ -1001,7 +1021,7 @@ Qed.
  
 Lemma specific_flows_preserve_branch_all_total_in_refinement_domain
   (t t': Branch M) (active: Lifetime)
-  (se: listset PathLoc)
+  (se: gset PathLoc)
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , specific_flow_cond p i t t' active down up)

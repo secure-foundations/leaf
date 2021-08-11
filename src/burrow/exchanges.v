@@ -61,8 +61,8 @@ Lemma cell_reserved_op a b
 Proof. unfold cell_reserved, "⋅", cell_op. destruct a, b. trivial.
 Qed.
 
-Lemma flows_preserve_branch_all_total_in_refinement_domain b t t' active
-  (se: listset PathLoc)
+Lemma flows_preserve_branch_all_total_in_refinement_domain (b t t': Branch M) (active: Lifetime)
+  (se: gset PathLoc)
   (down up : PathLoc -> M)
   (flow_se : ∀ p i , (p, i) ∉ se -> up (p, i) = unit /\ down (p, i) = unit)
   (flow_update : ∀ p i , view_flow_cond p i b t t' active down up)
@@ -767,7 +767,7 @@ Definition updo (m: M) (gamma: Loc RI) (idx: nat) : (PathLoc -> M) :=
           unit
       end.
  
-Definition updo_se (gamma: Loc RI) (idx: nat) : listset PathLoc. Admitted.
+Definition updo_se (gamma: Loc RI) (idx: nat) : gset PathLoc. Admitted.
 
 Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
   : ∀ (p : list nat) (i : nat),
@@ -777,8 +777,8 @@ Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
     
 
     
-Definition pls_of_loc_from_left (l r: Loc RI) : listset PathLoc. Admitted.
-Definition pls_of_loc_from_right (l r: Loc RI) : listset PathLoc. Admitted.
+Definition pls_of_loc_from_left (l r: Loc RI) : gset PathLoc. Admitted.
+Definition pls_of_loc_from_right (l r: Loc RI) : gset PathLoc. Admitted.
 
 Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
   : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.

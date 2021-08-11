@@ -538,7 +538,7 @@ Definition updog (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI) : (PathLoc -> M) :
           unit
       end.
       
-Definition updog_se (gamma: Loc RI) (alpha: nat) (ri: RI) : listset PathLoc. Admitted.
+Definition updog_se (gamma: Loc RI) (alpha: nat) (ri: RI) : gset PathLoc. Admitted.
 
 Lemma updog_se_okay (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI)
   : ∀ (p : list nat) (i : nat),
@@ -1003,6 +1003,7 @@ Qed.
 Lemma borrow_back_left gamma1 gamma2 m1 m2 kappa state
   (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
   : is_borrow kappa gamma1 m1 state.
+Proof.
     unfold is_borrow in *. destruct state.
   unfold lmap_is_borrow in *. intros.
   rename H0 into mval. rename H1 into nv.
@@ -1034,6 +1035,7 @@ Qed.
 Lemma borrow_back_right gamma1 gamma2 m1 m2 kappa state
   (ib: is_borrow kappa (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) state)
   : is_borrow kappa gamma2 m2 state.
+Proof.
     unfold is_borrow in *. destruct state.
   unfold lmap_is_borrow in *. intros.
   rename H0 into mval. rename H1 into nv.

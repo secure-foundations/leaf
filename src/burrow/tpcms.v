@@ -428,7 +428,6 @@ Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecisi
       | None => True
     end. Admitted.
     
-    Print nat_countable.
 Definition ic_key_opt_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M.
 Proof.
