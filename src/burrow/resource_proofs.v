@@ -335,7 +335,28 @@ Proof.
   setoid_rewrite <- H. trivial.
 Qed.
 
-Lemma state_valid_state_unit : state_valid state_unit. Admitted.
+Lemma as_tree_empty : as_tree ∅ = BranchNil.
+Proof.
+  unfold as_tree. rewrite map_fold_empty. trivial. Qed.
+
+Lemma multiset_no_dupes_empty {A} `{Countable A} : multiset_no_dupes
+    (empty_multiset : multiset A). Admitted.
+
+Lemma state_inv_state_unit : state_inv state_unit.
+Proof.
+  unfold state_inv, state_unit. split.
+  - apply multiset_no_dupes_empty.
+  - rewrite as_tree_empty. unfold valid_totals. split.
+    + unfold branch_all_total_in_refinement_domain. trivial.
+    + unfold branch_total. apply unit_valid.
+Qed.
+
+Lemma state_valid_state_unit : state_valid state_unit.
+Proof.
+  unfold state_valid. exists state_unit.
+  setoid_rewrite op_state_unit.
+  apply state_inv_state_unit.
+Qed.
   
 Lemma as_tree_op (a b: lmap M RI)
     : as_tree (a ⋅ b) ≡ (as_tree a) ⋅ (as_tree b).
