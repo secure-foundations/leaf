@@ -757,7 +757,21 @@ Lemma sum_reserved_over_lifetime_eq_adding_singleton g active_lifetime (lt: Life
   (notin : ∀ r : multiset nat * M, r ∈ g → let (lt, _) := r in ¬ multiset_in lt alt)
   : (sum_reserved_over_lifetime g active_lifetime)
   = (sum_reserved_over_lifetime g (multiset_add (lt_singleton alt) active_lifetime)).
-  Admitted.
+Proof. unfold sum_reserved_over_lifetime.
+  apply set_relate_strong with (R := eq)
+    (fn1 := (λ (reserved0 : Lifetime * M) (m : M),
+       dot m (reserved_get_or_unit reserved0 active_lifetime)))
+    (fn2 := (λ (reserved0 : Lifetime * M) (m : M),
+       dot m
+         (reserved_get_or_unit reserved0 (multiset_add (lt_singleton alt) active_lifetime)))).
+   - trivial.
+   - intros. subst. f_equal. unfold reserved_get_or_unit. destruct a.
+      case_decide; case_decide; trivial.
+     + exfalso. apply H1. apply multiset_le_transitive with (y := active_lifetime);
+        trivial. apply multiset_le_add_right.
+     + exfalso. have ni := notin (l, m) H.
+        eapply multiset_le_when_adding_new. * apply H0. * apply H1. * apply ni.
+Qed.
 
 Lemma borrow_begin (m: M) gamma p
   (si: state_inv (live gamma m ⋅ p))

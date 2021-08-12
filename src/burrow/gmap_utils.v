@@ -168,6 +168,30 @@ Proof.
   - unfold foldr. apply pro. apply IHl.
 Qed.
 
+Lemma set_relate_strong `{FinSet A T} {B} {C}
+  (R : B -> C -> Prop)
+  (s: T)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (u1 : B)
+  (u2: C)
+  (R_u1_u2 : R u1 u2)
+  (pro: ∀ a b c , a ∈ s -> R b c -> R (fn1 a b) (fn2 a c))
+  : R (set_fold fn1 u1 s) (set_fold fn2 u2 s).
+Proof.
+  unfold set_fold. unfold "∘".
+  assert (∀ y , y ∈ elements s -> y ∈ s) as sub
+    by ( intro; rewrite elem_of_elements; trivial ).
+  generalize sub.
+  induction (elements s).
+  - intro. unfold foldr. trivial.
+  - intros. unfold foldr. apply pro.
+    + apply sub0. unfold "∈". apply elem_of_list_here.
+    + apply IHl.
+      * intros. apply sub0. apply elem_of_list_further. trivial.
+      * intros. apply sub0. apply elem_of_list_further. trivial.
+Qed.
+
 Lemma set_relate3 `{Elements A T} {B} {C} {D}
   (R : B -> C -> D -> Prop)
   (s: T)
@@ -764,4 +788,22 @@ Proof. intro. apply lt_nonempty.
   - replace (n + n0 + 1) with (S (n + n0)) in s by lia. contradiction.
   - replace (n + n0 + 1) with (S (n + n0)) in s by lia. contradiction.
   - contradiction.
+Qed.
+
+Lemma multiset_le_when_adding_new l k u
+  (notle : ¬ multiset_le l k)
+  (le : multiset_le l (multiset_add (lt_singleton u) k))
+  (ni : ¬ multiset_in l u)
+  : False.
+Proof.
+  apply notle. clear notle. destruct l, k.
+  unfold multiset_le, multiset_add, lt_singleton, multiset_in in *.
+  intro. have j := le k. clear le.
+  have h : Decision (u = k) by solve_decision. destruct h.
+  - subst. rewrite lookup_merge in j. unfold diag_None, multiset_add_merge in j.
+      rewrite lookup_singleton in j.
+      destruct (g !! k), (g0 !! k); crush.
+  - rewrite lookup_merge in j. unfold diag_None, multiset_add_merge in j.
+      rewrite lookup_singleton_ne in j; trivial.
+      destruct (g !! k), (g0 !! k); crush.
 Qed.
