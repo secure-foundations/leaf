@@ -237,6 +237,23 @@ Proof.
   - apply btt; trivial.
 Qed.
 
+Lemma conjoin_umbrella_left_equiv_uni (a b a' : M -> Prop)
+  (att: ∀ y , a y <-> a' y)
+  : ∀ y , conjoin_umbrella a b y -> conjoin_umbrella a' b y.
+Proof.
+  intros. unfold conjoin_umbrella in *. deex. destruct_ands. subst.
+  exists x. exists y0. repeat split; trivial. rewrite <- att. trivial.
+Qed.
+
+Lemma conjoin_umbrella_left_equiv (a b a' : M -> Prop)
+  (att: ∀ y , a y <-> a' y)
+  : ∀ y , conjoin_umbrella a b y <-> conjoin_umbrella a' b y.
+Proof.
+  intros. split.
+    - apply conjoin_umbrella_left_equiv_uni. trivial.
+    - apply conjoin_umbrella_left_equiv_uni. intros. have attt := att y0. intuition.
+Qed.
+
 Lemma conjoin_reserved_over_lifetime_monotonic (g: listset (Lifetime * M)) (lt1: Lifetime) (lt2: Lifetime)
   (lt1_le_lt2 : multiset_le lt1 lt2)
   : ∀ y ,
@@ -938,17 +955,37 @@ Proof. intro. unfold cell_view in *. destruct c, c1. unfold "⋅", cell_op in H.
   unfold conjoin_reserved_over_lifetime in *.
   have j := conjoin_reserved_over_lifetime_is_closed l lt.
   unfold umbrella_is_closed in j.
-  apply ( set_subset_relate (λ (b c: M -> Prop) , ∀ (x: M) , c x -> b x) l (l ∪ l0)
+  eapply ( set_subset_relate_general (λ (b c: M -> Prop) , umbrella_is_closed c /\ ∀ (x: M) , c x -> b x)
+    (λ c1 c2 , ∀ x , c1 x <-> c2 x)
+    _ l (l ∪ l0)
     (λ (reserved : Lifetime * M) (um : M → Prop),
            conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt)))
     (λ (reserved : Lifetime * M) (um : M → Prop),
        conjoin_umbrella um (umbrella (reserved_get_or_unit reserved lt)))
-    umbrella_unit umbrella_unit
-  ).
-  - trivial.
+    _ _ umbrella_unit umbrella_unit
+  ). Unshelve.
+  - split; trivial. apply umbrella_closed_umbrella_unit.
   - set_solver.
-  - intros. apply conjoin_umbrella_monotonic with (a := c) (b := (umbrella (reserved_get_or_unit a lt))); trivial.
-  - intros. apply H0. unfold conjoin_umbrella in H1. deex. Admitted.
+  - intros. destruct_ands. split. 
+    + apply umbrella_closed_conjoin. trivial.
+    + apply conjoin_umbrella_monotonic with (a := c) (b := (umbrella (reserved_get_or_unit a lt))); trivial.
+  - intros. destruct_ands. split.
+    + apply umbrella_closed_conjoin. trivial.
+    + intros. apply H1. unfold conjoin_umbrella in H2. deex.
+      destruct_ands. subst x.
+      unfold umbrella_is_closed in H0. apply H0. trivial.
+  - intros. apply conjoin_umbrella_cassoc.
+  - trivial.
+  - split.
+    * unfold Reflexive. intuition.
+    * unfold Transitive. intros. have h := H0 x0. have t := H1 x0. intuition.
+  - intros. unfold Proper, "==>". intros. apply conjoin_umbrella_left_equiv. trivial.
+  - intros. unfold Proper. unfold "==>", flip, impl. intros. destruct_ands.
+    + split.
+      * unfold umbrella_is_closed. intros. rewrite H0. unfold umbrella_is_closed in H1.
+          apply H1. rewrite <- H0. trivial.
+      * intros. apply H2. rewrite <- H0. trivial.
+Qed.
 
 Context (refs: nat -> Refinement M M).
 
@@ -1621,4 +1658,7 @@ Proof.
 Qed.
 
 Global Instance cell_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
-    Proper ((≡) ==> (=) ==> (=) ==> (≡)) cell_view. Admitted.
+    Proper ((≡) ==> (=) ==> (=) ==> (≡)) cell_view.
+Proof. unfold "==>", Proper. intros. subst. unfold cell_view. destruct x, y.
+  unfold "≡", cell_equiv in H. destruct_ands. setoid_rewrite H0. trivial.
+Qed.

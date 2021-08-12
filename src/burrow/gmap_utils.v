@@ -227,6 +227,43 @@ Proof.
           intro. rewrite elem_of_difference. intros. destruct_ands. contradiction.
 Qed.
 
+Lemma set_subset_relate_general `{FinSet A T} {B} {C}
+  (R : B -> C -> Prop)
+  (Rel : C -> C -> Prop)
+  (po: PreOrder Rel)
+  (s1: T)
+  (s2: T)
+  (fn1 : A -> B -> B)
+  (fn2 : A -> C -> C)
+  (proper: (∀ x : A, Proper (Rel ==> Rel) (fn2 x)))
+  (proper2: (∀ b : B, Proper (Rel ==> flip impl) (R b)))
+  (u1 : B)
+  (u2: C)
+  (R_u1_u2 : R u1 u2)
+  (sub: s1 ⊆ s2)
+  (pro: ∀ a b c , R b c -> R (fn1 a b) (fn2 a c))
+  (pro_single: ∀ a b c , R b c -> R b (fn2 a c))
+  (comm: ∀ (a1 a2 : A) (c : C), Rel (fn2 a1 (fn2 a2 c)) (fn2 a2 (fn2 a1 c)))
+  : R (set_fold fn1 u1 s1) (set_fold fn2 u2 s2).
+Proof.
+  (*generalize sub. clear sub. generalize s2. clear s2.
+  have h := (P := λ foldRes X , s1 ⊆ X -> R (set_fold fn1 u1 s1) foldRes).*)
+  have t0 := foldr_permutation_proper (Rel) fn2 u2 comm (elements s2)
+      (elements (s2 ∖ s1) ++ elements s1).
+  have t := t0 po proper.
+  unfold set_fold. simpl. setoid_rewrite t.
+    - induction (elements (s2 ∖ s1)).
+      + simpl.
+        have l := set_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l.
+      + simpl. apply pro_single. trivial.
+    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_eq; trivial).
+      assert (elements s2 ≡ₚ elements ((s2 ∖ s1) ∪ s1)) by 
+        (setoid_rewrite <- H7; trivial).
+      rewrite H8.
+      apply elements_disj_union. unfold "##". unfold set_disjoint_instance.
+          intro. rewrite elem_of_difference. intros. destruct_ands. contradiction.
+Qed.
+
 Lemma set_nat_upper_bound `{FinSet nat T} (s: T)
     : ∃ n , ∀ m , m ∈ s -> m < n.
 Proof.

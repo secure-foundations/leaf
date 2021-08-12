@@ -10,64 +10,12 @@ From stdpp Require Import gmap.
 
 Section Updog.
 
-Lemma resolve_p_i_in_ExtLoc
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i alpha ri (gamma: Loc RI) :
-  ((p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma)) ->
-    (p ≠ [] ∧ plsplit p ∈ pls_of_loc gamma ∧ i = nat_of_extstep alpha ri). Admitted.
-    
-Lemma resolve_p_i_in_ExtLoc_rev
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i alpha ri (gamma: Loc RI) :
-    (p ≠ []) -> (plsplit p ∈ pls_of_loc gamma) -> (i = nat_of_extstep alpha ri) ->
-    ((p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma)). Admitted.
-    
-Lemma resolve_p_i_in_Left
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i (gamma1 gamma2: Loc RI) :
-  ((p, i) ∈ pls_of_loc_from_left gamma1 gamma2) ->
-    (p ≠ [] ∧ plsplit p ∈ pls_of_loc gamma1 ∧ i = nat_of_leftstep RI gamma2). Admitted.
-    
-Lemma resolve_p_i_in_Left_rev
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i (gamma1 gamma2: Loc RI) :
-  (p ≠ []) -> (plsplit p ∈ pls_of_loc gamma1) -> (i = nat_of_leftstep RI gamma2) ->
-    ((p, i) ∈ pls_of_loc_from_left gamma1 gamma2). Admitted.
-     
-Lemma resolve_p_i_in_Right
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i (gamma1 gamma2: Loc RI) :
-  ((p, i) ∈ pls_of_loc_from_right gamma1 gamma2) ->
-    (p ≠ [] ∧ plsplit p ∈ pls_of_loc gamma2 ∧ i = nat_of_rightstep RI gamma1). Admitted.
-    
-Lemma resolve_p_i_in_Right_rev
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i (gamma1 gamma2: Loc RI) :
-  (p ≠ []) -> (plsplit p ∈ pls_of_loc gamma2) -> (i = nat_of_rightstep RI gamma1) ->
-    ((p, i) ∈ pls_of_loc_from_right gamma1 gamma2). Admitted.
-
-    
-
-Lemma plsplit_app_and_self_contra
-  {RI} `{!EqDecision RI, !Countable RI}
-  p i (gamma: Loc RI)
-  : plsplit (p ++ [i]) ∈ pls_of_loc gamma -> p ≠ [] -> plsplit p ∈ pls_of_loc gamma
-  -> False. Admitted.
-  
-Lemma plsplit_app_right_contra
-  {RI} `{!EqDecision RI, !Countable RI}
-  p (gamma1: Loc RI)
-  : plsplit (p ++ [nat_of_rightstep RI gamma1]) ∈ pls_of_loc gamma1 -> False.
-  Admitted.
-  
-Lemma plsplit_app_left_contra
-  {RI} `{!EqDecision RI, !Countable RI}
-  p (gamma2: Loc RI)
-  : plsplit (p ++ [nat_of_leftstep RI gamma2]) ∈ pls_of_loc gamma2 -> False.
-  Admitted.
-
 Lemma app_nonempty {T} (p: list T) (i: T)
-  : p ++ [i] ≠ []. Admitted.
+  : p ++ [i] ≠ [].
+Proof.
+  intro. assert (length (p ++ [i]) = length []) by (f_equal; trivial).
+  rewrite app_length in H0. simpl in H0. lia.
+Qed.
 
 Context {M} `{!EqDecision M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
