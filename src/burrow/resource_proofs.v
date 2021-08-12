@@ -696,7 +696,13 @@ Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
 Lemma sum_reserved_over_lifetime_union (a b: listset (Lifetime * M)) lt
   (disj: a ∩ b ≡ ∅)
   : sum_reserved_over_lifetime (a ∪ b) lt
-      = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt). Admitted.
+      = dot (sum_reserved_over_lifetime a lt) (sum_reserved_over_lifetime b lt).
+Proof. unfold sum_reserved_over_lifetime.
+  apply set_fold_union_binop; trivial.
+  - intro. apply tpcm_comm.
+  - intro. apply tpcm_assoc.
+  - intro. apply unit_dot.
+Qed.
     
 Lemma sum_reserved_over_lifetime_singleton r lt
   : sum_reserved_over_lifetime {[ r ]} lt = reserved_get_or_unit r lt.
@@ -1252,7 +1258,14 @@ Qed.
 Lemma empty_op_lmap (l : lmap M RI) : as_tree (∅ ⋅ l) ≡ as_tree l. Admitted.
 
 Lemma dot_xyz_impl (x y z c d : M)
-  : x = dot y z -> dot (dot c d) x = dot (dot c y) (dot d z). Admitted.
+  : x = dot y z -> dot (dot c d) x = dot (dot c y) (dot d z).
+Proof.
+  intro.
+    rewrite <- tpcm_assoc. rewrite <- tpcm_assoc. f_equal.
+    rewrite tpcm_assoc.
+    replace (dot y d) with (dot d y) by (apply tpcm_comm).
+    rewrite <- tpcm_assoc. f_equal. trivial.
+Qed.
 
 Definition relive_preserves_inv kappa q
   (si : state_inv (active kappa ⋅ q))

@@ -4,6 +4,7 @@ From iris.prelude Require Import options.
 
 From stdpp Require Import gmap.
 Require Import Burrow.CpdtTactics.
+Require Import Burrow.tactics.
 
 From stdpp Require Import gmap.
 From stdpp Require Import mapset.
@@ -47,6 +48,109 @@ Proof.
       * set_solver.
   - unfold foldr. trivial.
 Qed.
+
+Lemma set_fold_union `{FinSet A T} {B}
+  (s t: T)
+  (fn: A -> B -> B)
+  (s_disjoint_t: s ∩ t ≡ ∅)
+  (u: B)
+  (fn_assoc: ∀ a1 a2 b , fn a1 (fn a2 b) = fn a2 (fn a1 b))
+  : set_fold fn u (s ∪ t) = (set_fold fn (set_fold fn u s) t).
+Proof.
+  unfold set_fold, "∘".
+  enough (foldr fn (foldr fn u (elements s)) (elements t) = (foldr fn u (elements t ++ elements s))).
+  - rewrite H7.
+    apply foldr_permutation.
+    + typeclasses eauto.
+    + intro. unfold Proper, "==>". intros. subst. trivial.
+    + intros. apply fn_assoc.
+    + setoid_replace (s ∪ t) with (t ∪ s).
+      * apply elements_disj_union. rewrite disjoint_intersection. rewrite <- s_disjoint_t.
+          set_solver.
+      * set_solver.
+  - rewrite foldr_app. trivial.
+Qed.
+
+(*
+Lemma set_fold_swap_start_end `{FinSet A T} {B}
+  (s: T)
+  (fn: A -> B -> B)
+  (u: B) (v: A)
+  (fn_assoc: ∀ a1 a2 b , fn a1 (fn a2 b) = fn a2 (fn a1 b))
+  : fn v (set_fold fn u s) = set_fold fn (fn v u) s.
+Proof.
+  unfold set_fold, "∘".
+  assert (fn v (foldr fn u (elements s)) = foldr fn u (v :: elements s)).
+  - unfold foldr. trivial.
+  - assert (fn v u = foldr fn u [v]).
+    + simpl. trivial.
+    + rewrite H7. rewrite H8.
+      rewrite <- foldr_app. apply foldr_permutation.
+      * typeclasses eauto.
+      * intro. unfold Proper, "==>". intros. subst. trivial.
+      * intros. apply fn_assoc.
+      * rewrite app_Permutation_comm. simpl. trivial.
+Qed.
+*)
+
+Lemma set_fold_swap_start_end_2 `{FinSet A T} {B}
+  (s: T)
+  (fn: B -> B -> B)
+  (g: A -> B)
+  (u: B) (v: B)
+  (unital : ∀ a , fn a u = a)
+  (*(fn_assoc: ∀ a1 a2 b , fn a1 (fn a2 b) = fn a2 (fn a1 b))*)
+  (fn_assoc: ∀ a b c , fn a (fn b c) = fn (fn a b) c)
+  : fn v (set_fold (λ a b, fn b (g a)) u s) = set_fold (λ a b, fn b (g a)) v s.
+Proof.
+  unfold set_fold, "∘". full_generalize (elements s) as l.
+  induction l.
+  - simpl foldr. apply unital.
+  - simpl foldr. rewrite <- IHl.
+    apply fn_assoc.
+Qed.
+
+Lemma set_fold_union_binop `{FinSet A T} {B}
+  (s t: T)
+  (fn: B -> B -> B)
+  (g: A -> B)
+  (s_disjoint_t: s ∩ t ≡ ∅)
+  (u: B)
+  (comm: ∀ a b , fn a b = fn b a)
+  (assoc: ∀ a b c , fn a (fn b c) = fn (fn a b) c)
+  (unital : ∀ a , fn a u = a)
+  : set_fold (λ a b, fn b (g a)) u (s ∪ t)
+    = fn (set_fold (λ a b, fn b (g a)) u s)
+         (set_fold (λ a b, fn b (g a)) u t).
+Proof.
+  set fff := (λ a b, fn b (g a)).
+  assert (∀ a1 a2 b, fff a1 (fff a2 b) = fff a2 (fff a1 b)) as ta.
+  - intros. subst fff. simpl. rewrite <- assoc. rewrite <- assoc. f_equal. apply comm.
+  - rewrite set_fold_union; trivial.
+      full_generalize (set_fold fff u s) as x.
+      symmetry.
+      apply set_fold_swap_start_end_2; trivial.
+Qed.
+
+(*
+Lemma set_fold_union_2 `{FinSet A T}
+  (s t: T)
+  (fn: A -> A -> A)
+  (s_disjoint_t: s ∩ t = ∅)
+  (u: A)
+  (comm: ∀ a b , fn a b = fn b a)
+  (assoc: ∀ a b c , fn a (fn b c) = fn (fn a b) c)
+  (unital : ∀ a , fn a u = a)
+  : set_fold fn u (s ∪ t) = fn (set_fold fn u s) (set_fold fn u t).
+Proof.
+  assert (∀ a1 a2 b : A, fn a1 (fn a2 b) = fn a2 (fn a1 b)) as ta.
+  - intros. rewrite assoc. rewrite assoc. f_equal. apply comm.
+  - rewrite set_fold_union; trivial.
+    + assert ((set_fold fn u s) = fn (set_fold fn u s) u) by (rewrite unital; trivial).
+      setoid_rewrite H7 at 1.
+      rewrite <- set_fold_swap_start_end; trivial.
+Qed.
+*)
   
 Lemma set_relate `{Elements A T} {B} {C}
   (R : B -> C -> Prop)
