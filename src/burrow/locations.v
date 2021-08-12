@@ -2,6 +2,8 @@ From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
 Require Import Burrow.CpdtTactics.
+Require Import coq_tricks.Deex.
+Require Import Coq.Lists.List.
 
 From stdpp Require Import gmap.
 From stdpp Require Import mapset.
@@ -69,8 +71,17 @@ Definition nat_of_leftstep RI `{!EqDecision RI, !Countable RI} (gamma2: Loc RI) 
 Definition nat_of_rightstep RI `{!EqDecision RI, !Countable RI} (gamma1: Loc RI) : nat :=
   encode_nat (SDRight gamma1).
 
+Definition augment (j: nat) (pl: PathLoc) := match pl with (p, i) => (p++[i], j) end.
+
 Fixpoint pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI}
-    (loc: Loc RI) : (listset PathLoc).
+    (loc: Loc RI) : (gset PathLoc) :=
+  match loc with
+  | BaseLoc _ alpha => {[ ([], nat_of_basestep RI alpha) ]}
+  | ExtLoc alpha ri base => set_map (augment (nat_of_extstep alpha ri)) (pls_of_loc base) 
+  | CrossLoc l r =>
+        set_map (augment (nat_of_leftstep RI r)) (pls_of_loc l)
+      ∪ set_map (augment (nat_of_rightstep RI l)) (pls_of_loc r)
+  end.
 
 Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !TPCM M}
     (loc: Loc RI) (cell: Cell M) : Branch M. Admitted.
@@ -85,7 +96,17 @@ Lemma build_rest_triv
     (loc: Loc RI) (cell: Cell M)
   : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl = triv_cell). Admitted.
 
-Definition ri_of_nat (RI : Type) `{!EqDecision RI, !Countable RI} : nat -> RI. Admitted.
+Definition ri_of_nat (RI : Type)
+    {M} `{!EqDecision M, !TPCM M}
+    {RI} `{!EqDecision RI} `{!Countable RI} `{!RefinementIndex M RI}
+    (n: nat) : RI :=
+  match decode_nat n with
+  | None => triv_ri RI
+  | Some (SDBase _ _) => triv_ri RI
+  | Some (SDExt _ ri) => ri
+  | Some (SDLeft _) => left_ri RI
+  | Some (SDRight _) => right_ri RI
+  end.
 
 Definition refinement_of_nat
         M `{!EqDecision M, !TPCM M}
@@ -144,12 +165,14 @@ Global Instance build_proper
 Definition pls_of_loc_from_left
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-  (l r: Loc RI) : gset PathLoc. Admitted.
+  (l r: Loc RI) : gset PathLoc :=
+    set_map (augment (nat_of_leftstep RI r)) (pls_of_loc l).
 
 Definition pls_of_loc_from_right
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-  (l r: Loc RI) : gset PathLoc. Admitted.
+  (l r: Loc RI) : gset PathLoc :=
+  set_map (augment (nat_of_rightstep RI l)) (pls_of_loc r).
 
 Lemma branch_is_trivial_build_triv_cell
     {M} `{!EqDecision M, !TPCM M}
@@ -167,88 +190,241 @@ Section LocationsLemmas.
 Context {M} `{!EqDecision M, !TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
-Definition any_pl_of_loc
-    (loc: Loc RI) : PathLoc. Admitted.
+Fixpoint any_pl_of_loc
+    (loc: Loc RI) : PathLoc :=
+  match loc with
+  | BaseLoc _ alpha => ([], nat_of_basestep RI alpha)
+  | ExtLoc alpha ri base => augment (nat_of_extstep alpha ri) (any_pl_of_loc base)
+  | CrossLoc l r =>
+        augment (nat_of_leftstep RI r) (any_pl_of_loc l)
+  end.
 
 Lemma any_pl_of_loc_is_of_loc
-  (loc: Loc RI) : any_pl_of_loc loc ∈ pls_of_loc loc. Admitted.
+  (loc: Loc RI) : any_pl_of_loc loc ∈ pls_of_loc loc.
+Proof.
+  induction loc.
+  - unfold any_pl_of_loc, pls_of_loc. set_solver.
+  - unfold any_pl_of_loc, pls_of_loc. rewrite elem_of_map.
+      exists (any_pl_of_loc loc). split; trivial.
+  - unfold any_pl_of_loc, pls_of_loc. rewrite elem_of_union. left. rewrite elem_of_map.
+      exists (any_pl_of_loc loc1). split; trivial.
+Qed.
 
+Lemma false_of_single_eq_augment i x pl : ([], i) = augment pl x -> False.
+Proof. unfold augment. destruct x. intro. inversion H.
+  assert (length [] = length (l ++ [n])) by (f_equal; trivial).
+  simpl in H0. rewrite app_length in H0. simpl in H0. lia.
+Qed.
+
+Lemma eq_of_augment_eq a x a' x' : augment a x = augment a' x' -> a = a' /\ x = x'.
+Proof.
+  intros. unfold augment in H. destruct x, x'. inversion H. subst. split; trivial.
+  assert ((List.last (l ++ [n]) 0) = n) by (apply last_last).
+  assert ((List.last (l0 ++ [n0]) 0) = n0) by (apply last_last).
+  assert ((List.removelast (l ++ [n])) = l) by (apply removelast_last).
+  assert ((List.removelast (l0 ++ [n0])) = l0) by (apply removelast_last).
+  rewrite H1 in H0. rewrite H1 in H3.
+  crush.
+Qed.
+
+Lemma locs_equal_of_pl_in : ∀ (loc1 loc2: Loc RI) pl ,
+  (pl ∈ pls_of_loc loc1) -> (pl ∈ pls_of_loc loc2) -> loc1 = loc2.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+induction loc1.
+  - intro. intro. unfold pls_of_loc. rewrite elem_of_singleton. intro. subst. destruct loc2.
+    + rewrite elem_of_singleton. intro.  inversion H. unfold nat_of_basestep in H1.
+      generalize H1. rewrite inj_iff. crush.
+    + rewrite elem_of_map. intro. deex. destruct_ands.
+        exfalso. eapply false_of_single_eq_augment. apply H.
+    + rewrite elem_of_union. rewrite elem_of_map. rewrite elem_of_map. intro. destruct H.
+      * deex. destruct_ands. exfalso. eapply false_of_single_eq_augment. apply H.
+      * deex. destruct_ands. exfalso. eapply false_of_single_eq_augment. apply H.
+  - intro. intro. unfold pls_of_loc. rewrite elem_of_map. intros. deex. destruct_ands.
+      subst pl. destruct loc2.
+    + generalize H0. rewrite elem_of_singleton. clear H0. intro.
+      exfalso. symmetry in H. eapply false_of_single_eq_augment. apply H.
+    + generalize H0. rewrite elem_of_map. intro. clear H0. deex. destruct_ands.
+      have j := eq_of_augment_eq _ _ _ _ H. destruct_ands.
+        unfold nat_of_extstep in H2.
+        generalize H2. rewrite inj_iff. intro. inversion H4. subst. f_equal.
+        apply IHloc1 with (pl:=x0); trivial.
+    + generalize H0. clear H0.
+      rewrite elem_of_union. rewrite elem_of_map. rewrite elem_of_map. intro. destruct H.
+      * deex. destruct_ands.
+        have j := eq_of_augment_eq _ _ _ _ H. unfold nat_of_extstep, nat_of_leftstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+      * deex. destruct_ands.
+        have j := eq_of_augment_eq _ _ _ _ H. unfold nat_of_extstep, nat_of_rightstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+   - intro. intro. unfold pls_of_loc. rewrite elem_of_union. rewrite elem_of_map.
+     rewrite elem_of_map. destruct loc2.
+     + intro. rewrite elem_of_singleton. destruct H.
+      * deex. destruct_ands. intro. subst pl.
+          exfalso. eapply false_of_single_eq_augment. symmetry in H1. apply H1.
+      * deex. destruct_ands. intro. subst pl.
+          exfalso. eapply false_of_single_eq_augment. symmetry in H1. apply H1.
+     + intro. rewrite elem_of_map. intro. deex. destruct_ands. destruct H.
+      * deex. destruct_ands. subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_extstep, nat_of_leftstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+      * deex. destruct_ands. subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_extstep, nat_of_rightstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+     + rewrite elem_of_union. rewrite elem_of_map. rewrite elem_of_map. intros.
+        destruct H; destruct H0; deex; destruct_ands.
+      * subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_leftstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. inversion H. subst. f_equal.
+        apply IHloc1_1 with (pl := x); trivial.
+      * deex. destruct_ands. subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_leftstep, nat_of_rightstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+      * deex. destruct_ands. subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_leftstep, nat_of_rightstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. discriminate.
+      * subst pl.
+        have j := eq_of_augment_eq _ _ _ _ H0. unfold nat_of_rightstep in j.
+        generalize j. rewrite inj_iff. intro. destruct_ands. inversion H. subst. f_equal.
+        apply IHloc1_2 with (pl := x); trivial.
+Qed.
+
+Ltac derive_contra_own_child pr elem :=
+    let X := fresh in
+    let J := fresh in
+    generalize pr; generalize elem; intro X; induction X; try discriminate;
+    intro J; inversion J; subst; intuition.
+  
 Lemma pl_not_in_of_pl_in_extloc
     pl alpha (ri: RI) gamma
-  : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma. Admitted.
+  : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intros. intro. have j:= locs_equal_of_pl_in _ _ _ H H0.
   
+    (*generalize j; generalize gamma; intro X; induction X; try discriminate.
+    intro J; inversion J. subst; intuition.*)
+  
+    derive_contra_own_child j gamma.
+Qed.
+
 Lemma refinement_of_nat_eq_refinement_of_of_in_pls_of_loc
     p i alpha ri gamma
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
     : refinement_of_nat M RI i = refinement_of ri.
-    Admitted.
+Proof. unfold refinement_of_nat. f_equal.
+    unfold pls_of_loc in is_in. generalize is_in. clear is_in.
+    rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
+    destruct x. inversion H. subst i. unfold ri_of_nat, nat_of_extstep.
+    rewrite decode_encode_nat. trivial.
+Qed.
 
 Lemma pl_in_pls_of_loc_extloc
   p i alpha ri (gamma: Loc RI)
   (pi_in: (p, i) ∈ pls_of_loc gamma)
   : (p++[i], nat_of_extstep alpha ri) ∈ pls_of_loc (ExtLoc alpha ri gamma).
-Admitted.
+Proof. unfold pls_of_loc. rewrite elem_of_map. exists (p, i). split; trivial. Qed.
 
 Lemma pl_in_pls_of_loc_cross_left
   p i (gamma1 gamma2: Loc RI)
   (pi_in: (p, i) ∈ pls_of_loc gamma1)
   : (p++[i], nat_of_leftstep RI gamma2) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
-Admitted.
+Proof. unfold pls_of_loc. rewrite elem_of_union.
+  rewrite elem_of_map. rewrite elem_of_map. left. exists (p, i). split; trivial. Qed.
 
 Lemma pl_in_pls_of_loc_cross_right
   p i (gamma1 gamma2: Loc RI)
   (pi_in: (p, i) ∈ pls_of_loc gamma2)
   : (p++[i], nat_of_rightstep RI gamma1) ∈ pls_of_loc (CrossLoc gamma1 gamma2).
-Admitted.
+Proof. unfold pls_of_loc. rewrite elem_of_union.
+  rewrite elem_of_map. rewrite elem_of_map. right. exists (p, i). split; trivial. Qed.
 
 Lemma ri_of_nat_nat_of_extstep
   alpha (ri: RI)
-  : (ri_of_nat RI (nat_of_extstep alpha ri) = ri). Admitted.
+  : (ri_of_nat RI (nat_of_extstep alpha ri) = ri).
+Proof. unfold ri_of_nat, nat_of_extstep. rewrite decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_leftstep
   (gamma2 : Loc RI)
-  : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI. Admitted.
+  : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI.
+Proof. unfold ri_of_nat, nat_of_leftstep. rewrite decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_rightstep
   (gamma1 : Loc RI)
-  : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI. Admitted.
+  : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI.
+Proof. unfold ri_of_nat, nat_of_rightstep. rewrite decode_encode_nat. trivial. Qed.
 
 Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
   (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-  : i = nat_of_extstep alpha ri. Admitted.
+  : i = nat_of_extstep alpha ri.
+Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
+    rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
+    destruct x. inversion H. trivial. Qed.
   
 Lemma i_value_of_pls_of_base p i alpha
   (in_pls: (p, i) ∈ pls_of_loc (BaseLoc RI alpha))
-  : i = nat_of_basestep RI alpha. Admitted.
+  : i = nat_of_basestep RI alpha.
+Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
+    rewrite elem_of_singleton. intro. deex. destruct_ands. unfold augment in H.
+    inversion H. trivial. Qed.
 
 Lemma ri_of_nat_nat_of_basestep alpha
-  : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI. Admitted.
+  : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI.
+Proof.
+  unfold ri_of_nat, nat_of_basestep. rewrite decode_encode_nat. trivial. Qed.
   
 Lemma rel_refinement_of_triv_ri_defined (m: M)
   : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
   
 Lemma rel_refinement_of_triv_ri_eq_unit (m: M)
   : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
-
-
-Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
-  
-Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
-  
-Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2. Admitted.
-  
-Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1. Admitted.
   
 Lemma pl_in_crossloc_of_pl_in_left pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Proof.
+  unfold pls_of_loc_from_left, pls_of_loc. rewrite elem_of_union. intuition.
+Qed.
   
 Lemma pl_in_crossloc_of_pl_in_right pl gamma1 gamma2
-  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2).
+Proof.
+  unfold pls_of_loc_from_left, pls_of_loc. rewrite elem_of_union. intuition.
+Qed.
 
+Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1.
+Proof.
+  intros. intro.
+  have k := pl_in_crossloc_of_pl_in_left _ _ _ H.
+  have j := locs_equal_of_pl_in _ _ _ k H0.
+  derive_contra_own_child j gamma1.
+Qed.
+  
+Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2.
+Proof.
+  intros. intro.
+  have k := pl_in_crossloc_of_pl_in_left _ _ _ H.
+  have j := locs_equal_of_pl_in _ _ _ k H0.
+  derive_contra_own_child j gamma2.
+Qed.
+  
+Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2.
+Proof.
+  intros. intro.
+  have k := pl_in_crossloc_of_pl_in_right _ _ _ H.
+  have j := locs_equal_of_pl_in _ _ _ k H0.
+  derive_contra_own_child j gamma2.
+Qed.
+  
+Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
+  : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1.
+Proof.
+  intros. intro.
+  have k := pl_in_crossloc_of_pl_in_right _ _ _ H.
+  have j := locs_equal_of_pl_in _ _ _ k H0.
+  derive_contra_own_child j gamma1.
+Qed.
+  
 Lemma y_is_pair_of_rel_defined_refinement_of_left x y
   (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
   : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
@@ -292,11 +468,17 @@ Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up a b
 
 Lemma i_value_of_pls_of_loc_from_left p i gamma1 gamma2
   (in_pls: (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-  : i = nat_of_leftstep RI gamma2. Admitted.
+  : i = nat_of_leftstep RI gamma2.
+Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
+    rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
+    destruct x. inversion H. trivial. Qed.
   
 Lemma i_value_of_pls_of_loc_from_right p i gamma1 gamma2
   (in_pls: (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-  : i = nat_of_rightstep RI gamma2. Admitted.
+  : i = nat_of_rightstep RI gamma1.
+Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
+    rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
+    destruct x. inversion H. trivial. Qed.
 
 Lemma node_of_pl_build_eq (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
   (pl1_in: pl1 ∈ pls_of_loc loc)

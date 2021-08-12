@@ -546,7 +546,7 @@ Lemma node_node_cell_cell b pl : node_live (node_of_pl b pl) = cell_live (cell_o
 Proof. unfold cell_of_pl. unfold node_live. unfold cell_live. destruct (node_of_pl b pl).
 trivial. Qed.
 
-Lemma tpcm_le_m_node_live_with_m m gamma e b c
+Lemma tpcm_le_m_node_live_with_m (m: M) (gamma : Loc RI) e b c
     : tpcm_le m
       (node_live (node_of_pl (build gamma (CellCon m e) ⋅ b ⋅ c) (any_pl_of_loc gamma))).
 Proof.
@@ -584,14 +584,13 @@ Proof.
   
   rename isb into isb'. have isb := isb' (any_pl_of_loc gamma) (any_pl_of_loc_is_of_loc gamma). clear isb'.
   rename isv into isv'. have isv := isv' (any_pl_of_loc gamma). clear isv'.
-  have isv' := isv M EqDecision0 TPCM0 RefinementIndex0. clear isv. rename isv' into isv.
   have nvlt := node_view_le_total_minus_live _ _ _ _ _ _ isv.
   unfold lifetime_included in *.
   have nvlt' := nvlt kappa (multiset_add_chain_included _ _ _ _). clear nvlt.
   unfold view_sat in nvlt'.
   
   have nvlt'' := node_view_strip _ _ _ _ _ _ _ nvlt'.
-  have ineq := isb M EqDecision0 TPCM0 RefinementIndex0 _ _ nvlt''.
+  have ineq := isb _ _ nvlt''.
   
   have ird := in_refinement_domain_of_natird _ _ _ _ isv.
   unfold in_refinement_domain in ird.
