@@ -14,6 +14,7 @@ Require Import Burrow.indexing.
 Require Import Burrow.locations.
 Require Import Burrow.tactics.
 Require Import Burrow.assoc_comm.
+Require Import Burrow.building.
 Require Import Coq.Arith.Wf_nat. 
 
 Require Import coq_tricks.Deex.

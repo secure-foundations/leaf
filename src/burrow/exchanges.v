@@ -17,6 +17,7 @@ Require Import Burrow.assoc_comm.
 Require Import Burrow.resource_proofs.
 Require Import Burrow.fresh.
 Require Import Burrow.updog.
+Require Import Burrow.building.
 
 Require Import coq_tricks.Deex.
 
