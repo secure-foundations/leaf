@@ -692,16 +692,16 @@ Proof.
   - destruct_ands. split; trivial. rewrite H0 in H2. trivial.
   - destruct_ands. generalize H.
     apply pl_induction_2 with (trunk1 := b1) (trunk2 := b2)
-    (in_node_fn := λ pl n1 n2 , 
+    (in_node_fn := λ p i n1 n2 , 
       cell_total (cell_of_node n1) lt1 = cell_total (cell_of_node n2) lt2)
-    (in_branch_fn := λ pl b1 b2 , True )
-    (branch_fn := λ pl b1 b2 ,
-        branch_all_total_in_refinement_domain ref b1 lt1 0 ->
-        branch_all_total_in_refinement_domain ref b2 lt2 0
-        ∧ branch_total ref b1 lt1 0 = branch_total ref b2 lt2 0)
-    (node_fn := λ pl n1 n2 ,
-        node_all_total_in_refinement_domain ref n1 lt1 0 ->
-        node_all_total_in_refinement_domain ref n2 lt2 0
+    (in_branch_fn := λ p i b1 b2 , True )
+    (branch_fn := λ p i b1 b2 ,
+        branch_all_total_in_refinement_domain ref b1 lt1 i ->
+        branch_all_total_in_refinement_domain ref b2 lt2 i
+        ∧ branch_total ref b1 lt1 i = branch_total ref b2 lt2 i)
+    (node_fn := λ p i n1 n2 ,
+        node_all_total_in_refinement_domain ref n1 lt1 i ->
+        node_all_total_in_refinement_domain ref n2 lt2 i
         ∧ node_total ref n1 lt1 = node_total ref n2 lt2).
    + unfold Proper, "==>", impl. intros.
       setoid_rewrite <- H1.
@@ -712,7 +712,7 @@ Proof.
       * setoid_rewrite <- H2.
         setoid_rewrite <- H1.
         setoid_rewrite <- H1 in H4. intuition.
-   + trivial.
+   + intros. unfold cell_of_pl in pres. apply pres.
    + trivial.
    + intros.
     rewrite node_all_total_in_refinement_domain_unfold.
@@ -728,9 +728,14 @@ Proof.
    + intros.
     rewrite branch_all_total_in_refinement_domain_unfold.
     rewrite branch_all_total_in_refinement_domain_unfold in H4. destruct_ands.
-    have h := H1 H5. have j := H2 H4.
-      
-    
+    have h := H1 H5. have j := H2 H4. destruct_ands.
+    assert (branch_total ref (BranchCons node1 branch1) lt1 i =
+        branch_total ref (BranchCons node2 branch2) lt2 i).
+     * rewrite branch_total_unfold. setoid_rewrite branch_total_unfold at 2.
+        rewrite H7. rewrite H9. trivial.
+     * repeat split; trivial.
+   + intros. split; trivial.
+Qed.
 
 Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
   (isgreater: ltunit > max_ltunit_in_branch b)
