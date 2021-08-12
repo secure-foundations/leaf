@@ -379,6 +379,40 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   - intros. solve_assoc_comm.
 Qed.
 
+Lemma cell_of_pl_as_tree_lmap_none pl loc lm
+  : pl ∈ pls_of_loc loc -> (lm !! loc = None) -> cell_of_pl (as_tree lm) pl ≡ triv_cell.
+Admitted.
+
+Lemma cell_of_pl_as_tree_lmap pl loc lm x
+  : pl ∈ pls_of_loc loc -> (lm !! loc = Some x) -> cell_of_pl (as_tree lm) pl ≡ x.
+Admitted.
+
+Lemma lmaps_equiv_of_tree_equiv a b
+  : as_tree a ≡ as_tree b -> lmaps_equiv a b.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  unfold lmaps_equiv. intros. unfold lmap_lookup.
+  destruct (a !! l) eqn:al; destruct (b !! l) eqn:bl.
+  - rewrite al. rewrite bl.
+      have j := cell_of_pl_as_tree_lmap (any_pl_of_loc l) l a c
+          (any_pl_of_loc_is_of_loc l) al.
+      have k := cell_of_pl_as_tree_lmap (any_pl_of_loc l) l b c0
+          (any_pl_of_loc_is_of_loc l) bl.
+      setoid_rewrite H in j. setoid_rewrite <- j. setoid_rewrite <- k. trivial.
+  - rewrite al. rewrite bl.
+      have j := cell_of_pl_as_tree_lmap (any_pl_of_loc l) l a c
+          (any_pl_of_loc_is_of_loc l) al.
+      have k := cell_of_pl_as_tree_lmap_none (any_pl_of_loc l) l b
+          (any_pl_of_loc_is_of_loc l) bl.
+      setoid_rewrite H in j. setoid_rewrite <- j. setoid_rewrite <- k. trivial.
+  - rewrite al. rewrite bl.
+      have j := cell_of_pl_as_tree_lmap_none (any_pl_of_loc l) l a
+          (any_pl_of_loc_is_of_loc l) al.
+      have k := cell_of_pl_as_tree_lmap (any_pl_of_loc l) l b c
+          (any_pl_of_loc_is_of_loc l) bl.
+      setoid_rewrite H in j. setoid_rewrite <- j. setoid_rewrite <- k. trivial.
+  - rewrite al. rewrite bl. trivial.
+Qed.
+
 (****************************************************************)
 (****************************************************************)
 (****************************************************************)
@@ -667,7 +701,7 @@ Qed.
   Decision (p ∈ pls_of_loc gamma /\ i < nat_of_extstep alpha ri). solve_decision. Defined.*)
     
 (*Lemma specific_exchange_cond_of_no_change ref p x y h s
-  : specific_exchange_cond ref p x y h s x y h s. Admitted.*)
+  : specific_exchange_cond ref p x y h s x y h s. *)
     
 (****************************************************************)
 (****************************************************************)
@@ -679,7 +713,7 @@ Qed.
   (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
   (batird : branch_all_total_in_refinement_domain ref b1 lt1 idx)
   : branch_all_total_in_refinement_domain ref b2 lt2 idx.
-Admitted.*)
+*)
 
 Lemma valid_totals_of_preserved_cell_totals ref b1 b2 lt1 lt2
   (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
@@ -903,10 +937,6 @@ Proof.
   setoid_rewrite as_tree_singleton.
   apply cell_live_cell_of_pl_unit.
 Qed.
-
-Lemma lmaps_equiv_of_tree_equiv a b
-  : as_tree a ≡ as_tree b -> lmaps_equiv a b.
-Admitted.
 
 Lemma no_live_duplicable (s : State M RI)
   : state_no_live s -> s ⋅ s ≡ s.
