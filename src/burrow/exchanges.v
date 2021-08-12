@@ -746,11 +746,11 @@ Proof.
     intros.
     repeat (rewrite unit_dot).
     repeat split; trivial.
-    * rewrite (i_value_of_pls_of_base p i alpha); trivial.
+    * rewrite (@i_value_of_pls_of_base RI EqDecision1 Countable0 p i alpha); trivial.
       unfold refinement_of_nat.
       rewrite ri_of_nat_nat_of_basestep.
       apply rel_refinement_of_triv_ri_defined.
-    * rewrite (i_value_of_pls_of_base p i alpha); trivial.
+    * rewrite (@i_value_of_pls_of_base RI EqDecision1 Countable0 p i alpha); trivial.
       unfold refinement_of_nat.
       rewrite ri_of_nat_nat_of_basestep.
       rewrite rel_refinement_of_triv_ri_eq_unit.
@@ -1110,8 +1110,6 @@ Proof.
       assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_right with (gamma3:=gamma1); trivial).
       
       have epl := exists_in_pls_of_loc_from_left gamma1 gamma2.
-      have epl' := epl M EqDecision0 TPCM0 RefinementIndex0.
-      clear epl. rename epl' into epl.
       deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
       
       assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_left with (gamma3:=gamma1); trivial).
@@ -1315,8 +1313,6 @@ Proof.
       assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as picl by (apply pl_in_crossloc_of_pl_in_left with (gamma4:=gamma2); trivial).
       
       have epl := exists_in_pls_of_loc_from_right gamma1 gamma2.
-      have epl' := epl M EqDecision0 TPCM0 RefinementIndex0.
-      clear epl. rename epl' into epl.
       deex. destruct pl. rename l1 into other_p. rename n0 into other_i.
       
       assert ((other_p, other_i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) as opicl by (apply pl_in_crossloc_of_pl_in_right with (gamma4:=gamma2); trivial).

@@ -163,14 +163,12 @@ Global Instance build_proper
   (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
 
 Definition pls_of_loc_from_left
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    {RI} `{!EqDecision RI, !Countable RI}
   (l r: Loc RI) : gset PathLoc :=
     set_map (augment (nat_of_leftstep RI r)) (pls_of_loc l).
 
 Definition pls_of_loc_from_right
-    {M} `{!EqDecision M, !TPCM M}
-    {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    {RI} `{!EqDecision RI, !Countable RI}
   (l r: Loc RI) : gset PathLoc :=
   set_map (augment (nat_of_rightstep RI l)) (pls_of_loc r).
 
@@ -187,8 +185,10 @@ Admitted.
 
 Section LocationsLemmas.
 
-Context {M} `{!EqDecision M, !TPCM M}.
-Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
+Context {RI} `{!EqDecision RI, !Countable RI}.
+
+(*Context {M} `{!EqDecision M, !TPCM M}.
+Context {!RefinementIndex M RI}.*)
 
 Fixpoint any_pl_of_loc
     (loc: Loc RI) : PathLoc :=
@@ -227,9 +227,10 @@ Proof.
   crush.
 Qed.
 
-Lemma locs_equal_of_pl_in : ∀ (loc1 loc2: Loc RI) pl ,
+Lemma locs_equal_of_pl_in
+  : ∀ (loc1 loc2: Loc RI) pl ,
   (pl ∈ pls_of_loc loc1) -> (pl ∈ pls_of_loc loc2) -> loc1 = loc2.
-Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+Proof.
 induction loc1.
   - intro. intro. unfold pls_of_loc. rewrite elem_of_singleton. intro. subst. destruct loc2.
     + rewrite elem_of_singleton. intro.  inversion H. unfold nat_of_basestep in H1.
@@ -297,7 +298,7 @@ Ltac derive_contra_own_child pr elem :=
 Lemma pl_not_in_of_pl_in_extloc
     pl alpha (ri: RI) gamma
   : pl ∈ pls_of_loc (ExtLoc alpha ri gamma) -> pl ∉ pls_of_loc gamma.
-Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+Proof.
   intros. intro. have j:= locs_equal_of_pl_in _ _ _ H H0.
   
     (*generalize j; generalize gamma; intro X; induction X; try discriminate.
@@ -307,6 +308,7 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
 Qed.
 
 Lemma refinement_of_nat_eq_refinement_of_of_in_pls_of_loc
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
     p i alpha ri gamma
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
     : refinement_of_nat M RI i = refinement_of ri.
@@ -338,16 +340,19 @@ Proof. unfold pls_of_loc. rewrite elem_of_union.
   rewrite elem_of_map. rewrite elem_of_map. right. exists (p, i). split; trivial. Qed.
 
 Lemma ri_of_nat_nat_of_extstep
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   alpha (ri: RI)
   : (ri_of_nat RI (nat_of_extstep alpha ri) = ri).
 Proof. unfold ri_of_nat, nat_of_extstep. rewrite decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_leftstep
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   (gamma2 : Loc RI)
   : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI.
 Proof. unfold ri_of_nat, nat_of_leftstep. rewrite decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_rightstep
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   (gamma1 : Loc RI)
   : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI.
 Proof. unfold ri_of_nat, nat_of_rightstep. rewrite decode_encode_nat. trivial. Qed.
@@ -366,30 +371,38 @@ Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
     rewrite elem_of_singleton. intro. deex. destruct_ands. unfold augment in H.
     inversion H. trivial. Qed.
 
-Lemma ri_of_nat_nat_of_basestep alpha
+Lemma ri_of_nat_nat_of_basestep
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+    alpha
   : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI.
 Proof.
   unfold ri_of_nat, nat_of_basestep. rewrite decode_encode_nat. trivial. Qed.
   
-Lemma rel_refinement_of_triv_ri_defined (m: M)
+Lemma rel_refinement_of_triv_ri_defined
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+     (m: M)
   : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
   
-Lemma rel_refinement_of_triv_ri_eq_unit (m: M)
+Lemma rel_refinement_of_triv_ri_eq_unit
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  (m: M)
   : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
   
-Lemma pl_in_crossloc_of_pl_in_left pl gamma1 gamma2
+Lemma pl_in_crossloc_of_pl_in_left pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2).
 Proof.
   unfold pls_of_loc_from_left, pls_of_loc. rewrite elem_of_union. intuition.
 Qed.
   
-Lemma pl_in_crossloc_of_pl_in_right pl gamma1 gamma2
+Lemma pl_in_crossloc_of_pl_in_right
+  pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2).
 Proof.
   unfold pls_of_loc_from_left, pls_of_loc. rewrite elem_of_union. intuition.
 Qed.
 
-Lemma pl_not_in_left_of_pl_in_left pl gamma1 gamma2
+Lemma pl_not_in_left_of_pl_in_left
+    pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma1.
 Proof.
   intros. intro.
@@ -398,7 +411,8 @@ Proof.
   derive_contra_own_child j gamma1.
 Qed.
   
-Lemma pl_not_in_right_of_pl_in_left pl gamma1 gamma2
+Lemma pl_not_in_right_of_pl_in_left
+    pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∉ pls_of_loc gamma2.
 Proof.
   intros. intro.
@@ -407,7 +421,8 @@ Proof.
   derive_contra_own_child j gamma2.
 Qed.
   
-Lemma pl_not_in_right_of_pl_in_right pl gamma1 gamma2
+Lemma pl_not_in_right_of_pl_in_right
+  pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma2.
 Proof.
   intros. intro.
@@ -416,7 +431,8 @@ Proof.
   derive_contra_own_child j gamma2.
 Qed.
   
-Lemma pl_not_in_left_of_pl_in_right pl gamma1 gamma2
+Lemma pl_not_in_left_of_pl_in_right
+  pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_right gamma1 gamma2 -> pl ∉ pls_of_loc gamma1.
 Proof.
   intros. intro.
@@ -425,77 +441,102 @@ Proof.
   derive_contra_own_child j gamma1.
 Qed.
   
-Lemma y_is_pair_of_rel_defined_refinement_of_left x y
+Lemma y_is_pair_of_rel_defined_refinement_of_left
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+    x y
   (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
   : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
   
-Lemma y_is_pair_of_rel_defined_refinement_of_right x y
+Lemma y_is_pair_of_rel_defined_refinement_of_right
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+    x y
   (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
   : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
 
-Lemma dot_pair_up m1 m2 k1 k2
+Lemma dot_pair_up
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  m1 m2 k1 k2
   : dot (pair_up RI m1 m2) (pair_up RI k1 k2) = pair_up RI (dot m1 k1) (dot m2 k2).
   Admitted.
    
-Lemma refinement_of_left_pair_up a b
+Lemma refinement_of_left_pair_up
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   : rel M M (refinement_of (left_ri RI)) (pair_up RI a b) = a. Admitted.
   
-Lemma refinement_of_right_pair_up a b
+Lemma refinement_of_right_pair_up
+    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   : rel M M (refinement_of (right_ri RI)) (pair_up RI a b) = b. Admitted.
 
-Lemma rel_defined_refinement_of_left_pair_up a b
+Lemma rel_defined_refinement_of_left_pair_up
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   (aval: m_valid a)
   (bval: m_valid b)
     : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)). Admitted.
     
-Lemma rel_defined_refinement_of_right_pair_up a b
+Lemma rel_defined_refinement_of_right_pair_up
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   (aval: m_valid a)
   (bval: m_valid b)
     : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)). Admitted.
     
-Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up a b
+Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
   : m_valid a. Admitted.
   
-Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up a b
+Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
   : m_valid b. Admitted.
   
-Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up a b
+Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  a b
   (rd: rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b))
   : m_valid a. Admitted.
 
-
-Lemma i_value_of_pls_of_loc_from_left p i gamma1 gamma2
+Lemma i_value_of_pls_of_loc_from_left
+  (p: list nat) (i: nat) (gamma1 gamma2: Loc RI)
   (in_pls: (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
   : i = nat_of_leftstep RI gamma2.
 Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
     rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
     destruct x. inversion H. trivial. Qed.
   
-Lemma i_value_of_pls_of_loc_from_right p i gamma1 gamma2
+Lemma i_value_of_pls_of_loc_from_right
+  p i gamma1 gamma2
   (in_pls: (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
   : i = nat_of_rightstep RI gamma1.
 Proof. unfold pls_of_loc in in_pls. generalize in_pls. clear in_pls.
     rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
     destruct x. inversion H. trivial. Qed.
 
-Lemma node_of_pl_build_eq (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
+Lemma node_of_pl_build_eq
+  {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
+  (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
   (pl1_in: pl1 ∈ pls_of_loc loc)
   (pl2_in: pl2 ∈ pls_of_loc loc)
   : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2. Admitted.
   
-Lemma exists_in_pls_of_loc_from_left gamma1 gamma2
+Lemma exists_in_pls_of_loc_from_left
+  (gamma1 gamma2: Loc RI)
   : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2. Admitted.
   
-Lemma exists_in_pls_of_loc_from_right gamma1 gamma2
+Lemma exists_in_pls_of_loc_from_right
+  (gamma1 gamma2: Loc RI)
   : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2. Admitted.
 
-Lemma plsplit_in_of_pls_of_loc_from_left gamma1 gamma2 p i
+Lemma plsplit_in_of_pls_of_loc_from_left (gamma1 gamma2: Loc RI) (p: list nat) (i: nat)
   (pi_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
   : plsplit p ∈ pls_of_loc gamma1. Admitted.
   
-Lemma plsplit_in_of_pls_of_loc_from_right gamma1 gamma2 p i
+Lemma plsplit_in_of_pls_of_loc_from_right (gamma1 gamma2: Loc RI) p i
   (pi_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
   : plsplit p ∈ pls_of_loc gamma2. Admitted.
   
@@ -512,7 +553,7 @@ Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
   (pl_in : pl ∈ pls_of_loc gamma2)
   : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
 
-Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl gamma1 gamma2
+Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl (gamma1 gamma2: Loc RI)
   (not_in_l : pl ∉ pls_of_loc_from_left gamma1 gamma2)
   (not_in_r : pl ∉ pls_of_loc_from_right gamma1 gamma2)
         : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)). Admitted.
