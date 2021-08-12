@@ -1619,3 +1619,6 @@ Proof.
   unfold cell_reserved. destruct x, y.
   unfold "≡", cell_equiv in H. intuition.
 Qed.
+
+Global Instance cell_view_proper {M : Type} `{!EqDecision M} `{!TPCM M} :
+    Proper ((≡) ==> (=) ==> (=) ==> (≡)) cell_view. Admitted.

@@ -801,12 +801,6 @@ Lemma cell_of_node_node_of_pl b pl
   : cell_of_node (node_of_pl b pl) = cell_of_pl b pl.
 Proof. unfold cell_of_pl. unfold cell_of_node. trivial. Qed.
 
-Instance cell_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) cell_of_pl. Admitted.
-
-Instance node_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) node_of_pl. Admitted.
-
-Instance cell_view_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) cell_view. Admitted.
-
 Lemma is_borrow_reserved kappa gamma m
   : is_borrow kappa gamma m (reserved kappa gamma m).
 Proof.

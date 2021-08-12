@@ -276,7 +276,7 @@ Admitted.
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
   : branch_all_total_in_refinement_domain roi branch lt idx
     <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
-  
+
 End Indexing.
 
 Definition plsplit (ln: list nat) : PathLoc. Admitted.
