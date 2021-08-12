@@ -15,6 +15,8 @@ Require Import Burrow.locations.
 Require Import Burrow.tactics.
 Require Import Burrow.assoc_comm.
 Require Import Burrow.building.
+Require Import Burrow.maxltunit.
+Require Import Burrow.relive.
 Require Import Coq.Arith.Wf_nat. 
 
 Require Import coq_tricks.Deex.
@@ -673,8 +675,6 @@ Qed.
 (****************************************************************)
 (* live(m, gamma) -> exists kappa , active(kappa) . reserved(kappa, m, gamma) *)
 
-Definition max_ltunit_in_branch (b: Branch M) : nat. Admitted.
-
 (*Lemma branch_all_total_in_refinement_domain_of_preserved_cell_totals ref b1 b2 lt1 lt2 idx
   (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
   (batird : branch_all_total_in_refinement_domain ref b1 lt1 idx)
@@ -736,12 +736,6 @@ Proof.
      * repeat split; trivial.
    + intros. split; trivial.
 Qed.
-
-Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
-  (isgreater: ltunit > max_ltunit_in_branch b)
-  : match cell_of_pl b pl with CellCon _ rset =>
-    ∀ r , r ∈ rset -> match r with (lt, _) => ¬(multiset_in lt ltunit) end
-    end. Admitted.
   
 Lemma sum_reserved_over_lifetime_union (a b: listset (Lifetime * M)) lt
   (disj: a ∩ b ≡ ∅)
@@ -1181,32 +1175,6 @@ Qed.
   ∃ p1 : State M RI, state_inv (live_stuff_from_q ⋅ q)
                 live gamma m <= live_stuff_from_q*)
                 
-Definition reserved_get_or_unit_relive (reserved: Lifetime * M) (old: Lifetime) (new: Lifetime) : M :=
-  match reserved with
-  | (my_lt, m) => if decide (multiset_le my_lt old /\ ¬ multiset_le my_lt new) then m else unit
-  end.
-
-Definition sum_reserved_over_lifetime_relive (reserved: listset (Lifetime * M)) (old: Lifetime) (new: Lifetime) :=
-  set_fold (λ reserved m , dot m (reserved_get_or_unit_relive reserved old new)) unit reserved.
-  
-Global Instance sum_reserved_over_lifetime_proper :
-  Proper ((≡) ==> (=) ==> (=) ==> (=)) (sum_reserved_over_lifetime_relive). Admitted.
-                
-Definition relive_cell (cell: Cell M) (old: Lifetime) (new: Lifetime) : Cell M :=
-  match cell with
-  | CellCon m res =>
-      CellCon (sum_reserved_over_lifetime_relive res old new) ∅
-  end.
-  
-Definition relive_cell_exc (cell: Cell M) (old: Lifetime) (new: Lifetime) (exc: Lifetime * M)
-      : Cell M :=
-  match cell with
-  | CellCon m res =>
-      CellCon (sum_reserved_over_lifetime_relive (res ∖ {[ exc ]}) old new) ∅
-  end.
-
-Global Instance relive_cell_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) relive_cell. Admitted.
-  
 Definition lmap_relive (lm: lmap M RI) (old: Lifetime) (new: Lifetime) : lmap M RI. Admitted.
 
 Definition lmap_relive_exc (lm: lmap M RI) (old: Lifetime) (new: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : lmap M RI. Admitted.
