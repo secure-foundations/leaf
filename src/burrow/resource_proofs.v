@@ -801,6 +801,12 @@ Lemma cell_of_node_node_of_pl b pl
   : cell_of_node (node_of_pl b pl) = cell_of_pl b pl.
 Proof. unfold cell_of_pl. unfold cell_of_node. trivial. Qed.
 
+Instance cell_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) cell_of_pl. Admitted.
+
+Instance node_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) node_of_pl. Admitted.
+
+Instance cell_view_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) cell_view. Admitted.
+
 Lemma is_borrow_reserved kappa gamma m
   : is_borrow kappa gamma m (reserved kappa gamma m).
 Proof.
@@ -809,7 +815,7 @@ Proof.
     have h := cell_view_of_node_view _ _ _ _ H1.
     unfold node_view in H1.
     rewrite cell_of_node_node_of_pl in h.
-    rewrite build_spec in h; trivial.
+    setoid_rewrite build_spec in h; trivial.
     unfold cell_view in h.
     unfold conjoin_reserved_over_lifetime in h.
     rewrite set_fold_singleton in h.
@@ -826,8 +832,8 @@ Lemma cell_live_cell_of_pl_unit (gamma: Loc RI) (res : listset (Lifetime * M)) p
 Proof.
   have h : Decision (pl ∈ pls_of_loc gamma) by solve_decision.
   destruct h.
-  - rewrite build_spec; trivial.
-  - rewrite build_rest_triv; trivial.
+  - setoid_rewrite build_spec; trivial.
+  - setoid_rewrite build_rest_triv; trivial.
 Qed.
 
 Lemma state_no_live_reserved kappa gamma m
@@ -1215,10 +1221,11 @@ Proof.
     setoid_rewrite as_tree_op.
     setoid_rewrite as_tree_singleton.
     setoid_rewrite <- cell_of_pl_op.
-    unfold relive_cell.
+    (*unfold relive_cell.*)
     assert (Decision (pl ∈ pls_of_loc gamma)) as plin by solve_decision.
     destruct plin.
     + setoid_rewrite build_spec; trivial.
+      unfold relive_cell.
       setoid_rewrite cell_of_pl_as_tree_lmap_relive_exc_self; trivial.
       unfold "⋅", "≡", cell_op, cell_equiv, relive_cell_exc.
       full_generalize (cell_of_pl (as_tree l0) pl) as pcell. destruct pcell.
@@ -1238,6 +1245,7 @@ Proof.
        * set_solver.
    + setoid_rewrite build_rest_triv; trivial.
      setoid_rewrite cell_of_pl_as_tree_lmap_relive_exc_other; trivial.
+     unfold relive_cell.
       unfold "⋅", "≡", cell_op, cell_equiv, relive_cell.
       unfold triv_cell.
       full_generalize (cell_of_pl (as_tree l0) pl) as pcell. destruct pcell.

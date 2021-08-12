@@ -19,13 +19,13 @@ Definition build {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !T
     
 Lemma build_spec {RI} `{!EqDecision RI} `{!Countable RI} {M} `{!EqDecision M, !TPCM M}
     (loc: Loc RI) (cell: Cell M)
-  : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl = cell). Admitted.
+  : (∀ pl , pl ∈ pls_of_loc loc -> cell_of_pl (build loc cell) pl ≡ cell). Admitted.
   
 Lemma build_rest_triv
         {M} `{!EqDecision M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI}
     (loc: Loc RI) (cell: Cell M)
-  : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl = triv_cell). Admitted.
+  : (∀ pl , ¬(pl ∈ pls_of_loc loc) -> cell_of_pl (build loc cell) pl ≡ triv_cell). Admitted.
 
 Global Instance build_proper
     {M} `{!EqDecision M, !TPCM M}

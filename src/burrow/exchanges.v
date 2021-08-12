@@ -263,10 +263,10 @@ Proof.
       rewrite node_node_cell_cell. rewrite node_node_cell_cell.
       rewrite node_node_cell_cell. rewrite node_node_cell_cell.
       assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha0:=alpha) (ri0:=ri); trivial ).
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
       unfold cell_live. unfold triv_cell.
       repeat (rewrite unit_dot).
       apply (view_exchange_cond_of_borrow_exchange_cond alpha ri gamma z); trivial.
@@ -287,10 +287,10 @@ Proof.
         repeat (rewrite unit_dot).
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_spec; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_spec at 1; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot_left).
         (*rewrite tpcm_comm.*)
@@ -309,10 +309,7 @@ Proof.
         rewrite node_live_op. rewrite node_live_op.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_rest_triv; trivial.
         unfold cell_live, triv_cell. repeat (rewrite unit_dot).
         apply view_exchange_cond_of_no_change2.
    + setoid_rewrite <- cell_of_pl_op.
@@ -438,8 +435,8 @@ Proof.
       repeat (rewrite unit_dot).
       repeat (rewrite unit_dot_left).
       rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-      rewrite build_spec; trivial.
-      rewrite build_spec; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
       unfold cell_live. unfold triv_cell.
       repeat (rewrite unit_dot).
       
@@ -448,8 +445,8 @@ Proof.
     * 
       (* uninteresting case *)
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         unfold cell_live, triv_cell. repeat (rewrite unit_dot).
         apply view_exchange_cond_of_no_change2.
    + intro. 
@@ -551,9 +548,9 @@ Proof.
     rewrite node_node_cell_cell.
     
     assert ((p, i) ∉ pls_of_loc gamma) by (apply pl_not_in_of_pl_in_extloc with (alpha0:=alpha) (ri0:=ri); trivial ).
-    rewrite build_rest_triv; trivial.
+    setoid_rewrite build_rest_triv at 1; trivial.
     
-    rewrite build_spec; trivial.
+    setoid_rewrite build_spec at 1; trivial.
     unfold cell_live, triv_cell.
     
     assert (is_fresh_nat (q) (nat_of_extstep alpha ri))
@@ -605,8 +602,8 @@ Proof.
         repeat (rewrite unit_dot).
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot_left).
         apply specific_exchange_cond_of_whatever.
@@ -620,8 +617,8 @@ Proof.
         rewrite node_live_op. rewrite node_live_op.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         repeat (rewrite unit_dot_left).
         apply specific_exchange_cond_of_whatever2.
   - setoid_rewrite <- cell_of_pl_op.
@@ -709,7 +706,7 @@ Proof.
     rewrite node_live_op.
     rewrite node_node_cell_cell. rewrite node_node_cell_cell.
     
-    rewrite build_spec; trivial.
+    setoid_rewrite build_spec at 1; trivial.
     unfold cell_live, triv_cell.
     
     assert (node_trivial (node_of_pl q (p, i))) as EqTrivNode
@@ -749,7 +746,7 @@ Proof.
     rewrite <- node_of_pl_op.
     rewrite node_live_op.
     rewrite node_node_cell_cell. rewrite node_node_cell_cell.
-    rewrite build_rest_triv; trivial.
+    setoid_rewrite build_rest_triv at 1; trivial.
     unfold cell_live, triv_cell.
     repeat (rewrite unit_dot_left).
     apply specific_exchange_cond_of_whatever2.
@@ -1004,10 +1001,10 @@ Proof.
       assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_left with (gamma4:=gamma2); trivial).
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
       unfold cell_live, triv_cell.
       repeat (rewrite unit_dot_left).
       rewrite updo_eq_m_left; trivial.
@@ -1058,10 +1055,10 @@ Proof.
       
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
       (*replace (cell_live triv_cell) with (unit) by (unfold cell_live, triv_cell; trivial).*)
       unfold cell_live. unfold triv_cell.
       repeat (rewrite unit_dot_left).
@@ -1072,8 +1069,8 @@ Proof.
 
       repeat (rewrite <- node_of_pl_op in vcap).
       repeat (rewrite <- cell_of_pl_op in vcap).
-      rewrite build_spec in vcap; trivial.
-      rewrite build_rest_triv in vcap; trivial.
+      setoid_rewrite build_spec at 1 in vcap; trivial.
+      setoid_rewrite build_rest_triv at 1 in vcap; trivial.
       full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
       rewrite <- node_live_plus_node_total_minus_live in vcap.
       setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
@@ -1091,8 +1088,8 @@ Proof.
                        active_lt)) as z.*)
       repeat (rewrite node_live_op in vcap).
       repeat (rewrite node_node_cell_cell in vcap).
-      rewrite build_rest_triv in vcap; trivial.
-      rewrite build_spec in vcap; trivial.
+      setoid_rewrite build_rest_triv at 1 in vcap; trivial.
+      setoid_rewrite build_spec at 1 in vcap; trivial.
       repeat (rewrite cell_live_op in vcap).
       unfold cell_live, triv_cell in vcap.
       rewrite unit_dot in vcap.
@@ -1129,10 +1126,10 @@ Proof.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot).
         apply specific_exchange_cond_add_stuff.
@@ -1153,10 +1150,10 @@ Proof.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot).
         repeat (rewrite unit_dot_left).
@@ -1207,10 +1204,10 @@ Proof.
       assert ((p, i) ∈ pls_of_loc (CrossLoc gamma1 gamma2)) by (apply pl_in_crossloc_of_pl_in_right with (gamma3:=gamma1); trivial).
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
       unfold cell_live, triv_cell.
       repeat (rewrite unit_dot_left).
       rewrite updo_eq_m_right; trivial.
@@ -1261,10 +1258,10 @@ Proof.
       
       repeat (rewrite node_live_op).
       repeat (rewrite node_node_cell_cell).
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
-      rewrite build_rest_triv; trivial.
-      rewrite build_spec; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
+      setoid_rewrite build_rest_triv at 1; trivial.
+      setoid_rewrite build_spec at 1; trivial.
       (*replace (cell_live triv_cell) with (unit) by (unfold cell_live, triv_cell; trivial).*)
       unfold cell_live. unfold triv_cell.
       repeat (rewrite unit_dot_left).
@@ -1275,8 +1272,8 @@ Proof.
 
       repeat (rewrite <- node_of_pl_op in vcap).
       repeat (rewrite <- cell_of_pl_op in vcap).
-      rewrite build_spec in vcap; trivial.
-      rewrite build_rest_triv in vcap; trivial.
+      setoid_rewrite build_spec at 1 in vcap; trivial.
+      setoid_rewrite build_rest_triv at 1 in vcap; trivial.
       full_generalize (cell_of_pl (as_tree l0) (plsplit other_p)) as child_c.
       rewrite <- node_live_plus_node_total_minus_live in vcap.
       setoid_rewrite (node_of_pl_as_tree_eq _ (other_p, other_i) (p, i) (CrossLoc gamma1 gamma2)) in vcap; trivial.
@@ -1294,8 +1291,8 @@ Proof.
                        active_lt)) as z.*)
       repeat (rewrite node_live_op in vcap).
       repeat (rewrite node_node_cell_cell in vcap).
-      rewrite build_rest_triv in vcap; trivial.
-      rewrite build_spec in vcap; trivial.
+      setoid_rewrite build_rest_triv at 1 in vcap; trivial.
+      setoid_rewrite build_spec at 1 in vcap; trivial.
       repeat (rewrite cell_live_op in vcap).
       unfold cell_live, triv_cell in vcap.
       rewrite unit_dot in vcap.
@@ -1331,10 +1328,10 @@ Proof.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_spec; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
+        setoid_rewrite build_spec at 1; trivial.
+        setoid_rewrite build_rest_triv at 1; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot).
         apply specific_exchange_cond_add_stuff.
@@ -1355,10 +1352,7 @@ Proof.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell. rewrite node_node_cell_cell.
         rewrite node_node_cell_cell.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
-        rewrite build_rest_triv; trivial.
+        setoid_rewrite build_rest_triv; trivial.
         unfold cell_live, triv_cell.
         repeat (rewrite unit_dot).
         repeat (rewrite unit_dot_left).
