@@ -381,11 +381,28 @@ Qed.
 
 Lemma cell_of_pl_as_tree_lmap_none pl loc lm
   : pl ∈ pls_of_loc loc -> (lm !! loc = None) -> cell_of_pl (as_tree lm) pl ≡ triv_cell.
-Admitted.
+Proof. intros. unfold as_tree.
+  apply gmap_easy_induct with (R := λ x , cell_of_pl x pl ≡ triv_cell).
+  - apply cell_of_pl_BranchNil.
+  - intros. setoid_rewrite <- cell_of_pl_op. setoid_rewrite H2.
+    assert (pl ∉ pls_of_loc k).
+    * intro. have le := locs_equal_of_pl_in _ _ _ H H3. subst. rewrite H0 in H1.
+        discriminate.
+    * setoid_rewrite build_rest_triv; trivial.
+        apply op_trivial_cell. unfold triv_cell, cell_trivial. split; trivial.
+Qed.
 
 Lemma cell_of_pl_as_tree_lmap pl loc lm x
   : pl ∈ pls_of_loc loc -> (lm !! loc = Some x) -> cell_of_pl (as_tree lm) pl ≡ x.
-Admitted.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intros.
+  have j := rewrite_map_as_insertion lm loc x H0. deex. destruct_ands.
+  subst lm. setoid_rewrite rewrite_map_fold_builder; trivial.
+  setoid_rewrite <- cell_of_pl_op.
+  setoid_rewrite (cell_of_pl_as_tree_lmap_none pl loc y'); trivial.
+  setoid_rewrite build_spec; trivial. setoid_rewrite cell_op_comm.
+  apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+Qed.
 
 Lemma lmaps_equiv_of_tree_equiv a b
   : as_tree a ≡ as_tree b -> lmaps_equiv a b.
