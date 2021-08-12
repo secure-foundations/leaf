@@ -15,6 +15,8 @@ Require Import Burrow.tactics.
 Require Import Burrow.exchange_proof.
 Require Import Burrow.assoc_comm.
 Require Import Burrow.resource_proofs.
+Require Import Burrow.fresh.
+Require Import Burrow.updog.
 
 Require Import coq_tricks.Deex.
 
@@ -475,20 +477,6 @@ Qed.
 (****************************************************************)
 (****************************************************************)
 (* live(I(f), gamma) -> live(f, alpha ref gamma) *)
-
-Definition is_fresh_nat : Branch M -> nat -> Prop. Admitted.
-
-Definition alloc_alpha : Branch M -> RI -> nat. Admitted.
-
-Lemma is_fresh_alloc branch ri : is_fresh_nat branch
-    (nat_of_extstep (alloc_alpha branch ri) ri). Admitted.
-    
-Lemma is_fresh_alloc_base branch : is_fresh_nat branch
-    (nat_of_basestep RI (alloc_alpha branch (triv_ri RI))). Admitted.
-
-Lemma trivial_node_at_fresh (b: Branch M) p i
-  (is_fresh: is_fresh_nat b i)
-  : node_trivial (node_of_pl b (p, i)). Admitted.
     
 Lemma node_total_minus_live_of_trivial ref node lt
   (istriv: node_trivial node)
@@ -506,9 +494,6 @@ Proof. unfold node_trivial in nodetriv. destruct a, b.
   unfold cell_trivial in *. destruct_ands. split.
   - set_solver.
   -  *)
-
-Lemma is_fresh_nat_of_op (a b : Branch M) (i: nat)
-  : is_fresh_nat (a ⋅ b) i -> is_fresh_nat b i. Admitted.
 
 Lemma initialize_ext gamma m f p ri
   (is_rel_def: rel_defined M M (refinement_of ri) f)
@@ -793,54 +778,6 @@ Qed.
 (* live(m, gamma1) . live(m1 x m2, gamma1, gamma2) ->
    live(m1, gamma1) . live(m x m2, gamma1, gamma2)
 *)
-
-Definition updo (m: M) (gamma: Loc RI) (idx: nat) : (PathLoc -> M) :=
-  λ (pl: PathLoc) , match pl with | (p, i) =>
-        if decide (p ≠ [] /\ (plsplit p) ∈ pls_of_loc gamma /\ i < idx) then
-          m
-        else
-          unit
-      end.
- 
-Definition updo_se (gamma: Loc RI) (idx: nat) : gset PathLoc. Admitted.
-
-Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
-  : ∀ (p : list nat) (i : nat),
-    (p, i) ∉ updo_se gamma idx
-    → updo m gamma idx (p, i) = unit.
-    Admitted.
-  
-Lemma updo_eq_m_left p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = m. Admitted.
-    
-Lemma updo_eq_unit_left p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p++[i], 0)) = unit. Admitted.
-    
-Lemma updo_eq_unit2_left p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)) = unit. Admitted.
-    
-Lemma updo_eq_unit3_left p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma1 (nat_of_leftstep RI gamma2) (p++[i], 0)) = unit. Admitted.
-     
-Lemma updo_eq_m_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = m. Admitted.
-    
-Lemma updo_eq_unit_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
-    
-Lemma updo_eq_unit2_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)) = unit. Admitted.
-    
-Lemma updo_eq_unit3_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
     
 Lemma specific_exchange_cond_left_swap v m1 m2 m x
  : specific_exchange_cond (refinement_of (left_ri RI))
@@ -1000,22 +937,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
     + rewrite dot_mcmk in mv. apply valid_monotonic with (y0 := (dot m2 c)). trivial.
   - apply reflex.
 Qed.
-  
-Lemma updo_other_eq_both_left p i gamma1 gamma2 m
-  (is_not_in : (p, i) ∉ pls_of_loc_from_left gamma1 gamma2)
-  : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)). Admitted.
-  
-Lemma updo_other_eq_both_right p i gamma1 gamma2 m
-  (is_not_in : (p, i) ∉ pls_of_loc_from_right gamma1 gamma2)
-  : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)). Admitted.
-  
-Lemma updo_other_eq_unit p i idx gamma m
-  (is_not_in : (p, i) ∉ pls_of_loc gamma)
-    : (updo m gamma idx (p ++ [i], 0)) = unit. Admitted.
-  
-Lemma updo_base_eq_m p i idx gamma m
-  (is_in : (p, i) ∈ pls_of_loc gamma)
-    : (updo m gamma idx (p ++ [i], 0)) = m. Admitted.
   
 (*Lemma cell_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
   (pl1_in: pl1 ∈ pls_of_loc loc)

@@ -281,4 +281,4 @@ End Indexing.
 
 Definition plsplit (ln: list nat) : PathLoc. Admitted.
 
-
+Lemma plsplit_app p i : plsplit (p ++ [i]) = (p, i). Admitted.

@@ -12,6 +12,8 @@ src/burrow/exchanges.v
 src/burrow/resource_proofs.v
 src/burrow/tpcms.v
 src/burrow/ra.v
+src/burrow/updog.v
+src/burrow/fresh.v
 
 -Q src/tpcms Tpcms
 

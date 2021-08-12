@@ -526,36 +526,78 @@ Lemma node_of_pl_build_eq
   
 Lemma exists_in_pls_of_loc_from_left
   (gamma1 gamma2: Loc RI)
-  : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2. Admitted.
+  : ∃ pl, pl ∈ pls_of_loc_from_left gamma1 gamma2.
+Proof.
+  unfold pls_of_loc_from_left.
+  exists (augment (nat_of_leftstep RI gamma2) (any_pl_of_loc gamma1)).
+  rewrite elem_of_map. exists (any_pl_of_loc gamma1). split; trivial.
+  apply any_pl_of_loc_is_of_loc.
+Qed.
   
 Lemma exists_in_pls_of_loc_from_right
   (gamma1 gamma2: Loc RI)
-  : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2. Admitted.
+  : ∃ pl, pl ∈ pls_of_loc_from_right gamma1 gamma2.
+Proof.
+  unfold pls_of_loc_from_right.
+  exists (augment (nat_of_rightstep RI gamma1) (any_pl_of_loc gamma2)).
+  rewrite elem_of_map. exists (any_pl_of_loc gamma2). split; trivial.
+  apply any_pl_of_loc_is_of_loc.
+Qed.
 
 Lemma plsplit_in_of_pls_of_loc_from_left (gamma1 gamma2: Loc RI) (p: list nat) (i: nat)
   (pi_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-  : plsplit p ∈ pls_of_loc gamma1. Admitted.
+  : plsplit p ∈ pls_of_loc gamma1.
+Proof.
+  unfold pls_of_loc_from_left in pi_in.
+  generalize pi_in. clear pi_in. rewrite elem_of_map. intro pi_in. deex. destruct_ands.
+  unfold augment in H. destruct x. inversion H. subst. rewrite plsplit_app.
+  trivial.
+Qed.
   
 Lemma plsplit_in_of_pls_of_loc_from_right (gamma1 gamma2: Loc RI) p i
   (pi_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-  : plsplit p ∈ pls_of_loc gamma2. Admitted.
+  : plsplit p ∈ pls_of_loc gamma2.
+Proof.
+  unfold pls_of_loc_from_left in pi_in.
+  generalize pi_in. clear pi_in. rewrite elem_of_map. intro pi_in. deex. destruct_ands.
+  unfold augment in H. destruct x. inversion H. subst. rewrite plsplit_app.
+  trivial.
+Qed.
   
 Lemma q_eq_pi_of_plsplit_cross (gamma1 gamma2: Loc RI) (q p: list nat) i j
   (q_in: (q, j) ∈ pls_of_loc (CrossLoc gamma1 gamma2) )
   (eq: plsplit q = (p, i))
-  : q = p ++ [i]. Admitted.
+  : q = p ++ [i].
+Admitted.
 
 Lemma pl_not_in_pls_of_loc_cross_from_in_left pl (gamma1 gamma2: Loc RI)
   (pl_in : pl ∈ pls_of_loc gamma1)
-  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2).
+Proof.
+  intros. intro.
+  have j := locs_equal_of_pl_in _ _ _ pl_in H.
+  derive_contra_own_child j gamma1.
+Qed.
   
 Lemma pl_not_in_pls_of_loc_cross_from_in_right pl (gamma1 gamma2: Loc RI)
   (pl_in : pl ∈ pls_of_loc gamma2)
-  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2). Admitted.
+  : pl ∉ pls_of_loc (CrossLoc gamma1 gamma2).
+Proof.
+  intros. intro.
+  have j := locs_equal_of_pl_in _ _ _ pl_in H.
+  derive_contra_own_child j gamma2.
+Qed.
 
 Lemma pl_not_in_pls_of_loc_cross_from_not_in_both pl (gamma1 gamma2: Loc RI)
   (not_in_l : pl ∉ pls_of_loc_from_left gamma1 gamma2)
   (not_in_r : pl ∉ pls_of_loc_from_right gamma1 gamma2)
-        : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)). Admitted.
+        : (pl ∉ pls_of_loc (CrossLoc gamma1 gamma2)).
+Proof.
+  unfold pls_of_loc_from_left in *.
+  unfold pls_of_loc_from_right in *.
+  unfold pls_of_loc in *.
+  rewrite elem_of_union.
+  intuition.
+Qed.
 
 End LocationsLemmas.
