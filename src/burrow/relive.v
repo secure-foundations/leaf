@@ -21,7 +21,20 @@ Definition sum_reserved_over_lifetime_relive (reserved: listset (Lifetime * M)) 
   set_fold (λ reserved m , dot m (reserved_get_or_unit_relive reserved old new)) unit reserved.
   
 Global Instance sum_reserved_over_lifetime_relive_proper :
-  Proper ((≡) ==> (=) ==> (=) ==> (=)) (sum_reserved_over_lifetime_relive). Admitted.
+  Proper ((≡) ==> (=) ==> (=) ==> (=)) (sum_reserved_over_lifetime_relive).
+Proof.
+  unfold sum_reserved_over_lifetime_relive.
+  unfold Proper, "==>". intros. subst.
+  have p := set_fold_proper (=) ((λ (reserved : Lifetime * M) (m : M), dot m (reserved_get_or_unit_relive reserved y0 y1))).
+  unfold Proper in p. unfold "==>" in p. 
+  eapply p.
+  ** typeclasses eauto.
+  ** typeclasses eauto.
+  ** intros. crush.
+  ** intros. rewrite <- tpcm_assoc. rewrite <- tpcm_assoc.
+      f_equal. apply tpcm_comm.
+  ** trivial.
+Qed.
 
 Definition relive_cell (cell: Cell M) (old: Lifetime) (new: Lifetime) : Cell M :=
   match cell with
@@ -36,6 +49,10 @@ Definition relive_cell_exc (cell: Cell M) (old: Lifetime) (new: Lifetime) (exc: 
       CellCon (sum_reserved_over_lifetime_relive (res ∖ {[ exc ]}) old new) ∅
   end.
 
-Global Instance relive_cell_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) relive_cell. Admitted.
+Global Instance relive_cell_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) relive_cell.
+Proof.
+  unfold Proper, "==>". intros. subst. unfold relive_cell. destruct x, y.
+  inversion H. setoid_rewrite H1. trivial.
+Qed.
   
 End Relive.
