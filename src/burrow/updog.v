@@ -10,12 +10,33 @@ From stdpp Require Import gmap.
 
 Section Updog.
 
+Lemma resolve_p_i_in_ExtLoc
+  {RI} `{!EqDecision RI, !Countable RI}
+  p i alpha ri (gamma: Loc RI) :
+  ((p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma)) ->
+    (p ≠ [] ∧ plsplit p ∈ pls_of_loc gamma ∧ i = nat_of_extstep alpha ri). Admitted.
+    
+Lemma resolve_p_i_in_ExtLoc_rev
+  {RI} `{!EqDecision RI, !Countable RI}
+  p i alpha ri (gamma: Loc RI) :
+    (p ≠ []) -> (plsplit p ∈ pls_of_loc gamma) -> (i = nat_of_extstep alpha ri) ->
+    ((p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma)). Admitted.
+
+Lemma plsplit_app_and_self_contra
+  {RI} `{!EqDecision RI, !Countable RI}
+  p i (gamma: Loc RI)
+  : plsplit (p ++ [i]) ∈ pls_of_loc gamma -> p ≠ [] -> plsplit p ∈ pls_of_loc gamma
+  -> False. Admitted.
+
+Lemma app_nonempty {T} (p: list T) (i: T)
+  : p ++ [i] ≠ []. Admitted.
+
 Context {M} `{!EqDecision M} `{!TPCM M}.
 Context {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}.
 
 Definition updog (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI) : (PathLoc -> M) :=
   λ (pl: PathLoc) , match pl with | (p, i) =>
-        if decide (p ≠ [] /\ (plsplit p) ∈ pls_of_loc gamma /\ i < nat_of_extstep alpha ri) then
+        if decide (p ≠ [] /\ (plsplit p) ∈ pls_of_loc gamma /\ i ≤ nat_of_extstep alpha ri) then
           m
         else
           unit
@@ -28,18 +49,33 @@ Lemma updog_se_okay (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI)
     (p, i) ∉ updog_se gamma alpha ri
     → updog m gamma alpha ri (p, i) = unit.
     Admitted.
-
+    
 Lemma updog_eq_m p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-    : (updog m gamma alpha ri (p, i)) = m. Admitted.
+    : (updog m gamma alpha ri (p, i)) = m.
+Proof. unfold updog. case_decide; trivial. exfalso. apply H.
+  have j := resolve_p_i_in_ExtLoc _ _ _ _ _ is_in. destruct_ands. repeat split; trivial.
+  lia.
+Qed.
     
 Lemma updog_eq_unit1 p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-    : (updog m gamma alpha ri (p, S i)) = unit. Admitted.
+    : (updog m gamma alpha ri (p, S i)) = unit.
+Proof.
+  unfold updog. case_decide; trivial. exfalso.
+  have j := resolve_p_i_in_ExtLoc _ _ _ _ _ is_in. destruct_ands. subst i.
+  lia.
+Qed.
     
 Lemma updog_eq_unit2 p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
-    : (updog m gamma alpha ri (p ++ [i], 0)) = unit. Admitted.
+    : (updog m gamma alpha ri (p ++ [i], 0)) = unit.
+Proof.
+  unfold updog. case_decide; trivial. exfalso.
+  have j := resolve_p_i_in_ExtLoc _ _ _ _ _ is_in. destruct_ands.
+  eapply plsplit_app_and_self_contra.
+  - apply H3. - apply H0. - apply H1.
+Qed.
 
 (*Lemma updog_base_eq_unit1 p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)
@@ -51,16 +87,34 @@ Lemma updog_base_eq_unit2 p i alpha ri gamma m
     
 Lemma updog_base_eq_m p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)
-    : (updog m gamma alpha ri (p ++ [i], 0)) = m. Admitted.
+    : (updog m gamma alpha ri (p ++ [i], 0)) = m.
+Proof.
+  unfold updog. case_decide; trivial. exfalso. apply H. repeat split.
+  - apply app_nonempty.
+  - rewrite plsplit_app. trivial.
+  - lia.
+Qed.
     
 Lemma updog_other_eq_both p i alpha ri gamma m
   (is_not_in : (p, i) ∉ pls_of_loc (ExtLoc alpha ri gamma))
-    : (updog m gamma alpha ri (p, i)) = (updog m gamma alpha ri (p, S i)). Admitted.
+    : (updog m gamma alpha ri (p, i)) = (updog m gamma alpha ri (p, S i)).
+Proof.
+  unfold updog. case_decide; case_decide; trivial.
+  - destruct_ands. exfalso. apply H0. repeat split; trivial.
+    enough (i ≠ nat_of_extstep alpha ri) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_ExtLoc_rev; trivial.
+  - destruct_ands. exfalso. apply H. repeat split; trivial.
+    enough (i ≠ nat_of_extstep alpha ri) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_ExtLoc_rev; trivial.
+Qed.
     
 Lemma updog_other_eq_unit p i alpha ri gamma m
   (is_not_in : (p, i) ∉ pls_of_loc gamma)
-    : (updog m gamma alpha ri (p ++ [i], 0)) = unit. Admitted.
-
+    : (updog m gamma alpha ri (p ++ [i], 0)) = unit.
+Proof.
+  unfold updog. case_decide; trivial. destruct_ands.
+  rewrite plsplit_app in H0. contradiction.
+Qed.
 
 Definition updo (m: M) (gamma: Loc RI) (idx: nat) : (PathLoc -> M) :=
   λ (pl: PathLoc) , match pl with | (p, i) =>
