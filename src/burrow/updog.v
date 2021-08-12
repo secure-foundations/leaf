@@ -53,6 +53,18 @@ Lemma plsplit_app_and_self_contra
   p i (gamma: Loc RI)
   : plsplit (p ++ [i]) ∈ pls_of_loc gamma -> p ≠ [] -> plsplit p ∈ pls_of_loc gamma
   -> False. Admitted.
+  
+Lemma plsplit_app_right_contra
+  {RI} `{!EqDecision RI, !Countable RI}
+  p (gamma1: Loc RI)
+  : plsplit (p ++ [nat_of_rightstep RI gamma1]) ∈ pls_of_loc gamma1 -> False.
+  Admitted.
+  
+Lemma plsplit_app_left_contra
+  {RI} `{!EqDecision RI, !Countable RI}
+  p (gamma2: Loc RI)
+  : plsplit (p ++ [nat_of_leftstep RI gamma2]) ∈ pls_of_loc gamma2 -> False.
+  Admitted.
 
 Lemma app_nonempty {T} (p: list T) (i: T)
   : p ++ [i] ≠ []. Admitted.
@@ -182,49 +194,92 @@ Proof.
   have j := resolve_p_i_in_Left _ _ _ _ is_in. lia.
 Qed.
 
-Lemma updo_eq_unit3_left p i gamma1 gamma2 m
+Lemma updo_eq_unit3_left (p: list nat) i gamma1 gamma2 m
   (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
     : (updo m gamma1 (nat_of_leftstep RI gamma2) (p++[i], 0)) = unit.
-Admitted.
-(*
+Proof.
+  unfold updo. case_decide; trivial. exfalso. destruct_ands.
+  have j := resolve_p_i_in_Right _ _ _ _ is_in. destruct_ands. subst i.
+  eapply plsplit_app_right_contra. apply H0.
+Qed.
+
+Lemma updo_eq_m_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = m.
+Proof.
+  unfold updo. case_decide; trivial. exfalso. apply H.
+  have j := resolve_p_i_in_Right _ _ _ _ is_in. destruct_ands. repeat split; trivial. lia.
+Qed.
+
+Lemma updo_eq_unit_right p i gamma1 gamma2 m
+  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit.
 Proof.
   unfold updo. case_decide; trivial. exfalso. destruct_ands.
   have j := resolve_p_i_in_Right _ _ _ _ is_in. destruct_ands. subst i.
   eapply plsplit_app_and_self_contra.
   - apply H0. - apply H2. - trivial.
 Qed.
-*)
-
-Lemma updo_eq_m_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = m. Admitted.
-
-Lemma updo_eq_unit_right p i gamma1 gamma2 m
-  (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
     
 Lemma updo_eq_unit2_right p i gamma1 gamma2 m
   (is_in : (p, i) ∈ pls_of_loc_from_right gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)) = unit. Admitted.
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)) = unit.
+Proof.
+  unfold updo. case_decide; trivial. exfalso. destruct_ands.
+  have j := resolve_p_i_in_Right _ _ _ _ is_in. lia.
+Qed.
     
 Lemma updo_eq_unit3_right p i gamma1 gamma2 m
   (is_in : (p, i) ∈ pls_of_loc_from_left gamma1 gamma2)
-    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit. Admitted.
+    : (updo m gamma2 (nat_of_rightstep RI gamma1) (p++[i], 0)) = unit.
+Proof.
+  unfold updo. case_decide; trivial. exfalso. destruct_ands.
+  have j := resolve_p_i_in_Left _ _ _ _ is_in. destruct_ands. subst i.
+  eapply plsplit_app_left_contra. apply H0.
+Qed.
 
 Lemma updo_other_eq_both_left p i gamma1 gamma2 m
   (is_not_in : (p, i) ∉ pls_of_loc_from_left gamma1 gamma2)
-  : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)). Admitted.
+  : (updo m gamma1 (nat_of_leftstep RI gamma2) (p, i)) = (updo m gamma1 (nat_of_leftstep RI gamma2) (p, S i)).
+Proof.
+  unfold updo. case_decide; case_decide; trivial.
+  - destruct_ands. exfalso. apply H0. repeat split; trivial.
+    enough (i ≠ nat_of_leftstep RI gamma2) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_Left_rev; trivial.
+  - destruct_ands. exfalso. apply H. repeat split; trivial.
+    enough (i ≠ nat_of_leftstep RI gamma2) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_Left_rev; trivial.
+Qed.
   
 Lemma updo_other_eq_both_right p i gamma1 gamma2 m
   (is_not_in : (p, i) ∉ pls_of_loc_from_right gamma1 gamma2)
-  : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)). Admitted.
+  : (updo m gamma2 (nat_of_rightstep RI gamma1) (p, i)) = (updo m gamma2 (nat_of_rightstep RI gamma1) (p, S i)).
+Proof.
+  unfold updo. case_decide; case_decide; trivial.
+  - destruct_ands. exfalso. apply H0. repeat split; trivial.
+    enough (i ≠ nat_of_rightstep RI gamma1) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_Right_rev; trivial.
+  - destruct_ands. exfalso. apply H. repeat split; trivial.
+    enough (i ≠ nat_of_rightstep RI gamma1) by lia.
+    intro. apply is_not_in. apply resolve_p_i_in_Right_rev; trivial.
+Qed.
   
 Lemma updo_other_eq_unit p i idx gamma m
   (is_not_in : (p, i) ∉ pls_of_loc gamma)
-    : (updo m gamma idx (p ++ [i], 0)) = unit. Admitted.
+    : (updo m gamma idx (p ++ [i], 0)) = unit.
+Proof.
+  unfold updo. case_decide; trivial. destruct_ands.
+  rewrite plsplit_app in H0. contradiction.
+Qed.
   
 Lemma updo_base_eq_m p i idx gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)
-    : (updo m gamma idx (p ++ [i], 0)) = m. Admitted.
+    : (updo m gamma idx (p ++ [i], 0)) = m.
+Proof.
+  unfold updo. case_decide; trivial. exfalso. apply H. repeat split.
+  - apply app_nonempty.
+  - rewrite plsplit_app. trivial.
+  - lia.
+Qed.
 
 End Updog.
