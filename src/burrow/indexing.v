@@ -209,11 +209,6 @@ Qed.
   (node_ind : 
   *)
 
-Lemma equiv_extensionality_cells
-    (branch1: Branch M) (branch2: Branch M)
-    (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
-    : branch1 ≡ branch2. Admitted.
-    
 Lemma branchcons_pl t p i
   : branch_of_pl t (p, i) ≡ BranchCons (node_of_pl t (p, i)) (branch_of_pl t (p, S i)).
   Admitted.
@@ -276,6 +271,221 @@ Admitted.
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
   : branch_all_total_in_refinement_domain roi branch lt idx
     <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
+
+Global Instance CellNode_proper : Proper ((≡) ==> (≡) ==> (≡)) (CellNode).
+Admitted.
+
+Global Instance BranchCons_proper : Proper ((≡) ==> (≡) ==> (≡)) (BranchCons).
+Admitted.
+
+Global Instance cell_of_node_proper : Proper ((≡) ==> (≡)) (cell_of_node).
+Admitted.
+    
+    (*
+Section PLInduction1.
+  Context
+    (trunk: Branch M)
+    (in_node_fn : PathLoc -> Node M -> Prop)
+    (in_branch_fn : PathLoc -> Branch M -> Prop)
+    (in_node_fn_proper : ∀ pl, Proper ((≡) ==> (impl)) (in_node_fn pl))
+    (in_branch_fn_proper : ∀ pl, Proper ((≡) ==> (impl)) (in_branch_fn pl))
+    (node_fn : PathLoc -> Node M -> Prop)
+    (branch_fn : PathLoc -> Branch M -> Prop)
+    (ns: ∀ pl, in_node_fn pl (node_of_pl trunk pl))
+    (bs: ∀ pl, in_branch_fn pl (branch_of_pl trunk pl))
+    (node_ind : ∀ p i cell branch ,
+        branch_fn (p ++ [i], 0) branch ->
+        in_node_fn (p, i) (CellNode cell branch) ->
+        node_fn (p, i) (CellNode cell branch))
+    (branch_ind : ∀ p i node branch ,
+        branch_fn (p, S i) branch ->
+        node_fn (p, i) node ->
+        in_branch_fn (p, i) (BranchCons node branch) ->
+        branch_fn (p, i) (BranchCons node branch))
+    (branchnil_ind : ∀ pl, branch_fn pl BranchNil)
+  .
+  
+  Lemma node_pl_induction_1 (node: Node M) p i
+    (nn: node ≡ node_of_pl trunk (p, i)) : node_fn (p, i) node
+  with branch_pl_induction_1 (branch: Branch M) p i
+    (bb: branch ≡ branch_of_pl trunk (p, i)) : branch_fn (p, i) branch.
+  Proof using EqDecision0 M TPCM0 branch_fn branch_ind branchnil_ind bs in_branch_fn
+    in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk.
+    - destruct node.
+      have IHb := branch_pl_induction_1 b.
+      clear node_pl_induction_1.
+      clear branch_pl_induction_1.
+      setoid_rewrite cellnode_pl in nn. inversion nn.
+      apply node_ind; trivial.
+      + apply IHb; trivial.
+      + setoid_rewrite H0. setoid_rewrite H. setoid_rewrite <- cellnode_pl. apply ns.
+    - destruct branch.
+      + have IHb := branch_pl_induction_1 branch.
+        have IHn := node_pl_induction_1 n.
+        clear node_pl_induction_1.
+        clear branch_pl_induction_1.
+        setoid_rewrite branchcons_pl in bb. inversion bb.
+        apply branch_ind; trivial.
+        * apply IHb; trivial.
+        * apply IHn; trivial.
+        * setoid_rewrite H0. setoid_rewrite H. setoid_rewrite <- branchcons_pl. apply bs.
+      + apply branchnil_ind.
+   Qed.
+    
+  Lemma pl_induction_1
+    : branch_fn ([], 0) trunk.
+  Proof using EqDecision0 M TPCM0 branch_fn branch_ind branchnil_ind bs in_branch_fn
+    in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk.
+  apply branch_pl_induction_1. apply branch_of_pl_zero. Qed.
+End PLInduction1.
+*)
+
+Lemma branchnil_of_cell_triv c b
+  (n1triv : CellNode c b ≡ triv_node)
+  : b ≡ BranchNil. Admitted.
+  
+Lemma branchnil_of_parent_triv node branch
+  (bb1 : BranchNil ≡ BranchCons node branch)
+  : branch ≡ BranchNil. Admitted.
+  
+Lemma nodetriv_of_parent_triv node branch
+  (bb1 : BranchNil ≡ BranchCons node branch)
+  : node ≡ triv_node. Admitted.
+
+Section PLInduction2.
+  Context
+    (trunk1: Branch M)
+    (trunk2: Branch M)
+    (in_node_fn : PathLoc -> Node M -> Node M -> Prop)
+    (in_branch_fn : PathLoc -> Branch M -> Branch M -> Prop)
+    (in_node_fn_proper : ∀ pl, Proper ((≡) ==> (≡) ==> (impl)) (in_node_fn pl))
+    (in_branch_fn_proper : ∀ pl, Proper ((≡) ==> (≡) ==> (impl)) (in_branch_fn pl))
+    (node_fn : PathLoc -> Node M -> Node M -> Prop)
+    (branch_fn : PathLoc -> Branch M -> Branch M -> Prop)
+    (branch_fn_proper : ∀ pl, Proper ((≡) ==> (≡) ==> (impl)) (branch_fn pl))
+    (ns: ∀ pl, in_node_fn pl (node_of_pl trunk1 pl) (node_of_pl trunk2 pl))
+    (bs: ∀ pl, in_branch_fn pl (branch_of_pl trunk1 pl) (branch_of_pl trunk2 pl))
+    (node_ind : ∀ p i cell1 branch1 cell2 branch2 ,
+        branch_fn (p ++ [i], 0) branch1 branch2 ->
+        in_node_fn (p, i) (CellNode cell1 branch1) (CellNode cell2 branch2) ->
+        node_fn (p, i) (CellNode cell1 branch1) (CellNode cell2 branch2))
+    (branch_ind : ∀ p i node1 branch1 node2 branch2 ,
+        branch_fn (p, S i) branch1 branch2 ->
+        node_fn (p, i) node1 node2 ->
+        in_branch_fn (p, i) (BranchCons node1 branch1) (BranchCons node2 branch2) ->
+        branch_fn (p, i) (BranchCons node1 branch1) (BranchCons node2 branch2))
+    (branchnil_ind : ∀ pl, branch_fn pl BranchNil BranchNil)
+  .
+    
+  Lemma node_pl_induction_2_helper (node1 node2: Node M) p i
+    (nn1: node1 ≡ node_of_pl trunk1 (p, i))
+    (nn2: node2 ≡ node_of_pl trunk2 (p, i))
+    (n1triv : node1 ≡ triv_node)
+      : node_fn (p, i) node1 node2
+  with branch_pl_induction_2_helper (branch1 branch2: Branch M) p i
+    (bb1: branch1 ≡ branch_of_pl trunk1 (p, i))
+    (bb2: branch2 ≡ branch_of_pl trunk2 (p, i))
+    (b1triv : branch1 ≡ BranchNil)
+      : branch_fn (p, i) branch1 branch2.
+  Proof using EqDecision0 M TPCM0 branch_fn branch_fn_proper branch_ind branchnil_ind bs
+in_branch_fn in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk1
+trunk2.
+    - destruct node1, node2.
+      have IHb := branch_pl_induction_2_helper b.
+      clear node_pl_induction_2_helper.
+      clear branch_pl_induction_2_helper.
+      setoid_rewrite cellnode_pl in nn1. inversion nn1.
+      setoid_rewrite cellnode_pl in nn2. inversion nn2.
+      apply node_ind; trivial.
+      + apply IHb; trivial. apply branchnil_of_cell_triv with (c := c). trivial.
+      + setoid_rewrite H0. setoid_rewrite H.
+        setoid_rewrite H1. setoid_rewrite H2.
+        setoid_rewrite <- cellnode_pl. apply ns.
+    - destruct branch2.
+      + have IHb := branch_pl_induction_2_helper _ branch2.
+        have IHn := node_pl_induction_2_helper _ n.
+        clear node_pl_induction_2_helper.
+        clear branch_pl_induction_2_helper.
+        setoid_rewrite branchcons_pl in bb1.
+        setoid_rewrite branchcons_pl in bb2. inversion bb2.
+        setoid_rewrite bb1.
+        apply branch_ind; trivial.
+        * apply IHb; trivial. setoid_rewrite b1triv in bb1.
+            eapply branchnil_of_parent_triv. apply bb1.
+        * apply IHn; trivial. setoid_rewrite b1triv in bb1.
+            eapply nodetriv_of_parent_triv. apply bb1.
+        * setoid_rewrite H0. setoid_rewrite H. setoid_rewrite <- branchcons_pl. apply bs.
+      + setoid_rewrite b1triv.
+        apply branchnil_ind.
+   Qed.
+  
+  Lemma node_pl_induction_2 (node1 node2: Node M) p i
+    (nn1: node1 ≡ node_of_pl trunk1 (p, i))
+    (nn2: node2 ≡ node_of_pl trunk2 (p, i))
+      : node_fn (p, i) node1 node2
+  with branch_pl_induction_2 (branch1 branch2: Branch M) p i
+    (bb1: branch1 ≡ branch_of_pl trunk1 (p, i))
+    (bb2: branch2 ≡ branch_of_pl trunk2 (p, i))
+      : branch_fn (p, i) branch1 branch2.
+  Proof using EqDecision0 M TPCM0 branch_fn branch_fn_proper branch_ind branchnil_ind bs
+in_branch_fn in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk1
+trunk2.
+    - destruct node1, node2.
+      have IHb := branch_pl_induction_2 b.
+      clear node_pl_induction_2.
+      clear branch_pl_induction_2.
+      setoid_rewrite cellnode_pl in nn1. inversion nn1.
+      setoid_rewrite cellnode_pl in nn2. inversion nn2.
+      apply node_ind; trivial.
+      + apply IHb; trivial.
+      + setoid_rewrite H0. setoid_rewrite H.
+        setoid_rewrite H1. setoid_rewrite H2.
+        setoid_rewrite <- cellnode_pl. apply ns.
+    - destruct branch1.
+      + have IHb := branch_pl_induction_2 branch1.
+        have IHn := node_pl_induction_2 n.
+        clear node_pl_induction_2.
+        clear branch_pl_induction_2.
+        setoid_rewrite branchcons_pl in bb1. inversion bb1.
+        setoid_rewrite branchcons_pl in bb2.
+        setoid_rewrite bb2.
+        apply branch_ind; trivial.
+        * apply IHb; trivial.
+        * apply IHn; trivial.
+        * setoid_rewrite H0. setoid_rewrite H. setoid_rewrite <- branchcons_pl. apply bs.
+      + apply branch_pl_induction_2_helper; trivial.
+   Qed.
+    
+  Lemma pl_induction_2
+    : branch_fn ([], 0) trunk1 trunk2.
+  Proof using EqDecision0 M TPCM0 branch_fn branch_fn_proper branch_ind branchnil_ind bs
+in_branch_fn in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk1
+trunk2.
+  apply branch_pl_induction_2; apply branch_of_pl_zero.
+  Qed.
+End PLInduction2.
+
+
+Lemma equiv_extensionality_cells
+    (branch1: Branch M) (branch2: Branch M)
+    (ext_eq : forall pl , (cell_of_pl branch1 pl) ≡ (cell_of_pl branch2 pl))
+    : branch1 ≡ branch2. 
+Proof. apply pl_induction_2 with (trunk1 := branch1) (trunk2 := branch2)
+  (branch_fn := λ pl branch1 branch2 , branch1 ≡ branch2)
+  (node_fn := λ pl node1 node2 , node1 ≡ node2)
+  (in_node_fn := λ pl node1 node2 , cell_of_node node1 ≡ cell_of_node node2)
+  (in_branch_fn := λ pl branch1 branch2 , True).
+ - intro. unfold Proper, "==>", impl. intros. setoid_rewrite <- H. setoid_rewrite <- H0.
+    trivial.
+ - intro. unfold Proper, "==>", impl. trivial.
+ - intro. unfold Proper, "==>", impl. intros. setoid_rewrite <- H. setoid_rewrite <- H0.
+    trivial.
+ - intros. apply ext_eq.
+ - trivial.
+ - intros. unfold cell_of_node in H0. setoid_rewrite H. setoid_rewrite H0. trivial.
+ - intros. setoid_rewrite H0. setoid_rewrite H. trivial.
+ - trivial.
+Qed.
 
 End Indexing.
 

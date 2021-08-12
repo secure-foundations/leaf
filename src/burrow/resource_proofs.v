@@ -685,7 +685,52 @@ Lemma valid_totals_of_preserved_cell_totals ref b1 b2 lt1 lt2
   (pres: ∀ pl , cell_total (cell_of_pl b1 pl) lt1 = cell_total (cell_of_pl b2 pl) lt2)
   (batird : valid_totals ref b1 lt1)
     : valid_totals ref b2 lt2.
-Admitted.
+Proof.
+  unfold valid_totals in *.
+  enough (branch_all_total_in_refinement_domain ref b2 lt2 0 /\
+      branch_total ref b1 lt1 0 = branch_total ref b2 lt2 0).
+  - destruct_ands. split; trivial. rewrite H0 in H2. trivial.
+  - destruct_ands. generalize H.
+    apply pl_induction_2 with (trunk1 := b1) (trunk2 := b2)
+    (in_node_fn := λ pl n1 n2 , 
+      cell_total (cell_of_node n1) lt1 = cell_total (cell_of_node n2) lt2)
+    (in_branch_fn := λ pl b1 b2 , True )
+    (branch_fn := λ pl b1 b2 ,
+        branch_all_total_in_refinement_domain ref b1 lt1 0 ->
+        branch_all_total_in_refinement_domain ref b2 lt2 0
+        ∧ branch_total ref b1 lt1 0 = branch_total ref b2 lt2 0)
+    (node_fn := λ pl n1 n2 ,
+        node_all_total_in_refinement_domain ref n1 lt1 0 ->
+        node_all_total_in_refinement_domain ref n2 lt2 0
+        ∧ node_total ref n1 lt1 = node_total ref n2 lt2).
+   + unfold Proper, "==>", impl. intros.
+      setoid_rewrite <- H1.
+      setoid_rewrite <- H2. trivial.
+   + unfold Proper, "==>", impl. intros. trivial.
+   + unfold Proper, "==>", impl. intros. split.
+      * setoid_rewrite <- H2. setoid_rewrite <- H1 in H4. intuition.
+      * setoid_rewrite <- H2.
+        setoid_rewrite <- H1.
+        setoid_rewrite <- H1 in H4. intuition.
+   + trivial.
+   + trivial.
+   + intros.
+    rewrite node_all_total_in_refinement_domain_unfold.
+    rewrite node_all_total_in_refinement_domain_unfold in H3. destruct_ands.
+    have h := H1 H4. destruct_ands.
+    assert (node_total ref (CellNode cell1 branch1) lt1 =
+        node_total ref (CellNode cell2 branch2) lt2).
+     * rewrite node_total_unfold. rewrite node_total_unfold.
+        unfold cell_of_node in H2. rewrite H2. rewrite H6. trivial.
+     * repeat split; trivial.
+        unfold in_refinement_domain in *.
+        rewrite <- H7. trivial.
+   + intros.
+    rewrite branch_all_total_in_refinement_domain_unfold.
+    rewrite branch_all_total_in_refinement_domain_unfold in H4. destruct_ands.
+    have h := H1 H5. have j := H2 H4.
+      
+    
 
 Lemma lt_singleton_not_eq_to_cell_lt ltunit b pl
   (isgreater: ltunit > max_ltunit_in_branch b)
