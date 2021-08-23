@@ -28,10 +28,10 @@ Class RefinementIndex (M: Type) `{!EqDecision M} `{!TPCM M} (RI: Type) := {
     self_eq_pair : ∀ m , m = pair_up
         (rel M M (refinement_of left_ri) m)
         (rel M M (refinement_of right_ri) m) ;
-    refinement_of_left_pair : ∀ a b ,
+    refinement_of_left_pair_up : ∀ a b ,
      (rel M M (refinement_of (left_ri)) (pair_up a b)) = a ;
-    refinement_of_right_pair : ∀ a b ,
-     (rel M M (refinement_of (right_ri)) (pair_up a b)) = a ;
+    refinement_of_right_pair_up : ∀ a b ,
+     (rel M M (refinement_of (right_ri)) (pair_up a b)) = b ;
     dot_pair_up : ∀ a b c d ,
       dot (pair_up a b) (pair_up c d) = pair_up (dot a c) (dot b d) ;
 }.
@@ -164,7 +164,7 @@ Lemma leftproject_le_left
   : tpcm_le m1 (rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c)).
 Proof.
   rewrite (self_eq_pair c). rewrite dot_pair_up.
-  rewrite refinement_of_left_pair.
+  rewrite refinement_of_left_pair_up.
   apply le_add_right_side. apply self_le_self.
 Qed.
   
@@ -176,7 +176,7 @@ Lemma rightproject_le_right
   : tpcm_le m2 (rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c)).
 Proof.
   rewrite (self_eq_pair c). rewrite dot_pair_up.
-  rewrite refinement_of_right_pair.
+  rewrite refinement_of_right_pair_up.
   apply le_add_right_side. apply self_le_self.
 Qed.
 
@@ -388,6 +388,7 @@ Proof.
 Lemma rel_refinement_of_triv_ri_defined
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
      (m: M)
+    (isval: m_valid m)
   : rel_defined M M (refinement_of (triv_ri RI)) m.
   Admitted.
   
@@ -460,22 +461,6 @@ Lemma y_is_pair_of_rel_defined_refinement_of_right
     x y
   (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
   : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
-
-Lemma dot_pair_up
-    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
-  m1 m2 k1 k2
-  : dot (pair_up RI m1 m2) (pair_up RI k1 k2) = pair_up RI (dot m1 k1) (dot m2 k2).
-  Admitted.
-   
-Lemma refinement_of_left_pair_up
-    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
-  a b
-  : rel M M (refinement_of (left_ri RI)) (pair_up RI a b) = a. Admitted.
-  
-Lemma refinement_of_right_pair_up
-    {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
-  a b
-  : rel M M (refinement_of (right_ri RI)) (pair_up RI a b) = b. Admitted.
 
 Lemma rel_defined_refinement_of_left_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}

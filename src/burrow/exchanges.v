@@ -732,7 +732,7 @@ Proof.
     * rewrite (@i_value_of_pls_of_base RI EqDecision1 Countable0 p i alpha); trivial.
       unfold refinement_of_nat.
       rewrite ri_of_nat_nat_of_basestep.
-      apply rel_refinement_of_triv_ri_defined.
+      apply rel_refinement_of_triv_ri_defined. trivial.
     * rewrite (@i_value_of_pls_of_base RI EqDecision1 Countable0 p i alpha); trivial.
       unfold refinement_of_nat.
       rewrite ri_of_nat_nat_of_basestep.
