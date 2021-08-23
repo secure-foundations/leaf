@@ -266,6 +266,15 @@ Section BuildOne.
       apply cell_of_pl_build_of_cell_i_ne; trivial.
     - apply cell_of_pl_build_of_cell_p_ne; trivial. crush.
   Qed.
+  
+  Lemma cell_of_pl_branch_of_node_node_of_pl b p i p' i'
+    : cell_of_pl (branch_of_node (node_of_pl b (p, i))) (p', i') =
+    cell_of_pl b (p ++ [i] ++ p', i').
+  Proof. unfold cell_of_pl, node_of_pl, branch_of_pl.
+  replace ((branch_of_node (node_of_branch (walk i (hops p b)))))
+      with (hop i (hops p b)) by trivial.
+  rewrite hops_app.
+  simpl. trivial. Qed.
     
 End BuildOne.
 
@@ -363,10 +372,43 @@ Proof.
       unfold cell_trivial, triv_cell. intuition.
 Qed.
 
+Lemma cell_of_pl_build_eq
+  {M} `{!EqDecision M, !TPCM M}
+  {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI} `{!RefinementIndex M RI}
+  (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
+  (pl1_in: pl1 ∈ pls_of_loc loc)
+  (pl2_in: pl2 ∈ pls_of_loc loc)
+  : cell_of_pl (build l1 c1) pl1 ≡ cell_of_pl (build l1 c1) pl2.
+Proof.
+  have h : Decision (l1 = loc) by solve_decision. destruct h.
+  - subst l1. setoid_rewrite build_spec; trivial.
+  - assert (pl1 ∉ pls_of_loc l1) as ni1
+    by (intro; apply n; apply locs_equal_of_pl_in with (pl := pl1); trivial).
+    assert (pl2 ∉ pls_of_loc l1) as ni2
+    by (intro; apply n; apply locs_equal_of_pl_in with (pl := pl2); trivial).
+    setoid_rewrite build_rest_triv; trivial.
+Qed.
+
 Lemma node_of_pl_build_eq
   {M} `{!EqDecision M, !TPCM M}
   {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI} `{!RefinementIndex M RI}
   (pl1 pl2: PathLoc) (loc l1: Loc RI) (c1: Cell M)
   (pl1_in: pl1 ∈ pls_of_loc loc)
   (pl2_in: pl2 ∈ pls_of_loc loc)
-  : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2. Admitted.
+  : node_of_pl (build l1 c1) pl1 ≡ node_of_pl (build l1 c1) pl2.
+Proof.
+  setoid_rewrite CellNode_cell_of_node_branch_of_node.
+  unfold "≡", node_equiv. split.
+  - enough ((cell_of_pl (build l1 c1) pl1) ≡ (cell_of_pl (build l1 c1) pl2)).
+    + unfold cell_of_pl. trivial.
+    + apply cell_of_pl_build_eq with (loc0 := loc); trivial.
+  - apply equiv_extensionality_cells. intro. destruct pl1, pl2. destruct pl.
+    rename l into p1. rename n into i1. rename l0 into p2. rename n0 into i2.
+    rename l2 into p. rename n1 into i.
+    rewrite cell_of_pl_branch_of_node_node_of_pl.
+    rewrite cell_of_pl_branch_of_node_node_of_pl.
+    have appo := append_to_pl_in_loc p1 i1 p2 i2 loc p i pl1_in pl2_in. destruct appo.
+    + deex. destruct_ands. apply cell_of_pl_build_eq with (loc0 := loc'); trivial.
+    + have r := H l1. destruct_ands.
+        setoid_rewrite build_rest_triv; trivial.
+Qed.

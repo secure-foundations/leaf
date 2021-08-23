@@ -383,7 +383,7 @@ Lemma cell_of_pl_as_tree_lmap_none pl loc lm
   : pl ∈ pls_of_loc loc -> (lm !! loc = None) -> cell_of_pl (as_tree lm) pl ≡ triv_cell.
 Proof. intros. unfold as_tree.
   apply gmap_easy_induct with (R := λ x , cell_of_pl x pl ≡ triv_cell).
-  - apply cell_of_pl_BranchNil.
+  - rewrite cell_of_pl_BranchNil. trivial.
   - intros. setoid_rewrite <- cell_of_pl_op. setoid_rewrite H2.
     assert (pl ∉ pls_of_loc k).
     * intro. have le := locs_equal_of_pl_in _ _ _ H H3. subst. rewrite H0 in H1.

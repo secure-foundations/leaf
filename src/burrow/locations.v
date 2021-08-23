@@ -609,5 +609,17 @@ Lemma plsplit_app_left_contra
   p (gamma2: Loc RI)
   : plsplit (p ++ [nat_of_leftstep RI gamma2]) ∈ pls_of_loc gamma2 -> False.
   Admitted.
+  
+Lemma append_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) p i
+  (pl1_in : (p1, i1) ∈ pls_of_loc loc)
+  (pl2_in : (p2, i2) ∈ pls_of_loc loc)
+  : (∃ (loc' : Loc RI) ,
+    (p1 ++ [i1] ++ p, i) ∈ pls_of_loc loc' /\ (p2 ++ [i2] ++ p, i) ∈ pls_of_loc loc'
+  ) \/ (
+   ∀ (loc' : Loc RI) ,
+    (p1 ++ [i1] ++ p, i) ∉ pls_of_loc loc' /\ (p2 ++ [i2] ++ p, i) ∉ pls_of_loc loc'
+  ).
+  Admitted.
+
 
 End LocationsLemmas.
