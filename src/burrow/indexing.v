@@ -204,6 +204,14 @@ Lemma CellNode_cell_of_node_branch_of_node n
   : n ≡ CellNode (cell_of_node n) (branch_of_node n). 
 Proof. destruct n. trivial. Qed.
 
+Lemma walk_add p q b
+  : walk (p + q) b = walk q (walk p b).
+Proof. generalize b. clear b. induction q.
+  - trivial. intro. simpl. replace (p + 0) with p by lia. trivial.
+  - intro. replace (p + S q) with (S (p + q)) by lia.
+    cbn [walk]. rewrite IHq. trivial.
+Qed.
+
 Lemma hops_app p q b
   : hops (p ++ q) b = hops q (hops p b).
 Proof. generalize b. clear b. induction p.

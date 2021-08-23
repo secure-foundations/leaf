@@ -27,6 +27,16 @@ Proof.
   - unfold foldr. apply ind. apply IHl.
 Qed.
 
+Lemma set_easy_induct_strong `{FinSet A T} {B}
+  (R : B -> Prop)
+  (s: T)
+  (fn : A -> B -> B)
+  (u : B)
+  (R_u : R u)
+  (ind: ∀ a b , a ∈ s -> R b -> R (fn a b))
+  : R (set_fold fn u s).
+Admitted.
+
 Lemma set_fold_add_1_element `{FinSet A T} {B}
   (s: T)
   (fn: A -> B -> B)
