@@ -240,7 +240,7 @@ Proof.
     by rewrite <-(elem_of_elements _). 
 Defined.
   
-Lemma minus_union_eq  `{FinSet A T}
+Lemma minus_union_equiv  `{FinSet A T}
   (s1: T)
   (s2: T)
   (sub : s1 ⊆ s2)
@@ -254,6 +254,27 @@ Proof. unfold "≡". split.
     + right. trivial.
     + left. split; trivial.
 Qed.
+ 
+ (*
+Lemma minus_union_eq {A} `{!EqDecision A} `{Countable A}
+  (s1: gset A)
+  (s2: gset A)
+  (sub : s1 ⊆ s2)
+  : (s2 ∖ s1) ∪ s1 = s2.
+Proof. apply set_eq. split.
+  - rewrite elem_of_union. rewrite elem_of_difference. intros. destruct H0.
+    + destruct_ands. trivial.
+    + unfold "⊆" in sub. unfold set_subseteq_instance in sub. apply sub. trivial.
+  - rewrite elem_of_union. rewrite elem_of_difference. intros. 
+    destruct (decide (x ∈ s1)).
+    + right. trivial.
+    + left. split; trivial.
+Qed.
+*)
+
+Lemma get_set_without {A} `{!EqDecision A} `{Countable A}
+  (x: A) (s: gset A) (is_in : x ∈ s)
+  : ∃ t , x ∉ t /\ t ∪ {[ x ]} = s. Admitted.
  
 (*Lemma gset_subset_assoc `{EqDecision A, Countable A}
   (s1: gset A)
@@ -274,7 +295,7 @@ Proof.
           * unfold Comm. apply comm.
           * unfold Assoc. apply assoc.
           * apply disjoint_difference_l1. unfold "⊆". unfold set_subseteq_instance. intros. trivial.
-        + rewrite minus_union_eq; trivial.
+        + rewrite minus_union_equiv; trivial.
    - apply assoc.
    - apply is_unit.
 Qed.*)
@@ -357,7 +378,7 @@ Proof.
       + simpl.
         have l := set_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l.
       + simpl. apply pro_single. trivial.
-    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_eq; trivial).
+    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_equiv; trivial).
       assert (elements s2 ≡ₚ elements ((s2 ∖ s1) ∪ s1)) by 
         (setoid_rewrite <- H7; trivial).
       rewrite H8.
@@ -394,7 +415,7 @@ Proof.
       + simpl.
         have l := set_relate R s1 fn1 fn2 u1 u2 R_u1_u2 pro. unfold set_fold in l. simpl in l.  apply l.
       + simpl. apply pro_single. trivial.
-    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_eq; trivial).
+    - assert (s2 ≡ (s2 ∖ s1) ∪ s1) by (rewrite minus_union_equiv; trivial).
       assert (elements s2 ≡ₚ elements ((s2 ∖ s1) ∪ s1)) by 
         (setoid_rewrite <- H7; trivial).
       rewrite H8.

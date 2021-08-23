@@ -13,6 +13,7 @@ Require Import Burrow.gmap_utils.
 Require Import Burrow.rollup.
 Require Import Burrow.indexing.
 Require Import Burrow.locations.
+Require Import Burrow.assoc_comm.
 
 Section BuildOne.
   Context {M} `{!EqDecision M, !TPCM M}.
@@ -291,7 +292,24 @@ Section Build.
 
   Lemma cell_of_pl_set_fold_in (cell: Cell M) (s: gset PathLoc) (pl: PathLoc)
     (is_in: pl ∈ s)
-    : cell_of_pl (set_fold (buildfn cell) BranchNil s) pl ≡ cell. Admitted.
+    : cell_of_pl (set_fold (buildfn cell) BranchNil s) pl ≡ cell.
+  Proof.
+    assert (EqDecision PathLoc) as edp by (typeclasses eauto).
+    have su := get_set_without pl s is_in.
+    have su' := su edp. deex. destruct_ands. subst s.
+    setoid_rewrite set_fold_disj_union_strong.
+    - rewrite set_fold_singleton.
+      unfold buildfn at 1.
+      setoid_rewrite <- cell_of_pl_op.
+      setoid_rewrite cell_of_pl_set_fold_not_in; trivial.
+      rewrite cell_of_pl_build_of_cell.
+      setoid_rewrite cell_op_comm. apply op_trivial_cell. unfold cell_trivial, triv_cell.
+        intuition.
+    - typeclasses eauto.
+    - unfold Proper, "==>", buildfn. intros. setoid_rewrite H0. trivial.
+    - intros. unfold buildfn. solve_assoc_comm.
+    - set_solver.
+  Qed.
     
   Lemma build_spec
       (loc: Loc RI) (cell: Cell M)
@@ -309,18 +327,41 @@ End Build.
 Global Instance build_proper
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-  (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc). Admitted.
+  (loc: Loc RI) : Proper ((≡) ==> (≡)) (build loc).
+Proof.
+  unfold Proper, "==>". intros.
+  apply equiv_extensionality_cells. intros.
+  have h : Decision (pl ∈ pls_of_loc loc) by solve_decision. destruct h.
+  - setoid_rewrite build_spec; trivial.
+  - setoid_rewrite build_rest_triv; trivial.
+Qed.
 
 Lemma branch_is_trivial_build_triv_cell
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
-  (loc: Loc RI) : branch_trivial (build loc triv_cell). Admitted.
+  (loc: Loc RI) : branch_trivial (build loc triv_cell).
+Proof.
+  apply branch_trivial_of_equiv with (branch1 := BranchNil).
+  - apply equiv_extensionality_cells. intros.
+    rewrite cell_of_pl_BranchNil.
+    have h : Decision (pl ∈ pls_of_loc loc) by solve_decision. destruct h.
+    + setoid_rewrite build_spec; trivial.
+    + setoid_rewrite build_rest_triv; trivial.
+  - unfold branch_trivial. trivial. Qed.
 
 Lemma build_op
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     (i: Loc RI) (x y: Cell M) : build i (x ⋅ y) ≡ build i x ⋅ build i y.
-Admitted.
+Proof.
+  apply equiv_extensionality_cells. intros.
+  rewrite <- cell_of_pl_op.
+  have h : Decision (pl ∈ pls_of_loc i) by solve_decision. destruct h.
+  + setoid_rewrite build_spec; trivial.
+  + setoid_rewrite build_rest_triv; trivial.
+      setoid_rewrite op_trivial_cell; trivial.
+      unfold cell_trivial, triv_cell. intuition.
+Qed.
 
 Lemma node_of_pl_build_eq
   {M} `{!EqDecision M, !TPCM M}
