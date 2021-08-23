@@ -22,265 +22,366 @@ Context {refinement_of_index : RefinementIndex -> Refinement M M}.*)
 
 Context {M} `{!EqDecision M, !TPCM M}.
 
-Fixpoint step_node (branch: Branch M) (idx: nat) :=
-  match branch, idx with
-  | BranchNil, _ => triv_node
-  | BranchCons _ sub, (S idx) => step_node sub idx
-  | BranchCons n _, 0 => n
-  end.
+Global Instance CellNode_proper : Proper ((≡) ==> (≡) ==> (≡)) (CellNode).
+Proof. unfold Proper, "==>". intros. unfold "≡", node_equiv. intuition. Qed.
 
-Definition step_branch (branch: Branch M) (idx: nat) :=
-  match step_node branch idx with
-  | CellNode _ b => b
+Global Instance BranchCons_proper : Proper ((≡) ==> (≡) ==> (≡)) (BranchCons).
+Proof. unfold Proper, "==>". intros. unfold "≡", branch_equiv. intuition. Qed.
+
+Definition branch_of_branch (branch: Branch M) :=
+  match branch with
+  | BranchNil => BranchNil
+  | BranchCons _ b => b
   end.
   
-Fixpoint node_of_pl' (branch: Branch M) (p: list nat) (i: nat) : Node M :=
-  match p with
-  | [] => step_node branch i
-  | (x :: p0) => node_of_pl' (step_branch branch x) p0 i
+Definition node_of_branch (branch: Branch M) :=
+  match branch with
+  | BranchNil => triv_node
+  | BranchCons n _ => n
+  end.
+  
+Definition branch_of_node (node: Node M) :=
+  match node with
+  | CellNode _ b => b
+  end.
+
+Fixpoint walk (j: nat) (branch: Branch M) :=
+  match j with
+  | 0 => branch
+  | S i => branch_of_branch (walk i branch)
+  end.
+
+Definition hop (j: nat) (branch: Branch M) := 
+  branch_of_node (node_of_branch (walk j branch)).
+
+Fixpoint hops (js: list nat) (branch: Branch M) :=
+  match js with
+  | [] => branch
+  | (j :: ks) => (hops ks (hop j branch))
+  end.
+  
+Definition branch_of_pl (branch: Branch M) (pl: PathLoc) : Branch M :=
+  match pl with
+  | (p, i) => walk i (hops p branch)
   end.
   
 Definition node_of_pl (branch: Branch M) (pl: PathLoc) : Node M :=
-  match pl with
-  | (p, i) => node_of_pl' branch p i
-  end.
-  
-Definition branch_of_pl (branch: Branch M) (pl: PathLoc) : Branch M. Admitted.
+  node_of_branch (branch_of_pl branch pl).
     
 Definition cell_of_pl (branch: Branch M) (pl: PathLoc) : Cell M :=
-  match node_of_pl branch pl with CellNode c _ => c end.
+  cell_of_node (node_of_pl branch pl).
     
-    (*
-Definition every_node {M} `{!EqDecision M, !TPCM M}
-    (branch: Branch M) (fn : Node M -> nat -> Prop) : Prop. Admitted.
-
-Lemma every_node_equiv_forall {M} `{!EqDecision M, !TPCM M}
-    (branch : Branch M) (fn : Node M -> nat -> Prop)
-    (rtriv: ∀ n idx , node_trivial n -> fn n idx)
-  : (every_node branch fn) <-> (forall pl , fn (node_of_pl branch pl) (plend pl)). Admitted.
-  *)
-  
 Lemma node_trivial_triv_node : node_trivial triv_node.
 Proof. unfold node_trivial, triv_node, cell_trivial, triv_cell. crush.
 Qed.
 
-Lemma node_trivial_step_node : ∀ i branch ,
-  (branch_trivial branch) -> node_trivial (step_node branch i).
-Proof.
-  induction i.
-  - intros. unfold node_trivial, step_node; destruct branch; trivial.
-    + destruct H. trivial.
-    + apply node_trivial_triv_node.
-  - intros. unfold step_node. unfold node_trivial; destruct branch; trivial.
-    + apply IHi. destruct H; trivial.
-    + apply node_trivial_triv_node.
+Global Instance branch_of_branch_proper : Proper ((≡) ==> (≡)) branch_of_branch.
+Proof. unfold Proper, "==>", branch_of_branch. intros. destruct x, y;
+    unfold "≡", branch_equiv, branch_trivial in H; intuition.
 Qed.
 
-Lemma step_node_equiv branch1 branch2 i
-  (equ: branch1 ≡ branch2) : step_node branch1 i ≡ step_node branch2 i.
-Proof.
-  generalize equ. generalize branch1, branch2. clear equ. clear branch1. clear branch2.
-  induction i.
-  - intros. unfold step_node. destruct branch1, branch2.
-    + unfold "≡", branch_equiv in equ. destruct_ands; trivial.
-    + unfold "≡" in *. unfold branch_equiv, node_equiv in *.
-        unfold branch_trivial in equ. destruct_ands. apply node_equiv_of_trivial; trivial.
-        apply node_trivial_triv_node.
-    + unfold "≡" in *. unfold branch_equiv in *. unfold branch_trivial in equ.
-        destruct_ands. apply node_equiv_of_trivial; trivial.
-        apply node_trivial_triv_node.
-    + trivial.
-  - intros. unfold step_node. destruct branch1, branch2.
-    + apply IHi. destruct equ. trivial.
-    + apply node_equiv_of_trivial.
-      * fold step_node. apply node_trivial_step_node. destruct equ. trivial.
-      * apply node_trivial_triv_node.
-    + apply node_equiv_of_trivial.
-      * apply node_trivial_triv_node.
-      * fold step_node. apply node_trivial_step_node. destruct equ. trivial.
-    + trivial.
+Global Instance node_of_branch_proper : Proper ((≡) ==> (≡)) node_of_branch.
+Proof. unfold Proper, "==>", branch_of_branch. intros. destruct x, y;
+    unfold "≡", branch_equiv, node_trivial, branch_trivial in H;
+    unfold node_of_branch;
+    intuition.
+    - apply node_equiv_of_trivial; trivial. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+    - apply node_equiv_of_trivial; trivial. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
 Qed.
 
-Global Instance step_node_equiv_proper : Proper ((≡) ==> (=) ==> (≡)) step_node.
-Proof. unfold Proper, "==>". intros. rewrite H0. apply step_node_equiv. trivial. Defined.
-
-Lemma step_branch_equiv branch1 branch2 i
-  (equ: branch1 ≡ branch2) : step_branch branch1 i ≡ step_branch branch2 i.
-Proof.
-  assert (step_node branch1 i ≡ step_node branch2 i) by (apply step_node_equiv; trivial).
-  unfold step_branch. destruct (step_node branch1 i).
-      destruct (step_node branch2 i).
-      unfold "≡", node_equiv in H. destruct_ands; trivial.
+Global Instance branch_of_node_proper : Proper ((≡) ==> (≡)) branch_of_node.
+Proof. unfold Proper, "==>", branch_of_node. intros. destruct x, y.
+unfold "≡", node_equiv in H. intuition.
 Qed.
 
-Global Instance step_branch_equiv_proper : Proper ((≡) ==> (=) ==> (≡)) step_branch.
-Proof. unfold Proper, "==>". intros. rewrite H0. apply step_branch_equiv. trivial. Defined.
+Global Instance cell_of_node_proper : Proper ((≡) ==> (≡)) cell_of_node.
+Proof. unfold Proper, "==>". intros. destruct x, y. unfold cell_of_node.
+  unfold "≡", node_equiv in H. intuition. Qed.
 
-Definition node_of_pl'_equiv p : ∀ branch1 branch2 i ,
-  (branch1 ≡ branch2) -> node_of_pl' branch1 p i ≡ node_of_pl' branch2 p i.
-Proof.
-  induction p.
-   - unfold node_of_pl'. apply step_node_equiv.
-   - unfold node_of_pl'. fold node_of_pl'. intros.
-      apply IHp. apply step_branch_equiv. trivial.
+Global Instance walk_proper (j: nat) : Proper ((≡) ==> (≡)) (walk j).
+Proof. unfold Proper, "==>". induction j.
+ - intros. unfold walk. trivial.
+ - intros. cbn [walk]. setoid_rewrite (IHj x y); trivial.
 Qed.
 
-Global Instance node_of_pl'_proper : Proper ((≡) ==> (=) ==> (=) ==> (≡)) node_of_pl'.
-Proof. unfold Proper, "==>". intros. rewrite H1. rewrite H0. apply node_of_pl'_equiv. trivial. Defined.
+Global Instance hop_proper (j: nat) : Proper ((≡) ==> (≡)) (hop j).
+Proof. unfold Proper, "==>". intros. unfold hop. setoid_rewrite H. trivial.
+Qed.
 
-Definition node_of_pl_equiv : ∀ branch1 branch2 pl ,
-  (branch1 ≡ branch2) -> node_of_pl branch1 pl ≡ node_of_pl branch2 pl.
-Proof. intros. unfold node_of_pl. destruct pl. apply node_of_pl'_equiv. trivial. Qed.
+Global Instance hops_proper (js: list nat) : Proper ((≡) ==> (≡)) (hops js).
+Proof. unfold Proper, "==>". induction js.
+ - intros. trivial.
+ - intros. cbn [hops]. setoid_rewrite (IHjs (hop a x) (hop a y)); trivial.
+  setoid_rewrite H. trivial.
+Qed.
+
+Global Instance branch_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) branch_of_pl.
+Proof. unfold Proper, "==>". intros. rewrite H0. unfold branch_of_pl. destruct y0.
+    setoid_rewrite H. trivial. Qed.
 
 Global Instance node_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) node_of_pl.
-Proof. unfold Proper, "==>". intros. rewrite H0. apply node_of_pl_equiv. trivial. Defined.
+Proof. unfold Proper, "==>". intros. rewrite H0. unfold node_of_pl.
+  setoid_rewrite H. trivial. Qed.
+  
+Global Instance cell_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) cell_of_pl.
+Proof. unfold Proper, "==>". intros. rewrite H0. unfold cell_of_pl.
+  setoid_rewrite H. trivial. Qed.
 
-Global Instance cell_of_pl_proper : Proper ((≡) ==> (=) ==> (≡)) cell_of_pl. Admitted.
-
-Lemma step_node_op branch1 branch2 i
-  : step_node branch1 i ⋅ step_node branch2 i
-      ≡ step_node (branch1 ⋅ branch2) i.
-Proof.
-  generalize branch1, branch2. clear branch1. clear branch2.
-  induction i.
-  - intros. unfold "⋅", node_op, branch_op, step_node. destruct branch1, branch2.
-     + unfold "⋅". trivial.
-     + apply op_trivial_node. apply node_trivial_triv_node.
-     + setoid_rewrite node_op_comm.
-       apply op_trivial_node. apply node_trivial_triv_node.
-     + apply op_trivial_node. apply node_trivial_triv_node.
-  - intros. unfold "⋅", node_op, branch_op, step_node. destruct branch1, branch2.
-     + fold step_node. fold node_op. apply IHi.
-     + fold step_node. fold node_op.
-        setoid_rewrite op_trivial_node; trivial. apply node_trivial_triv_node.
-     + fold step_node. fold node_op.
-        setoid_rewrite node_op_comm.
-        setoid_rewrite op_trivial_node; trivial. apply node_trivial_triv_node.
-     + fold step_node. fold node_op.
-        setoid_rewrite op_trivial_node; trivial. apply node_trivial_triv_node.
+Lemma branch_of_branch_op (branch1 : Branch M) (branch2 : Branch M)
+  : (branch_of_branch (branch1 ⋅ branch2)) ≡ branch_of_branch branch1 ⋅ branch_of_branch branch2.
+Proof. destruct branch1, branch2; unfold "⋅", branch_of_branch, branch_op; trivial.
+  destruct branch1; trivial.
 Qed.
 
-Lemma step_branch_op branch1 branch2 i
-  : step_branch branch1 i ⋅ step_branch branch2 i
-      ≡ step_branch (branch1 ⋅ branch2) i.
-Proof.
-  assert (step_node branch1 i ⋅ step_node branch2 i ≡ step_node (branch1 ⋅ branch2) i)
-      by (apply step_node_op; trivial).
-  unfold step_branch. 
-  destruct (step_node branch1 i).
-  destruct (step_node branch2 i).
-  destruct (step_node (branch1 ⋅ branch2) i).
-  unfold "≡", "⋅", cell_op in H. unfold node_equiv, node_op in H. destruct_ands. trivial.
+Lemma node_of_branch_op (branch1 : Branch M) (branch2 : Branch M)
+  : (node_of_branch (branch1 ⋅ branch2)) ≡ node_of_branch branch1 ⋅ node_of_branch branch2.
+Proof. destruct branch1, branch2; unfold "⋅", node_of_branch, branch_op; trivial.
+  - setoid_rewrite op_trivial_node; trivial. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+  - setoid_rewrite node_op_comm. setoid_rewrite op_trivial_node; trivial. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+  - setoid_rewrite op_trivial_node; trivial. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
 Qed.
 
-Lemma node_of_pl'_op (branch1 : Branch M) (branch2 : Branch M) p i
-  : (node_of_pl' branch1 p i) ⋅ (node_of_pl' branch2 p i) ≡ node_of_pl' (branch1 ⋅ branch2) p i.
+Lemma branch_of_node_op (node1 : Node M) (node2 : Node M)
+  : (branch_of_node (node1 ⋅ node2)) ≡ branch_of_node node1 ⋅ branch_of_node node2.
 Proof.
-  generalize branch1, branch2. clear branch1. clear branch2.
-  induction p.
-  - intros. unfold node_of_pl'. apply step_node_op.
-  - intros.
-      unfold node_of_pl in *. cbn [node_of_pl'].
-      setoid_rewrite <- step_branch_op.
-      apply IHp.
+  destruct node1, node2. trivial.
+Qed.
+
+Lemma cell_of_node_op (node1 : Node M) (node2 : Node M)
+  : (cell_of_node (node1 ⋅ node2)) ≡ cell_of_node node1 ⋅ cell_of_node node2.
+Proof.
+  destruct node1, node2. trivial.
+Qed.
+
+Lemma walk_op (j: nat) (branch1 : Branch M) (branch2 : Branch M)
+  : (walk j (branch1 ⋅ branch2)) ≡ walk j branch1 ⋅ walk j branch2.
+Proof.
+  generalize branch1, branch2. clear branch1. clear branch2. induction j.
+  - intros; trivial.
+  - intros. cbn [walk]. setoid_rewrite IHj. apply branch_of_branch_op.
+Qed.
+
+Lemma hop_op (j: nat) (branch1 : Branch M) (branch2 : Branch M)
+  : (hop j (branch1 ⋅ branch2)) ≡ hop j branch1 ⋅ hop j branch2.
+Proof.
+  unfold hop. setoid_rewrite walk_op. setoid_rewrite node_of_branch_op.
+      apply branch_of_node_op.
+Qed.
+
+Lemma hops_op (js: list nat) (branch1 : Branch M) (branch2 : Branch M)
+  : (hops js (branch1 ⋅ branch2)) ≡ hops js branch1 ⋅ hops js branch2.
+Proof.
+  generalize branch1, branch2. clear branch1. clear branch2. induction js.
+  - intros. trivial.
+  - intros. cbn [hops]. setoid_rewrite hop_op.
+  setoid_rewrite IHjs. trivial.
+Qed.
+
+Lemma branch_of_pl_op (branch1 : Branch M) (branch2 : Branch M) pl
+  : (branch_of_pl branch1 pl) ⋅ (branch_of_pl branch2 pl) ≡ branch_of_pl (branch1 ⋅ branch2) pl.
+Proof. unfold branch_of_pl. destruct pl. setoid_rewrite hops_op.
+  setoid_rewrite walk_op. trivial.
 Qed.
 
 Lemma node_of_pl_op (branch1 : Branch M) (branch2 : Branch M) pl
   : (node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl.
-Proof.
-  unfold node_of_pl. destruct pl. apply node_of_pl'_op. Qed.
+Proof. unfold node_of_pl. setoid_rewrite <- branch_of_pl_op.
+  setoid_rewrite node_of_branch_op. trivial. Qed.
 
 Lemma cell_of_pl_op (branch1 : Branch M) (branch2 : Branch M) pl
   : (cell_of_pl branch1 pl) ⋅ (cell_of_pl branch2 pl) ≡ cell_of_pl (branch1 ⋅ branch2) pl.
-Proof.
-  assert ((node_of_pl branch1 pl) ⋅ (node_of_pl branch2 pl) ≡ node_of_pl (branch1 ⋅ branch2) pl) as ce by (apply node_of_pl_op).
-  unfold cell_of_pl.
-  destruct (node_of_pl branch1 pl).
-  destruct (node_of_pl branch2 pl).
-  destruct (node_of_pl (branch1 ⋅ branch2) pl).
-  unfold "≡","⋅",node_equiv,node_op in ce. destruct_ands; trivial.
+Proof. unfold cell_of_pl. setoid_rewrite <- node_of_pl_op.
+  setoid_rewrite cell_of_node_op. trivial. Qed.
+  
+Lemma BranchCons_node_of_branch_branch_of_branch b
+ : b ≡ BranchCons (node_of_branch b) (branch_of_branch b).
+Proof. destruct b.
+ - unfold node_of_branch, branch_of_branch. trivial.
+ - unfold node_of_branch, branch_of_branch, triv_node. unfold "≡", branch_equiv, branch_trivial. intuition. unfold cell_trivial, triv_cell. intuition.
 Qed.
 
-(*Lemma pl_induction (branch: Branch M)
-  (node_fn : Node M -> Prop) 
-  (branch_fn : Node M -> Prop) 
-  (branch_fn_nil : ∀ pl, branch_fn BranchNil pl)
-  (∀ pl , node_fn (node_of_pl branch pl) pl)
-  (node_ind : 
-  *)
+Lemma CellNode_cell_of_node_branch_of_node n
+  : n ≡ CellNode (cell_of_node n) (branch_of_node n). 
+Proof. destruct n. trivial. Qed.
+
+Lemma hops_app p q b
+  : hops (p ++ q) b = hops q (hops p b).
+Proof. generalize b. clear b. induction p.
+  - simpl. trivial.
+  - simpl. intro. apply IHp.
+Qed.
+  
+Lemma hops_app_last p i b
+  : hops (p ++ [i]) b ≡ hop i (hops p b).
+Proof.
+  rewrite hops_app. cbn [hops]. trivial. Qed.
 
 Lemma branchcons_pl t p i
   : branch_of_pl t (p, i) ≡ BranchCons (node_of_pl t (p, i)) (branch_of_pl t (p, S i)).
-  Admitted.
+Proof.
+unfold branch_of_pl, node_of_pl, branch_of_pl. cbn [walk]. apply BranchCons_node_of_branch_branch_of_branch. Qed.
   
 Lemma cellnode_pl t p i
   : node_of_pl t (p, i) ≡ CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p++[i], 0)).
-  Admitted.
+Proof. unfold cell_of_pl, branch_of_pl, node_of_pl. cbn [walk].
+  unfold branch_of_pl. setoid_rewrite hops_app_last. unfold hop.
+  apply CellNode_cell_of_node_branch_of_node.
+Qed.
+
+Lemma b_equiv_branch_of_branch b0 b n
+  (e : b0 ≡ BranchCons n b) : b ≡ branch_of_branch b0.
+Proof.
+  destruct b0.
+  - unfold branch_of_branch. unfold "≡", branch_equiv in e. intuition.
+  - unfold branch_of_branch. unfold "≡", branch_equiv, branch_trivial in e. intuition.
+Qed.
+  
+Lemma n_equiv_node_of_branch b0 b n
+  (e : b0 ≡ BranchCons n b) : n ≡ node_of_branch b0.
+Proof.
+  destruct b0.
+  - unfold node_of_branch. unfold "≡", branch_equiv in e. intuition.
+  - unfold branch_of_branch. unfold "≡", branch_equiv, branch_trivial in e.
+      apply node_equiv_of_trivial; intuition.
+      unfold node_of_branch, node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+Qed.
+  
+Lemma b_equiv_branch_of_node n b c
+  (e : n ≡ CellNode c b) : b ≡ branch_of_node n.
+Proof.
+  destruct n. unfold branch_of_node. unfold "≡", node_equiv in e. intuition.
+Qed.
   
 Lemma branchcons_pl_inv_b t p i b n
   : branch_of_pl t (p, i) ≡ BranchCons n b ->
       b ≡ branch_of_pl t (p, S i).
-  Admitted.
-  
+Proof. unfold branch_of_pl in *. cbn [walk]. apply b_equiv_branch_of_branch. Qed.
+
 Lemma branchcons_pl_inv_n t p i b n
   : branch_of_pl t (p, i) ≡ BranchCons n b ->
       n ≡ node_of_pl t (p, i).
-  Admitted.
+Proof. unfold branch_of_pl, node_of_pl, branch_of_pl. apply n_equiv_node_of_branch. Qed.
   
 Lemma cellnode_pl_inv_b t p i c branch
   : node_of_pl t (p, i) ≡ CellNode c branch -> branch ≡ branch_of_pl t (p++[i], 0).
-  Admitted.
-
-Definition branch_of_node (node: Node M) := match node with CellNode _ b => b end.
+Proof. unfold node_of_pl, branch_of_pl. setoid_rewrite hops_app_last. unfold hop.
+  apply b_equiv_branch_of_node.
+Qed.
 
 Lemma branch_of_node_node_of_pl t p i
-  : branch_of_node (node_of_pl t (p, i)) ≡ branch_of_pl t (p++[i], 0). Admitted.
+  : branch_of_node (node_of_pl t (p, i)) ≡ branch_of_pl t (p++[i], 0).
+Proof. unfold node_of_pl, branch_of_pl. setoid_rewrite hops_app_last. unfold hop. trivial.
+Qed.
 
-Global Instance branch_of_node_proper :
-  Proper ((≡) ==> (≡)) branch_of_node. Admitted.
+Lemma branch_trivial_branch_of_branch b
+  : branch_trivial b → branch_trivial (branch_of_branch b).
+Proof.
+  destruct b.
+   - unfold branch_of_branch. intro. unfold branch_trivial in H. intuition.
+   - unfold branch_of_branch. intro. unfold branch_trivial in H. intuition.
+Qed.
   
+Lemma node_trivial_node_of_branch b
+  : branch_trivial b → node_trivial (node_of_branch b).
+Proof.
+  destruct b.
+  - unfold node_of_branch. intro. unfold branch_trivial in H. intuition.
+  - unfold node_of_branch. intro. unfold node_trivial, triv_node, cell_trivial, triv_cell.
+      intuition.
+Qed.
+  
+Lemma branch_trivial_branch_of_node n
+  : node_trivial n → branch_trivial (branch_of_node n).
+Proof. intro. destruct n. unfold branch_of_node. unfold node_trivial in H. intuition.
+Qed.
+
 Lemma rec_branch_branch_triv t p i
   : branch_trivial (branch_of_pl t (p, i)) ->
-    branch_trivial (branch_of_pl t (p, S i)). Admitted.
+    branch_trivial (branch_of_pl t (p, S i)).
+Proof. unfold branch_of_pl. cbn [walk]. apply branch_trivial_branch_of_branch. Qed.
     
 Lemma rec_branch_node_triv t p i
   : branch_trivial (branch_of_pl t (p, i)) ->
-    node_trivial (node_of_pl t (p, i)). Admitted.
+    node_trivial (node_of_pl t (p, i)).
+Proof. unfold node_of_pl, branch_of_pl. apply node_trivial_node_of_branch. Qed.
     
 Lemma rec_node_branch_triv t p i
   : node_trivial (node_of_pl t (p, i)) ->
-    branch_trivial (branch_of_pl t (p++[i], 0)). Admitted.
-    Lemma branch_nil_of_n_child t p i :
+    branch_trivial (branch_of_pl t (p++[i], 0)).
+Proof. unfold node_of_pl. unfold branch_of_pl. setoid_rewrite hops_app_last. unfold hop.
+  apply branch_trivial_branch_of_node.
+Qed.
+    
+Lemma branch_nil_of_n_child t p i :
     branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p ++ [i], 0).
-    Admitted.
+Proof.
+  intros. unfold "≡", branch_equiv.  unfold branch_of_pl in *.
+    setoid_rewrite hops_app_last. unfold hop.
+    apply branch_trivial_branch_of_node.
+    apply node_trivial_node_of_branch. trivial.
+Qed.
     
 Lemma branch_nil_of_b_child t p i :
     branch_trivial (branch_of_pl t (p, i)) -> BranchNil ≡ branch_of_pl t (p, S i).
-    Admitted.
+Proof.
+  intros. unfold "≡", branch_equiv. apply rec_branch_branch_triv. trivial.
+Qed.
     
 Lemma node_triv_of_triv_branch t p i
     : (branch_trivial (branch_of_pl t (p, i))) -> (node_of_pl t (p, i)) ≡ triv_node.
-    Admitted.
+Proof.
+  intro. apply node_equiv_of_trivial.
+    - unfold node_of_pl. apply node_trivial_node_of_branch. trivial.
+    - unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+Qed.
 
-Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0). Admitted.
+Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0).
+Proof. trivial. Qed.
+
+Lemma branch_of_branch_BranchNil
+  : (branch_of_branch (BranchNil : Branch M)) ≡ BranchNil.
+Proof. trivial. Qed.
+
+Lemma node_of_branch_BranchNil
+  : (node_of_branch (BranchNil : Branch M)) ≡ triv_node.
+Proof. trivial. Qed.
+
+Lemma branch_of_node_BranchNil
+  : (branch_of_node triv_node) ≡ BranchNil.
+Proof. trivial. Qed.
+
+Lemma walk_BranchNil j
+  : (walk j (BranchNil : Branch M)) ≡ BranchNil.
+Proof. induction j; trivial. cbn [walk]. setoid_rewrite IHj. trivial.
+Qed.
+
+Lemma hop_BranchNil j
+  : (hop j (BranchNil : Branch M)) ≡ BranchNil.
+Proof. unfold hop. setoid_rewrite walk_BranchNil. trivial.
+Qed.
+
+Lemma hops_BranchNil js
+  : (hops js (BranchNil : Branch M)) ≡ BranchNil.
+Proof. induction js; trivial. cbn [hops]. setoid_rewrite hop_BranchNil. trivial.
+Qed.
+
+Lemma branch_of_pl_BranchNil (pl : PathLoc)
+  : (branch_of_pl (BranchNil : Branch M) pl) ≡ BranchNil.
+Proof. unfold branch_of_pl. destruct pl. setoid_rewrite hops_BranchNil.
+  setoid_rewrite walk_BranchNil. trivial. Qed.
+
+Lemma node_of_pl_BranchNil (pl: PathLoc)
+  : node_of_pl (BranchNil : Branch M) pl ≡ triv_node.
+Proof. unfold node_of_pl. setoid_rewrite branch_of_pl_BranchNil. trivial. Qed.
 
 Lemma cell_of_pl_BranchNil (pl: PathLoc)
   : cell_of_pl (BranchNil : Branch M) pl ≡ triv_cell.
-Admitted.
+Proof. unfold cell_of_pl. setoid_rewrite node_of_pl_BranchNil. trivial. Qed.
 
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
   : branch_all_total_in_refinement_domain roi branch lt idx
     <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
 
-Global Instance CellNode_proper : Proper ((≡) ==> (≡) ==> (≡)) (CellNode).
-Admitted.
-
-Global Instance BranchCons_proper : Proper ((≡) ==> (≡) ==> (≡)) (BranchCons).
-Admitted.
-
-Global Instance cell_of_node_proper : Proper ((≡) ==> (≡)) (cell_of_node).
-Admitted.
-    
     (*
 Section PLInduction1.
   Context
@@ -342,15 +443,24 @@ End PLInduction1.
 
 Lemma branchnil_of_cell_triv c b
   (n1triv : CellNode c b ≡ triv_node)
-  : b ≡ BranchNil. Admitted.
+  : b ≡ BranchNil.
+Proof. unfold triv_node, "≡", cell_equiv, node_equiv in n1triv. intuition.
+Qed.
   
 Lemma branchnil_of_parent_triv node branch
   (bb1 : BranchNil ≡ BranchCons node branch)
-  : branch ≡ BranchNil. Admitted.
+  : branch ≡ BranchNil.
+Proof. unfold "≡", branch_equiv, branch_trivial in bb1.
+  apply branch_equiv_of_trivial; intuition.
+  unfold branch_trivial. trivial. Qed.
   
 Lemma nodetriv_of_parent_triv node branch
   (bb1 : BranchNil ≡ BranchCons node branch)
-  : node ≡ triv_node. Admitted.
+  : node ≡ triv_node.
+Proof. apply node_equiv_of_trivial.
+  - unfold "≡", branch_equiv, branch_trivial in bb1. intuition.
+  - unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+Qed.
 
 Section PLInduction2.
   Context
@@ -489,6 +599,8 @@ Qed.
 
 End Indexing.
 
-Definition plsplit (ln: list nat) : PathLoc. Admitted.
+Definition plsplit (ln: list nat) : PathLoc := (removelast ln, List.last ln 0).
 
-Lemma plsplit_app p i : plsplit (p ++ [i]) = (p, i). Admitted.
+Lemma plsplit_app p i : plsplit (p ++ [i]) = (p, i).
+Proof.
+  unfold plsplit. rewrite removelast_last. rewrite last_last. trivial. Qed.
