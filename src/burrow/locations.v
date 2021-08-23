@@ -772,7 +772,52 @@ Proof.
       unfold nat_of_rightstep, nat_of_leftstep in H3.
       have z := encode_nat_inj _ _ H3. discriminate.
 Qed.
-  
+
+(*Lemma eq_encode {T} `{!EqDecision T, !Countable T} (i : nat) (t: T)
+  (dn : decode_nat i = Some t)
+  : i = encode_nat t.
+Proof.
+  assert ((decode_nat (encode_nat t)) = Some t).
+  - unfold encode_nat, decode_nat. apply decode_encode.*)
+
+Lemma not_in_of_decode_nat_base j n p i (loc: Loc RI)
+  (dn : decode_nat i = Some (SDBase RI n))
+  : (p ++ [j], i) ∉ pls_of_loc loc. Admitted.
+
+Lemma append1_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) i
+  (pl1_in : (p1, i1) ∈ pls_of_loc loc)
+  (pl2_in : (p2, i2) ∈ pls_of_loc loc)
+  : (∃ loc' : Loc RI,
+     (p1 ++ [i1], i) ∈ pls_of_loc loc' ∧ (p2 ++ [i2], i) ∈ pls_of_loc loc')
+  ∨ (∀ loc' : Loc RI,
+       ((p1 ++ [i1], i) ∉ pls_of_loc loc') ∧ (p2 ++ [i2], i) ∉ pls_of_loc loc').
+Proof.
+  destruct ((decode_nat i) : option (StepDesc RI)) eqn:dn.
+  - destruct s.
+    + right. intros. split.
+      * apply not_in_of_decode_nat_base with (n := n). trivial.
+      * apply not_in_of_decode_nat_base with (n := n). trivial.
+    + left. exists (ExtLoc n r loc). split.
+      * cbn [pls_of_loc]. rewrite elem_of_map. unfold augment. exists (p1, i1).
+          split; trivial. f_equal. unfold nat_of_extstep. Admitted.
+        (*apply _nat_inj.*)
+
+Lemma forall_not_in p j i
+  (not_in : ∀ loc : Loc RI, (p, j) ∉ pls_of_loc loc)
+          : ∀ loc : Loc RI, (p ++ [j], i) ∉ pls_of_loc loc.
+Proof.
+  intro. destruct loc.
+  - unfold pls_of_loc. rewrite elem_of_singleton. intro. inversion H.
+    have jr := app1_ne_empty p j. contradiction.
+  - intro. have k := resolve_p_i_in_ExtLoc _ _ _ _ _ H. destruct_ands.
+      rewrite plsplit_app in H1. have ni := not_in loc. contradiction.
+  - rewrite pls_of_loc_union. rewrite elem_of_union. intro. destruct H.
+    + have k := resolve_p_i_in_Left _ _ _ _ H. destruct_ands.
+      rewrite plsplit_app in H1. have ni := not_in loc1. contradiction.
+    + have k := resolve_p_i_in_Right _ _ _ _ H. destruct_ands.
+      rewrite plsplit_app in H1. have ni := not_in loc2. contradiction.
+Qed.
+ 
 Lemma append_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) p i
   (pl1_in : (p1, i1) ∈ pls_of_loc loc)
   (pl2_in : (p2, i2) ∈ pls_of_loc loc)
@@ -782,6 +827,32 @@ Lemma append_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) p i
    ∀ (loc' : Loc RI) ,
     (p1 ++ [i1] ++ p, i) ∉ pls_of_loc loc' /\ (p2 ++ [i2] ++ p, i) ∉ pls_of_loc loc'
   ).
-  Admitted.
+Proof.
+  generalize i. clear i.
+  induction p as [p IHxs] using (induction_ltof1 _ (@length _)); unfold ltof in IHxs.
+  have h : Decision (p = []) by solve_decision. destruct h.
+  - subst p. rewrite app_nil_r. rewrite app_nil_r. intro.
+    apply append1_to_pl_in_loc with (loc := loc); trivial.
+  - destruct (plsplit p) eqn:px. rename l into q. rename n0 into j.
+    have ro := app_removelast_last. have ro' := ro nat p 0 n. 
+    unfold plsplit in px. inversion px. rewrite H0 in ro'. rewrite H1 in ro'. subst p.
+    clear H0. clear H1.
+    assert (length q < length (q ++ [j])) as ao
+       by (rewrite app_length; simpl; lia).
+    have IHxsq := IHxs q ao j. clear IHxs. destruct IHxsq.
+    + deex. intro.
+      replace (p1 ++ [i1] ++ q ++ [j]) with ((p1 ++ [i1] ++ q) ++ [j]) by
+        (repeat (rewrite app_ass); trivial).
+      replace (p2 ++ [i2] ++ q ++ [j]) with ((p2 ++ [i2] ++ q) ++ [j]) by
+        (repeat (rewrite app_ass); trivial).
+      apply append1_to_pl_in_loc with (loc := loc'); intuition.
+    + intro. right. intro. split.
+      * replace (p1 ++ [i1] ++ q ++ [j]) with ((p1 ++ [i1] ++ q) ++ [j]) by
+        (repeat (rewrite app_ass); trivial).
+        apply forall_not_in. intro. apply H.
+      * replace (p2 ++ [i2] ++ q ++ [j]) with ((p2 ++ [i2] ++ q) ++ [j]) by
+        (repeat (rewrite app_ass); trivial).
+        apply forall_not_in. intro. apply H.
+Qed.
 
 End LocationsLemmas.
