@@ -564,7 +564,7 @@ Proof. refine ({|
     + unfold mov in *. unfold ic_tpcm in *. unfold ic_mov in *. intros.
         rewrite ic_get_ic_left. rewrite ic_get_ic_left.
         apply H.
-Qed.
+Defined.
 
 Definition refinement_right
     `{!EqDecision M} `{!TPCM M}
@@ -586,7 +586,7 @@ Proof. refine ({|
     + unfold mov in *. unfold ic_tpcm in *. unfold ic_mov in *. intros.
         rewrite ic_get_ic_right. rewrite ic_get_ic_right.
         apply H.
-Qed.
+Defined.
 
 Definition refinement_trivial
     `{!EqDecision M} `{!TPCM M}
@@ -606,7 +606,7 @@ Definition refinement_trivial
     + rewrite <- unit_dot. apply mov_monotonic with (x := b); trivial.
         rewrite unit_dot. trivial.
     + apply reflex.
-Qed.
+Defined.
 
 Definition ic_singleton {M} `{!EqDecision M} `{!TPCM M} (m : M) : InfiniteCopies M.
 Proof.
@@ -855,6 +855,7 @@ Global Instance bc_FinalRI_countable (small_RI: Type) `{!EqDecision small_RI, !C
     : Countable (FinalRI small_RI).
 Admitted.
 
+#[refine]
 Global Instance bc_refinement_index (𝜇: BurrowCtx)
     : RefinementIndex (InfiniteCopies (bc_small_M 𝜇)) (FinalRI (bc_small_RI 𝜇)) := {
   refinement_of := λ ri , (match ri with
@@ -868,6 +869,18 @@ Global Instance bc_refinement_index (𝜇: BurrowCtx)
   right_ri := FinalRIRight (bc_small_RI 𝜇);
   pair_up := ic_pair ;
 }.
+ - intros. unfold refinement_left, refinement_right, rel. rewrite ic_pair_ic_left_ic_right.
+    trivial.
+ - intros. unfold refinement_left, rel. apply ic_left_ic_pair.
+ - intros. unfold refinement_right, rel. apply ic_right_ic_pair.
+ - intros. rewrite ic_pair_ic_dot. trivial.
+ - intros. unfold refinement_trivial, rel_defined. trivial.
+ - intros. unfold refinement_trivial, rel. trivial.
+ - intros. unfold refinement_left, rel_defined. apply m_valid_ic_pair; trivial.
+ - intros. unfold refinement_right, rel_defined. apply m_valid_ic_pair; trivial.
+ - intros. rewrite <- ic_left_ic_pair with (b0 := b). apply m_valid_ic_left; trivial.
+ - intros. rewrite <- ic_right_ic_pair with (a0 := a). apply m_valid_ic_right; trivial.
+Defined.
 
 Definition BurrowState (𝜇: BurrowCtx)
     := State (InfiniteCopies (bc_small_M 𝜇)) (FinalRI (bc_small_RI 𝜇)).

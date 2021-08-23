@@ -34,6 +34,15 @@ Class RefinementIndex (M: Type) `{!EqDecision M} `{!TPCM M} (RI: Type) := {
      (rel M M (refinement_of (right_ri)) (pair_up a b)) = b ;
     dot_pair_up : ∀ a b c d ,
       dot (pair_up a b) (pair_up c d) = pair_up (dot a c) (dot b d) ;
+    
+    ri_triv_ri_defined : ∀ m , m_valid m -> rel_defined M M (refinement_of triv_ri) m ;
+    ri_triv_ri_rel : ∀ m , rel M M (refinement_of (triv_ri)) m = unit ;
+    ri_rel_defined_refinement_of_left : ∀ a b , m_valid a -> m_valid b ->
+      (rel_defined M M (refinement_of (left_ri)) (pair_up a b)) ;
+    ri_rel_defined_refinement_of_right : ∀ a b , m_valid a -> m_valid b ->
+      (rel_defined M M (refinement_of (right_ri)) (pair_up a b)) ;
+    m_valid_left_of_pair_up : ∀ a b , m_valid (pair_up a b) -> m_valid a ;
+    m_valid_right_of_pair_up : ∀ a b , m_valid (pair_up a b) -> m_valid b ;
 }.
 Global Arguments triv_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
 Global Arguments left_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
@@ -390,12 +399,15 @@ Lemma rel_refinement_of_triv_ri_defined
      (m: M)
     (isval: m_valid m)
   : rel_defined M M (refinement_of (triv_ri RI)) m.
-  Admitted.
+Proof.
+  apply ri_triv_ri_defined. trivial. Qed.
   
 Lemma rel_refinement_of_triv_ri_eq_unit
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   (m: M)
-  : rel M M (refinement_of (triv_ri RI)) m = unit. Admitted.
+  : rel M M (refinement_of (triv_ri RI)) m = unit.
+Proof.
+  apply ri_triv_ri_rel. Qed.
   
 Lemma pl_in_crossloc_of_pl_in_left pl (gamma1 gamma2: Loc RI)
   : pl ∈ pls_of_loc_from_left gamma1 gamma2 -> pl ∈ pls_of_loc (CrossLoc gamma1 gamma2).
@@ -453,46 +465,71 @@ Qed.
 Lemma y_is_pair_of_rel_defined_refinement_of_left
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
     x y
+    (* note: the condition is totally unnecessary *)
   (rd: rel_defined M M (refinement_of (left_ri RI)) (dot x y))
-  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+  : ∃ k1 k2 , y = (pair_up RI k1 k2).
+Proof.
+  exists ((rel M M (refinement_of (left_ri RI)) y)).
+  exists ((rel M M (refinement_of (right_ri RI)) y)).
+  apply self_eq_pair.
+Qed.
   
 Lemma y_is_pair_of_rel_defined_refinement_of_right
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
     x y
+    (* note: the condition is totally unnecessary *)
   (rd: rel_defined M M (refinement_of (right_ri RI)) (dot x y))
-  : ∃ k1 k2 , y = (pair_up RI k1 k2). Admitted.
+  : ∃ k1 k2 , y = (pair_up RI k1 k2).
+Proof.
+  exists ((rel M M (refinement_of (left_ri RI)) y)).
+  exists ((rel M M (refinement_of (right_ri RI)) y)).
+  apply self_eq_pair.
+Qed.
 
 Lemma rel_defined_refinement_of_left_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   a b
   (aval: m_valid a)
   (bval: m_valid b)
-    : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)). Admitted.
+    : (rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b)).
+Proof.
+  apply ri_rel_defined_refinement_of_left; trivial. Qed.
     
 Lemma rel_defined_refinement_of_right_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   a b
   (aval: m_valid a)
   (bval: m_valid b)
-    : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)). Admitted.
+    : (rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b)).
+Proof.
+  apply ri_rel_defined_refinement_of_right; trivial. Qed.
     
 Lemma m_valid_left_of_rel_defined_refinement_of_left_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   a b
   (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
-  : m_valid a. Admitted.
+  : m_valid a.
+Proof.
+  apply m_valid_left_of_pair_up with (b0 := b).
+  eapply rel_valid_left. apply rd. Qed.
   
 Lemma m_valid_right_of_rel_defined_refinement_of_left_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   a b
   (rd: rel_defined M M (refinement_of (left_ri RI)) (pair_up RI a b))
-  : m_valid b. Admitted.
+  : m_valid b.
+Proof.
+  apply m_valid_right_of_pair_up with (a0 := a).
+  eapply rel_valid_left. apply rd. Qed.
   
 Lemma m_valid_left_of_rel_defined_refinement_of_right_pair_up
   {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   a b
   (rd: rel_defined M M (refinement_of (right_ri RI)) (pair_up RI a b))
-  : m_valid a. Admitted.
+  : m_valid a.
+Proof.
+  apply m_valid_left_of_pair_up with (b0 := b).
+  eapply rel_valid_left. apply rd. Qed.
 
 Lemma i_value_of_pls_of_loc_from_left
   (p: list nat) (i: nat) (gamma1 gamma2: Loc RI)

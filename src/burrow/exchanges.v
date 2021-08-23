@@ -790,7 +790,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   repeat (rewrite <- tpcm_assoc in H0).
   full_generalize (dot x v) as y.
   have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
-  have yp' := yp EqDecision1 Countable0.
   deex. subst y.
   rewrite dot_pair_up.
   rewrite dot_pair_up.
@@ -822,7 +821,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   repeat (rewrite <- tpcm_assoc in H0).
   full_generalize (dot x v) as y.
   have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
-  have yp' := yp EqDecision1 Countable0.
   deex. subst y.
   rewrite dot_pair_up.
   rewrite dot_pair_up.
@@ -877,7 +875,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   clear r1. full_generalize (dot d v) as z.
   
   have yp := y_is_pair_of_rel_defined_refinement_of_right _ _ H.
-  have yp' := yp EqDecision1 Countable0.
   deex. subst z.
   repeat (rewrite dot_pair_up).
   repeat (rewrite dot_pair_up in H).
@@ -918,7 +915,6 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   clear r1. full_generalize (dot d v) as z.
   
   have yp := y_is_pair_of_rel_defined_refinement_of_left _ _ H.
-  have yp' := yp EqDecision1 Countable0.
   deex. subst z.
   repeat (rewrite dot_pair_up).
   repeat (rewrite dot_pair_up in H).
