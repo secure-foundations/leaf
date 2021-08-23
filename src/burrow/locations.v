@@ -24,6 +24,16 @@ Class RefinementIndex (M: Type) `{!EqDecision M} `{!TPCM M} (RI: Type) := {
     left_ri : RI;
     right_ri : RI;
     pair_up : M -> M -> M;
+    
+    self_eq_pair : ∀ m , m = pair_up
+        (rel M M (refinement_of left_ri) m)
+        (rel M M (refinement_of right_ri) m) ;
+    refinement_of_left_pair : ∀ a b ,
+     (rel M M (refinement_of (left_ri)) (pair_up a b)) = a ;
+    refinement_of_right_pair : ∀ a b ,
+     (rel M M (refinement_of (right_ri)) (pair_up a b)) = a ;
+    dot_pair_up : ∀ a b c d ,
+      dot (pair_up a b) (pair_up c d) = pair_up (dot a c) (dot b d) ;
 }.
 Global Arguments triv_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
 Global Arguments left_ri {M}%type_scope {EqDecision0 TPCM0} _ {RefinementIndex}.
@@ -42,7 +52,29 @@ Arguments CrossLoc {RI}%type_scope {EqDecision0 Countable0} _ _.
 Global Instance loc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (Loc RI).
 Proof. solve_decision. Defined.
 
-Global Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI). Admitted.
+Global Instance loc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (Loc RI).
+Proof.
+  set (enc :=
+    fix go e :=
+      match e with
+      | BaseLoc _ i => GenNode 0 [GenLeaf (inl i)]
+      | ExtLoc i ri l => GenNode 1 [GenLeaf (inl i) ; GenLeaf (inr ri) ; go l]
+      | CrossLoc l1 l2 => GenNode 2 [go l1; go l2]
+      end : gen_tree (nat + RI)
+    ).
+  set (dec :=
+    fix go e :=
+      match e with
+      | GenNode 0 [GenLeaf (inl i)] => BaseLoc RI i
+      | GenNode 1 [GenLeaf (inl i) ; GenLeaf (inr ri) ; e] => ExtLoc i ri (go e)
+      | GenNode 2 [e1; e2] => CrossLoc (go e1) (go e2)
+      | _ => BaseLoc RI 0 (* dummy *)
+      end
+    ).
+ refine (inj_countable' enc dec _).
+ refine (fix go (e : Loc RI) {struct e} := _).
+ destruct e; simpl; f_equal; apply go.
+Qed.
 
 Inductive StepDesc (RI: Type) `{!EqDecision RI, !Countable RI} :=
   | SDBase : nat -> StepDesc RI
@@ -57,7 +89,30 @@ Arguments SDRight {_}%type_scope {EqDecision0 Countable0} _.
 
 Global Instance stepdesc_eqdec RI `{!EqDecision RI} `{!Countable RI} : EqDecision (StepDesc RI). Proof. solve_decision. Defined.
 
-Global Instance stepdesc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (StepDesc RI). Admitted.
+Global Instance stepdesc_countable RI `{!EqDecision RI} `{!Countable RI} : Countable (StepDesc RI).
+Proof.
+  set (enc :=
+    fix go e :=
+      match e with
+      | SDBase _ i => inl i
+      | SDExt i ri => inr (inl (i, ri))
+      | SDLeft l => inr (inr (inl l))
+      | SDRight l => inr (inr (inr l))
+      end : nat + ((nat * RI) + (Loc RI + Loc RI))
+    ).
+  set (dec :=
+    fix go e :=
+      match e with
+      | inl i => SDBase RI i
+      | inr (inl (i, ri)) => SDExt i ri
+      | inr (inr (inl l)) => SDLeft l
+      | inr (inr (inr l)) => SDRight l
+      end
+    ).
+ refine (inj_countable' enc dec _).
+ intro.
+ destruct x; simpl; f_equal.
+Qed.
 
 Definition nat_of_basestep RI `{!EqDecision RI, !Countable RI} (alpha:nat) : nat :=
   encode_nat (SDBase RI alpha).
@@ -106,44 +161,24 @@ Lemma leftproject_le_left
         {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
         (m1 m2 c : M)
   (rdef: rel_defined M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c))
-  : tpcm_le m1 (rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c)). Admitted.
+  : tpcm_le m1 (rel M M (refinement_of (left_ri RI)) (dot (pair_up RI m1 m2) c)).
+Proof.
+  rewrite (self_eq_pair c). rewrite dot_pair_up.
+  rewrite refinement_of_left_pair.
+  apply le_add_right_side. apply self_le_self.
+Qed.
   
 Lemma rightproject_le_right
         {M} `{!EqDecision M, !TPCM M}
         {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
         (m1 m2 c : M)
   (rdef: rel_defined M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c))
-  : tpcm_le m2 (rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c)). Admitted.
-(*
-Global Instance loc_eqdec : EqDecision Loc.
-Proof. solve_decision. Defined.
-
-Global Instance loc_countable : Countable Loc.
+  : tpcm_le m2 (rel M M (refinement_of (right_ri RI)) (dot (pair_up RI m1 m2) c)).
 Proof.
-  set (enc :=
-    fix go l :=
-      match l with
-      | BaseLoc i => GenLeaf (inl i)
-      | ExtLoc i ri linner => GenNode 0 [GenLeaf (inr (i, ri)); go linner]
-      | CrossLoc l1 l2 => GenNode 1 [go l1; go l2]
-      end
-  ).
-  set (dec :=
-    fix go e :=
-      match e with
-      | GenLeaf (inl i) => BaseLoc i
-      | GenNode 0 [GenLeaf (inr (i, ri)); einner] => ExtLoc i ri (go einner)
-      | GenNode 1 [e1; e2] => CrossLoc (go e1) (go e2)
-      | _ => BaseLoc 0 (* dummy *)
-      end
-  ).
-  refine (inj_countable' enc dec _).
-  refine (fix go (e : Loc) {struct e} := _).
-  - destruct e as [| | ]; simpl; f_equal; trivial.
+  rewrite (self_eq_pair c). rewrite dot_pair_up.
+  rewrite refinement_of_right_pair.
+  apply le_add_right_side. apply self_le_self.
 Qed.
-
-Inductive ILoc
-*)
 
 Definition pls_of_loc_from_left
     {RI} `{!EqDecision RI, !Countable RI}
@@ -353,7 +388,8 @@ Proof.
 Lemma rel_refinement_of_triv_ri_defined
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
      (m: M)
-  : rel_defined M M (refinement_of (triv_ri RI)) m. Admitted.
+  : rel_defined M M (refinement_of (triv_ri RI)) m.
+  Admitted.
   
 Lemma rel_refinement_of_triv_ri_eq_unit
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
