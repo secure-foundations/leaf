@@ -143,11 +143,115 @@ Section BuildOne.
   Proof.
     unfold cell_of_pl, build_of_cell. rewrite node_of_pl_build_of_cell_i_ne; trivial.
   Qed.
+  
+  Lemma hop_unwalk_eq_BranchNil (n i : nat) (cell: Cell M)
+    : (hop n (unwalk i (BranchCons (CellNode cell BranchNil) BranchNil))) = BranchNil.
+  Proof.
+    unfold hop.
+    have h : Decision (n = i) by solve_decision. destruct h.
+    - subst n. rewrite walk_unwalk. unfold branch_of_node, node_of_branch. trivial.
+    - have h : Decision (n < i) by solve_decision. destruct h.
+      + replace (i) with ((i - n) + n) by lia. rewrite unwalk_add. rewrite walk_unwalk.
+        rewrite node_of_branch_unwalk_nonzero; trivial. lia.
+      + replace (n) with (i + (n - i)) by lia. rewrite walk_add. rewrite walk_unwalk.
+        rewrite walk_eq_BranchNil_nonzero; trivial. lia.
+  Qed.
+  
+  Lemma branch_of_pl_build_of_branch_empty_nonempty (cell: Cell M) i i' n p'
+    : branch_of_pl (build_of_branch (BranchCons (CellNode cell BranchNil) BranchNil) ([], i)) (n :: p', i') = BranchNil.
+  Proof. unfold build_of_branch, unhops. unfold branch_of_pl.
+    cbn [hops]. rewrite hop_unwalk_eq_BranchNil.
+      rewrite hops_BranchNil. rewrite walk_BranchNil. trivial.
+  Qed.
+
+  Lemma node_of_pl_build_of_node_empty_nonempty (cell: Cell M) i i' n p'
+    : node_of_pl (build_of_node (CellNode cell BranchNil) ([], i)) (n :: p', i') = triv_node.
+  Proof. unfold node_of_pl, build_of_node.
+      rewrite branch_of_pl_build_of_branch_empty_nonempty. trivial.
+  Qed.
+  
+  Lemma branch_of_pl_build_of_branch_first_ne (branch: Branch M) a a' p p' i' i  
+    (ne: a ≠ a')
+    : branch_of_pl (build_of_branch branch (a :: p, i)) (a' :: p', i') = BranchNil.
+  Proof.
+    unfold branch_of_pl, build_of_branch.
+    cbn [unhops]. cbn [hops]. unfold hop, unhop.
+    have h : Decision (a' < a) by solve_decision. destruct h.
+      - replace a with ((a - a') + a') by lia. rewrite unwalk_add. rewrite walk_unwalk.
+        rewrite node_of_branch_unwalk_nonzero; trivial.
+        + unfold branch_of_node, triv_node. rewrite hops_BranchNil.
+          rewrite walk_BranchNil. trivial.
+        + lia.
+      - replace a' with (a + (a' - a)) by lia. rewrite walk_add. rewrite walk_unwalk.
+        rewrite walk_eq_BranchNil_nonzero; trivial.
+        + unfold branch_of_node, triv_node. rewrite hops_BranchNil.
+          rewrite walk_BranchNil. trivial.
+        + lia.
+  Qed.
+    
+  Lemma node_of_pl_build_of_node_first_ne (node: Node M) a a' p p' i' i  
+    (ne: a ≠ a')
+    : node_of_pl (build_of_node node (a :: p, i)) (a' :: p', i') = triv_node.
+  Proof. unfold node_of_pl, build_of_node. rewrite branch_of_pl_build_of_branch_first_ne;
+    trivial.
+  Qed.
+    
+  Lemma node_of_pl_build_of_node_pop_front (node: Node M) n p p' i i'
+    : node_of_pl (build_of_node node (n :: p, i)) (n :: p', i')
+    = node_of_pl (build_of_node node (p, i)) (p', i').
+  Proof.
+    unfold node_of_pl, branch_of_pl, build_of_node, build_of_branch.
+      cbn [hops]. cbn [unhops]. rewrite hop_unhop. trivial.
+  Qed.
+  
+  Lemma cell_of_pl_build_of_cell_empty_nonempty (cell: Cell M) i i' n p'
+    : cell_of_pl (build_of_cell cell ([], i)) (n :: p', i') = triv_cell.
+  Proof. unfold cell_of_pl, build_of_cell. rewrite node_of_pl_build_of_node_empty_nonempty.
+    unfold triv_node, cell_of_node. trivial. Qed.
+    
+  Lemma cell_of_pl_build_of_cell_nonempty_empty (cell: Cell M) a p i' i  
+    : cell_of_pl (build_of_cell cell (a :: p, i)) ([], i') = triv_cell.
+  Proof. unfold cell_of_pl, build_of_cell.
+    unfold node_of_pl, build_of_node, branch_of_pl, build_of_branch. cbn [unhops].
+    unfold hops. unfold unhop.
+    have h : Decision (i' = a) by solve_decision. destruct h.
+      - subst i'. rewrite walk_unwalk. trivial.
+      - have h : Decision (i' < a) by solve_decision. destruct h.
+        + replace a with ((a - i') + i') by lia. rewrite unwalk_add. rewrite walk_unwalk.
+          rewrite node_of_branch_unwalk_nonzero; trivial. lia.
+        + replace i' with (a + (i' - a)) by lia. rewrite walk_add. rewrite walk_unwalk.
+          rewrite walk_eq_BranchNil_nonzero; trivial. lia.
+  Qed.
+    
+  Lemma cell_of_pl_build_of_cell_first_ne (cell: Cell M) a a' p p' i' i  
+    (ne: a ≠ a')
+    : cell_of_pl (build_of_cell cell (a :: p, i)) (a' :: p', i') = triv_cell.
+  Proof. unfold cell_of_pl, build_of_cell. rewrite node_of_pl_build_of_node_first_ne; trivial.
+  Qed.
+    
+  Lemma cell_of_pl_build_of_cell_pop_front (cell: Cell M) n p p' i i'
+    : cell_of_pl (build_of_cell cell (n :: p, i)) (n :: p', i')
+    = cell_of_pl (build_of_cell cell (p, i)) (p', i').
+  Proof. unfold cell_of_pl, build_of_cell. rewrite node_of_pl_build_of_node_pop_front; trivial.
+  Qed.
     
   Lemma cell_of_pl_build_of_cell_p_ne (cell: Cell M) (p p' : list nat) (i i' : nat)
     (ne: p ≠ p')
-    : cell_of_pl (build_of_cell cell (p, i')) (p', i) = triv_cell. Admitted.
-    
+    : cell_of_pl (build_of_cell cell (p, i)) (p', i') = triv_cell.
+  Proof.
+    generalize ne. generalize p'. clear ne. clear p'. induction p.
+    - intros. destruct p'.
+      + contradiction.
+      + apply cell_of_pl_build_of_cell_empty_nonempty.
+    - intros. destruct p'.
+      + apply cell_of_pl_build_of_cell_nonempty_empty.
+      + have h : Decision (a = n) by solve_decision. destruct h.
+        * assert (p ≠ p') by crush.
+          subst a. rewrite cell_of_pl_build_of_cell_pop_front.
+          apply IHp. trivial.
+        * apply cell_of_pl_build_of_cell_first_ne. trivial.
+  Qed.
+
   Lemma cell_of_pl_build_of_cell_ne (cell: Cell M) (pl pl': PathLoc)
     (ne: pl ≠ pl')
     : cell_of_pl (build_of_cell cell pl') pl = triv_cell.
@@ -172,7 +276,7 @@ Section Build.
 
   Definition build (loc: Loc RI) (cell: Cell M) : Branch M :=
     set_fold (buildfn cell) BranchNil (pls_of_loc loc).
-    
+
   Lemma cell_of_pl_set_fold_not_in (cell: Cell M) (s: gset PathLoc) (pl: PathLoc)
     (is_in: pl ∉ s)
     : cell_of_pl (set_fold (buildfn cell) BranchNil s) pl ≡ triv_cell.

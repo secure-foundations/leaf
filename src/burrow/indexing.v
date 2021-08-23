@@ -347,43 +347,43 @@ Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0).
 Proof. trivial. Qed.
 
 Lemma branch_of_branch_BranchNil
-  : (branch_of_branch (BranchNil : Branch M)) ≡ BranchNil.
+  : (branch_of_branch (BranchNil : Branch M)) = BranchNil.
 Proof. trivial. Qed.
 
 Lemma node_of_branch_BranchNil
-  : (node_of_branch (BranchNil : Branch M)) ≡ triv_node.
+  : (node_of_branch (BranchNil : Branch M)) = triv_node.
 Proof. trivial. Qed.
 
 Lemma branch_of_node_BranchNil
-  : (branch_of_node triv_node) ≡ BranchNil.
+  : (branch_of_node triv_node) = BranchNil.
 Proof. trivial. Qed.
 
 Lemma walk_BranchNil j
-  : (walk j (BranchNil : Branch M)) ≡ BranchNil.
+  : (walk j (BranchNil : Branch M)) = BranchNil.
 Proof. induction j; trivial. cbn [walk]. setoid_rewrite IHj. trivial.
 Qed.
 
 Lemma hop_BranchNil j
-  : (hop j (BranchNil : Branch M)) ≡ BranchNil.
+  : (hop j (BranchNil : Branch M)) = BranchNil.
 Proof. unfold hop. setoid_rewrite walk_BranchNil. trivial.
 Qed.
 
 Lemma hops_BranchNil js
-  : (hops js (BranchNil : Branch M)) ≡ BranchNil.
-Proof. induction js; trivial. cbn [hops]. setoid_rewrite hop_BranchNil. trivial.
+  : (hops js (BranchNil : Branch M)) = BranchNil.
+Proof. induction js; trivial. cbn [hops]. rewrite hop_BranchNil. trivial.
 Qed.
 
 Lemma branch_of_pl_BranchNil (pl : PathLoc)
-  : (branch_of_pl (BranchNil : Branch M) pl) ≡ BranchNil.
+  : (branch_of_pl (BranchNil : Branch M) pl) = BranchNil.
 Proof. unfold branch_of_pl. destruct pl. setoid_rewrite hops_BranchNil.
   setoid_rewrite walk_BranchNil. trivial. Qed.
 
 Lemma node_of_pl_BranchNil (pl: PathLoc)
-  : node_of_pl (BranchNil : Branch M) pl ≡ triv_node.
+  : node_of_pl (BranchNil : Branch M) pl = triv_node.
 Proof. unfold node_of_pl. setoid_rewrite branch_of_pl_BranchNil. trivial. Qed.
 
 Lemma cell_of_pl_BranchNil (pl: PathLoc)
-  : cell_of_pl (BranchNil : Branch M) pl ≡ triv_cell.
+  : cell_of_pl (BranchNil : Branch M) pl = triv_cell.
 Proof. unfold cell_of_pl. setoid_rewrite node_of_pl_BranchNil. trivial. Qed.
 
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
