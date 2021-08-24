@@ -102,15 +102,104 @@ Qed.
   
 Definition is_fresh_nat (b: Branch M) (f: nat) : Prop := branch_no_idx b f 0.
 
+Lemma pigeon (bound : nat) : ∀ (f : nat -> nat) 
+  (inject: ∀ x y , x <= bound -> y <= bound -> f x = f y -> x = y)
+  (into_hole : ∀ x , x <= bound -> f x < bound)
+  , False.
+Proof.
+induction bound.
+  - intros. have h := into_hole 0. lia.
+  - intros.
+    apply (IHbound (λ x , if decide (f x < f (S bound)) then f x else f x - 1)).
+    * intro. intro.  case_decide; case_decide.
+      + intros. apply inject; trivial. ** lia. ** lia.
+      + intro. intro. intro.
+          have j : f y = f (S bound) by lia.
+          have l : y = S bound by apply inject; lia.
+          lia.
+      + intro. intro. intro.
+          have j : f x = f (S bound) by lia.
+          have l : x = S bound by apply inject; lia.
+          lia.
+      + intros.
+          have t0 : f x <> f (S bound).
+              ** intro.
+                 have r : x = S bound by apply inject; lia. lia.
+          ** have t1 : f y <> f (S bound).
+              *** intro.
+              have r : y = S bound by apply inject; lia. lia.
+          *** have t2 : f x = f y by lia.
+          apply inject; lia.
+    * intros. case_decide.
+      + have j : f (S bound) < S bound by apply into_hole.
+        lia.
+      + have j : f x < S bound.
+        ** apply into_hole. lia.
+        ** have t0 : f x <> f (S bound).
+            *** intro.
+            have r : x = S bound by apply inject; lia. lia.
+            *** lia.
+Qed.
+
+Lemma value_above_bound_helper (f : nat -> nat) (bound : nat) (i: nat)
+  (inject: ∀ x y , f x = f y -> x = y)
+  : (∃ t , f t > bound) \/ (∀ j , j < i -> f j <= bound).
+Proof.
+induction i.
+ - right. intros. lia.
+ - destruct IHi.
+  * left; trivial.
+  * have q : (f i) <= bound \/ (f i) > bound. ** lia.
+    ** destruct q.
+    + right. intros. have r := H j.
+      have u := decide (j = i). destruct u.
+        *** solve_decision.
+        *** rewrite <- e in H0. lia.
+        *** lia.
+    + left. exists i. trivial.
+Qed.
+
+Lemma value_above_bound (f : nat -> nat) (bound : nat)
+  (inject: ∀ x y , f x = f y -> x = y)
+  : (∃ t , f t > bound).
+Proof.
+  have h := value_above_bound_helper f bound (bound + 2) inject.
+  destruct h.
+  - trivial.
+  - have k : False.
+    ** apply (pigeon (bound + 1) f).
+    + intros. apply inject. trivial.
+    + intros. have r := H x. lia.
+    ** contradiction.
+Qed.
+
 Lemma exists_fresh_alloc
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     (branch: Branch M) (ri: RI)
-    : ∃ alpha , is_fresh_nat branch (nat_of_extstep alpha ri). Admitted.
+    : ∃ alpha , is_fresh_nat branch (nat_of_extstep alpha ri).
+Proof.
+  unfold is_fresh_nat.
+  assert (∃ alpha : nat, nat_of_extstep alpha ri > branch_max_idx branch 0).
+   - apply value_above_bound.
+     intros. unfold nat_of_extstep in H.
+     have j := encode_nat_inj _ _ H. inversion j. trivial.
+   - deex. exists alpha.
+     apply branch_no_idx_of_gt_max. trivial.
+Qed.
 
 Lemma exists_fresh_alloc_base branch
     {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
     : ∃ alpha , is_fresh_nat branch
-    (nat_of_basestep RI alpha). Admitted.
+    (nat_of_basestep RI alpha).
+Proof.
+  unfold is_fresh_nat.
+  assert (∃ alpha : nat, nat_of_basestep RI alpha > branch_max_idx branch 0).
+   - apply value_above_bound.
+     intros. unfold nat_of_extstep in H.
+     have j := encode_nat_inj _ _ H. inversion j. trivial.
+   - deex. exists alpha.
+     apply branch_no_idx_of_gt_max. trivial.
+Qed.
 
 Lemma trivial_node_at_fresh (b: Branch M) p i
   (is_fresh: is_fresh_nat b i)
