@@ -404,6 +404,26 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
   apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
 Qed.
 
+Lemma cell_of_pl_as_tree_lmap_with_equiv pl loc lm x
+  : pl ∈ pls_of_loc loc -> (lm !! loc ≡ Some x) -> cell_of_pl (as_tree lm) pl ≡ x.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intros.
+  destruct (lm !! loc) eqn:lmloc.
+  - 
+    have j := rewrite_map_as_insertion lm loc c lmloc. deex. destruct_ands.
+    subst lm. setoid_rewrite rewrite_map_fold_builder; trivial.
+    setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite (cell_of_pl_as_tree_lmap_none pl loc y'); trivial.
+    setoid_rewrite build_spec; trivial. setoid_rewrite cell_op_comm.
+    inversion H0. setoid_rewrite H4.
+    apply op_trivial_cell. unfold cell_trivial, triv_cell. split; trivial.
+  - inversion H0.
+Qed.
+
+Lemma cell_of_pl_as_tree_lmap_with_equiv2 pl loc lm x
+  : pl ∈ pls_of_loc loc -> (lmap_lookup lm loc ≡ x) -> cell_of_pl (as_tree lm) pl ≡ x.
+  Admitted.
+
 Lemma lmaps_equiv_of_tree_equiv a b
   : as_tree a ≡ as_tree b -> lmaps_equiv a b.
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
@@ -428,6 +448,72 @@ Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
           (any_pl_of_loc_is_of_loc l) bl.
       setoid_rewrite H in j. setoid_rewrite <- j. setoid_rewrite <- k. trivial.
   - rewrite al. rewrite bl. trivial.
+Qed.
+
+Lemma empty_op_lmap (l : lmap M RI) : as_tree (∅ ⋅ l) ≡ as_tree l.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  setoid_rewrite as_tree_op. setoid_rewrite as_tree_empty. setoid_rewrite branch_op_comm.
+  apply op_trivial_branch. unfold branch_trivial. trivial. Qed.
+  
+(**** relive stuff ****)
+
+Definition lmap_relive (lm: lmap M RI) (old: Lifetime) (new: Lifetime) : lmap M RI :=
+  fmap (λ cell , relive_cell cell old new) lm.
+
+Definition lmap_relive_exc (lm: lmap M RI) (old: Lifetime) (new: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : lmap M RI :=
+  <[ loc := relive_cell_exc (lmap_lookup lm loc) old new exc ]> (lmap_relive lm old new).
+
+Definition relive (state: State M RI) (unactive: Lifetime) : State M RI :=
+  match state with
+  | StateCon active l =>
+      StateCon empty_multiset
+        (lmap_relive l (multiset_add active unactive) active)
+  end.
+   
+Definition relive_exc (state: State M RI) (unactive: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : State M RI :=
+  match state with
+  | StateCon active l =>
+      StateCon empty_multiset
+        (lmap_relive_exc l (multiset_add active unactive) active loc exc)
+  end.
+  
+Lemma cell_of_pl_fmap fn l pl
+  : cell_of_pl (as_tree (fn <$> l)) pl ≡ fn (cell_of_pl (as_tree l) pl). Admitted.
+  
+Lemma cell_of_pl_as_tree_lmap_relive l old new pl
+    : cell_of_pl (as_tree (lmap_relive l old new)) pl
+    ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  unfold lmap_relive. apply cell_of_pl_fmap. Qed.
+  
+Global Instance relive_cell_exc_proper : Proper ((≡) ==> (=) ==> (=) ==> (=) ==> (≡)) relive_cell_exc. Admitted.
+    
+Lemma cell_of_pl_as_tree_lmap_relive_exc_self l old new pl loc exc
+    : pl ∈ pls_of_loc loc ->
+      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
+        ≡ relive_cell_exc (cell_of_pl (as_tree l) pl) old new exc.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intro. apply cell_of_pl_as_tree_lmap_with_equiv with (loc := loc); trivial.
+  unfold lmap_relive_exc. rewrite lookup_insert.
+  unfold "≡", option_equiv. apply Some_Forall2.
+  setoid_replace ((cell_of_pl (as_tree l) pl)) with (lmap_lookup l loc); trivial.
+  apply cell_of_pl_as_tree_lmap_with_equiv2 with (loc := loc); trivial. 
+Qed.
+
+Lemma cell_of_pl_as_tree_insert_notin pl loc c j
+  (notin : pl ∉ pls_of_loc loc)
+  : cell_of_pl (as_tree (<[loc := c]> j)) pl ≡ cell_of_pl (as_tree j) pl. Admitted.
+
+Lemma cell_of_pl_as_tree_lmap_relive_exc_other l old new pl loc exc
+    : pl ∉ pls_of_loc loc ->
+      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
+        ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intros.
+  enough ((cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl)
+        ≡ (cell_of_pl (as_tree (lmap_relive l old new)) pl)).
+  - setoid_rewrite H0. apply cell_of_pl_as_tree_lmap_relive.
+  - unfold lmap_relive_exc. apply cell_of_pl_as_tree_insert_notin. trivial.
 Qed.
 
 (****************************************************************)
@@ -1235,42 +1321,6 @@ Qed.
                 q contains (reserved kappa m)
   ∃ p1 : State M RI, state_inv (live_stuff_from_q ⋅ q)
                 live gamma m <= live_stuff_from_q*)
-                
-Definition lmap_relive (lm: lmap M RI) (old: Lifetime) (new: Lifetime) : lmap M RI. Admitted.
-
-Definition lmap_relive_exc (lm: lmap M RI) (old: Lifetime) (new: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : lmap M RI. Admitted.
-                
-Definition relive (state: State M RI) (unactive: Lifetime) : State M RI :=
-  match state with
-  | StateCon active l =>
-      StateCon empty_multiset
-        (lmap_relive l (multiset_add active unactive) active)
-  end.
-   
-Definition relive_exc (state: State M RI) (unactive: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : State M RI :=
-  match state with
-  | StateCon active l =>
-      StateCon empty_multiset
-        (lmap_relive_exc l (multiset_add active unactive) active loc exc)
-  end.
-
-  
-Lemma cell_of_pl_as_tree_lmap_relive l old new pl
-    : cell_of_pl (as_tree (lmap_relive l old new)) pl
-    ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
-    Admitted.
-    
-Lemma cell_of_pl_as_tree_lmap_relive_exc_self l old new pl loc exc
-    : pl ∈ pls_of_loc loc ->
-      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
-        ≡ relive_cell_exc (cell_of_pl (as_tree l) pl) old new exc.
-    Admitted.
-     
-Lemma cell_of_pl_as_tree_lmap_relive_exc_other l old new pl loc exc
-    : pl ∉ pls_of_loc loc ->
-      cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
-        ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
-    Admitted.
 
 Lemma backslash_union (a l1 : (listset (Lifetime * M)))
   : a ∪ l1 ≡ (l1 ∖ a) ∪ a.
@@ -1334,8 +1384,6 @@ Proof.
       * set_solver.
 Qed.
     
-Lemma empty_op_lmap (l : lmap M RI) : as_tree (∅ ⋅ l) ≡ as_tree l. Admitted.
-
 Lemma dot_xyz_impl (x y z c d : M)
   : x = dot y z -> dot (dot c d) x = dot (dot c y) (dot d z).
 Proof.
