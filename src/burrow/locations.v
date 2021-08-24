@@ -717,7 +717,8 @@ Proof. cbn [pls_of_loc]. intros. rewrite elem_of_map. exists (plsplit p). split;
   rewrite <- H1. apply pair_eq_augment. trivial. Qed.
   
 Lemma pls_of_loc_union (loc1 loc2 : Loc RI) :
-  pls_of_loc (CrossLoc loc1 loc2) = pls_of_loc_from_left loc1 loc2 ∪ pls_of_loc_from_right loc1 loc2. trivial. Qed.
+  pls_of_loc (CrossLoc loc1 loc2) = pls_of_loc_from_left loc1 loc2 ∪ pls_of_loc_from_right loc1 loc2.
+Proof. trivial. Qed.
 
 Lemma plsplit_app_and_self_contra
   p i (gamma: Loc RI)
