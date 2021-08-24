@@ -109,7 +109,7 @@ Proof.
     + apply node_view_le_total_minus_live with (idx := plend (p,i)).
       * apply multiset_le_refl.
       * unfold valid_totals in batird. destruct_ands. rename H into batird'.
-        apply forall_branch_all_total_in_refinement_domain with (idx := 0).
+        apply forall_branch_all_total_in_refinement_domain.
         trivial.
     + unfold view_sat in H. trivial.
  - intro. setoid_rewrite <- cell_of_pl_op.

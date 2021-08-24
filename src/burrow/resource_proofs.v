@@ -768,7 +768,7 @@ Proof.
   setoid_rewrite as_tree_op in isv.
   setoid_rewrite as_tree_op in isv.
   setoid_rewrite as_tree_singleton in isv.
-  have isv0 := forall_branch_all_total_in_refinement_domain _ _ _ _ isv. clear isv. rename isv0 into isv.
+  have isv0 := forall_branch_all_total_in_refinement_domain _ _ _ isv. clear isv. rename isv0 into isv.
   
   rename isb into isb'. have isb := isb' (any_pl_of_loc gamma) (any_pl_of_loc_is_of_loc gamma). clear isb'.
   rename isv into isv'. have isv := isv' (any_pl_of_loc gamma). clear isv'.

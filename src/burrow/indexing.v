@@ -201,7 +201,7 @@ Proof. destruct b.
 Qed.
 
 Lemma CellNode_cell_of_node_branch_of_node n
-  : n ≡ CellNode (cell_of_node n) (branch_of_node n). 
+  : n = CellNode (cell_of_node n) (branch_of_node n). 
 Proof. destruct n. trivial. Qed.
 
 Lemma walk_add p q b
@@ -220,7 +220,7 @@ Proof. generalize b. clear b. induction p.
 Qed.
   
 Lemma hops_app_last p i b
-  : hops (p ++ [i]) b ≡ hop i (hops p b).
+  : hops (p ++ [i]) b = hop i (hops p b).
 Proof.
   rewrite hops_app. cbn [hops]. trivial. Qed.
 
@@ -230,9 +230,9 @@ Proof.
 unfold branch_of_pl, node_of_pl, branch_of_pl. cbn [walk]. apply BranchCons_node_of_branch_branch_of_branch. Qed.
   
 Lemma cellnode_pl t p i
-  : node_of_pl t (p, i) ≡ CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p++[i], 0)).
+  : node_of_pl t (p, i) = CellNode (cell_of_pl t (p, i)) (branch_of_pl t (p++[i], 0)).
 Proof. unfold cell_of_pl, branch_of_pl, node_of_pl. cbn [walk].
-  unfold branch_of_pl. setoid_rewrite hops_app_last. unfold hop.
+  unfold branch_of_pl. rewrite hops_app_last. unfold hop.
   apply CellNode_cell_of_node_branch_of_node.
 Qed.
 
@@ -343,7 +343,7 @@ Proof.
     - unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
 Qed.
 
-Lemma branch_of_pl_zero t : t ≡ branch_of_pl t ([], 0).
+Lemma branch_of_pl_zero t : t = branch_of_pl t ([], 0).
 Proof. trivial. Qed.
 
 Lemma branch_of_branch_BranchNil
@@ -385,15 +385,6 @@ Proof. unfold node_of_pl. setoid_rewrite branch_of_pl_BranchNil. trivial. Qed.
 Lemma cell_of_pl_BranchNil (pl: PathLoc)
   : cell_of_pl (BranchNil : Branch M) pl = triv_cell.
 Proof. unfold cell_of_pl. setoid_rewrite node_of_pl_BranchNil. trivial. Qed.
-
-Lemma forall_branch_all_total_in_refinement_domain roi branch lt idx
-  : branch_all_total_in_refinement_domain roi branch lt idx
-    -> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
-
-(*
-Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
-  : branch_all_total_in_refinement_domain roi branch lt idx
-    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). *)
 
     (*
 Section PLInduction1.
@@ -584,7 +575,9 @@ trunk2.
   Proof using EqDecision0 M TPCM0 branch_fn branch_fn_proper branch_ind branchnil_ind bs
 in_branch_fn in_branch_fn_proper in_node_fn in_node_fn_proper node_fn node_ind ns trunk1
 trunk2.
-  apply branch_pl_induction_2; apply branch_of_pl_zero.
+  apply branch_pl_induction_2.
+   - rewrite <- branch_of_pl_zero. trivial.
+   - rewrite <- branch_of_pl_zero. trivial.
   Qed.
 End PLInduction2.
 
@@ -609,6 +602,101 @@ Proof. apply pl_induction_2 with (trunk1 := branch1) (trunk2 := branch2)
  - intros. setoid_rewrite H0. setoid_rewrite H. trivial.
  - trivial.
 Qed.
+
+Lemma branch_of_pl_cons_eq p i n b trunk
+  (bop : branch_of_pl trunk (p, i) = BranchCons n b)
+  : (branch_of_pl trunk (p, S i)) = b.
+Proof.
+  unfold branch_of_pl in *. cbn [walk]. rewrite bop. trivial. Qed.
+
+Section PLReverseInduction1.
+  Context
+    (trunk: Branch M)
+    (branch_fn: PathLoc -> Branch M -> Prop)
+    (node_fn: PathLoc -> Node M -> Prop)
+    (b_base: branch_fn ([], 0) trunk)
+    (node_ind : ∀ p i cell branch ,
+        node_fn (p, i) (CellNode cell branch) ->
+        branch_fn (p ++ [i], 0) branch
+    )
+    (branch_ind : ∀ p i node branch ,
+        branch_fn (p, i) (BranchCons node branch) ->
+        branch_fn (p, S i) branch /\ node_fn (p, i) node
+    )
+    (branchnil_ind : ∀ pl, branch_fn pl BranchNil)
+    (trivnode_ind : ∀ pl, node_fn pl triv_node)
+  .
+  
+  Lemma pl_reverse_induction1
+    : ∀ pl , node_fn pl (node_of_pl trunk pl) /\ branch_fn pl (branch_of_pl trunk pl).
+  Proof using EqDecision0 M TPCM0 b_base branch_fn branch_ind branchnil_ind node_fn node_ind
+      trivnode_ind trunk.
+  intro. destruct pl. rename l into p. rename n into i. generalize i. clear i.
+  induction p as [p IHp] using (induction_ltof1 _ (@length _)); unfold ltof in IHp.
+  induction i as [i IHi] using lt_wf_ind.
+  
+  enough (branch_fn (p, i) (branch_of_pl trunk (p, i))).
+   - split; trivial.
+     destruct (branch_of_pl trunk (p, i)) eqn:bop.
+      + assert (n = node_of_branch (BranchCons n b)) by trivial.
+        rewrite <- bop in H0.
+        unfold node_of_pl. rewrite <- H0.
+        have jr := branch_ind p i n b. intuition.
+      + unfold node_of_pl. rewrite bop. unfold node_of_branch.
+        apply trivnode_ind.
+   - destruct i.
+      + have h : Decision (p = []) by solve_decision. destruct h.
+        * subst p. rewrite <- branch_of_pl_zero. trivial.
+        * have jr := node_ind (removelast p) (List.last p 0)
+            (cell_of_pl trunk (removelast p, List.last p 0))
+            (branch_of_pl trunk (p, 0)).
+          rewrite <- app_removelast_last in jr; trivial. apply jr.
+          replace (p, 0) with (removelast p ++ [List.last p 0], 0).
+          -- rewrite <- cellnode_pl. apply IHp.
+            replace (length p) with (length (removelast p ++ [List.last p 0])).
+            ++ rewrite app_length. simpl. lia.
+            ++ f_equal. rewrite <- app_removelast_last; trivial.
+          -- f_equal. rewrite <- app_removelast_last; trivial.
+      + destruct (branch_of_pl trunk (p, i)) eqn:bop.
+        * assert (b = branch_of_branch (BranchCons n b)) by trivial.
+          rewrite <- bop in H.
+          have bopce := branch_of_pl_cons_eq p i n b trunk bop.
+          rewrite bopce.
+          have jr := branch_ind p i n b. apply jr.
+          rewrite <- bop. apply IHi. lia.
+        * unfold branch_of_pl. unfold branch_of_pl in bop. cbn [walk].
+            rewrite bop. unfold branch_of_branch. trivial.
+  Qed. 
+  
+  Lemma pl_reverse_induction1_node
+    : ∀ pl , node_fn pl (node_of_pl trunk pl).
+  Proof using EqDecision0 M TPCM0 b_base branch_fn branch_ind branchnil_ind node_fn node_ind
+      trivnode_ind trunk.
+  apply pl_reverse_induction1. Qed.
+  
+End PLReverseInduction1.
+
+Lemma forall_branch_all_total_in_refinement_domain roi branch lt
+  : branch_all_total_in_refinement_domain roi branch lt 0
+    -> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl).
+Proof. 
+  intros.
+    apply pl_reverse_induction1 with
+    (trunk := branch)
+    (branch_fn := λ pl b , branch_all_total_in_refinement_domain roi b lt (plend pl))
+    (node_fn := λ pl n , node_all_total_in_refinement_domain roi n lt (plend pl)).
+   - unfold plend. trivial.
+   - intros. cbn [node_all_total_in_refinement_domain] in H0. intuition.
+   - intros. unfold branch_all_total_in_refinement_domain in H0. intuition.
+   - intros. unfold branch_all_total_in_refinement_domain. trivial.
+   - intros. apply node_all_total_in_refinement_domain_of_trivial.
+      unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+Qed.
+
+(*
+Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
+  : branch_all_total_in_refinement_domain roi branch lt idx
+    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). *)
 
 End Indexing.
 
