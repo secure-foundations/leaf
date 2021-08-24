@@ -386,9 +386,14 @@ Lemma cell_of_pl_BranchNil (pl: PathLoc)
   : cell_of_pl (BranchNil : Branch M) pl = triv_cell.
 Proof. unfold cell_of_pl. setoid_rewrite node_of_pl_BranchNil. trivial. Qed.
 
+Lemma forall_branch_all_total_in_refinement_domain roi branch lt idx
+  : branch_all_total_in_refinement_domain roi branch lt idx
+    -> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
+
+(*
 Lemma forall_equiv_branch_all_total_in_refinement_domain roi branch lt idx
   : branch_all_total_in_refinement_domain roi branch lt idx
-    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). Admitted.
+    <-> forall pl, node_all_total_in_refinement_domain roi (node_of_pl branch pl) lt (plend pl). *)
 
     (*
 Section PLInduction1.

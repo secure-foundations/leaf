@@ -108,9 +108,9 @@ Proof.
       (node_total_minus_live (refinement_of_nat M RI) (node_of_pl (t ⋅ b) (p, i)) active)).
     + apply node_view_le_total_minus_live with (idx := plend (p,i)).
       * apply multiset_le_refl.
-      * unfold valid_totals in batird. destruct_ands. rename H into batird.
-        generalize batird. rewrite forall_equiv_branch_all_total_in_refinement_domain.
-          intro. apply H.
+      * unfold valid_totals in batird. destruct_ands. rename H into batird'.
+        apply forall_branch_all_total_in_refinement_domain with (idx := 0).
+        trivial.
     + unfold view_sat in H. trivial.
  - intro. setoid_rewrite <- cell_of_pl_op.
     setoid_rewrite cell_reserved_op.
