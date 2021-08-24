@@ -1043,8 +1043,10 @@ Proof.
         setoid_rewrite ru.
         trivial.
   - 
+  assert (t ≡ branch_of_pl t ([], 0)) as tb0 by (rewrite <- branch_of_pl_zero; trivial).
+  assert (t' ≡ branch_of_pl t' ([], 0)) as tb1 by (rewrite <- branch_of_pl_zero; trivial).
   have h := specexc_branch t t' active t t' se [] 0 down up flow_se flow_update
-      (branch_of_pl_zero t) (branch_of_pl_zero t') ru2 _ _.
+      tb0 tb1 ru2 _ _.
   rewrite down_0 in h.
   rewrite up_0 in h.
   rewrite unit_dot in h.
