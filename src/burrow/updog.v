@@ -4,6 +4,7 @@ Require Import coq_tricks.Deex.
 Require Import Burrow.rollup.
 Require Import Burrow.locations.
 Require Import Burrow.indexing.
+Require Import Burrow.gmap_utils.
 
 From stdpp Require Import countable.
 From stdpp Require Import gmap.
@@ -28,14 +29,25 @@ Definition updo (m: M) (gamma: Loc RI) (idx: nat) : (PathLoc -> M) :=
           unit
       end.
  
-Definition updo_se (gamma: Loc RI) (idx: nat) : gset PathLoc. Admitted.
+Definition updo_se (gamma: Loc RI) (idx: nat) : gset PathLoc :=
+  set_set_map (pls_of_loc gamma) (λ pl: PathLoc , match pl with (p, i) =>
+    set_map (λ j: nat, (p ++ [i], j)) (set_seq 0 (idx+1) : gset nat)
+  end).
 
 Lemma updo_se_okay (m: M) (gamma: Loc RI) (idx: nat)
   : ∀ (p : list nat) (i : nat),
     (p, i) ∉ updo_se gamma idx
     → updo m gamma idx (p, i) = unit.
-    Admitted.
-
+Proof.
+  intros. unfold updo. case_decide; trivial. exfalso. destruct_ands.
+  apply H. unfold updo_se. apply lookup_set_set_map. exists (plsplit p). split; trivial.
+  destruct (plsplit p) eqn:psp.
+  rewrite elem_of_map. exists i. split.
+  - f_equal.
+    unfold plsplit in psp. inversion psp.
+    apply app_removelast_last. trivial.
+  - rewrite elem_of_set_seq. lia.
+Qed.
 
 Definition updog (m: M) (gamma: Loc RI) (alpha: nat) (ri: RI) : (PathLoc -> M) :=
   updo m gamma (nat_of_extstep alpha ri).
@@ -78,11 +90,11 @@ Qed.
 
 (*Lemma updog_base_eq_unit1 p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)
-    : (updog m gamma alpha ri (p, i)) = unit. Admitted.
+    : (updog m gamma alpha ri (p, i)) = unit.
     
 Lemma updog_base_eq_unit2 p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)
-    : (updog m gamma alpha ri (p, S i)) = unit. Admitted.*)
+    : (updog m gamma alpha ri (p, S i)) = unit.*)
     
 Lemma updog_base_eq_m p i alpha ri gamma m
   (is_in : (p, i) ∈ pls_of_loc gamma)

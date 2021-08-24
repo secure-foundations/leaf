@@ -446,6 +446,12 @@ Proof. apply (set_relate (=)).
   - intros. rewrite H7. apply equiv.
 Qed.
 
+Definition set_set_map `{Countable A} `{Countable B}
+    (s: gset A) (fn : A -> gset B) : gset B. Admitted.
+    
+Lemma lookup_set_set_map `{Countable A} `{Countable B} (y: B) (s: gset A) (fn: A -> gset B)
+  : (∃ x , x ∈ s /\ y ∈ fn x) -> y ∈ set_set_map s fn. Admitted.
+
 Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
   (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None.
 Proof.
