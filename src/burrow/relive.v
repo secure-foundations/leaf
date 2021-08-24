@@ -54,5 +54,10 @@ Proof.
   unfold Proper, "==>". intros. subst. unfold relive_cell. destruct x, y.
   inversion H. setoid_rewrite H1. trivial.
 Qed.
+
+Global Instance relive_cell_exc_proper : Proper ((≡) ==> (=) ==> (=) ==> (=) ==> (≡)) relive_cell_exc. Admitted.
+
+Lemma relive_cell_triv old new
+  : triv_cell ≡ relive_cell triv_cell old new. Admitted.
   
 End Relive.

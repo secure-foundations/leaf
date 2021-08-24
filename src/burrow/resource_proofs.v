@@ -422,7 +422,11 @@ Qed.
 
 Lemma cell_of_pl_as_tree_lmap_with_equiv2 pl loc lm x
   : pl ∈ pls_of_loc loc -> (lmap_lookup lm loc ≡ x) -> cell_of_pl (as_tree lm) pl ≡ x.
-  Admitted.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  intros. unfold lmap_lookup in H0. destruct (lm !! loc) eqn:lmloc.
+  - setoid_rewrite <- H0. apply cell_of_pl_as_tree_lmap with (loc := loc); trivial.
+  - setoid_rewrite cell_of_pl_as_tree_lmap_none with (loc := loc); trivial.
+Qed.
 
 Lemma lmaps_equiv_of_tree_equiv a b
   : as_tree a ≡ as_tree b -> lmaps_equiv a b.
@@ -469,7 +473,7 @@ Definition relive (state: State M RI) (unactive: Lifetime) : State M RI :=
       StateCon empty_multiset
         (lmap_relive l (multiset_add active unactive) active)
   end.
-   
+
 Definition relive_exc (state: State M RI) (unactive: Lifetime) (loc: Loc RI) (exc: Lifetime * M) : State M RI :=
   match state with
   | StateCon active l =>
@@ -477,17 +481,43 @@ Definition relive_exc (state: State M RI) (unactive: Lifetime) (loc: Loc RI) (ex
         (lmap_relive_exc l (multiset_add active unactive) active loc exc)
   end.
   
-Lemma cell_of_pl_fmap fn l pl
-  : cell_of_pl (as_tree (fn <$> l)) pl ≡ fn (cell_of_pl (as_tree l) pl). Admitted.
-  
+Lemma cell_of_pl_fmap (fn : Cell M -> Cell M) l pl
+  (tc: triv_cell ≡ fn triv_cell)
+  (pr: Proper ((≡) ==> (≡)) fn)
+  : cell_of_pl (as_tree (fn <$> l)) pl ≡ fn (cell_of_pl (as_tree l) pl).
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  apply map_ind with (P := λ x ,
+    cell_of_pl (as_tree (fn <$> x)) pl ≡ fn (cell_of_pl (as_tree x) pl)).
+  - rewrite fmap_empty.
+    rewrite as_tree_empty.
+    rewrite cell_of_pl_BranchNil.
+    apply tc.
+  - intros. rewrite fmap_insert.
+    assert ((fn <$> m) !! i = None).
+    + rewrite lookup_fmap. unfold "<$>", option_fmap, option_map. rewrite H. trivial.
+    + setoid_rewrite rewrite_map_fold_builder; trivial.
+      * setoid_rewrite <- cell_of_pl_op.
+        have h : Decision (pl ∈ pls_of_loc i) by solve_decision. destruct h.
+        -- setoid_rewrite (cell_of_pl_as_tree_lmap_none pl i); trivial.
+            setoid_rewrite cell_op_comm.
+            setoid_rewrite op_trivial_cell; trivial.
+            ++ setoid_rewrite build_spec; trivial.
+            ++ unfold cell_trivial, triv_cell. intuition.
+            ++ unfold cell_trivial, triv_cell. intuition.
+        -- setoid_rewrite build_rest_triv; trivial.
+           setoid_rewrite op_trivial_cell; trivial;
+              unfold cell_trivial, triv_cell; intuition.
+Qed.
+
 Lemma cell_of_pl_as_tree_lmap_relive l old new pl
     : cell_of_pl (as_tree (lmap_relive l old new)) pl
     ≡ relive_cell (cell_of_pl (as_tree l) pl) old new.
 Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
-  unfold lmap_relive. apply cell_of_pl_fmap. Qed.
+  unfold lmap_relive. apply cell_of_pl_fmap.
+    - apply relive_cell_triv.
+    - unfold Proper, "==>". intros. setoid_rewrite H. trivial.
+Qed.
   
-Global Instance relive_cell_exc_proper : Proper ((≡) ==> (=) ==> (=) ==> (=) ==> (≡)) relive_cell_exc. Admitted.
-    
 Lemma cell_of_pl_as_tree_lmap_relive_exc_self l old new pl loc exc
     : pl ∈ pls_of_loc loc ->
       cell_of_pl (as_tree (lmap_relive_exc l old new loc exc)) pl
@@ -502,7 +532,25 @@ Qed.
 
 Lemma cell_of_pl_as_tree_insert_notin pl loc c j
   (notin : pl ∉ pls_of_loc loc)
-  : cell_of_pl (as_tree (<[loc := c]> j)) pl ≡ cell_of_pl (as_tree j) pl. Admitted.
+  : cell_of_pl (as_tree (<[loc := c]> j)) pl ≡ cell_of_pl (as_tree j) pl.
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  destruct (j !! loc) eqn:jloc.
+  - 
+    assert (<[loc:=c]> j = <[loc:=c]> (delete loc j)) as ef1
+      by ( rewrite insert_delete_insert; trivial ).
+    assert (j = <[loc := c0]> (delete loc j)) as ef2
+      by (rewrite insert_delete; trivial ).
+    assert ((delete loc j) !! loc = None) as ef3 by (rewrite lookup_delete; trivial).
+    full_generalize (delete loc j) as y.
+    rewrite ef1. rewrite ef2.
+    setoid_rewrite rewrite_map_fold_builder; trivial.
+    setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite build_rest_triv; trivial.
+  - setoid_rewrite rewrite_map_fold_builder; trivial.
+    setoid_rewrite <- cell_of_pl_op.
+    setoid_rewrite build_rest_triv; trivial.
+    apply op_trivial_cell. unfold cell_trivial, triv_cell. intuition.
+Qed.
 
 Lemma cell_of_pl_as_tree_lmap_relive_exc_other l old new pl loc exc
     : pl ∉ pls_of_loc loc ->
