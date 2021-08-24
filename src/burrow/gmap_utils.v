@@ -552,21 +552,18 @@ Qed.
   
  (* unfold map_fold. unfold curry. unfold Datatypes.uncurry. unfold "∘". *)
  
- 
-(*Definition gmap_key_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> L) (m: gmap K V) : gmap L V. Admitted.*)
-    
-    (*
 Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
     (fn: K -> option L) (m: gmap K V) : gmap L V. Admitted.
-
+    
 Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
     (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
       | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
       | None => True
     end. Admitted.
-    *)
-
+    
+Lemma lookup_gmap_key_opt_map_not_none `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V} (fn: K -> option L) (m: gmap K V) (k: K) (l: L)
+  : m !! k ≠ None -> fn k = Some l -> (gmap_key_opt_map fn m) !! l ≠ None. Admitted.
+ 
 Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
   | MS : gmap A nat -> multiset A.
 

@@ -419,18 +419,6 @@ Local Instance ic_tpcm (M: Type)
       rewrite ic_get_ic_dot in j2.
       apply mov_monotonic with (x0 := ic_get x i); trivial.
 Defined.
-
-Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> option L) (m: gmap K V) : gmap L V. Admitted.
-    
-Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
-      | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
-      | None => True
-    end. Admitted.
-    
-Lemma lookup_gmap_key_opt_map_not_none `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V} (fn: K -> option L) (m: gmap K V) (k: K) (l: L)
-  : m !! k ≠ None -> fn k = Some l -> (gmap_key_opt_map fn m) !! l ≠ None. Admitted.
     
 Definition ic_key_opt_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M.
@@ -484,7 +472,15 @@ Qed.
 Lemma ic_get_ic_key_opt_map_unit `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) (x: nat)
     (inj: ∀ y , fn y ≠ Some x)
-  : ic_get (ic_key_opt_map fn m) x = unit. Admitted.
+  : ic_get (ic_key_opt_map fn m) x = unit.
+Proof.
+  unfold ic_key_opt_map, ic_get, ic_obj. destruct m.
+  destruct (gmap_key_opt_map fn ic_obj0 !! x) eqn:gkom; trivial. exfalso.
+  have r := gmap_key_opt_map_rev_key_exists fn ic_obj0 x.
+  have r1 := r nat_eq_dec nat_countable.
+  rewrite gkom in r1. deex. destruct_ands. have inj0 := inj k.
+  contradiction.
+Qed.
 
 Lemma ic_get_ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
   : ic_get (ic_left a) i = ic_get a (2 * i).
@@ -660,14 +656,43 @@ Proof.
   - rewrite lookup_singleton_ne; trivial. lia.
 Qed.
 
+Definition ic_cut {M} `{!EqDecision M} `{!TPCM M} (m : InfiniteCopies M) : InfiniteCopies M.
+Proof.
+refine ({|
+  ic_obj := delete 0 (ic_obj m) ;
+  ic_prf := _ ;
+|}).
+ - unfold ic_wf.
+    rewrite bool_decide_spec.
+    unfold map_Forall. intros.
+    destruct m. unfold ic_obj in H.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst. rewrite lookup_delete in H. discriminate.
+    + rewrite lookup_delete_ne in H.
+      * have j1 := elem_ne_unit_of_ic_wf ic_obj0 i ic_prf0.
+        rewrite H in j1. trivial.
+      * crush.
+Defined.
+
+Lemma ic_get_ic_cut {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M)
+  : ic_get (ic_cut a) 0 = unit.
+Proof. unfold ic_get, ic_cut, ic_obj. rewrite lookup_delete. trivial.
+Qed.
+
+Lemma ic_get_ic_cut_ne {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) (i: nat)
+  : i ≠ 0 -> ic_get (ic_cut a) i = ic_get a i.
+Proof. intro. unfold ic_get, ic_cut, ic_obj. destruct a. rewrite lookup_delete_ne. 
+  - trivial. - crush.
+Qed.
+
 #[refine]
 Local Instance ic_tpcm_embed (M: Type)
     `{!EqDecision M} `{!TPCM M}
   : TPCMEmbed M (InfiniteCopies M) := {
     embed := ic_singleton ;
     eproject := λ a, ic_get a 0 ;
-}. Admitted.
-(*
+    erest := ic_cut ;
+}.
 Proof.
   - intros. unfold m_valid, ic_tpcm. intro.
     have h : Decision (i = 0) by solve_decision. destruct h.
@@ -691,8 +716,19 @@ Proof.
     + subst. rewrite ic_get_ic_singleton. rewrite ic_get_ic_unit. trivial.
     + rewrite ic_get_ic_singleton_ne; trivial.
   - intros. rewrite ic_get_ic_singleton. trivial.
-  - Admitted.*)
-(*Qed.*)
+  - intros. apply ic_extens. intros. rewrite ic_get_ic_dot.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst i. rewrite ic_get_ic_singleton. rewrite ic_get_ic_cut.
+        rewrite unit_dot. trivial.
+    + rewrite ic_get_ic_singleton_ne; trivial. rewrite ic_get_ic_cut_ne; trivial.
+        rewrite unit_dot_left. trivial.
+  - intros. unfold m_valid, ic_tpcm. intro. rewrite ic_get_ic_dot.
+    have h : Decision (i = 0) by solve_decision. destruct h.
+    + subst i. rewrite ic_get_ic_singleton. rewrite ic_get_ic_cut.
+        rewrite unit_dot. trivial.
+    + rewrite ic_get_ic_singleton_ne; trivial. rewrite ic_get_ic_cut_ne; trivial.
+        rewrite unit_dot_left. trivial.
+Qed.
 
 Lemma m_valid_ic_pair `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M)
     : m_valid a -> m_valid b -> m_valid (ic_pair a b).
@@ -872,7 +908,29 @@ Proof. solve_decision. Qed.
 
 Global Instance bc_FinalRI_countable (small_RI: Type) `{!EqDecision small_RI, !Countable small_RI}
     : Countable (FinalRI small_RI).
-Admitted.
+Proof.
+  set (enc :=
+    fix go e :=
+      match e with
+      | FinalRILeft _ => inl ()
+      | FinalRIRight _ => inr (inl ())
+      | FinalRITriv _ => inr (inr (inl ()))
+      | FinalRINormal _ ri => inr (inr (inr ri))
+      end : (() + (() + (() + small_RI)))
+    ).
+  set (dec :=
+    fix go (e : (() + (() + (() + small_RI)))) :=
+      match e with
+      | inl _ => FinalRILeft small_RI
+      | inr (inl _) => FinalRIRight small_RI
+      | inr (inr (inl _)) => FinalRITriv small_RI
+      | inr (inr (inr ri)) => FinalRINormal small_RI ri
+      end
+    ).
+ refine (inj_countable' enc dec _).
+ intro.
+ destruct x; simpl; f_equal.
+Qed.
 
 #[refine]
 Global Instance bc_refinement_index (𝜇: BurrowCtx)
