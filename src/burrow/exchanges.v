@@ -500,7 +500,11 @@ Lemma initialize_ext gamma m f p ri
   : ∃ alpha , state_inv (live (ExtLoc alpha ri gamma) f ⋅ p).
 Proof.
   destruct p. unfold live in si. rename l0 into p.
-  exists (alloc_alpha (build gamma (CellCon m ∅) ⋅ as_tree p) ri).
+  have is_fresh' := exists_fresh_alloc (branch_op (build gamma (CellCon m ∅)) (as_tree p)) ri.
+  have is_fresh := is_fresh' EqDecision1 Countable0 RefinementIndex0 ((@listset_empty (prod Lifetime M))). clear is_fresh'.
+  deex.
+  
+  exists alpha.
   unfold state_inv, live, "⋅", state_op in *. destruct_ands. split; trivial.
   
   rename H0 into batird.
@@ -515,18 +519,13 @@ Proof.
   
   eapply specific_flows_preserve_branch_all_total_in_refinement_domain
     with (t := (build gamma (CellCon m ∅) ⋅ q))
-         (se := updog_se gamma (alloc_alpha (branch_op (build gamma (CellCon m ∅)) q) ri) ri)
-         (down := updog m gamma (alloc_alpha (branch_op (build gamma (CellCon m ∅)) q) ri) ri)
+         (se := updog_se gamma alpha ri)
+         (down := updog m gamma alpha ri)
          (up   := λ pl, unit); trivial.
          
   - intros. split; trivial. apply updog_se_okay; trivial.
   
-  - assert (is_fresh_nat (branch_op (build gamma (CellCon m ∅)) q) (nat_of_extstep (alloc_alpha (branch_op (build gamma (CellCon m ∅)) q) ri) ri)) by (apply is_fresh_alloc; trivial).
-    rename H0 into is_fresh.
-
-    full_generalize (alloc_alpha (branch_op (build gamma (CellCon m ∅)) q) ri) as alpha.
-
-
+  - 
     unfold specific_flow_cond.
     repeat (rewrite unit_dot_left).
     repeat (rewrite unit_dot).
@@ -621,9 +620,9 @@ Proof.
         setoid_rewrite build_rest_triv at 1; trivial.
         repeat (rewrite unit_dot_left).
         apply specific_exchange_cond_of_whatever2.
-  - setoid_rewrite <- cell_of_pl_op.
+  - intro.
+    setoid_rewrite <- cell_of_pl_op.
     setoid_rewrite cell_reserved_op.
-    intro.
     repeat (rewrite cell_reserved_cell_of_pl_build_empty). trivial.
 Qed.
 
@@ -652,7 +651,12 @@ Lemma initialize_normal (m: M) p
   : ∃ alpha , state_inv (live (BaseLoc RI alpha) m ⋅ p).
 Proof.
   destruct p. unfold live in si. rename l0 into p.
-  exists (alloc_alpha (as_tree p) (triv_ri RI)).
+  
+  have is_fresh' := exists_fresh_alloc_base (as_tree p).
+  have is_fresh := is_fresh' RI EqDecision1 Countable0 RefinementIndex0. clear is_fresh'.
+  
+  deex. exists alpha.
+  
   unfold state_inv, live, "⋅", state_op in *. destruct_ands.
   rewrite multiset_add_empty_left.
   split; trivial.
@@ -673,13 +677,7 @@ Proof.
          
   - intros. split; trivial.
   
-  - assert (is_fresh_nat q
-      (nat_of_basestep RI (alloc_alpha q (triv_ri RI))))
-      as is_fresh
-      by (apply is_fresh_alloc_base; trivial).
-  
-    full_generalize (alloc_alpha q (triv_ri RI)) as alpha.
-
+  - 
     unfold specific_flow_cond.
     repeat (rewrite unit_dot_left).
     repeat (rewrite unit_dot).
