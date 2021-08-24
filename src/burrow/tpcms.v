@@ -230,8 +230,8 @@ Local Instance iprod_tpcm_embed_left (M: Type) (N: Type)
   : TPCMEmbed M (InternalProduct M N) := {
     embed := λ m , InternalProductC m unit ;
     eproject := λ p , match p with InternalProductC m _ => m end ;
-}. Admitted.
-(*
+    erest := λ p , match p with InternalProductC _ m' => InternalProductC unit m' end ;
+}.
 Proof.
   - intros. split; trivial. apply unit_valid.
   - intros. destruct a.
@@ -242,8 +242,10 @@ Proof.
   - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
   - unfold unit at 3. unfold iprod_tpcm. trivial.
   - trivial.
-  - Admitted.*)
-(*Defined.*)
+  - intros. destruct b. unfold dot, iprod_tpcm. rewrite unit_dot. rewrite unit_dot_left.
+      trivial.
+  - intros. destruct b. unfold m_valid, dot, iprod_tpcm. rewrite unit_dot. rewrite unit_dot_left. split; trivial. unfold m_valid, iprod_tpcm in H0. intuition.
+Defined.
 
 Local Remove Hints iprod_tpcm_embed_left : typeclass_instances.
 
@@ -254,8 +256,8 @@ Local Instance iprod_tpcm_embed_right (M: Type) (N: Type)
   : TPCMEmbed N (InternalProduct M N) := {
     embed := λ n , InternalProductC unit n ;
     eproject := λ p , match p with InternalProductC _ n => n end ;
-}. Admitted.
-(*
+    erest := λ p , match p with InternalProductC m' _ => InternalProductC m' unit end ;
+}.
 Proof.
   - intros. split; trivial. apply unit_valid.
   - intros. destruct a.
@@ -266,8 +268,10 @@ Proof.
   - intros. destruct a, b. unfold mov, iprod_tpcm in H. destruct_ands; trivial.
   - unfold unit at 3. unfold iprod_tpcm. trivial.
   - trivial.
-  - Admitted.*)
-(*Defined.*)
+  - intros. destruct b. unfold dot, iprod_tpcm. rewrite unit_dot. rewrite unit_dot_left.
+      trivial.
+  - intros. destruct b. unfold m_valid, dot, iprod_tpcm. rewrite unit_dot. rewrite unit_dot_left. split; trivial. unfold m_valid, iprod_tpcm in H0. intuition.
+Defined.
 
 Local Remove Hints iprod_tpcm_embed_right : typeclass_instances.
 
@@ -416,17 +420,17 @@ Local Instance ic_tpcm (M: Type)
       apply mov_monotonic with (x0 := ic_get x i); trivial.
 Defined.
 
-(*Definition gmap_key_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> L) (m: gmap K V) : gmap L V. Admitted.*)
-    
 Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
     (fn: K -> option L) (m: gmap K V) : gmap L V. Admitted.
-
+    
 Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
     (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
       | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
       | None => True
     end. Admitted.
+    
+Lemma lookup_gmap_key_opt_map_not_none `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V} (fn: K -> option L) (m: gmap K V) (k: K) (l: L)
+  : m !! k ≠ None -> fn k = Some l -> (gmap_key_opt_map fn m) !! l ≠ None. Admitted.
     
 Definition ic_key_opt_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) : InfiniteCopies M.
@@ -455,12 +459,27 @@ Definition ic_left {M} `{!EqDecision M} `{!TPCM M} (a : InfiniteCopies M) :=
   
 Definition ic_right {M} `{!EqDecision M} `{!TPCM M} (b : InfiniteCopies M) :=
   (ic_key_opt_map odd_get b).
+      
   
 Lemma ic_get_ic_key_opt_map `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) (x y: nat)
     (x_eq: fn y = Some x)
     (inj: ∀ x y , fn x = fn y -> fn x ≠ None -> x = y)
-  : ic_get (ic_key_opt_map fn m) x = ic_get m y. Admitted.
+  : ic_get (ic_key_opt_map fn m) x = ic_get m y.
+Proof.
+  unfold ic_key_opt_map, ic_get, ic_obj. destruct m.
+  have r := gmap_key_opt_map_rev_key_exists fn ic_obj0 x.
+  have r1 := r nat_eq_dec nat_countable.
+  destruct (gmap_key_opt_map fn ic_obj0 !! x) eqn:gkom.
+  - deex. destruct_ands. assert (k = y).
+    + apply inj; crush.
+    + subst. rewrite H0. trivial.
+  - destruct (ic_obj0 !! y) eqn:icom; trivial.
+    exfalso.
+    assert (ic_obj0 !! y ≠ None) by crush.
+    have lg := lookup_gmap_key_opt_map_not_none fn ic_obj0 y x H x_eq.
+    crush.
+Qed.
   
 Lemma ic_get_ic_key_opt_map_unit `{!EqDecision M} `{!TPCM M}
     (fn: nat -> option nat) (m: InfiniteCopies M) (x: nat)
