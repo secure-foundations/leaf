@@ -935,12 +935,46 @@ Qed.
 (*Lemma cell_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
   (pl1_in: pl1 ∈ pls_of_loc loc)
   (pl2_in: pl2 ∈ pls_of_loc loc)
-  : cell_of_pl (as_tree l) pl1 ≡ cell_of_pl (as_tree l) pl2. Admitted.*)
+  : cell_of_pl (as_tree l) pl1 ≡ cell_of_pl (as_tree l) pl2.  *)
+
+Lemma m_valid_ac a b c
+  : m_valid (dot (dot a b) c) -> m_valid (dot a c).
+Proof.
+  rewrite dot_comm_right2. intro. eapply valid_monotonic. apply H.
+Qed.
+  
+Lemma valid_child_and_parent_b (t: Branch M) p i j lt_active
+  (vt: valid_totals (refinement_of_nat M RI) t lt_active)
+  : m_valid (dot (cell_live (cell_of_pl t (p, i)))
+      (branch_total (refinement_of_nat M RI) (branch_of_pl t (p++[i], j)) lt_active j)).
+Proof.
+  induction j.
+  - unfold valid_totals in vt. destruct_ands.
+    have fb := forall_branch_all_total_in_refinement_domain _ _ _ H (p, i).
+    rewrite node_all_total_in_refinement_domain_unfold in fb.
+    rewrite cellnode_pl in fb. destruct_ands.
+    rewrite node_total_unfold in H1.
+    unfold in_refinement_domain in H1.
+    have jl := rel_valid_left _ _ _ _ H1.
+    rewrite <- cell_live_plus_cell_total_minus_live in jl.
+    eapply m_valid_ac. apply jl.
+  - setoid_rewrite branchcons_pl in IHj.
+    rewrite branch_total_unfold in IHj.
+    rewrite tpcm_assoc in IHj.
+    eapply m_valid_ac. apply IHj.
+Qed.
 
 Lemma valid_child_and_parent (t: Branch M) p i j lt_active
   (vt: valid_totals (refinement_of_nat M RI) t lt_active)
   : m_valid (dot (cell_live (cell_of_pl t (p, i)))
-      (rel M M (refinement_of_nat M RI j) (node_total (refinement_of_nat M RI) (node_of_pl t (p++[i], j)) lt_active))). Admitted.
+      (rel M M (refinement_of_nat M RI j) (node_total (refinement_of_nat M RI) (node_of_pl t (p++[i], j)) lt_active))).
+Proof.
+  have l := valid_child_and_parent_b t p i j lt_active vt.
+  setoid_rewrite branchcons_pl in l.
+  rewrite branch_total_unfold in l.
+  rewrite tpcm_assoc in l. unfold project in l.
+  eapply valid_monotonic. apply l.
+Qed.
 
 Lemma specific_exchange_cond_of_no_change2 ref view x y z w
   : specific_exchange_cond ref view x y x y z w z w.
@@ -955,9 +989,16 @@ Lemma node_of_pl_as_tree_eq (l: lmap M RI) (pl1 pl2: PathLoc) (loc: Loc RI)
   (pl1_in: pl1 ∈ pls_of_loc loc)
   (pl2_in: pl2 ∈ pls_of_loc loc)
   : node_of_pl (as_tree l) pl1 ≡ node_of_pl (as_tree l) pl2.
-  (* call node_of_pl_build_eq *)
-  Admitted.
-  
+Proof using Countable0 EqDecision0 EqDecision1 M RI RefinementIndex0 TPCM0.
+  apply map_ind with (P := λ (y: gmap (Loc RI) (Cell M)),
+  node_of_pl (as_tree y) pl1 ≡ node_of_pl (as_tree y) pl2).
+  - rewrite as_tree_empty. rewrite node_of_pl_BranchNil. rewrite node_of_pl_BranchNil.
+      trivial.
+  - intros. setoid_rewrite rewrite_map_fold_builder; trivial.
+    setoid_rewrite <- node_of_pl_op.
+    setoid_rewrite H0.
+    setoid_rewrite (node_of_pl_build_eq pl1 pl2 loc); trivial.
+Qed.
   
 Lemma swap_cross_left (gamma1 gamma2 : Loc RI) (m m1 m2 : M) p
   (si: state_inv (live gamma1 m ⋅ live (CrossLoc gamma1 gamma2) (pair_up RI m1 m2) ⋅ p))
