@@ -114,7 +114,27 @@ Lemma exists_fresh_alloc_base branch
 
 Lemma trivial_node_at_fresh (b: Branch M) p i
   (is_fresh: is_fresh_nat b i)
-  : node_trivial (node_of_pl b (p, i)). Admitted.
+  : node_trivial (node_of_pl b (p, i)).
+Proof.
+  unfold is_fresh_nat in *.
+  enough (node_trivial (node_of_pl b (p, i)) \/ let (p,idx) := (p, i) in node_no_idx (node_of_pl b (p, i)) i idx).
+  - destruct H.
+    + trivial.
+    + unfold node_no_idx in *. destruct (node_of_pl b (p, i)). destruct_ands. contradiction.
+  - apply (pl_reverse_induction1_node
+    (b)
+    (λ pl b , branch_trivial b \/ let (p,idx) := pl in branch_no_idx b i idx)
+    (λ pl n , node_trivial n \/ let (p,idx) := pl in node_no_idx n i idx)).
+    + right. trivial.
+    + intros. inversion H.
+      * left. unfold node_trivial in H0. intuition.
+      * right. unfold node_no_idx in H0. intuition.
+    + intros. inversion H.
+      * unfold branch_trivial in H0. intuition.
+      * unfold branch_no_idx in H0. intuition.
+    + intros. destruct pl. right. unfold branch_no_idx. trivial.
+    + intros. left. unfold node_trivial, triv_node, cell_trivial, triv_cell. intuition.
+Qed.
   
 Lemma node_no_idx_of_op (node1 node2 : Node M) (f: nat) (idx: nat)
   (nni: node_no_idx (node1 ⋅ node2) f idx) : node_no_idx node2 f idx
