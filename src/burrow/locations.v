@@ -146,13 +146,27 @@ Fixpoint pls_of_loc {RI} `{!EqDecision RI} `{!Countable RI}
         set_map (augment (nat_of_leftstep RI r)) (pls_of_loc l)
       ∪ set_map (augment (nat_of_rightstep RI l)) (pls_of_loc r)
   end.
-    
 
+Definition better_decode_nat {T} `{!EqDecision T} `{!Countable T} (n: nat) : option T
+  := match (decode_nat n : option T) with
+    | None => None
+    | Some t => if decide (encode_nat t = n) then Some t else None
+    end.
+  
+Lemma better_decode_encode_nat `{Countable T} (x : T) : better_decode_nat (encode_nat x) = Some x.
+Proof.
+  unfold better_decode_nat. destruct (decode_nat (encode_nat x)) eqn:X.
+  - case_decide.
+    + f_equal. apply encode_nat_inj. trivial.
+    + rewrite decode_encode_nat in X. inversion X. rewrite H2 in H0. contradiction.
+  - rewrite decode_encode_nat in X. discriminate.
+Qed.
+    
 Definition ri_of_nat (RI : Type)
     {M} `{!EqDecision M, !TPCM M}
     {RI} `{!EqDecision RI} `{!Countable RI} `{!RefinementIndex M RI}
     (n: nat) : RI :=
-  match decode_nat n with
+  match better_decode_nat n with
   | None => triv_ri RI
   | Some (SDBase _ _) => triv_ri RI
   | Some (SDExt _ ri) => ri
@@ -332,7 +346,7 @@ Proof. unfold refinement_of_nat. f_equal.
     unfold pls_of_loc in is_in. generalize is_in. clear is_in.
     rewrite elem_of_map. intro. deex. destruct_ands. unfold augment in H.
     destruct x. inversion H. subst i. unfold ri_of_nat, nat_of_extstep.
-    rewrite decode_encode_nat. trivial.
+    rewrite better_decode_encode_nat. trivial.
 Qed.
 
 Lemma pl_in_pls_of_loc_extloc
@@ -359,19 +373,19 @@ Lemma ri_of_nat_nat_of_extstep
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   alpha (ri: RI)
   : (ri_of_nat RI (nat_of_extstep alpha ri) = ri).
-Proof. unfold ri_of_nat, nat_of_extstep. rewrite decode_encode_nat. trivial. Qed.
+Proof. unfold ri_of_nat, nat_of_extstep. rewrite better_decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_leftstep
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   (gamma2 : Loc RI)
   : (ri_of_nat RI (nat_of_leftstep RI gamma2)) = left_ri RI.
-Proof. unfold ri_of_nat, nat_of_leftstep. rewrite decode_encode_nat. trivial. Qed.
+Proof. unfold ri_of_nat, nat_of_leftstep. rewrite better_decode_encode_nat. trivial. Qed.
   
 Lemma ri_of_nat_nat_of_rightstep
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
   (gamma1 : Loc RI)
   : (ri_of_nat RI (nat_of_rightstep RI gamma1)) = right_ri RI.
-Proof. unfold ri_of_nat, nat_of_rightstep. rewrite decode_encode_nat. trivial. Qed.
+Proof. unfold ri_of_nat, nat_of_rightstep. rewrite better_decode_encode_nat. trivial. Qed.
 
 Lemma i_value_of_pls_of_loc_ext p i gamma alpha (ri: RI)
   (in_pls: (p, i) ∈ pls_of_loc (ExtLoc alpha ri gamma))
@@ -392,7 +406,7 @@ Lemma ri_of_nat_nat_of_basestep
     alpha
   : ri_of_nat RI (nat_of_basestep RI alpha) = triv_ri RI.
 Proof.
-  unfold ri_of_nat, nat_of_basestep. rewrite decode_encode_nat. trivial. Qed.
+  unfold ri_of_nat, nat_of_basestep. rewrite better_decode_encode_nat. trivial. Qed.
   
 Lemma rel_refinement_of_triv_ri_defined
     {M} `{!EqDecision M, !TPCM M} `{!RefinementIndex M RI}
@@ -773,16 +787,53 @@ Proof.
       have z := encode_nat_inj _ _ H3. discriminate.
 Qed.
 
-(*Lemma eq_encode {T} `{!EqDecision T, !Countable T} (i : nat) (t: T)
-  (dn : decode_nat i = Some t)
+Lemma eq_encode {T} `{!EqDecision T, !Countable T} (i : nat) (t: T)
+  (dn : better_decode_nat i = Some t)
   : i = encode_nat t.
 Proof.
-  assert ((decode_nat (encode_nat t)) = Some t).
-  - unfold encode_nat, decode_nat. apply decode_encode.*)
+  unfold better_decode_nat in dn. destruct (decode_nat i) eqn:X.
+  - case_decide.
+    + subst. inversion dn. trivial.
+    + discriminate.
+  - discriminate.
+Qed.
 
 Lemma not_in_of_decode_nat_base j n p i (loc: Loc RI)
-  (dn : decode_nat i = Some (SDBase RI n))
-  : (p ++ [j], i) ∉ pls_of_loc loc. Admitted.
+  (dn : better_decode_nat i = Some (SDBase RI n))
+  : (p ++ [j], i) ∉ pls_of_loc loc.
+Proof.
+  destruct loc.
+  - unfold pls_of_loc. rewrite elem_of_singleton. intro. inversion H.
+    have qq := app1_ne_empty p j. contradiction.
+  - cbn [pls_of_loc]. rewrite elem_of_map. intro. deex. unfold augment in H. destruct x. destruct_ands. inversion H. subst i.
+    unfold nat_of_extstep in dn. rewrite better_decode_encode_nat in dn.
+    discriminate.
+  - cbn [pls_of_loc]. rewrite elem_of_union. rewrite elem_of_map. rewrite elem_of_map.
+    intro. destruct H.
+    + deex. destruct_ands. unfold augment in H. destruct x. inversion H. subst i.
+      rewrite better_decode_encode_nat in dn. discriminate.
+    + deex. destruct_ands. unfold augment in H. destruct x. inversion H. subst i.
+      rewrite better_decode_encode_nat in dn. discriminate.
+Qed.
+  
+Lemma not_in_of_decode_none p i (loc: Loc RI)
+  (dn : (better_decode_nat i : option (StepDesc RI)) = None)
+  : (p, i) ∉ pls_of_loc loc.
+Proof.
+  destruct loc.
+  - unfold pls_of_loc. rewrite elem_of_singleton. intro. inversion H.
+    subst i. unfold nat_of_basestep in dn. rewrite better_decode_encode_nat in dn.
+    discriminate.
+  - cbn [pls_of_loc]. rewrite elem_of_map. intro. deex. unfold augment in H. destruct x. destruct_ands. inversion H. subst i.
+    unfold nat_of_extstep in dn. rewrite better_decode_encode_nat in dn.
+    discriminate.
+  - cbn [pls_of_loc]. rewrite elem_of_union. rewrite elem_of_map. rewrite elem_of_map.
+    intro. destruct H.
+    + deex. destruct_ands. unfold augment in H. destruct x. inversion H. subst i.
+      rewrite better_decode_encode_nat in dn. discriminate.
+    + deex. destruct_ands. unfold augment in H. destruct x. inversion H. subst i.
+      rewrite better_decode_encode_nat in dn. discriminate.
+Qed.
 
 Lemma append1_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) i
   (pl1_in : (p1, i1) ∈ pls_of_loc loc)
@@ -792,15 +843,40 @@ Lemma append1_to_pl_in_loc p1 i1 p2 i2 (loc: Loc RI) i
   ∨ (∀ loc' : Loc RI,
        ((p1 ++ [i1], i) ∉ pls_of_loc loc') ∧ (p2 ++ [i2], i) ∉ pls_of_loc loc').
 Proof.
-  destruct ((decode_nat i) : option (StepDesc RI)) eqn:dn.
+  destruct ((better_decode_nat i) : option (StepDesc RI)) eqn:dn.
   - destruct s.
     + right. intros. split.
       * apply not_in_of_decode_nat_base with (n := n). trivial.
       * apply not_in_of_decode_nat_base with (n := n). trivial.
     + left. exists (ExtLoc n r loc). split.
       * cbn [pls_of_loc]. rewrite elem_of_map. unfold augment. exists (p1, i1).
-          split; trivial. f_equal. unfold nat_of_extstep. Admitted.
-        (*apply _nat_inj.*)
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+      * cbn [pls_of_loc]. rewrite elem_of_map. unfold augment. exists (p2, i2).
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+    + left. exists (CrossLoc loc l). split.
+      * cbn [pls_of_loc]. rewrite elem_of_union. left.
+          rewrite elem_of_map. unfold augment. exists (p1, i1).
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+      * cbn [pls_of_loc]. rewrite elem_of_union. left.
+          rewrite elem_of_map. unfold augment. exists (p2, i2).
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+    + left. exists (CrossLoc l loc). split.
+      * cbn [pls_of_loc]. rewrite elem_of_union. right.
+          rewrite elem_of_map. unfold augment. exists (p1, i1).
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+      * cbn [pls_of_loc]. rewrite elem_of_union. right.
+          rewrite elem_of_map. unfold augment. exists (p2, i2).
+          split; trivial. f_equal. unfold nat_of_extstep.
+          apply eq_encode. trivial.
+  - right. intros. split.
+      + apply not_in_of_decode_none. trivial.
+      + apply not_in_of_decode_none. trivial.
+Qed.
 
 Lemma forall_not_in p j i
   (not_in : ∀ loc : Loc RI, (p, j) ∉ pls_of_loc loc)
