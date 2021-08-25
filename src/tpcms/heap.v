@@ -21,8 +21,8 @@ Qed.
 
 Lemma map_somes_insert {P} {V} `{Countable P} (σ: gmap P V) l v
   : map_somes (<[ l := v ]> σ) = <[ l := Some v ]> (map_somes σ).
-  Admitted.
- 
+Proof.
+  unfold map_somes. rewrite fmap_insert. trivial. Qed.
 
 Section HeapT.
 
@@ -111,7 +111,6 @@ Lemma auth_frag_update' (l: P) (v1 v2: V) (m: gmap P (option V))
   (va : m !! l = Some (Some v1))
   : mov (dot (auth m) (frag {[l := Some v1]}))
     (dot (auth (<[l := Some v2]> m)) (frag {[l := Some v2]})).
-(*
 Proof.
   unfold mov, af_tpcm, af_mov. intro. unfold af_valid, af_dot, dot, gmap_tpcm,
       auth, frag. destruct z. unfold auth_dot.
@@ -152,8 +151,7 @@ Proof.
         unfold unit. rewrite lookup_empty.
         rewrite lookup_singleton_ne; trivial.
         rewrite lookup_singleton_ne; trivial.
-Qed. *) (* long Qed *)
-Admitted.
+Qed.
 
 Lemma auth_frag_update (l: P) (v1 v2: V) (σ: gmap P V)
   (va : σ !! l = Some v1)
