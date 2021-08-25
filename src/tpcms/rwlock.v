@@ -212,7 +212,7 @@ Qed.
 
 Lemma rw_mov_exc_release {M} `{!EqDecision M} `{!TPCM M} (exc: bool) (rc: Z) (x y: M)
   : rw_exchange_cond
-    (Central exc rc x ⋅ ExcGuard)
+    (Central exc rc y ⋅ ExcGuard)
     x
     (Central false rc x)
     (unit: M).
@@ -246,7 +246,7 @@ Proof.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Lemma rw_mov_shared_acquire {M} `{!EqDecision M} `{!TPCM M} (exc: bool) (rc: Z) (x: M)
+Lemma rw_mov_shared_acquire {M} `{!EqDecision M} `{!TPCM M} (rc: Z) (x: M)
   : rw_mov
     (Central false rc x ⋅ ShPending)
     (Central false rc x ⋅ ShGuard x).
@@ -469,9 +469,6 @@ Proof.
   apply rw_mov_exc_begin.
 Qed.
 
-Lemma sep (a b : iProp Σ) :
-  a -∗ b -∗ a ∗ b. Admitted.
-
 Lemma rw_exc_acquire 𝛼 𝛾 exc (x: M)
    : L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central exc 0 x)
   -∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) ExcPending
@@ -490,3 +487,58 @@ Proof.
     iFrame.
 Qed.
   
+Lemma rw_exc_release 𝛼 𝛾 exc rc (x y: M)
+   : L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central exc rc y)
+  -∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) ExcGuard
+  -∗ L 𝛾 x
+ ==∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central false rc x).
+Proof.
+  iIntros "a b c".
+  iDestruct (L_join with "a b") as "a".
+  iMod (FrameExchange _ _ _ _ (unit: M) _ (Central false rc x) with "a c") as "[a b]".
+  - apply rw_mov_exc_release.
+  - iModIntro. iFrame.
+Qed.
+
+Lemma rw_shared_begin 𝛾 exc rc (x: M)
+  : L 𝛾 (Central exc rc x) ==∗ L 𝛾 (Central exc (rc+1) x) ∗ L 𝛾 ShPending.
+Proof.
+  rewrite <- L_op.
+  apply FrameUpdate.
+  apply rw_mov_shared_begin.
+Qed.
+  
+Lemma rw_shared_acquire 𝛾 rc (x: M)
+  : L 𝛾 (Central false rc x) -∗ L 𝛾 ShPending ==∗ L 𝛾 (Central false rc x) ∗ L 𝛾 (ShGuard x).
+Proof.
+  iIntros "A B".
+  iDestruct (L_join with "A B") as "A".
+  iMod (FrameUpdate _ _ (dot (Central false rc x) (ShGuard x)) with "A") as "A".
+  - apply rw_mov_shared_acquire.
+  - rewrite L_op. iModIntro. iFrame.
+Qed.
+  
+Lemma rw_shared_release 𝛾 exc rc (x y: M)
+  : L 𝛾 (Central exc rc x) -∗ L 𝛾 (ShGuard y) ==∗ L 𝛾 (Central exc (rc-1) x).
+Proof.
+  iIntros "A B".
+  iDestruct (L_join with "A B") as "A".
+  iMod (FrameUpdate _ _ ((Central exc (rc-1) x)) with "A") as "A".
+  - apply rw_mov_shared_release.
+  - iModIntro. iFrame.
+Qed.
+  
+Lemma rw_shared_retry 𝛾 exc rc (x: M)
+  : L 𝛾 (Central exc rc x) -∗ L 𝛾 ShPending ==∗ L 𝛾 (Central exc (rc-1) x).
+Proof.
+  iIntros "A B".
+  iDestruct (L_join with "A B") as "A".
+  iMod (FrameUpdate _ _ ((Central exc (rc-1) x)) with "A") as "A".
+  - apply rw_mov_shared_retry.
+  - iModIntro. iFrame.
+Qed.
+  
+Lemma rw_borrow_back 𝛼 𝛾 (x: M) 𝜅
+  : B 𝜅 (extend_loc 𝛼 (rwlock_ref M) 𝛾) (ShGuard x) ⊢ B 𝜅 𝛾 x.
+Proof.
+  apply BorrowBack. apply rw_mov_shared_borrow. Qed.
