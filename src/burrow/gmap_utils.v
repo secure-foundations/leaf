@@ -35,7 +35,18 @@ Lemma set_easy_induct_strong `{FinSet A T} {B}
   (R_u : R u)
   (ind: ∀ a b , a ∈ s -> R b -> R (fn a b))
   : R (set_fold fn u s).
-Admitted.
+Proof.
+  unfold set_fold. unfold "∘".
+  assert (∀ y , y ∈ elements s -> y ∈ s) as sub
+    by ( intro; rewrite elem_of_elements; trivial ).
+  generalize sub. clear sub.
+  induction (elements s).
+  - unfold foldr. trivial.
+  - intro. cbn [foldr]. apply ind.
+    + apply sub. unfold "∈". apply elem_of_list_here.
+    + apply IHl. 
+      * intros. apply sub. apply elem_of_list_further. trivial.
+Qed.
 
 Lemma set_fold_add_1_element `{FinSet A T} {B}
   (s: T)
@@ -274,7 +285,14 @@ Qed.
 
 Lemma get_set_without {A} `{!EqDecision A} `{Countable A}
   (x: A) (s: gset A) (is_in : x ∈ s)
-  : ∃ t , x ∉ t /\ t ∪ {[ x ]} = s. Admitted.
+  : ∃ t , x ∉ t /\ t ∪ {[ x ]} = s.
+Proof.
+  exists (s ∖ {[ x ]}). split.
+  - set_solver.
+  - apply set_eq. intro. rewrite elem_of_union. rewrite elem_of_difference.
+    rewrite elem_of_singleton.
+    have h : Decision (x0 = x) by solve_decision. destruct h; subst; intuition.
+Qed.
  
 (*Lemma gset_subset_assoc `{EqDecision A, Countable A}
   (s1: gset A)
@@ -447,10 +465,21 @@ Proof. apply (set_relate (=)).
 Qed.
 
 Definition set_set_map `{Countable A} `{Countable B}
-    (s: gset A) (fn : A -> gset B) : gset B. Admitted.
+    (s: gset A) (fn : A -> gset B) : gset B :=
+  set_fold (λ x t , fn x ∪ t) ∅ s.
     
 Lemma lookup_set_set_map `{Countable A} `{Countable B} (y: B) (s: gset A) (fn: A -> gset B)
-  : (∃ x , x ∈ s /\ y ∈ fn x) -> y ∈ set_set_map s fn. Admitted.
+  : (∃ x , x ∈ s /\ y ∈ fn x) -> y ∈ set_set_map s fn.
+Proof.
+  intros. deex. destruct_ands.
+  unfold set_set_map.
+  have j := get_set_without x s H1.
+  have j0 := j EqDecision0. deex. clear j. destruct_ands. subst s.
+  rewrite set_fold_add_1_element.
+  - rewrite elem_of_union. left. trivial.
+  - trivial.
+  - intros. set_solver.
+Qed.
 
 Lemma rewrite_map_as_insertion `{Countable K} {V} (y: gmap K V) i c
   (y_i : y !! i = Some c) : ∃ y', y = <[i:=c]> y' /\ y' !! i = None.
@@ -550,20 +579,6 @@ Proof.
         -- trivial.
 Qed.
   
- (* unfold map_fold. unfold curry. unfold Datatypes.uncurry. unfold "∘". *)
- 
-Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> option L) (m: gmap K V) : gmap L V. Admitted.
-    
-Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
-    (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
-      | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
-      | None => True
-    end. Admitted.
-    
-Lemma lookup_gmap_key_opt_map_not_none `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V} (fn: K -> option L) (m: gmap K V) (k: K) (l: L)
-  : m !! k ≠ None -> fn k = Some l -> (gmap_key_opt_map fn m) !! l ≠ None. Admitted.
- 
 Inductive multiset (A: Type) `{EqDecision A, Countable A} :=
   | MS : gmap A nat -> multiset A.
 
@@ -855,4 +870,59 @@ Proof.
   - rewrite lookup_merge in j. unfold diag_None, multiset_add_merge in j.
       rewrite lookup_singleton_ne in j; trivial.
       destruct (g !! k), (g0 !! k); crush.
+Qed.
+
+ 
+Definition gkom_merge {V} (a b : option V) :=
+  match a, b with
+  | None, y => y
+  | Some x, _ => Some x
+  end.
+
+Definition opt_singleton `{!EqDecision L, !Countable L} {V} (lopt: option L) (v: V) : gmap L V
+  := match lopt with Some l => {[ l := v ]} | None => ∅ end.
+ 
+Definition gmap_key_opt_map `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
+    (fn: K -> option L) (m: gmap K V) : gmap L V
+  := map_fold (λ k a b , merge gkom_merge (opt_singleton (fn k) a) b) (∅ : gmap L V) m.
+    
+Lemma gmap_key_opt_map_rev_key_exists `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V}
+    (fn: K -> option L) (m: gmap K V) (l: L) : match gmap_key_opt_map fn m !! l with
+      | Some t => ∃ k , fn k = Some l /\ m !! k = Some t
+      | None => True
+    end.
+Proof.
+  unfold gmap_key_opt_map. apply gmap_easy_induct.
+  - rewrite lookup_empty. trivial.
+  - intros. rewrite lookup_merge. unfold diag_None, gkom_merge, opt_singleton.
+      destruct (b !! l); destruct (fn k) eqn:fnk; trivial.
+      + have h : Decision (l0 = l) by solve_decision. destruct h.
+        * subst l0. rewrite lookup_singleton. deex. exists k. intuition.
+        * rewrite lookup_singleton_ne; trivial.
+      + have h : Decision (l0 = l) by solve_decision. destruct h.
+        * subst l0. rewrite lookup_singleton. deex. exists k. intuition.
+        * rewrite lookup_singleton_ne; trivial.
+Qed.
+    
+Lemma lookup_gmap_key_opt_map_not_none `{!EqDecision K, !Countable K} `{!EqDecision L, !Countable L} {V} (fn: K -> option L) (m: gmap K V) (k: K) (l: L)
+  : m !! k ≠ None -> fn k = Some l -> (gmap_key_opt_map fn m) !! l ≠ None.
+Proof.
+  intros.
+  unfold gmap_key_opt_map.
+  destruct (m !! k) eqn:mk.
+  - apply gmap_induct_with_elem with (key := k) (val := v).
+    + trivial.
+    + intros. rewrite lookup_merge. unfold diag_None, gkom_merge, opt_singleton.
+        rewrite H0. rewrite lookup_singleton. discriminate.
+    + intros. rewrite lookup_merge. unfold diag_None, gkom_merge, opt_singleton.
+        destruct (fn k0) eqn:fnk0.
+        * have h : Decision (l0 = l) by solve_decision. destruct h.
+          -- subst l0. rewrite lookup_singleton. discriminate.
+          -- rewrite lookup_singleton_ne; trivial. destruct (b !! l).
+            ++ discriminate.
+            ++ contradiction.
+        * rewrite lookup_empty. destruct (b !! l).
+          -- discriminate.
+          -- contradiction.
+  - contradiction.
 Qed.

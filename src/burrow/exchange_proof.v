@@ -805,7 +805,7 @@ Proof.
       branch1_equiv branch2_equiv reserved_untouched amval rec_bt batird.
   destruct_ands.
   repeat split; trivial.
-Admitted.
+Qed.
 
 
 Lemma specexc_branch (t t': Branch M) (active: Lifetime) (branch branch': Branch M) (se: gset PathLoc) p i
@@ -1007,7 +1007,7 @@ Proof.
       branch1_equiv branch2_equiv reserved_untouched amval batird.
   destruct_ands.
   repeat split; trivial.
-Admitted.
+Qed.
 
 Lemma valid_of_mov (x y : M) : m_valid x -> mov x y -> m_valid y.
 Proof.

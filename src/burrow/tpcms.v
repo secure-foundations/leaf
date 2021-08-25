@@ -1116,7 +1116,7 @@ refine ({|
       (bc_refs 𝜇 ri)
 |}).
  - typeclasses eauto.
- - Print Instances TPCMEmbed.
+ - 
     apply ic_tpcm_embed_extend.
     apply iprod_tpcm_embed_left.
 Defined.
@@ -1126,7 +1126,6 @@ Global Instance NewTPCM_HasTPCM M `{!EqDecision M} `{TPCM M}
   : HasTPCM (NewTPCMCtx 𝜇 M) M.
 Proof.
   split. unfold bc_small_M, NewTPCMCtx.
-  Print Instances TPCMEmbed.
   apply ic_tpcm_embed_extend.
   apply iprod_tpcm_embed_right.
 Qed.
