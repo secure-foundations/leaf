@@ -891,6 +891,7 @@ Instance bc_small_RI_eqdec_inst (𝜇: BurrowCtx) : EqDecision (bc_small_RI 𝜇
 Instance bc_small_RI_countable_inst (𝜇: BurrowCtx) : Countable (bc_small_RI 𝜇).
   Proof. apply bc_small_RI_countable. Defined.
 
+
 Definition bc_M (𝜇: BurrowCtx) : Type := InfiniteCopies (bc_small_M 𝜇).
 
 Inductive FinalRI (small_RI: Type) :=
@@ -959,13 +960,19 @@ Global Instance bc_refinement_index (𝜇: BurrowCtx)
  - intros. rewrite <- ic_right_ic_pair with (a0 := a). apply m_valid_ic_right; trivial.
 Defined.
 
+(* BurrowState stuff *)
+
 Definition BurrowState (𝜇: BurrowCtx)
     := State (InfiniteCopies (bc_small_M 𝜇)) (FinalRI (bc_small_RI 𝜇)).
     
-Instance ref_equiv {M} `{!EqDecision M} `{!TPCM M}
-  : Equiv (Refinement M M) := λ (ref1 ref2: Refinement M M) ,
-      (∀ r , rel_defined M M ref1 r <-> rel_defined M M ref2 r)
-      /\ (∀ r , rel M M ref1 r = rel M M ref2 r).
+Instance ref_equiv {M} `{!EqDecision M} `{!TPCM M} {R} `{!EqDecision R} `{!TPCM R}
+  : Equiv (Refinement R M) := λ (ref1 ref2: Refinement R M) ,
+      (∀ r , rel_defined R M ref1 r <-> rel_defined R M ref2 r)
+      /\ (∀ r , rel R M ref1 r = rel R M ref2 r).
+      
+Instance ref_equiv_trans {M} `{!EqDecision M} `{!TPCM M} : Transitive ref_equiv. Admitted.
+Instance ref_equiv_symm {M} `{!EqDecision M} `{!TPCM M} : Symmetric ref_equiv. Admitted.
+Instance ref_equiv_refl {M} `{!EqDecision M} `{!TPCM M} : Reflexive ref_equiv. Admitted.
 
 Class HasTPCM (𝜇: BurrowCtx) (M: Type) `{!EqDecision M, !TPCM M}
     := { inctx_embed :> TPCMEmbed M (InfiniteCopies (bc_small_M 𝜇)) }.
@@ -989,6 +996,157 @@ Class HasRef (𝜇: BurrowCtx) {R M: Type}
             refinement_embed_dst (InfiniteCopies (bc_small_M 𝜇)) M (InfiniteCopies (bc_small_M 𝜇))
             (refinement_embed_src R M (InfiniteCopies (bc_small_M 𝜇)) ref)
         }.
+        
+Definition SingleTPCMCtx M `{!EqDecision M} `{TPCM M} : BurrowCtx.
+Proof.
+refine ({|
+  bc_small_M := M ;
+  bc_small_RI := () ;
+  bc_refs := λ l , refinement_trivial ;
+|}).
+Defined.
+
+Global Instance SingleTPCMCtx_HasTPCM M `{!EqDecision M} `{TPCM M}
+  : HasTPCM (SingleTPCMCtx M) M.
+Proof.
+  split. typeclasses eauto. Qed.
+
+Definition refinement_sqr M N
+    `{!EqDecision M} `{TPCM M}
+    `{!EqDecision N} `{TPCM N}
+    `{!TPCMEmbed M N}
+    (R: Refinement M M) : Refinement N N :=
+      refinement_embed_dst N M N (refinement_embed_src M M N R).
+
+Instance refinement_sqr_proper M N
+    `{!EqDecision M} `{TPCM M}
+    `{!EqDecision N} `{TPCM N}
+    `{!TPCMEmbed M N}
+    : Proper ((≡) ==> (≡)) (refinement_sqr M N). Admitted.
+    
+Instance refinement_embed_dst_proper R M B
+    `{!EqDecision R} `{!TPCM R}
+    `{!EqDecision M} `{!TPCM M}
+    `{!EqDecision B} `{!TPCM B}
+    `{!TPCMEmbed M B}
+    : Proper ((≡) ==> (≡)) (refinement_embed_dst R M B). Admitted.
+
+Lemma refinement_embed_src_dst
+    `{!EqDecision A} `{TPCM A}
+    `{!EqDecision B} `{TPCM B}
+    `{!EqDecision X} `{TPCM X}
+    `{!EqDecision Y} `{TPCM Y}
+    `{!TPCMEmbed A X}
+    `{!TPCMEmbed B Y}
+    (ref: Refinement A B)
+    : (refinement_embed_src A Y X (refinement_embed_dst A B Y ref))
+    ≡ (refinement_embed_dst X B Y (refinement_embed_src A B X ref)). Admitted.
+    
+Lemma refinement_swap_iden A B X Y S T
+    `{!EqDecision A} `{TPCM A}
+    `{!EqDecision B} `{TPCM B}
+    `{!EqDecision X} `{TPCM X}
+    `{!EqDecision Y} `{TPCM Y}
+    `{!EqDecision S} `{TPCM S}
+    `{!EqDecision T} `{TPCM T}
+    (e_ax: TPCMEmbed A X)
+    (e_by: TPCMEmbed B Y)
+    (e_as: TPCMEmbed A S)
+    (e_sx: TPCMEmbed S X)
+    (e_bt: TPCMEmbed B T)
+    (e_ty: TPCMEmbed T Y)
+    (c1: e_ax = embed_transitive A S X e_as e_sx)
+    (c2: e_by = embed_transitive B T Y e_bt e_ty)
+    (ref : Refinement A B)
+  :
+  (refinement_embed_dst X T Y (refinement_embed_src S T X (
+    (refinement_embed_dst S B T (refinement_embed_src A B S ref))
+  ))) ≡
+  (refinement_embed_dst X B Y (refinement_embed_src A B X ref)).
+Proof.
+  rewrite c1. clear c1.
+  rewrite c2. clear c2.
+  unfold "≡", ref_equiv. split.
+  - intro. split.
+    + unfold refinement_embed_dst, rel_defined, refinement_embed_src, rel_defined,
+        refinement_embed_dst, rel_defined, refinement_embed_src, rel_defined.
+      intros. intuition.
+    + unfold refinement_embed_dst, rel_defined, refinement_embed_src, rel_defined,
+        refinement_embed_dst, rel_defined, refinement_embed_src, rel_defined.
+      intros. intuition.
+      apply valid_eproject. trivial.
+  - intro. 
+    unfold refinement_embed_dst, rel, refinement_embed_src, rel,
+        refinement_embed_dst, rel, refinement_embed_src, rel. trivial.
+Qed.
+
+Definition NewTPCMCtx (𝜇: BurrowCtx) M `{!EqDecision M} `{TPCM M} : BurrowCtx.
+Proof.
+refine ({|
+  bc_small_M := InternalProduct (InfiniteCopies (bc_small_M 𝜇)) M ;
+  bc_small_RI := bc_small_RI 𝜇 ;
+  bc_refs := λ ri , refinement_sqr
+      (InfiniteCopies (bc_small_M 𝜇))
+      (InfiniteCopies (InternalProduct (InfiniteCopies (bc_small_M 𝜇)) M))
+      (bc_refs 𝜇 ri)
+|}).
+ - typeclasses eauto.
+ - Print Instances TPCMEmbed.
+    apply ic_tpcm_embed_extend.
+    apply iprod_tpcm_embed_left.
+Defined.
+
+Global Instance NewTPCM_HasTPCM M `{!EqDecision M} `{TPCM M}
+    (𝜇 : BurrowCtx)
+  : HasTPCM (NewTPCMCtx 𝜇 M) M.
+Proof.
+  split. unfold bc_small_M, NewTPCMCtx.
+  Print Instances TPCMEmbed.
+  apply ic_tpcm_embed_extend.
+  apply iprod_tpcm_embed_right.
+Qed.
+
+Global Instance NewTPCM_KeepsTPCM
+    M `{!EqDecision M} `{TPCM M}
+    N `{!EqDecision N} `{TPCM N}
+    (𝜇 : BurrowCtx) `{!HasTPCM 𝜇 N}
+  : HasTPCM (NewTPCMCtx 𝜇 M) N.
+Proof.
+  split. unfold bc_small_M, NewTPCMCtx.
+  apply (embed_transitive N (InfiniteCopies (bc_small_M 𝜇))
+          (InfiniteCopies (InternalProduct (InfiniteCopies (bc_small_M 𝜇)) M))).
+   - typeclasses eauto.
+   - apply ic_tpcm_embed_extend. apply iprod_tpcm_embed_left.
+Defined.
+
+Global Instance NewTPCM_KeepsRef
+    M `{!EqDecision M} `{TPCM M}
+    N `{!EqDecision N} `{TPCM N}
+    T `{!EqDecision T} `{TPCM T}
+    (𝜇 : BurrowCtx)
+    (ref: Refinement M N)
+    `{!HasTPCM 𝜇 M} `{!HasTPCM 𝜇 N}
+    `{hr: !HasRef 𝜇 ref}
+  : HasRef (NewTPCMCtx 𝜇 T) ref.
+Proof.
+  refine ({|
+    hasref_ri := ((@hasref_ri 𝜇 M N _ _ _ _ _ _ ref hr) : bc_small_RI (NewTPCMCtx 𝜇 T));
+  |}).
+  - unfold bc_refs, NewTPCMCtx.
+    cbn [bc_small_M].
+    have jk := @hasref_is 𝜇 _ _ _ _ _ _ _ _ ref hr.
+    setoid_rewrite jk.
+    unfold refinement_sqr.
+    apply refinement_swap_iden.
+    + typeclasses eauto.
+    + typeclasses eauto.
+    + typeclasses eauto.
+    + typeclasses eauto.
+    + typeclasses eauto.
+    + typeclasses eauto.
+    + trivial.
+    + trivial.
+Qed.
 
 Definition BurrowLoc (𝜇: BurrowCtx) := Loc (FinalRI (bc_small_RI 𝜇)).
 
