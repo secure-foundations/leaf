@@ -4,6 +4,8 @@ From Tpcms Require Import rwlock.
 Require Import Burrow.tpcms.
 Require Import Burrow.ra.
 Require Import Burrow.rollup.
+Require Import Burrow.CpdtTactics.
+Require Import Burrow.tactics.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -68,8 +70,10 @@ Definition rwlock_inv 𝛼 𝛾 (contents_inv: M -> Prop) l1 l2 : iProp Σ :=
     ∗ (l1 ↦ (LitV (LitInt (match exc with false => 0 | true => 1 end))))
     ∗ (l2 ↦ (LitV (LitInt rc)))
   ).
+
   
-Global Instance rwlock_inv_timeless 𝛼 𝛾 contents_inv l1 l2 : Timeless (rwlock_inv 𝛼 𝛾 contents_inv l1 l2). Admitted.
+Global Instance rwlock_inv_timeless 𝛼 𝛾 contents_inv l1 l2 : Timeless (rwlock_inv 𝛼 𝛾 contents_inv l1 l2).
+Proof. apply _. Qed.
 
 Definition is_rwlock rwlock 𝛼 𝛾 (contents_inv: M -> Prop) : iProp Σ :=
   match rwlock with
@@ -78,7 +82,29 @@ Definition is_rwlock rwlock 𝛼 𝛾 (contents_inv: M -> Prop) : iProp Σ :=
     | _ => False
   end.
   
-Global Instance is_rwlock_persistent rwlock 𝛼 𝛾 contents_inv : Persistent (is_rwlock rwlock 𝛼 𝛾 contents_inv). Admitted.
+Lemma rwlock_get_struct rw 𝛼 𝛾 ci
+  : is_rwlock rw 𝛼 𝛾 ci -∗ ⌜
+    match rw with
+    | PairV (LitV (LitInt l1)) (LitV (LitInt l2)) => True
+    | _ => False
+    end
+  ⌝ .
+Proof.
+  iIntros "ir". unfold is_rwlock. destruct rw; try iFrame.
+  destruct rw1, rw2; try iFrame.
+  - destruct l, l0; try iFrame. done.
+  - destruct l; try iFrame.
+  - destruct l; try iFrame.
+Qed.
+    
+  
+Global Instance is_rwlock_persistent rwlock 𝛼 𝛾 contents_inv : Persistent (is_rwlock rwlock 𝛼 𝛾 contents_inv).
+Proof. unfold is_rwlock. destruct rwlock; try (apply _).
+  destruct rwlock1; try (apply _).
+  destruct l; try (apply _).
+  destruct rwlock2; try (apply _).
+  destruct l; try (apply _).
+Qed.
 
 Lemma hoare_new_rwlock (𝛾: BurrowLoc 𝜇) (x: M) (contents_inv: M -> Prop)
     (sat_inv: contents_inv x) :
@@ -124,58 +150,6 @@ Proof.
      + iDestruct "u" as "%u". lia.
 Qed.
 
-From BurrowLang Require Import class_instances.
-
-(*
-From iris.algebra Require Import excl.
-
-Definition join : val :=
-  rec: "join" "c" :=
-    let: "r" := !"c" in
-    if: Fst "r" then Snd "r"
-    else "join" "c".
-    
-Definition NONE: expr := (#false, #()).
-Definition NONEV: val := (#false, #()).
-
-Definition SOME: expr := λ: "v", (#true, "v").
-Definition SOMEV (v:val): val := (#true, v).
-
-Class spawnG Σ := SpawnG { spawn_tokG :> inG Σ (exclR unitO) }.
-Definition spawnΣ : gFunctors := #[GFunctor (exclR unitO)].
-
-Global Instance subG_spawnΣ : subG spawnΣ Σ → spawnG Σ.
-Proof. solve_inG. Qed.
-
-Context `{!simpGS 𝜇 Σ, !spawnG Σ} (N : namespace).
-    
-Definition spawn_inv (γ : gname) (l : loc) (Ψ : val → iProp Σ) : iProp Σ :=
-  ∃ lv, l ↦ lv ∗ (⌜lv = NONEV⌝ ∨
-                  ∃ w, ⌜lv = SOMEV w⌝ ∗ (Ψ w ∨ own γ (Excl ()))).
-    
-Definition join_handle (l : loc) (Ψ : val → iProp Σ) : iProp Σ :=
-  ∃ γ, own γ (Excl ()) ∗ inv N (spawn_inv γ l Ψ).
-  *)
-
-(*
-Lemma join_spec (Ψ : val → iProp Σ) l :
-  {{{ join_handle l Ψ }}} join #l {{{ v, RET v; Ψ v }}}.
-Proof.
-  iIntros (Φ) "H HΦ". iDestruct "H" as (γ) "[Hγ #?]".
-  iLöb as "IH". unfold join. wp_rec. wp_bind (! _)%E. iInv N as (v) "[Hl Hinv]".
-  wp_load. iDestruct "Hinv" as "[%|Hinv]"; subst.
-  - iModIntro. iSplitL "Hl"; [iNext; iExists _; iFrame; eauto|].
-    wp_pures. 
-    wp_apply ("IH" with "Hγ [HΦ]"). auto.
-  - iDestruct "Hinv" as (v' ->) "[HΨ|Hγ']".
-    + iModIntro. iSplitL "Hl Hγ"; [iNext; iExists _; iFrame; eauto|].
-      wp_pures. by iApply "HΦ".
-    + iDestruct (own_valid_2 with "Hγ Hγ'") as %[].
-Qed.
-End proof.
-*)
-
-
 Lemma acq1 (rwlock: lang.val) 𝛼 𝛾 contents_inv :
       {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
       loop_until (CAS (Fst rwlock) #0 #1)
@@ -184,54 +158,240 @@ Proof.
   iIntros (phi) "#isr p".
   wp_apply (loop_w_invariant _ (is_rwlock rwlock 𝛼 𝛾 contents_inv)%I (is_rwlock rwlock 𝛼 𝛾 contents_inv)%I (L (rwloc 𝛼 𝛾) ExcPending ∗ is_rwlock rwlock 𝛼 𝛾 contents_inv)%I).
   - iIntros (phi2) "#t p".
-      unfold is_rwlock. destruct rwlock; try (destruct rwlock1, rwlock2).
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
-        + destruct l, l0.
-          * wp_pures. iInv "t" as (exc rc) ">I".
+      iDestruct (rwlock_get_struct with "t") as "%".
+        destruct rwlock; try contradiction.
+        destruct rwlock1; try contradiction.
+        destruct l; try contradiction.
+        destruct rwlock2; try contradiction.
+        destruct l; try contradiction.
+        * wp_pures. iInv "t" as (exc rc) ">I".
               iDestruct "I" as (x) "I".
               iDestruct "I" as "[L [c [a b]]]".
             unfold rwlock_inv.
             wp_apply (wp_cas with "a").
             destruct exc.
               -- case_decide.
-                ++ exfalso. inversion H.
+                ++ exfalso. inversion H0.
                 ++ iIntros "n1". iModIntro. iSplitR "p".
                   ** iModIntro. iExists true, rc, x. iFrame.
                   ** simpl. iApply ("p" $! 0). iSplit.
                     --- iIntros. iFrame "#".
                     --- iSplit.
-                      +++ iIntros "%". inversion H0.
+                      +++ iIntros "%". inversion H1.
                       +++ iPureIntro. lia.
               -- case_decide.
                 ++ iIntros "n1".
                   iMod (rw_exc_begin with "L") as "[L pend]". iModIntro. iSplitR "p pend".
                    ** iModIntro. iExists true, rc, x. iFrame.
                    ** simpl. iApply ("p" $! 1). iSplit.
-                    --- iIntros "%". inversion H0.
+                    --- iIntros "%". inversion H1.
                     --- iSplitL "pend".
                       +++ iIntros. iFrame "#". iFrame.
                       +++ iPureIntro. lia.
                 ++ contradiction.
-          * iExFalso. iFrame "#".
-          * iExFalso. iFrame "#".
-          * iExFalso. iFrame "#".
-        + iExFalso. destruct l.
-          * iFrame "#".
-          * iFrame "#".
-        + iExFalso. destruct l.
-          * iFrame "#".
-          * iFrame "#".
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
-        + iExFalso. iFrame "#".
     - intros. trivial.
     - iIntros. iFrame "#".
     - iFrame "#".
     - iIntros "[x y]". iApply "p". iFrame.
 Qed.
 
-End rwlockProof.
+Lemma acq2 (rwlock: lang.val) (𝛼: nat) 𝛾 contents_inv :
+      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending }}}
+      loop_until (op_eq (!(Snd rwlock)) #0)
+      {{{ x, RET #(); L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}.
+Proof.
+  iIntros (phi) "[#isr ep] p".
+  wp_apply (loop_w_invariant _
+    (is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending)%I
+    (is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending)%I
+    (∃ x, L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝)%I
+    with "[ep]"
+    ).
+  - iIntros (phi2) "[#t ep] p".
+      iDestruct (rwlock_get_struct with "t") as "%".
+        destruct rwlock; try contradiction.
+        destruct rwlock1; try contradiction.
+        destruct l; try contradiction.
+        destruct rwlock2; try contradiction.
+        destruct l; try contradiction.
+        * unfold op_eq. wp_pures.
+          wp_bind (HeapOp LoadOp _ _ _).
+          iInv "t" as (exc rc) ">I".
+              iDestruct "I" as (x) "I".
+              iDestruct "I" as "[L [%c [a b]]]".
+            wp_load.
+            have h : Decision (rc = 0) by solve_decision. destruct h.
+            -- subst rc.
+              iMod (rw_exc_acquire with "L ep") as "[L [eg x]]".
+              iModIntro.
+              iSplitL "L a b".
+              ++ iModIntro. unfold rwlock_inv. iExists  exc, 0, x. iFrame. iPureIntro. trivial.
+              ++ wp_pures. iModIntro. iApply "p". 
+                iSplitR.
+                ** iIntros "%". inversion H0.
+                ** iSplitL.
+                 --- iIntros. iExists x. iFrame. iPureIntro. trivial.
+                 --- iPureIntro. lia.
+            -- iModIntro.
+              iSplitL "L a b".
+              ++ iModIntro. unfold rwlock_inv. iExists  exc, rc, x. iFrame. iPureIntro. trivial.
+              ++ wp_pures. assert (bool_decide (#rc = #0) = false).
+                ** unfold bool_decide. case_decide; trivial. inversion H0. contradiction.
+                ** rewrite H0.
+                  iModIntro. iApply ("p" $! 0).
+                  iSplitL.
+                  --- iIntros. iFrame. iFrame "#".
+                  --- iSplit.
+                    +++ iIntros "%". lia.
+                    +++ iPureIntro. lia.
+    - intros. trivial.
+    - iIntros. iFrame "#". iFrame.
+    - iFrame "#". iFrame.
+    - iIntros "T". iDestruct "T" as (x) "T".
+      iApply ("p" $! x). iFrame.
+Qed.
+
+Lemma hoare_acquire_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv :
+      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
+      acquire_exc rwlock
+      {{{ x, RET #(); L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}.
+Proof.
+  unfold acquire_exc.
+  iIntros (p) "#isr P".
+  wp_let.
+  have j := acq1 rwlock 𝛼 𝛾 contents_inv. unfold loop_until in j.
+  wp_bind ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0).
+  full_generalize ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0) as e.
+  wp_apply (j with "isr").
+  iIntros "m".
+  have k := acq2 rwlock 𝛼 𝛾 contents_inv. unfold loop_until in k. unfold op_eq in k.
+  wp_seq.
+  full_generalize ((rec: "loop" "c" := if: BinOp EqOp ! (Snd rwlock) #0 then #() else "loop" "c")%E #0) as e2.
+  wp_apply (k with "[m]").
+  - iFrame. iFrame "#".
+  - iFrame.
+Qed.
+
+Lemma hoare_release_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
+      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
+           L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}
+      release_exc rwlock
+      {{{ RET #(); True }}}.
+Proof.
+  unfold release_exc.
+  iIntros (P) "[#eg [c [l %ci1]]] P".
+  iDestruct (rwlock_get_struct with "eg") as "%".
+    destruct rwlock; try contradiction.
+    destruct rwlock1; try contradiction.
+    destruct l; try contradiction.
+    destruct rwlock2; try contradiction.
+    destruct l; try contradiction.
+  wp_pures.
+  unfold is_rwlock.
+  iInv "eg" as (exc rc) ">I".
+  iDestruct "I" as (x0) "[ck [%ci [le lr]]]".
+  wp_store.
+  iMod (rw_exc_release with "ck c l") as "ck".
+  iModIntro.
+  iSplitL "lr le ck".
+  - iModIntro. unfold rwlock_inv. iExists false, rc, x. iFrame. iPureIntro. trivial.
+  - iApply "P". done.
+Qed.
+  
+Lemma hoare_release_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
+      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
+           L (rwloc 𝛼 𝛾) (ShGuard x) }}}
+      release_shared rwlock
+      {{{ dummy, RET dummy; True }}}.
+Proof.
+  unfold release_exc.
+  iIntros (P) "[#eg l] P".
+  iDestruct (rwlock_get_struct with "eg") as "%".
+    destruct rwlock; try contradiction.
+    destruct rwlock1; try contradiction.
+    destruct l; try contradiction.
+    destruct rwlock2; try contradiction.
+    destruct l; try contradiction.
+  wp_pures.
+  unfold is_rwlock.
+  iInv "eg" as (exc rc) ">I".
+  iDestruct "I" as (x0) "[ck [%ci [le lr]]]".
+  wp_apply (wp_faa with "lr").
+  iMod (rw_shared_release with "ck l") as "ck".
+  iIntros "lr".
+  iModIntro.
+  iSplitL "lr le ck".
+  - iModIntro. unfold rwlock_inv. iExists exc, (rc-1), x0. iFrame. iPureIntro. trivial.
+  - iApply "P". done.
+Qed.
+
+Lemma hoare_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
+      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
+      acquire_shared rwlock
+      {{{ x, RET #(); L (rwloc 𝛼 𝛾) (ShGuard x) ∗ ⌜ contents_inv x ⌝ }}}.
+Proof.
+  iIntros (phi) "#eg x".
+  unfold acquire_shared.
+  wp_let.
+  
+  iDestruct (rwlock_get_struct with "eg") as "%".
+    destruct rwlock; try contradiction.
+    destruct rwlock1; try contradiction.
+    destruct l; try contradiction.
+    destruct rwlock2; try contradiction.
+    destruct l; try contradiction.
+    
+  wp_pures.
+  iLöb as "IH".
+  wp_pures.
+  
+  wp_pures.
+  
+  wp_bind (FAA #n0 #1).
+  unfold is_rwlock.  iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
+  wp_apply (wp_faa with "lr"). iIntros "lr". 
+  iMod (rw_shared_begin with "L") as "[L pend]".
+  iModIntro. iSplitL "L le lr".
+  {
+    iModIntro. unfold rwlock_inv. iExists exc, (rc + 1), x. iFrame. iPureIntro. trivial.
+  }
+  wp_pures.
+  
+  wp_bind (! #n)%E.
+  clear exc. clear rc. clear ci. clear x.
+  iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
+  wp_load.
+  destruct exc.
+  
+  (* exc = 1 case *)
+  - iModIntro. iSplitL "L le lr".
+    {
+      iModIntro. unfold rwlock_inv. iExists true, rc, x. iFrame. iPureIntro. trivial.
+    }
+    wp_pures.
+    
+    wp_bind (FAA #n0 #(-1)).
+    clear rc. clear ci. clear x.
+    iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
+    wp_apply (wp_faa with "lr"). iIntros "lr". 
+    iMod (rw_shared_retry with "L pend") as "L".
+    iModIntro. iSplitL "L le lr".
+    {
+      iModIntro. unfold rwlock_inv. iExists exc, (rc - 1), x. iFrame. iPureIntro. trivial.
+    }
+    wp_pures.
+    iApply ("IH" with "x").
+  
+  (* exc = 1 case *)
+  - iMod (rw_shared_acquire with "L pend") as "[L guard]".
+    iModIntro.
+    iSplitL "L le lr".
+    {
+      iModIntro. unfold rwlock_inv. iExists false, rc, x. iFrame. iPureIntro. trivial.
+    }
+    wp_pures.
+    iApply ("x" $! x).
+    iModIntro. iFrame. iPureIntro. trivial.
+Qed.
+
+End RwlockProof.
