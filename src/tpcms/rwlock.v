@@ -201,7 +201,7 @@ Proof.
   - unfold I_defined, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
       unfold "⋅", exc_op, free_op in *.  right. destruct H.
       + exfalso. unfold rw_unit in H. destruct e, e0, e1, f; inversion H.
-      + destruct e, e0, e1, f; unfold P; intuition; try destruct exc; try destruct u; intuition; crush.
+      + destruct e, e0, e1, f; unfold P in *; intuition; try destruct exc; try destruct u; intuition; unfold free_count in *; try lia; intuition; try discriminate.
   - rewrite unit_dot_left. unfold I, I_defined in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
       destruct p. unfold "⋅", free_op, exc_op in *. destruct e, e1, e0; trivial;
         try (rewrite unit_dot);
@@ -444,16 +444,20 @@ Definition rwlock_ref
   mov_refines := rwlock_I_mov_refines ;
 |}).
 
+Section RwlockLogic.
+
 Context {𝜇: BurrowCtx}.
 Context `{hG : @gen_burrowGS 𝜇 Σ}.
 
-Context {M} `{!EqDecision M} `{!TPCM M} (x: M).
+Context {M} `{!EqDecision M} `{!TPCM M}.
 Context `{!HasTPCM 𝜇 M}.
 Context `{!HasTPCM 𝜇 (RwLock M)}.
 Context `{!HasRef 𝜇 (rwlock_ref M)}.
 
+Definition rwloc 𝛼 𝛾 := extend_loc 𝛼 (rwlock_ref M) 𝛾.
+
 Lemma rw_new 𝛾 (x: M)
-  : L 𝛾 x ==∗ ∃ 𝛼 , L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central false 0 x).
+  : L 𝛾 x ==∗ ∃ 𝛼 , L (rwloc 𝛼 𝛾) (Central false 0 x).
 Proof. 
   apply InitializeExt.
   - unfold rel_defined, rwlock_ref.
@@ -470,10 +474,10 @@ Proof.
 Qed.
 
 Lemma rw_exc_acquire 𝛼 𝛾 exc (x: M)
-   : L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central exc 0 x)
-  -∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) ExcPending
- ==∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central exc 0 x)
-   ∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) ExcGuard
+   : L (rwloc 𝛼 𝛾) (Central exc 0 x)
+  -∗ L (rwloc 𝛼 𝛾) ExcPending
+ ==∗ L (rwloc 𝛼 𝛾) (Central exc 0 x)
+   ∗ L (rwloc 𝛼 𝛾) ExcGuard
    ∗ L 𝛾 x.
 Proof.
   iIntros "A B".
@@ -488,10 +492,10 @@ Proof.
 Qed.
   
 Lemma rw_exc_release 𝛼 𝛾 exc rc (x y: M)
-   : L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central exc rc y)
-  -∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) ExcGuard
+   : L (rwloc 𝛼 𝛾) (Central exc rc y)
+  -∗ L (rwloc 𝛼 𝛾) ExcGuard
   -∗ L 𝛾 x
- ==∗ L (extend_loc 𝛼 (rwlock_ref M) 𝛾) (Central false rc x).
+ ==∗ L (rwloc 𝛼 𝛾) (Central false rc x).
 Proof.
   iIntros "a b c".
   iDestruct (L_join with "a b") as "a".
@@ -539,6 +543,8 @@ Proof.
 Qed.
   
 Lemma rw_borrow_back 𝛼 𝛾 (x: M) 𝜅
-  : B 𝜅 (extend_loc 𝛼 (rwlock_ref M) 𝛾) (ShGuard x) ⊢ B 𝜅 𝛾 x.
+  : B 𝜅 (rwloc 𝛼 𝛾) (ShGuard x) ⊢ B 𝜅 𝛾 x.
 Proof.
   apply BorrowBack. apply rw_mov_shared_borrow. Qed.
+
+End RwlockLogic.
