@@ -176,7 +176,15 @@ Qed.
 (* ActiveJoin *)
 
 Lemma ActiveJoin 𝜅1 𝜅2
-  : A (lifetime_intersect 𝜅1 𝜅2) ⊣⊢ A (𝜅1) ∗ A(𝜅2).
+  : A (𝜅1) ∗ A(𝜅2) ⊢ A (lifetime_intersect 𝜅1 𝜅2).
+Proof.
+  unfold A. unfold lifetime_intersect.
+  rewrite <- own_op.
+  setoid_rewrite active_additive. trivial.
+Qed.
+
+Lemma ActiveSplit 𝜅1 𝜅2
+  : A (lifetime_intersect 𝜅1 𝜅2) ⊢ A (𝜅1) ∗ A(𝜅2).
 Proof.
   unfold A. unfold lifetime_intersect.
   rewrite <- own_op.
@@ -345,17 +353,23 @@ Qed.
 
 (* LifetimeInclusion *)
 
-Lemma LifetimeInclusion (lt1 lt2 : Lifetime)
+Lemma LifetimeInclusion_Left (lt1 lt2 : Lifetime)
   : lifetime_included (lifetime_intersect lt1 lt2) lt1.
 Proof.
   unfold lifetime_included, lifetime_intersect. apply multiset_le_add.
+Qed.
+
+Lemma LifetimeInclusion_Right (lt1 lt2 : Lifetime)
+  : lifetime_included (lifetime_intersect lt1 lt2) lt2.
+Proof.
+  unfold lifetime_included, lifetime_intersect. apply multiset_le_add_right.
 Qed.
 
 (* BorrowShorten *)
 
 Lemma BorrowShorten
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    𝜅 𝜅' 𝛾 (m: M) (state: BurrowState 𝜇)
+    𝜅 𝜅' 𝛾 (m: M)
     (li: lifetime_included 𝜅' 𝜅)
     : B 𝜅 𝛾 m ⊢ B 𝜅' 𝛾 m.
 Proof. iIntros "T". unfold B.

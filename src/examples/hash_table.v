@@ -110,10 +110,12 @@ Definition ht_inv_i (i: nat) (l: loc) : ((HT * (HeapT loc lang.val)) -> Prop) :=
       mem = (l $↦ (slot_as_val slot))
       /\ ht = (s i slot)
   end.
+  
+Definition heap_name := gen_heap_name simp_gen_heapG.
 
 Definition is_ht_i 𝛾 (slots locks: lang.val) (i: nat) :=
   match (elem slots i) with
-  | LitV (LitInt l) => (∃ 𝛼 , is_rwlock (elem locks i) 𝛼 𝛾 (ht_inv_i i l))%I
+  | LitV (LitInt l) => (∃ 𝛼 , is_rwlock (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l))%I
   | _ => (False) % I
   end.
 
@@ -165,6 +167,8 @@ Lemma s_locks_release_shared a : subst "locks" a release_shared = release_shared
 Proof. trivial. Qed.
 Lemma s_slots_release_shared a : subst "slots" a release_shared = release_shared.
 Proof. trivial. Qed.
+Lemma s_ret_release_shared a : subst "ret" a release_shared = release_shared.
+Proof. trivial. Qed.
 Lemma s_query_iter_release_shared a : subst "query_iter" a release_shared = release_shared.
 Proof. trivial. Qed.
 Lemma s_i_seq_idx a : subst "i" a seq_idx = seq_idx.
@@ -176,6 +180,8 @@ Proof. trivial. Qed.
 Lemma s_slots_seq_idx a : subst "slots" a seq_idx = seq_idx.
 Proof. trivial. Qed.
 Lemma s_query_iter_seq_idx a : subst "query_iter" a seq_idx = seq_idx.
+Proof. trivial. Qed.
+Lemma s_ret_seq_idx a : subst "ret" a seq_idx = seq_idx.
 Proof. trivial. Qed.
 
 
@@ -246,7 +252,7 @@ Proof.
     iDestruct (destruct_slots_i with "hti") as "%ds". 
     deex. unfold is_ht_i. rewrite ds. iDestruct "hti" as (𝛼) "hti".
     wp_bind (acquire_shared (elem locks i)).
-    wp_apply (wp_acquire_shared (elem locks i) 𝛼 𝛾 (ht_inv_i i l) with "hti").
+    wp_apply (wp_acquire_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) with "hti").
     iIntros (x) "[guard %xinv]".
     
     wp_pures. 
@@ -259,9 +265,108 @@ Proof.
       - lia. - intuition. } { done. }
     iIntros "_".
     
+    (* borrow from the guard *)
+    
+    iMod (BorrowBegin _ _ with "guard") as (𝜅0) "[a0 [r guard]]".
+    iDestruct (rw_borrow_back _ _ _ _ with "guard") as "cross".
+    unfold ht_inv_i in xinv. destruct x. deex. destruct_ands. subst h. subst h0.
+    iDestruct (BorrowBackBoth _ _ _ _ _ with "cross") as "[slot mem]".
+    
     (* read the slot *)
     
     rewrite ds.
+    wp_apply (wp_load_borrow _ _ _ _ _ with "[a0 mem]").
+    { iFrame. }
+    iIntros "[a0 mem]".
+    wp_pures.
+    
+    destruct slot.
+    
+    + (* case: the slot has something in it *)
+    
+      unfold slot_as_val. destruct p. wp_pures.
+      
+      have h : Decision (k = k0) by solve_decision. destruct h.
+      
+      * (* case: the found key matches *)
+
+        subst k0. 
+        assert (bool_decide (#k = #k) = true) as bd0.
+        { rewrite bool_decide_decide. destruct (decide (#k = #k)); trivial. contradiction. }
+        rewrite bd0.
+        wp_if.
+        wp_pure _.
+        wp_pure _.
+        wp_pure _.
+        rewrite s_ret_release_shared.
+        rewrite s_ret_seq_idx.
+        
+        (* get the answer using the borrowed props *)
+        
+        (*
+        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
+        { apply LifetimeInclusion_Left. }
+        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
+        { apply LifetimeInclusion_Right. }
+        *)
+        
+        iDestruct (ht_QueryFound _ _ _ _ _ _ with "a0 slot m") as "%veq".
+        rewrite veq.
+        
+        (* release lock *)
+        
+        iMod (@BorrowExpire _ _ _
+          (RwLock (HT * (HeapT loc lang.val))) _ _ _
+          _ _ _
+          with "[a0 r]") as "guard".
+        { iFrame. }
+        
+        wp_bind (seq_idx #i locks).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+        iIntros "_".
+        
+        wp_bind (release_shared (elem locks i)).
+        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        { iFrame. iFrame "#". }
+        iIntros (dummy) "_".
+        
+        wp_pures.
+        unfold opt_as_val.
+        iApply "Phi". iModIntro. iFrame.
+        
+      *
+        (* case: the found key does not match - we have to recurse *)
+        
+        wp_pures.
+        
+        assert (bool_decide (#k = #k0) = false) as bd0.
+        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
+        rewrite bd0.
+        
+        wp_pure _.
+        
+      
+        
+        
+        
+        iIntros (x) "[guard %xinv]".
+
+        
+        
+        
+        
+        
+        
+        
+
+      
+      
+    
+    unfold slot_as_val.
+    wp_pures.
     
     
 

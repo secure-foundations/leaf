@@ -963,6 +963,16 @@ Proof.
     iFrame. iPureIntro. apply full_dot; trivial.
 Qed.
 
+Lemma ht_BorrowedRangeShorten 𝜅 𝜅' 𝛾 k i j
+  (li: lifetime_included 𝜅' 𝜅)
+  : BorrowedRange 𝜅 𝛾 k i j -∗ BorrowedRange 𝜅' 𝛾 k i j.
+Proof.
+  iIntros "b".
+  unfold BorrowedRange. iDestruct "b" as (a) "[%f b]".
+  iDestruct (BorrowShorten _ 𝜅' _ _ with "b") as "b"; trivial.
+  iExists a. iFrame. iPureIntro. trivial.
+Qed.
+
 Lemma ht_UpdateExisting 𝛾 k v v0 v1 j :
   L 𝛾 (s j (Some (k, v1))) -∗ L 𝛾 (m k v0) ==∗
   L 𝛾 (s j (Some (k, v))) ∗ L 𝛾 (m k (Some v)).
