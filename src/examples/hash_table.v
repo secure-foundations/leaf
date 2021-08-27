@@ -24,11 +24,9 @@ Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
 Require Import Burrow.CpdtTactics.
 
-Definition compute_hash: lang.expr. Admitted.
-Lemma s_k_compute_hash a : subst "k" a compute_hash = compute_hash. Admitted.
-Lemma s_ht_compute_hash a : subst "ht" a compute_hash = compute_hash. Admitted.
+Definition compute_hash: lang.val. Admitted.
 
-Definition query_iter: lang.expr :=
+Definition query_iter: lang.val :=
   (rec: "query_iter" "slots" "locks" "k" "i" :=
     if: (BinOp EqOp "i" #(ht_fixed_size)) then
       PairV #false #()
@@ -50,7 +48,7 @@ Definition query_iter: lang.expr :=
       "ret")%V
 .
 
-Definition query: lang.expr :=
+Definition query: lang.val :=
   λ: "ht" "k" ,
     query_iter (Fst "ht") (Snd "ht") "k" (compute_hash "k").
 
@@ -166,46 +164,6 @@ Proof.
   - iPureIntro. exists ht1, ht2. trivial.
 Qed.
 
-Lemma s_i_acquire_shared a : subst "i" a acquire_shared = acquire_shared.
-Proof. trivial. Qed.
-Lemma s_k_acquire_shared a : subst "k" a acquire_shared = acquire_shared.
-Proof. trivial. Qed.
-Lemma s_locks_acquire_shared a : subst "locks" a acquire_shared = acquire_shared.
-Proof. trivial. Qed.
-Lemma s_slots_acquire_shared a : subst "slots" a acquire_shared = acquire_shared.
-Proof. trivial. Qed.
-Lemma s_query_iter_acquire_shared a : subst "query_iter" a acquire_shared = acquire_shared.
-Proof. trivial. Qed.
-Lemma s_i_release_shared a : subst "i" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_k_release_shared a : subst "k" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_locks_release_shared a : subst "locks" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_slots_release_shared a : subst "slots" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_ret_release_shared a : subst "ret" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_query_iter_release_shared a : subst "query_iter" a release_shared = release_shared.
-Proof. trivial. Qed.
-Lemma s_i_seq_idx a : subst "i" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-Lemma s_k_seq_idx a : subst "k" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-Lemma s_locks_seq_idx a : subst "locks" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-Lemma s_slots_seq_idx a : subst "slots" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-Lemma s_query_iter_seq_idx a : subst "query_iter" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-Lemma s_ret_seq_idx a : subst "ret" a seq_idx = seq_idx.
-Proof. trivial. Qed.
-
-
-Opaque acquire_shared.
-Opaque release_shared.
-Opaque seq_idx.
-
 Lemma z_n_add1 (i: nat)
   : ((LitV (Z.add i (Zpos xH))) = (LitV (Init.Nat.add i (S O)))). 
 f_equal. f_equal. lia. Qed.
@@ -225,21 +183,6 @@ Proof.
   iLöb as "IH".
   iIntros (𝜅 i Phi) "[%i_bound [#ht [m [a [range %szs]]]]] Phi".
   wp_pures.
-    rewrite s_query_iter_acquire_shared.
-    rewrite s_slots_acquire_shared.
-    rewrite s_locks_acquire_shared.
-    rewrite s_k_acquire_shared.
-    rewrite s_i_acquire_shared.
-    rewrite s_query_iter_release_shared.
-    rewrite s_slots_release_shared.
-    rewrite s_locks_release_shared.
-    rewrite s_k_release_shared.
-    rewrite s_i_release_shared.
-    rewrite s_query_iter_seq_idx.
-    rewrite s_slots_seq_idx.
-    rewrite s_locks_seq_idx.
-    rewrite s_k_seq_idx.
-    rewrite s_i_seq_idx.
   
   unfold query_iter. wp_pures.
   have h : Decision (i = ht_fixed_size) by solve_decision. destruct h.
@@ -325,8 +268,6 @@ Proof.
         wp_pure _.
         wp_pure _.
         wp_pure _.
-        rewrite s_ret_release_shared.
-        rewrite s_ret_seq_idx.
         
         (* get the answer using the borrowed props *)
         
@@ -426,9 +367,6 @@ Proof.
         wp_pure _.
         wp_pure _.
         
-        rewrite s_ret_release_shared.
-        rewrite s_ret_seq_idx.
-        
         wp_bind (seq_idx #i locks).
         wp_apply wp_seq_idx.
         { apply has_elem_of_has_length with (len := ht_fixed_size).
@@ -450,9 +388,6 @@ Proof.
         wp_pure _.
         wp_pure _.
         wp_pure _.
-        
-        rewrite s_ret_release_shared.
-        rewrite s_ret_seq_idx.
         
         iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
         iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
@@ -489,13 +424,6 @@ Proof.
         iApply "Phi". iModIntro. iFrame.
 Qed.
 
-Lemma s_k_query_iter a : subst "k" a query_iter = query_iter.
-Proof. trivial. Qed.
-Lemma s_ht_query_iter a : subst "ht" a query_iter = query_iter.
-Proof. trivial. Qed.
-
-Opaque query_iter.
-
 Lemma wp_compute_hash (k: Key) :
       {{{ True }}}
       compute_hash #k
@@ -511,11 +439,7 @@ Proof.
   
   iDestruct (destruct_ht with "ht") as "%ds". deex. subst ht.
   
-  wp_pure _. wp_pure _. wp_pure _. wp_pure _.
-  
-  rewrite s_k_query_iter.
-  rewrite s_ht_compute_hash.
-  rewrite s_k_compute_hash.
+  wp_pure _. wp_pure _. wp_pure _.
   
   wp_bind (compute_hash #k).
   wp_apply (wp_compute_hash k). { done. }
@@ -536,4 +460,3 @@ Proof.
 Qed.
 
 End HashTableProof.
-

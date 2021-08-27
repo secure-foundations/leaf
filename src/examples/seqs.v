@@ -18,7 +18,7 @@ From iris Require Import options.
 
 (* really crummy sequence library *)
 
-Definition seq_idx : lang.expr :=
+Definition seq_idx : lang.val :=
   (rec: "seq_idx" "i" "array" :=
       if: (BinOp EqOp "i" #0) then
         Fst "array"

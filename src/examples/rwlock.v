@@ -24,16 +24,16 @@ Definition loop_until e : lang.expr :=
 Definition new_rwlock : lang.expr :=
   Pair (ref #0) (ref #0).
 
-Definition acquire_exc : lang.expr :=
+Definition acquire_exc : lang.val :=
   λ: "rw" ,
     loop_until (CAS (Fst "rw") #0 #1) ;;
     loop_until (op_eq (!(Snd "rw")) #0).
 
-Definition release_exc : lang.expr :=
+Definition release_exc : lang.val :=
   λ: "rw" ,
     Fst "rw" <- #0.
     
-Definition acquire_shared : lang.expr :=
+Definition acquire_shared : lang.val :=
   λ: "rw" ,
     loop_until (
       FAA (Snd "rw") #1 ;;
@@ -45,7 +45,7 @@ Definition acquire_shared : lang.expr :=
       )
     ).
     
-Definition release_shared : lang.expr :=
+Definition release_shared : lang.val :=
   λ: "rw" ,
     FAA (Snd "rw") (#(-1)).
     
@@ -258,7 +258,7 @@ Lemma wp_acquire_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv :
 Proof.
   unfold acquire_exc.
   iIntros (p) "#isr P".
-  wp_let.
+  wp_pure _.
   have j := acq1 rwlock 𝛼 𝛾 contents_inv. unfold loop_until in j.
   wp_bind ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0).
   full_generalize ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0) as e.
@@ -304,7 +304,7 @@ Lemma wp_release_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
       release_shared rwlock
       {{{ dummy, RET dummy; True }}}.
 Proof.
-  unfold release_exc.
+  unfold release_shared.
   iIntros (P) "[#eg l] P".
   iDestruct (rwlock_get_struct with "eg") as "%".
     destruct rwlock; try contradiction.
@@ -332,7 +332,7 @@ Lemma wp_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
 Proof.
   iIntros (phi) "#eg x".
   unfold acquire_shared.
-  wp_let.
+  wp_pure _.
   
   iDestruct (rwlock_get_struct with "eg") as "%".
     destruct rwlock; try contradiction.
