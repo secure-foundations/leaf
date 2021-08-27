@@ -1,7 +1,7 @@
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 
 From stdpp Require Import gmap.
 From stdpp Require Import mapset.

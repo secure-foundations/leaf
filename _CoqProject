@@ -4,7 +4,6 @@ src/burrow/tactics.v
 src/burrow/assoc_comm.v
 src/burrow/gmap_utils.v
 src/burrow/rollup.v
-src/burrow/CpdtTactics.v
 src/burrow/indexing.v
 src/burrow/locations.v
 src/burrow/exchange_proof.v
@@ -17,6 +16,7 @@ src/burrow/building.v
 src/burrow/fresh.v
 src/burrow/maxltunit.v
 src/burrow/relive.v
+src/burrow/parity.v
 
 -Q src/tpcms Tpcms
 
@@ -54,8 +54,11 @@ src/examples/hash_table.v
 -Q external/stdpp/theories stdpp
 -Q external/iris/iris iris
 -Q external/coq-tricks coq_tricks
+-Q external/cpdt cpdt
 
 external/coq-tricks/Deex.v
+
+external/cpdt/CpdtTactics.v
 
 external/iris/iris/prelude/options.v
 external/iris/iris/prelude/prelude.v

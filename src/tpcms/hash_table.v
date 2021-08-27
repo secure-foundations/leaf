@@ -6,7 +6,7 @@ From iris.proofmode Require Import tactics.
 From iris.base_logic Require Export base_logic.
 From stdpp Require Import gmap.
 
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import Tpcms.gmap.
 Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.

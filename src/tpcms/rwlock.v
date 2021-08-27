@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 From iris.proofmode Require Import tactics.
 From iris.base_logic Require Export base_logic.
 
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
 Require Import Burrow.tpcms.
 

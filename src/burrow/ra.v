@@ -1,7 +1,7 @@
 From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes updates.
 From iris.prelude Require Import options.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 From iris.base_logic.lib Require Export own.
 From iris.proofmode Require Import base.
 From iris.proofmode Require Import ltac_tactics.

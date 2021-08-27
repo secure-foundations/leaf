@@ -3,7 +3,7 @@ From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
 
 From stdpp Require Import gmap.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import Burrow.tactics.
 
 From stdpp Require Import gmap.

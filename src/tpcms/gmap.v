@@ -2,7 +2,7 @@ Require Import Burrow.rollup.
 From stdpp Require Import gmap.
 From iris.prelude Require Import options.
 
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 
 
 Section GmapTPCM.
@@ -160,8 +160,6 @@ Lemma le_of_subset (a b : gmap K (option V))
   (f: ∀ k v , a !! k = Some v -> b !! k = Some v) : tpcm_le a b.
 Proof.
   unfold tpcm_le.
-  Print map_filter.
-  Print Filter.
   assert (∀ x : K * option V, Decision (match x with (k,v) => a !! k = None end)) as X
     by solve_decision.
   exists (map_filter (λ x , match x with (k,v) => a !! k = None end) X b).

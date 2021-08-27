@@ -1,5 +1,5 @@
 From iris.prelude Require Import options.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
 Require Import Burrow.rollup.
 Require Import Burrow.locations.

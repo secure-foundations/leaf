@@ -1,7 +1,7 @@
 Require Import Burrow.rollup.
 From stdpp Require Import gmap.
 
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
 
 Require Import Tpcms.auth_frag.

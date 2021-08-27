@@ -4,7 +4,7 @@ From Tpcms Require Import rwlock.
 Require Import Burrow.tpcms.
 Require Import Burrow.ra.
 Require Import Burrow.rollup.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 Require Import Burrow.tactics.
 
 From iris.base_logic Require Export base_logic.

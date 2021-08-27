@@ -22,7 +22,7 @@ From Examples Require Import seqs.
 
 Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
-Require Import Burrow.CpdtTactics.
+Require Import cpdt.CpdtTactics.
 
 Definition compute_hash: lang.val. Admitted.
 
