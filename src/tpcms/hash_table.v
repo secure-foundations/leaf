@@ -1,4 +1,9 @@
 Require Import Burrow.rollup.
+Require Import Burrow.ra.
+Require Import Burrow.tpcms.
+From iris.prelude Require Import options.
+From iris.proofmode Require Import tactics.
+From iris.base_logic Require Export base_logic.
 From stdpp Require Import gmap.
 
 Require Import Burrow.CpdtTactics.
@@ -11,6 +16,8 @@ Definition ht_fixed_size: nat. Admitted.
 
 Class Hashable (Key: Type) := hash : (Key -> nat).
 
+Section HashTableBasic.
+
 Context {Key} `{!EqDecision Key} `{!Countable Key} `{!Hashable Key}.
 Context {Value} `{!EqDecision Value}.
 
@@ -22,6 +29,17 @@ Definition ht_dot (a b : HT) :=
   match a, b with
   | HTR x1 y1, HTR x2 y2 => HTR (gmap_dot x1 x2) (gmap_dot y1 y2)
   end.
+
+Definition ht_unit := HTR ∅ ∅.
+
+Lemma ht_unit_dot (a: HT) : ht_dot a ht_unit = a.
+Proof.
+  unfold ht_dot, ht_unit.
+  destruct a.
+  rewrite gmap_dot_empty.
+  rewrite gmap_dot_empty.
+  trivial.
+Qed.
   
 Lemma ht_dot_comm (a b : HT) : ht_dot a b = ht_dot b a.
 Proof.
@@ -138,7 +156,7 @@ Qed.
 Lemma ht_valid_QueryNotFound k a v j
   (is_full: full a k (hash k) j)
   : V (ht_dot (ht_dot a (m k v)) (s j None)) -> v = None.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   unfold V, s, m. intro. deex. destruct z, a. unfold ht_dot in *. unfold P in *.
   unfold full in is_full. destruct_ands. subst ms0.
   repeat (rewrite gmap_dot_empty in H).
@@ -264,7 +282,7 @@ Lemma preserves_unique_keys j k v v1 slots
     gmap_dot {[j := Some (Some (k, v))]} slots !! i1 = Some (Some (Some (k0, v2)))
     ∧ gmap_dot {[j := Some (Some (k, v))]} slots !! i2 = Some (Some (Some (k0, v3)))
     → i1 = i2.
-Proof.
+Proof using EqDecision0 EqDecision1 Key Value.
   intros.
   destruct_ands.
   have ed : Decision (i1 = j) by solve_decision. destruct ed.
@@ -335,7 +353,7 @@ Lemma pukn_helper j k0 k v v1 slots v0 ms ms0 slots0 i2 v2
   (ac : gmap_dot {[j := Some (Some (k, v))]} (gmap_dot slots slots0) !! i2 =
        Some (Some (Some (k0, v2))))
   : j = i2.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   have t1 := key_vals_eq_of_gmap_dot j k k0 v v1 _ ab. destruct_ands. subst k0. subst v1.
   have h : Decision (j = i2) by solve_decision. destruct h; trivial. exfalso.
   rewrite (lookup_gmap_dot_singleton_ne _ _ _ (Some None)) in ac; trivial.
@@ -379,7 +397,7 @@ Lemma preserves_unique_keys_newslot j k v slots v0 ms ms0 slots0
     Some (Some (Some (k0, v1)))
     ∧ gmap_dot {[j := Some (Some (k, v))]} (gmap_dot slots slots0) !! i2 =
       Some (Some (Some (k0, v2))) → i1 = i2.
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   intros.
   destruct_ands.
   have ed : Decision (i1 = j) by solve_decision. destruct ed.
@@ -415,7 +433,7 @@ Lemma preserves_map_to_slot (k: Key)
     gmap_dot {[k := Some (Some v)]} ms !! k2 = Some (Some (Some v2))
     → ∃ i : nat,
         gmap_dot {[j := Some (Some (k, v))]} slots !! i = Some (Some (Some (k2, v2))).
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Key Value.
   intros.
   have h : Decision (k = k2) by solve_decision. destruct h.
   - exists j. subst.
@@ -485,7 +503,7 @@ Lemma preserves_slot_to_map (k: Key) v j e slots v0 ms
                → ∃ (k1 : Key) (v2 : Value),
                    gmap_dot {[j := Some (Some (k, v))]} slots !! j0 =
                    Some (Some (Some (k1, v2)))).
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   intros.
   have h : Decision (j = i) by solve_decision. destruct h.
   - subst j.
@@ -575,7 +593,7 @@ Qed.
 Lemma ht_helper_update_existing j k v v0 v1 z :
   P (ht_dot (ht_dot (s j (Some (k, v1))) (m k v0)) z) ->
   P (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) z).
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   intro. unfold P, ht_dot, s, m in *. destruct z.
   repeat (rewrite gmap_dot_empty).
   repeat (rewrite gmap_dot_empty_left).
@@ -609,7 +627,7 @@ Lemma ht_helper_update_new j k v v0 z a
   (is_full: full a k (hash k) j) :
   P (ht_dot (ht_dot (s j None) (m k v0)) (ht_dot z a)) ->
   P (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) (ht_dot z a)).
-Proof.
+Proof using Countable0 EqDecision0 EqDecision1 Hashable0 Key Value.
   intro. unfold P, ht_dot, s, m in *. destruct z. destruct a.
   repeat (rewrite gmap_dot_empty).
   repeat (rewrite gmap_dot_empty_left).
@@ -653,3 +671,95 @@ Proof.
     - apply H4.
   }
 Qed.
+
+Lemma full_trivial k i : full ht_unit k i i.
+Proof.
+  unfold full, ht_unit.
+  repeat split.
+  - lia.
+  - intros. lia.
+  - intros. rewrite lookup_empty in H. discriminate.
+  - intros. rewrite lookup_empty in H. discriminate.
+Qed.
+
+Lemma full_dot a k i j k0 v0
+  (fa: full a k i j)
+  (ne: k0 ≠ k)
+  : full (ht_dot a (s j (Some (k0, v0)))) k i (j+1).
+Proof.
+  unfold full, ht_dot, s in *. destruct a. destruct_ands. repeat split.
+  - lia.
+  - intros. have x := H0 l H3.
+    have h : Decision (l = j) by solve_decision. destruct h.
+    + subst l. exists k0, v0. split; trivial.
+      unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+        rewrite lookup_singleton. destruct (slots !! j) eqn:sj; trivial.
+        have t := H1 j o sj. lia.
+    + assert (l < j) as la by lia. intuition.
+        deex. exists k1, v1. split.
+      * unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+        assert (j ≠ l) as la2 by lia.
+        rewrite lookup_singleton_ne; trivial. destruct (slots !! l).
+        -- destruct_ands. trivial.
+        -- destruct_ands. trivial.
+      * intuition.
+  - have h : Decision (j = l) by solve_decision. destruct h.
+    + lia.
+    + unfold gmap_dot in H3.
+      rewrite lookup_merge in H3. unfold diag_None, gmerge in H3.
+      rewrite lookup_singleton_ne in H3; trivial.
+      destruct (slots !! l) eqn:sl.
+      * have t := H1 l o sl. lia.
+      * discriminate.
+  - have h : Decision (j = l) by solve_decision. destruct h.
+    + lia.
+    + unfold gmap_dot in H3.
+      rewrite lookup_merge in H3. unfold diag_None, gmerge in H3.
+      rewrite lookup_singleton_ne in H3; trivial.
+      destruct (slots !! l) eqn:sl.
+      * have t := H1 l o sl. lia.
+      * discriminate.
+  - rewrite gmap_dot_empty. trivial.
+Qed.
+
+End HashTableBasic.
+
+Global Instance ht_eqdec : EqDecision HT.
+Proof using Countable0 EqDecision0 EqDecision1 Key Value.
+solve_decision. Qed.
+
+Definition ht_mov (a b: HT) : Prop :=
+  ∀ z , V (ht_dot a z) -> V (ht_dot b z).
+  
+Lemma ht_valid_monotonic : forall x y , V (ht_dot x y) -> V x. Admitted.
+Lemma ht_unit_valid : V ht_unit. Admitted.
+Lemma ht_mov_reflex : forall x , ht_mov x x. Admitted.
+Lemma ht_mov_trans : forall x y z , ht_mov x y -> ht_mov y z -> ht_mov x z. Admitted.
+Lemma ht_mov_monotonic : forall x y z ,
+      ht_mov x y -> V (ht_dot x z) -> V (ht_dot y z) /\ ht_mov (ht_dot x z) (ht_dot y z). Admitted.
+
+#[refine]
+Global Instance ht_tpcm : TPCM HT := {
+  m_valid := V ;
+  dot := ht_dot ;
+  mov := ht_mov ;
+  unit := ht_unit ;
+  
+  valid_monotonic := ht_valid_monotonic ;
+  unit_valid := ht_unit_valid ;
+  unit_dot := ht_unit_dot ;
+  tpcm_comm := ht_dot_comm ;
+  tpcm_assoc := ht_dot_assoc ;
+  reflex := ht_mov_reflex ;
+  trans := ht_mov_trans ;
+  mov_monotonic := ht_mov_monotonic ;
+}.
+
+Context {𝜇: BurrowCtx}.
+Context `{hG : @gen_burrowGS 𝜇 Σ}.
+
+Context `{!HasTPCM 𝜇 HT}.
+
+Lemma
+
+End HashTableLogic.
