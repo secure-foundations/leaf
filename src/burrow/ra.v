@@ -369,7 +369,7 @@ Qed.
 Lemma BorrowCombine
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     𝜅 𝛾 (a b c: M)
-    (abcr: ∀ r , m_valid r -> tpcm_le a r -> tpcm_le b r -> tpcm_le c r)
+    (abcr: ∀ (r: M) , m_valid r -> tpcm_le a r -> tpcm_le b r -> tpcm_le c r)
     : B 𝜅 𝛾 a ∗ B 𝜅 𝛾 b ⊢ B 𝜅 𝛾 c.
 Proof.
  unfold B.

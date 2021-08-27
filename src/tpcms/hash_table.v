@@ -668,6 +668,43 @@ Proof.
   }
 Qed.
 
+Definition ht_mov (a b: HT) : Prop :=
+  ∀ z , V (ht_dot a z) -> V (ht_dot b z).
+
+Lemma ht_update_existing j k v v0 v1 :
+  ht_mov
+    (ht_dot (s j (Some (k, v1))) (m k v0))
+    (ht_dot (s j (Some (k, v))) (m k (Some v))).
+Proof.
+  unfold ht_mov.
+  unfold V. intros. deex. exists z0.
+  rewrite <- ht_dot_assoc.
+  rewrite <- ht_dot_assoc in H.
+  eapply ht_helper_update_existing.
+  apply H.
+Qed.
+  
+Lemma ht_update_new j k v v0 a
+  (is_full: full a k (hash k) j) :
+  ht_mov
+    (ht_dot (ht_dot (s j None) (m k v0)) (a))
+    (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) (a)).
+Proof.
+  unfold ht_mov.
+  unfold V. intros. deex. exists z0.
+  rewrite <- ht_dot_assoc.
+  rewrite <- ht_dot_assoc in H.
+  full_generalize (ht_dot z z0) as y.
+  rewrite <- ht_dot_assoc.
+  rewrite <- ht_dot_assoc in H.
+  assert (ht_dot a y = ht_dot y a) by (apply ht_dot_comm).
+  rewrite H0 in H.
+  rewrite H0.
+  eapply ht_helper_update_new.
+  - apply is_full.
+  - apply H.
+Qed.
+
 Lemma full_trivial k i : full ht_unit k i i.
 Proof.
   unfold full, ht_unit.
@@ -721,9 +758,6 @@ Qed.
 Global Instance ht_eqdec : EqDecision HT.
 Proof. solve_decision. Qed.
 
-Definition ht_mov (a b: HT) : Prop :=
-  ∀ z , V (ht_dot a z) -> V (ht_dot b z).
-  
 Lemma ht_valid_monotonic : forall x y , V (ht_dot x y) -> V x. Admitted.
 Lemma ht_unit_valid : V ht_unit. Admitted.
 Lemma ht_mov_reflex : forall x , ht_mov x x. Admitted.
@@ -747,6 +781,11 @@ Global Instance ht_tpcm : TPCM HT := {
   mov_monotonic := ht_mov_monotonic ;
 }.
 
+Lemma full_add a k i j c
+  (fa: full a k i j)
+  : ∀ r , tpcm_le a r -> tpcm_le (s j c) r -> tpcm_le (ht_dot a (s j c)) r.
+Admitted.
+
 Context {𝜇: BurrowCtx}.
 Context `{hG : @gen_burrowGS 𝜇 Σ}.
 
@@ -762,6 +801,88 @@ Proof.
     unfold m_valid, dot, ht_tpcm in t.
     rewrite ht_dot_comm in t.
     apply t.
+Qed.
+
+Definition Range 𝛾 k i j : iProp Σ :=
+  ∃ a , ⌜ full a k i j ⌝ ∗ L 𝛾 a.
+  
+Definition BorrowedRange 𝜅 𝛾 k i j : iProp Σ :=
+  ∃ a , ⌜ full a k i j ⌝ ∗ B 𝜅 𝛾 a.
+
+Lemma ht_QueryReachedEnd 𝜅 𝛾 k v :
+  A 𝜅 -∗ BorrowedRange 𝜅 𝛾 k (hash k) ht_fixed_size -∗ L 𝛾 (m k v) -∗ ⌜ v = None ⌝.
+Proof.
+  iIntros "a range l".
+  iDestruct "range" as (a) "[%f range]".
+  iDestruct (LiveAndBorrowValid with "a l range") as "%t".
+  iPureIntro.
+  eapply ht_valid_QueryReachedEnd.
+    - apply f.
+    - rewrite ht_dot_comm. trivial.
+Qed.
+
+Lemma ht_QueryNotFound 𝜅 𝛾 k v j :
+  A 𝜅 -∗ BorrowedRange 𝜅 𝛾 k (hash k) j -∗ B 𝜅 𝛾 (s j None) -∗ L 𝛾 (m k v) -∗ ⌜ v = None ⌝.
+Proof.
+  iIntros "a range c l".
+  iDestruct "range" as (a) "[%f range]".
+  Print BorrowCombine.
+  iDestruct (BorrowCombine 𝜅 𝛾 (a) (s j None) ((ht_dot a (s j None))) with "[range c]") as "t".
+  - intro. intros. apply full_add with (k := k) (i := hash k); trivial.
+  - iFrame.
+  - iDestruct (LiveAndBorrowValid with "a l t") as "%t".
+    iPureIntro. apply ht_valid_QueryNotFound with (a := a) (k := k) (j := j); trivial.
+    rewrite tpcm_assoc in t.
+    replace ((dot (m k v) a)) with (dot a (m k v)) in t; trivial.
+    apply tpcm_comm.
+Qed.
+
+Lemma ht_RangeAppend 𝛾 k i j k0 v0
+  (ne: k0 ≠ k) : Range 𝛾 k i j -∗ L 𝛾 (s j (Some (k0, v0))) -∗ Range 𝛾 k i (j+1).
+Proof.
+  iIntros "r l". unfold Range. iDestruct "r" as (a) "[%r q]".
+  iExists (ht_dot a (s j (Some (k0, v0)))).
+  rewrite L_op. iFrame. iPureIntro. apply full_dot; trivial.
+Qed.
+
+Lemma ht_BorrowedRangeAppend 𝜅 𝛾 k i j k0 v0
+  (ne: k0 ≠ k) : BorrowedRange 𝜅 𝛾 k i j -∗ B 𝜅 𝛾 (s j (Some (k0, v0)))
+      -∗ BorrowedRange 𝜅 𝛾 k i (j+1).
+Proof.
+  iIntros "r l". unfold BorrowedRange. iDestruct "r" as (a) "[%r q]".
+  iDestruct (BorrowCombine 𝜅 𝛾 (a) (s j (Some (k0, v0))) ((ht_dot a (s j (Some (k0, v0))))) with "[q l]") as "t".
+  - intro. intros. apply full_add with (k := k) (i := i); trivial.
+  - iFrame.
+  - iExists (ht_dot a (s j (Some (k0, v0)))).
+    iFrame. iPureIntro. apply full_dot; trivial.
+Qed.
+
+Lemma ht_UpdateExisting 𝛾 k v v0 v1 j :
+  L 𝛾 (s j (Some (k, v1))) -∗ L 𝛾 (m k v0) ==∗
+  L 𝛾 (s j (Some (k, v))) ∗ L 𝛾 (m k (Some v)).
+Proof.
+  iIntros "s m".
+  iDestruct (L_join with "s m") as "s".
+  iMod (FrameUpdate _ _ (ht_dot (s j (Some (k, v))) (m k (Some v))) with "s") as "A".
+  - apply ht_update_existing.
+  - iModIntro. rewrite <- L_op. iFrame.
+Qed.
+
+Lemma ht_UpdateNew 𝛾 k v j v0 :
+  Range 𝛾 k (hash k) j -∗ L 𝛾 (s j None) -∗ L 𝛾 (m k v0) ==∗
+  Range 𝛾 k (hash k) j ∗ L 𝛾 (s j (Some (k, v))) ∗ L 𝛾 (m k (Some v)).
+Proof.
+  iIntros "r s m".
+  iDestruct (L_join with "s m") as "s".
+  unfold Range.
+  iDestruct "r" as (a) "[%f r]".
+  iDestruct (L_join with "s r") as "s".
+  iMod (FrameUpdate _ _ (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) a) with "s") as "A".
+  - apply ht_update_new. trivial.
+  - iModIntro.
+  iDestruct (L_op with "A") as "[x y]".
+  iDestruct (L_op with "x") as "[x z]".
+  iFrame. iExists a. iFrame. iPureIntro. trivial.
 Qed.
 
 End HashTableLogic.
