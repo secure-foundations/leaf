@@ -1,22 +1,22 @@
 -Q src/burrow Burrow
 
-src/burrow/tactics.v
 src/burrow/assoc_comm.v
-src/burrow/gmap_utils.v
-src/burrow/rollup.v
-src/burrow/indexing.v
-src/burrow/locations.v
+src/burrow/building.v
 src/burrow/exchange_proof.v
 src/burrow/exchanges.v
-src/burrow/resource_proofs.v
-src/burrow/tpcms.v
-src/burrow/ra.v
-src/burrow/updog.v
-src/burrow/building.v
 src/burrow/fresh.v
+src/burrow/gmap_utils.v
+src/burrow/indexing.v
 src/burrow/maxltunit.v
-src/burrow/relive.v
 src/burrow/parity.v
+src/burrow/locations.v
+src/burrow/ra.v
+src/burrow/relive.v
+src/burrow/resource_proofs.v
+src/burrow/rollup.v
+src/burrow/tactics.v
+src/burrow/tpcms.v
+src/burrow/updog.v
 
 -Q src/tpcms Tpcms
 
