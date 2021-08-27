@@ -1,5 +1,6 @@
 Require Import Burrow.rollup.
 From stdpp Require Import gmap.
+From iris.prelude Require Import options.
 
 Require Import Burrow.CpdtTactics.
 
@@ -77,26 +78,41 @@ Qed.
 Lemma lookup_gmap_dot_3mid a b c k
   : gmap_valid (gmap_dot (gmap_dot a b) c) -> (b !! k ≠ None) ->
       gmap_dot (gmap_dot a b) c !! k = b !! k.
-Admitted.
+Proof.
+  intros.
+  rewrite gmap_dot_comm in H.
+  rewrite gmap_dot_assoc in H.
+  rewrite gmap_dot_comm.
+  rewrite gmap_dot_assoc.
+  apply lookup_gmap_dot_right; trivial.
+Qed.
 
 Lemma lookup_gmap_dot_3left a b c k
   : gmap_valid (gmap_dot (gmap_dot a b) c) -> (a !! k ≠ None) ->
       gmap_dot (gmap_dot a b) c !! k = a !! k.
-Admitted.
+Proof.
+  intros.
+  rewrite <- gmap_dot_assoc in H.
+  rewrite <- gmap_dot_assoc.
+  apply lookup_gmap_dot_left; trivial.
+Qed.
 
 Lemma lookup_gmap_dot_3right a b c k
   : gmap_valid (gmap_dot (gmap_dot a b) c) -> (c !! k ≠ None) ->
       gmap_dot (gmap_dot a b) c !! k = c !! k.
-Admitted.
+Proof.
+  apply lookup_gmap_dot_right.
+Qed.
 
 Lemma gmap_valid_left
   : ∀ x y : gmap K (option V), gmap_valid (gmap_dot x y) → gmap_valid x.
+Proof.
   intros. unfold gmap_valid, gmap_dot in *.
     intro. have h := H k. clear H. rewrite lookup_merge in h. unfold diag_None in h.
         unfold gmerge in h.
         destruct (x !! k); trivial.
         destruct (y !! k); trivial. contradiction.
-Admitted.
+Qed.
 
 Lemma gmap_valid_right
   : ∀ x y : gmap K (option V), gmap_valid (gmap_dot x y) → gmap_valid y.
@@ -139,5 +155,31 @@ Global Instance gmap_tpcm : TPCM (gmap K (option V)) := {
         rewrite <- gmap_dot_assoc.
         apply H.
 Defined.
+
+Lemma le_of_subset (a b : gmap K (option V))
+  (f: ∀ k v , a !! k = Some v -> b !! k = Some v) : tpcm_le a b.
+Proof.
+  unfold tpcm_le.
+  Print map_filter.
+  Print Filter.
+  assert (∀ x : K * option V, Decision (match x with (k,v) => a !! k = None end)) as X
+    by solve_decision.
+  exists (map_filter (λ x , match x with (k,v) => a !! k = None end) X b).
+  unfold dot, gmap_tpcm, gmap_dot. apply map_eq. intro.
+  have ff := f i.
+  rewrite lookup_merge. unfold diag_None, gmerge. 
+  destruct (a !! i) eqn:ai.
+  - rewrite map_filter_lookup.
+    unfold "≫=", option_bind. destruct (b!!i) eqn:bi.
+    + unfold mguard, option_guard. have fff := ff o. intuition. inversion H.
+      destruct (X (i, o)).
+      * rewrite ai in e. discriminate.
+      * trivial.
+    + have fff := ff o. intuition.
+  - rewrite map_filter_lookup.
+    unfold "≫=", option_bind. destruct (b!!i) eqn:bi; trivial.
+    unfold mguard, option_guard. destruct (X (i, o)); trivial.
+    contradiction.
+Qed.
 
 End GmapTPCM.

@@ -32,6 +32,33 @@ Fixpoint has_elem (v: lang.val) (i: nat) : Prop :=
   | S i, (PairV _ r ) => has_elem r i
   | _, _ => False
   end.
+  
+Definition has_length (v: lang.val) (len: nat) : Prop :=
+  match len with
+  | O => True
+  | S j => has_elem v j
+  end.
+  
+Lemma has_elem_of_has_elem : ∀ (j: nat) (i: nat) (v: lang.val) 
+    (lt: i ≤ j) , has_elem v j -> has_elem v i.
+Proof.
+  induction j.
+  - intros. assert (@eq nat i%nat 0%nat) by lia. subst i. trivial.
+  - intros. destruct v.
+    + cbn [has_elem] in H. contradiction.
+    + cbn [has_elem] in H. contradiction.
+    + cbn [has_elem] in H. destruct i.
+      * unfold has_elem. trivial.
+      * cbn [has_elem]. apply IHj; trivial. lia.
+Qed.
+
+Lemma has_elem_of_has_length : ∀ (len: nat) (v: lang.val) (i: nat)
+    (lt: i < len) , has_length v len -> has_elem v i.
+Proof.
+  intros. unfold has_length in H.
+  destruct len. - lia.
+  - apply has_elem_of_has_elem with (j := len); trivial. lia.
+Qed.
 
 Fixpoint elem (v: lang.val) (i: nat) :=
   match i, v with

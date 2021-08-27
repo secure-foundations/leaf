@@ -106,7 +106,7 @@ Proof. unfold is_rwlock. destruct rwlock; try (apply _).
   destruct l; try (apply _).
 Qed.
 
-Lemma hoare_new_rwlock (𝛾: BurrowLoc 𝜇) (x: M) (contents_inv: M -> Prop)
+Lemma wp_new_rwlock (𝛾: BurrowLoc 𝜇) (x: M) (contents_inv: M -> Prop)
     (sat_inv: contents_inv x) :
   {{{ L 𝛾 x }}} new_rwlock
   {{{ rwlock 𝛼 , RET rwlock ; is_rwlock rwlock 𝛼 𝛾 contents_inv }}}.
@@ -251,7 +251,7 @@ Proof.
       iApply ("p" $! x). iFrame.
 Qed.
 
-Lemma hoare_acquire_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv :
+Lemma wp_acquire_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv :
       {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
       acquire_exc rwlock
       {{{ x, RET #(); L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}.
@@ -272,7 +272,7 @@ Proof.
   - iFrame.
 Qed.
 
-Lemma hoare_release_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
+Lemma wp_release_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
       {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
            L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}
       release_exc rwlock
@@ -298,7 +298,7 @@ Proof.
   - iApply "P". done.
 Qed.
   
-Lemma hoare_release_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
+Lemma wp_release_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
       {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
            L (rwloc 𝛼 𝛾) (ShGuard x) }}}
       release_shared rwlock
@@ -325,7 +325,7 @@ Proof.
   - iApply "P". done.
 Qed.
 
-Lemma hoare_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
+Lemma wp_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
       {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
       acquire_shared rwlock
       {{{ x, RET #(); L (rwloc 𝛼 𝛾) (ShGuard x) ∗ ⌜ contents_inv x ⌝ }}}.

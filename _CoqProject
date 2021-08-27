@@ -23,6 +23,8 @@ src/burrow/relive.v
 src/tpcms/gmap.v
 src/tpcms/auth_frag.v
 src/tpcms/heap.v
+src/tpcms/rwlock.v
+src/tpcms/hash_table.v
 
 -Q src/lang BurrowLang
 
@@ -35,6 +37,12 @@ src/lang/primitive_laws.v
 src/lang/proofmode.v
 src/lang/simp.v
 src/lang/tactics.v
+
+-Q src/examples Examples
+
+src/examples/rwlock.v
+src/examples/seqs.v
+src/examples/hash_table.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
