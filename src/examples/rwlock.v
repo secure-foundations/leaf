@@ -382,7 +382,7 @@ Proof.
     wp_pures.
     iApply ("IH" with "x").
   
-  (* exc = 1 case *)
+  (* exc = 0 case *)
   - iMod (rw_shared_acquire with "L pend") as "[L guard]".
     iModIntro.
     iSplitL "L le lr".
