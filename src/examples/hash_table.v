@@ -3,7 +3,6 @@ From BurrowLang Require Import lang simp adequacy primitive_laws.
 Require Import Burrow.tpcms.
 Require Import Burrow.ra.
 Require Import Burrow.rollup.
-Require Import Burrow.CpdtTactics.
 Require Import Burrow.tactics.
 
 From iris.base_logic Require Export base_logic.
@@ -23,11 +22,14 @@ From Examples Require Import seqs.
 
 Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
+Require Import Burrow.CpdtTactics.
 
 Definition compute_hash: lang.expr. Admitted.
+Lemma s_k_compute_hash a : subst "k" a compute_hash = compute_hash. Admitted.
+Lemma s_ht_compute_hash a : subst "ht" a compute_hash = compute_hash. Admitted.
 
 Definition query_iter: lang.expr :=
-  rec: "query_iter" "slots" "locks" "k" "i" :=
+  (rec: "query_iter" "slots" "locks" "k" "i" :=
     if: (BinOp EqOp "i" #(ht_fixed_size)) then
       PairV #false #()
     else
@@ -45,11 +47,11 @@ Definition query_iter: lang.expr :=
             PairV #false #()
       ) in
       release_shared (seq_idx "i" "locks") ;;
-      "ret"
+      "ret")%V
 .
 
 Definition query: lang.expr :=
-  λ: "query" "ht" "k" ,
+  λ: "ht" "k" ,
     query_iter (Fst "ht") (Snd "ht") "k" (compute_hash "k").
 
 Section HashTableProof.
@@ -122,7 +124,7 @@ Definition is_ht_i 𝛾 (slots locks: lang.val) (i: nat) :=
 Definition is_ht_sl 𝛾 (slots locks: lang.val) :=
   seq_iprop (is_ht_i 𝛾 slots locks) ht_fixed_size.
   
-Instance seq_is_ht_sl 𝛾 slots locks : Persistent (is_ht_sl 𝛾 slots locks).
+Instance is_ht_sl_persistent 𝛾 slots locks : Persistent (is_ht_sl 𝛾 slots locks).
 Proof.
   apply seq_iprop_persistent.
   intro. unfold is_ht_i.
@@ -138,6 +140,12 @@ Definition is_ht 𝛾 (ht: lang.val) :=
   | _ => (False)%I
   end.
   
+Instance is_ht_persistent 𝛾 ht : Persistent (is_ht 𝛾 ht).
+Proof.
+  unfold is_ht.
+  destruct ht; try apply _.
+Qed.
+
 Lemma destruct_slots_i 𝛾 slots locks i
   : is_ht_i 𝛾 slots locks i -∗ ⌜ ∃ (l: Z) , elem slots i = #l ⌝.
 Proof.
@@ -147,6 +155,15 @@ Proof.
     + iExFalso. iFrame.
   - iExFalso. iFrame.
   - iExFalso. iFrame.
+Qed.
+
+Lemma destruct_ht 𝛾 ht
+  : is_ht 𝛾 ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
+Proof.
+  iIntros "ih". unfold is_ht. destruct ht.
+  - iExFalso. iFrame.
+  - iExFalso. iFrame.
+  - iPureIntro. exists ht1, ht2. trivial.
 Qed.
 
 Lemma s_i_acquire_shared a : subst "i" a acquire_shared = acquire_shared.
@@ -188,16 +205,25 @@ Proof. trivial. Qed.
 Opaque acquire_shared.
 Opaque release_shared.
 Opaque seq_idx.
+
+Lemma z_n_add1 (i: nat)
+  : ((LitV (Z.add i (Zpos xH))) = (LitV (Init.Nat.add i (S O)))). 
+f_equal. f_equal. lia. Qed.
   
-Lemma wp_ht_query 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat)
-  (i_bound: hash k ≤ i ≤ ht_fixed_size) :
-      {{{ is_ht_sl 𝛾 slots locks ∗ L 𝛾 (m k v) ∗ A 𝜅 ∗ BorrowedRange 𝜅 𝛾 k (hash k) i
+Lemma wp_ht_query_iter 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) :
+      {{{
+        ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
+        is_ht_sl 𝛾 slots locks ∗ L 𝛾 (m k v) ∗ A 𝜅 ∗ BorrowedRange 𝜅 𝛾 k (hash k) i
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
       query_iter slots locks #k #i
-      {{{ RET (opt_as_val v); L 𝛾 (m k v) }}}.
+      {{{ RET (opt_as_val v); L 𝛾 (m k v) ∗ A 𝜅 }}}.
 Proof.
-  iIntros (Phi) "[#ht [m [a [range %szs]]]] Phi".
+  unfold query_iter.
+  iRevert (i).
+  iRevert (𝜅).
+  iLöb as "IH".
+  iIntros (𝜅 i Phi) "[%i_bound [#ht [m [a [range %szs]]]]] Phi".
   wp_pures.
     rewrite s_query_iter_acquire_shared.
     rewrite s_slots_acquire_shared.
@@ -214,7 +240,7 @@ Proof.
     rewrite s_locks_seq_idx.
     rewrite s_k_seq_idx.
     rewrite s_i_seq_idx.
-  induction i as [i IHi] using (induction_ltof1 _ (λ j, ht_fixed_size - j)); unfold ltof in IHi.
+  
   unfold query_iter. wp_pures.
   have h : Decision (i = ht_fixed_size) by solve_decision. destruct h.
   
@@ -248,7 +274,8 @@ Proof.
     
     (* acquire lock *)
     
-    iDestruct (get_seq_iprop _ _ i _ with "ht") as "hti".
+    iDestruct (get_seq_iprop _ _ i with "ht") as "hti".
+    { lia. }
     iDestruct (destruct_slots_i with "hti") as "%ds". 
     deex. unfold is_ht_i. rewrite ds. iDestruct "hti" as (𝛼) "hti".
     wp_bind (acquire_shared (elem locks i)).
@@ -346,35 +373,167 @@ Proof.
         { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
         rewrite bd0.
         
+        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
+        { apply LifetimeInclusion_Left. }
+        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
+        { apply LifetimeInclusion_Right. }
+        iDestruct (ht_BorrowedRangeAppend _ _ _ _ _ _ _ with "range slot") as "range".
+        { crush. }
+        
+        wp_pure _.
+        wp_pure _.
+        replace (#true) with (#1) by trivial.
+        replace (#false) with (#0) by trivial.
+        full_generalize ((rec: "query_iter" "slots" "locks" "k" "i" :=
+                      if: BinOp EqOp "i" #ht_fixed_size then (#0, #())%V
+                      else acquire_shared (seq_idx "i" "locks");; 
+                           let: "ret" := let: "slot" := ! (seq_idx "i" "slots") in
+                                         if: Fst "slot"
+                                         then let: "k1" := Fst (Snd "slot") in
+                                              let: "v1" := Snd (Snd "slot") in
+                                              if: BinOp EqOp "k" "k1" then 
+                                              (#1, "v1")
+                                              else "query_iter" "slots" "locks" "k"
+                                                     ("i" + #1) else 
+                                         (#0, #())%V in
+                           release_shared (seq_idx "i" "locks");; "ret")%V) as big_e.
+                           
+       wp_bind (big_e slots locks #k #(i + 1)).
+       rewrite z_n_add1.
+       wp_apply ("IH" $! (lifetime_intersect 𝜅0 𝜅) (i + 1) with "[m a range]").
+       {
+          iSplitR. { iPureIntro. lia. }
+          iSplitR. { iFrame "#". }
+          iSplitL "m". { iFrame. }
+          iSplitL "a". { iFrame. }
+          iSplitL "range". { iFrame. }
+          iPureIntro. intuition.
+       }
+       
+       iIntros "[m a]".
+       
+       (* release the lock *)
+       
+        iDestruct (ActiveSplit with "a") as "[a0 a]".
+               
+        iMod (@BorrowExpire _ _ _
+          (RwLock (HT * (HeapT loc lang.val))) _ _ _
+          _ _ _
+          with "[a0 r]") as "guard".
+        { iFrame. }
+        
+        wp_pure _.
         wp_pure _.
         
-      
+        rewrite s_ret_release_shared.
+        rewrite s_ret_seq_idx.
         
+        wp_bind (seq_idx #i locks).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+        iIntros "_".
         
+        wp_bind (release_shared (elem locks i)).
+        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        { iFrame. iFrame "#". }
+        iIntros (dummy) "_".
         
-        iIntros (x) "[guard %xinv]".
+        wp_pures.
+        
+        iModIntro. iApply ("Phi" with "[m a]"). { iFrame. }
+    +
+        (* case: the slot has nothing in it *)
+        
+        wp_pure _.
+        wp_pure _.
+        wp_pure _.
+        wp_pure _.
+        
+        rewrite s_ret_release_shared.
+        rewrite s_ret_seq_idx.
+        
+        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
+        { apply LifetimeInclusion_Left. }
+        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
+        { apply LifetimeInclusion_Right. }
 
+        iDestruct (ht_QueryNotFound _ _ _ _ _ with "a range slot m") as "%veq".
+        rewrite veq.
         
+        (* release lock *)
         
+        iDestruct (ActiveSplit with "a") as "[a0 a]".
         
+        iMod (@BorrowExpire _ _ _
+          (RwLock (HT * (HeapT loc lang.val))) _ _ _
+          _ _ _
+          with "[a0 r]") as "guard".
+        { iFrame. }
         
+        wp_bind (seq_idx #i locks).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+        iIntros "_".
         
+        wp_bind (release_shared (elem locks i)).
+        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        { iFrame. iFrame "#". }
+        iIntros (dummy) "_".
         
-        
+        wp_pures.
+        unfold opt_as_val.
+        iApply "Phi". iModIntro. iFrame.
+Qed.
 
-      
-      
-    
-    unfold slot_as_val.
-    wp_pures.
-    
-    
+Lemma s_k_query_iter a : subst "k" a query_iter = query_iter.
+Proof. trivial. Qed.
+Lemma s_ht_query_iter a : subst "ht" a query_iter = query_iter.
+Proof. trivial. Qed.
+
+Opaque query_iter.
+
+Lemma wp_compute_hash (k: Key) :
+      {{{ True }}}
+      compute_hash #k
+      {{{ RET #(hash k) ; True }}}. Admitted.
 
 Lemma wp_ht_query 𝛾 (ht: lang.val) (k: Key) (v: option Value) :
       {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v) }}}
       query ht #k
       {{{ RET (opt_as_val v); L 𝛾 (m k v) }}}.
+Proof.
+  unfold query.
+  iIntros (Phi) "[#ht l] Phi".
   
+  iDestruct (destruct_ht with "ht") as "%ds". deex. subst ht.
+  
+  wp_pure _. wp_pure _. wp_pure _. wp_pure _.
+  
+  rewrite s_k_query_iter.
+  rewrite s_ht_compute_hash.
+  rewrite s_k_compute_hash.
+  
+  wp_bind (compute_hash #k).
+  wp_apply (wp_compute_hash k). { done. }
+  iIntros "_".
+  
+  iMod (ht_BorrowedRangeEmpty 𝛾 k (hash k)) as (𝜅) "[range a]".
+  
+  wp_apply (wp_ht_query_iter with "[l range a]").
+  {
+    unfold is_ht.
+    iDestruct "ht" as "[#iht %l]".
+    iFrame. iFrame "#".
+    iPureIntro. intuition.
+    assert (hash k < ht_fixed_size) by (apply hash_in_bound). lia. 
+  }
+  
+  iIntros "[l a]". iApply "Phi". iFrame.
+Qed.
 
 End HashTableProof.
 

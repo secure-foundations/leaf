@@ -951,6 +951,16 @@ Proof.
 Qed.
 *)
 
+Lemma ht_BorrowedRangeEmpty 𝛾 k i
+  : ⊢ |==> ∃ 𝜅 , BorrowedRange 𝜅 𝛾 k i i ∗ A 𝜅.
+Proof.
+  iIntros.
+  iMod (L_unit HT 𝛾) as "u".
+  iMod (BorrowBegin _ _ with "u") as (𝜅) "[a [r b]]".
+  iModIntro. unfold BorrowedRange. iExists 𝜅. iFrame. iExists unit. iFrame. iPureIntro.
+  apply full_trivial.
+Qed.
+
 Lemma ht_BorrowedRangeAppend 𝜅 𝛾 k i j k0 v0
   (ne: k0 ≠ k) : BorrowedRange 𝜅 𝛾 k i j -∗ B 𝜅 𝛾 (s j (Some (k0, v0)))
       -∗ BorrowedRange 𝜅 𝛾 k i (j+1).
