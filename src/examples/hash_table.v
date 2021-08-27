@@ -56,10 +56,6 @@ Section HashTableProof.
 
 Context {𝜇: BurrowCtx}.
 
-Print Instances RelDecision.
-Print Instances Countable.
-
-
 Context `{!simpGS 𝜇 Σ}.
 (*Context `{!HasTPCM 𝜇 (HeapT loc lang.val)}. *)
 
@@ -166,7 +162,7 @@ Qed.
 
 Lemma z_n_add1 (i: nat)
   : ((LitV (Z.add i (Zpos xH))) = (LitV (Init.Nat.add i (S O)))). 
-f_equal. f_equal. lia. Qed.
+Proof.  f_equal. f_equal. lia. Qed.
   
 Lemma wp_ht_query_iter 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) :
       {{{
@@ -272,7 +268,7 @@ Proof.
         (* get the answer using the borrowed props *)
         
         (*
-        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
         iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
         { apply LifetimeInclusion_Left. }
         iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
@@ -313,8 +309,8 @@ Proof.
         assert (bool_decide (#k = #k0) = false) as bd0.
         { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
         rewrite bd0.
-        
-        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+
+        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
         iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
         { apply LifetimeInclusion_Left. }
         iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
@@ -389,7 +385,7 @@ Proof.
         wp_pure _.
         wp_pure _.
         
-        iDestruct (ActiveJoin with "[a a0]") as "a". {iFrame.}
+        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
         iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
         { apply LifetimeInclusion_Left. }
         iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
