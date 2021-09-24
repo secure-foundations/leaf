@@ -25,8 +25,8 @@ Ltac reshape_expr e tac :=
     | BinOp ?op ?e (Val ?v)           => add_item (BinOpLCtx op v) K e
     | BinOp ?op ?e1 ?e2               => add_item (BinOpRCtx op e1) K e2
     | HeapOp ?op ?e (Val ?v2) (Val ?v3)       => add_item (HeapOpLCtx op v2 v3) K e
-    | HeapOp ?op ?e1 ?e2 (Val ?v)     => add_item (HeapOpLCtx op e1 v) K e
-    | HeapOp ?op ?e1 ?e2 ?e3          => add_item (HeapOpRCtx op e2 e3) K e2
+    | HeapOp ?op ?e1 ?e2 (Val ?v)     => add_item (HeapOpMCtx op e1 v) K e2
+    | HeapOp ?op ?e1 ?e2 ?e3          => add_item (HeapOpRCtx op e1 e2) K e3
     | If ?e0 ?e1 ?e2                  => add_item (IfCtx e1 e2) K e0
     end
   with add_item Ki K e := go (Ki :: K) e

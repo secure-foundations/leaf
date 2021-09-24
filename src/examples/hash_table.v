@@ -51,6 +51,33 @@ Definition query_iter: lang.val :=
 Definition query: lang.val :=
   λ: "ht" "k" ,
     query_iter (Fst "ht") (Snd "ht") "k" (compute_hash "k").
+    
+Definition update_iter: lang.val :=
+  (rec: "update_iter" "slots" "locks" "k" "v" "i" :=
+    if: (BinOp EqOp "i" #(ht_fixed_size)) then
+      #false
+    else
+      acquire_exc (seq_idx "i" "locks") ;;
+      let: "ret" := (
+        let: "slot" := ! (seq_idx "i" "slots") in
+          if: (Fst "slot") then
+            let: "k1" := Fst (Snd "slot") in
+            let: "v1" := Snd (Snd "slot") in
+            if: (BinOp EqOp "k" "k1") then
+              (seq_idx "i" "slots") <- (#true, ("k", "v")) ;; #true
+            else
+              "update_iter" "slots" "locks" "k" "v" ("i" + #1)
+          else
+            (seq_idx "i" "slots") <- (#true, ("k", "v")) ;; #true
+      ) in
+      release_exc (seq_idx "i" "locks") ;;
+      "ret")%V
+.
+
+Definition update: lang.val :=
+  λ: "ht" "k" "v" ,
+    update_iter (Fst "ht") (Snd "ht") "k" "v" (compute_hash "k").
+
 
 Section HashTableProof.
 
@@ -163,7 +190,281 @@ Qed.
 Lemma z_n_add1 (i: nat)
   : ((LitV (Z.add i (Zpos xH))) = (LitV (Init.Nat.add i (S O)))). 
 Proof.  f_equal. f_equal. lia. Qed.
+
+Lemma wp_ht_update_iter 𝛾 range (slots locks: lang.val) (k: Key) (v: Value) (v0: option Value) (i: nat) :
+      {{{
+        ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
+        is_ht_sl 𝛾 slots locks ∗ L 𝛾 (m k v0) ∗ L 𝛾 range ∗ ⌜ full range k (hash k) i ⌝
+        ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
+      }}}
+      update_iter slots locks #k #v #i
+      {{{ b , RET (#b);
+          ((⌜ b = 0 ⌝ ∗ L 𝛾 (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ L 𝛾 (m k (Some v)))) ∗ L 𝛾 range
+      }}}.
+Proof.
+  unfold update_iter.
+  iRevert (i).
+  iRevert (range).
+  iLöb as "IH".
+  iIntros (range i Phi) "[%i_bound [#ht [m [a [%isf %szs]]]]] Phi".
+  wp_pures.
   
+  unfold update_iter. wp_pures.
+  have h : Decision (i = ht_fixed_size) by solve_decision. destruct h.
+  
+  (* case: i = fixed_size *)
+  
+  - subst i. 
+    assert (bool_decide (#ht_fixed_size = #ht_fixed_size) = true) as bd.
+    { unfold bool_decide. case_decide; crush. }
+    rewrite bd.
+    wp_pures.
+    iModIntro.
+    iApply ("Phi" $! 0). iFrame.
+    iLeft. iFrame. iPureIntro. trivial.
+    
+  (* case: i < fixed_size *)
+  
+  - 
+    assert (bool_decide (#i = #ht_fixed_size) = false) as bd.
+    { unfold bool_decide. case_decide; trivial. inversion H. lia. }
+    rewrite bd.
+    wp_if.
+    wp_pures.
+
+   (* lookup lock in sequence *)
+    
+    wp_bind (seq_idx #i locks).
+    wp_apply wp_seq_idx.
+    { apply has_elem_of_has_length with (len := ht_fixed_size).
+      - lia. - intuition. } { done. }
+    iIntros "_".
+    
+    (* acquire lock *)
+    
+    iDestruct (get_seq_iprop _ _ i with "ht") as "hti".
+    { lia. }
+    iDestruct (destruct_slots_i with "hti") as "%ds". 
+    deex. unfold is_ht_i. rewrite ds. iDestruct "hti" as (𝛼) "hti".
+    wp_bind (acquire_exc (elem locks i)).
+    wp_apply (wp_acquire_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) with "hti").
+    iIntros (x) "[guard [cross %hti]]".
+    unfold ht_inv_i in hti. destruct x. deex. destruct_ands. subst h. subst h0.
+    iMod (CrossSplit _ _ _ _ with "cross") as "[slot mem]".
+    
+    wp_pures. 
+    
+    (* lookup slot ptr in sequence *)
+    
+    wp_bind (seq_idx #i slots).
+    wp_apply wp_seq_idx.
+    { apply has_elem_of_has_length with (len := ht_fixed_size).
+      - lia. - intuition. } { done. }
+    iIntros "_".
+    
+    (* read the slot *)
+    
+    rewrite ds.
+    wp_apply (wp_load _ _ _ _ _ with "mem").
+    iIntros "mem".
+    wp_pures.
+    
+    destruct slot.
+    
+    + (* case: the slot has something in it *)
+    
+      unfold slot_as_val. destruct p. wp_pures.
+      
+      have h : Decision (k = k0) by solve_decision. destruct h.
+      
+      * (* case: the found key matches *)
+      
+        subst k0. 
+        assert (bool_decide (#k = #k) = true) as bd0.
+        { rewrite bool_decide_decide. destruct (decide (#k = #k)); trivial. contradiction. }
+        rewrite bd0.
+        wp_if.
+        wp_pures.
+        
+        wp_bind (seq_idx #i slots).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+        iIntros "_".
+        rewrite ds.
+        wp_store.
+        
+        wp_pures.
+        
+        wp_bind (seq_idx #i locks).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+        iIntros "_".
+        
+        iMod (ht_UpdateExisting _ _ v _ _ _ with "slot m") as "[slot m]".
+        iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+        
+        (* release the lock *)
+
+        wp_bind (release_exc (elem locks i)).
+        wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
+        { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k, v)).
+          split; trivial. }
+          
+        iIntros. 
+        wp_pures.
+        
+        iApply ("Phi" $! 1). iModIntro. iFrame.
+        iRight. iFrame. iPureIntro. trivial.
+        
+      *
+        (* case: the found key does not match - we have to recurse *)
+        
+        wp_pures.
+        
+        assert (bool_decide (#k = #k0) = false) as bd0.
+        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
+        rewrite bd0.
+        
+        iDestruct (L_join with "a slot") as "a'".
+
+        wp_pure _.
+        wp_pure _.
+        replace (#true) with (#1) by trivial.
+        replace (#false) with (#0) by trivial.
+        full_generalize ((rec: "update_iter" "slots" "locks" "k" "v" "i" :=
+                      if: BinOp EqOp "i" #ht_fixed_size then #0
+                      else acquire_exc (seq_idx "i" "locks");; 
+                           let: "ret" := let: "slot" := ! (seq_idx "i" "slots") in
+                                         if: Fst "slot"
+                                         then let: "k1" := Fst (Snd "slot") in
+                                              let: "v1" := Snd (Snd "slot") in
+                                              if: BinOp EqOp "k" "k1"
+                                              then seq_idx "i" "slots" <- (#1, ("k", "v"));; 
+                                                   #1
+                                              else "update_iter" "slots" "locks" "k" "v"
+                                                     ("i" + #1)
+                                         else seq_idx "i" "slots" <- (#1, ("k", "v"));; #1 in
+                           release_exc (seq_idx "i" "locks");; "ret")%V) as big_e.
+                           
+       wp_bind (big_e slots locks #k #v #(i + 1)).
+       rewrite z_n_add1.
+       wp_apply ("IH" $! (dot range (s i (Some (k0, v1)))) (i + 1) with "[m a']").
+       {
+          iSplitR. { iPureIntro. lia. }
+          iSplitR. { iFrame "#". }
+          iSplitL "m". { iFrame. }
+          iSplitL "a'". { iFrame. }
+          iSplitL. { iPureIntro. apply full_dot; trivial. crush. }
+          iPureIntro. intuition.
+       }
+       
+       iIntros (b) "[m a]".
+       wp_pures.
+       
+       (* release the lock *)
+       
+       iDestruct (L_op _ _ _ with "a") as "[a slot]".
+       iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+       
+       wp_bind (seq_idx #i locks).
+        wp_apply wp_seq_idx.
+        { apply has_elem_of_has_length with (len := ht_fixed_size).
+          - lia. - intuition. } { done. }
+       iIntros.
+
+       wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
+        { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k0, v1)).
+          split; trivial. }
+       iIntros.
+       
+       wp_pures.
+       iModIntro.
+       
+       iApply ("Phi" $! b). iFrame.
+    
+    
+    + 
+       (* case: the slot has nothing in it *)
+       
+       wp_pures.
+     
+       wp_bind (seq_idx #i slots).
+       wp_apply wp_seq_idx.
+       { apply has_elem_of_has_length with (len := ht_fixed_size).
+         - lia. - intuition. } { done. }
+       iIntros "_".
+       
+       wp_pures.
+       rewrite ds.
+       wp_store.
+       wp_pures.
+       
+       iMod (ht_UpdateNew _ _ v _ _ _ with "a slot m") as "[a [slot m]]".
+       { trivial. }
+       
+       (* release the lock *)
+       
+       wp_bind (seq_idx #i locks).
+       wp_apply wp_seq_idx.
+       { apply has_elem_of_has_length with (len := ht_fixed_size).
+         - lia. - intuition. } { done. }
+       iIntros "_".
+       iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+
+       wp_bind (release_exc (elem locks i)).
+       wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
+       { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k, v)).
+          split; trivial. }
+          
+       iIntros. 
+       wp_pures.
+        
+       iApply ("Phi" $! 1). iModIntro. iFrame.
+       iRight. iFrame. iPureIntro. trivial.
+Qed.
+
+Lemma wp_compute_hash (k: Key) :
+      {{{ True }}}
+      compute_hash #k
+      {{{ RET #(hash k) ; True }}}. Admitted.
+
+Lemma wp_ht_update 𝛾 (ht: lang.val) (k: Key) (v: Value) (v0: option Value) :
+      {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v0) }}}
+      update ht #k #v
+      {{{ b , RET (#b);
+          ((⌜ b = 0 ⌝ ∗ L 𝛾 (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ L 𝛾 (m k (Some v))))
+      }}}.
+Proof.
+  unfold update.
+  iIntros (Phi) "[#ht l] Phi".
+  
+  iDestruct (destruct_ht with "ht") as "%ds". deex. subst ht.
+  
+  wp_pures.
+  
+  wp_bind (compute_hash #k).
+  wp_apply (wp_compute_hash k). { done. }
+  iIntros "_".
+  
+  iMod (L_unit HT 𝛾) as "u".
+  
+  wp_pures.
+  
+  wp_apply (wp_ht_update_iter 𝛾 unit slots locks k v v0 with "[l u]").
+  {
+    unfold is_ht.
+    iDestruct "ht" as "[#iht %l]".
+    iFrame. iFrame "#".
+    iPureIntro. intuition.
+    - assert (hash k < ht_fixed_size) by (apply hash_in_bound). lia. 
+    - apply full_trivial.
+  }
+  
+  iIntros (b) "[l a]". iApply "Phi". iFrame.
+Qed.
+     
 Lemma wp_ht_query_iter 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
@@ -419,11 +720,6 @@ Proof.
         unfold opt_as_val.
         iApply "Phi". iModIntro. iFrame.
 Qed.
-
-Lemma wp_compute_hash (k: Key) :
-      {{{ True }}}
-      compute_hash #k
-      {{{ RET #(hash k) ; True }}}. Admitted.
 
 Lemma wp_ht_query 𝛾 (ht: lang.val) (k: Key) (v: option Value) :
       {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v) }}}
