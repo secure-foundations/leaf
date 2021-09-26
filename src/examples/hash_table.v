@@ -105,7 +105,7 @@ Definition main: lang.val :=
   λ: "unit" ,
     let: "ht" := new_hash_table #() in
     let: "insert_success" := update "ht" #0 #17 in
-    Fork ( update "ht" #1 #9001 ) ;;
+    Fork ( update "ht" #1 #12 ) ;;
     query "ht" #0
 .
 
@@ -967,7 +967,7 @@ Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
   wp_apply (wp_fork with "[L1]").
   {
     iNext.
-    wp_apply (wp_ht_update 𝛾 ht 1 9001 None with "[is_ht L1]").
+    wp_apply (wp_ht_update 𝛾 ht 1 12 None with "[is_ht L1]").
     { iFrame. iFrame "#". }
     iIntros. done.
   }
