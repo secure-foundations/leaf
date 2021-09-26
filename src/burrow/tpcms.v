@@ -995,7 +995,7 @@ Global Instance product_hastpcm (𝜇: BurrowCtx) (M: Type) (N: Type)
 Class HasRef (𝜇: BurrowCtx) {R M: Type}
       `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
       `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
-      `{r_hastpcm: !HasTPCM 𝜇 R} `{m_hastpcm: !HasTPCM 𝜇 M}
+      (r_hastpcm: HasTPCM 𝜇 R) (m_hastpcm: HasTPCM 𝜇 M)
       (ref: Refinement R M)
     := {
         hasref_ri: (bc_small_RI 𝜇) ; 
@@ -1150,9 +1150,9 @@ Global Instance NewTPCM_KeepsRef
     T `{!EqDecision T} `{TPCM T}
     (𝜇 : BurrowCtx)
     (ref: Refinement M N)
-    `{!HasTPCM 𝜇 M} `{!HasTPCM 𝜇 N}
-    `{hr: !HasRef 𝜇 ref}
-  : HasRef (NewTPCMCtx 𝜇 T) ref.
+    (hastpcm_m: HasTPCM 𝜇 M) (hastpcm_n: HasTPCM 𝜇 N)
+    (hr: HasRef 𝜇 hastpcm_m hastpcm_n ref)
+  : HasRef (NewTPCMCtx 𝜇 T) (NewTPCM_KeepsTPCM T M 𝜇) (NewTPCM_KeepsTPCM T N 𝜇) ref.
 Proof.
   refine ({|
     hasref_ri := ((@hasref_ri 𝜇 M N _ _ _ _ _ _ ref hr) : bc_small_RI (NewTPCMCtx 𝜇 T));
@@ -1208,7 +1208,7 @@ Global Instance NewRef_HasRef (𝜇: BurrowCtx)
     M `{!EqDecision M} `{TPCM M}
     `{!HasTPCM 𝜇 R} `{!HasTPCM 𝜇 M}
     (ref: Refinement R M)
-  : HasRef (NewRefCtx 𝜇 R M ref) ref.
+  : HasRef (NewRefCtx 𝜇 R M ref) (NewRef_KeepsTPCM 𝜇 R M R ref) (NewRef_KeepsTPCM 𝜇 R M M ref) ref.
 Proof.
   refine ({|
     hasref_ri := (inr () : bc_small_RI ((NewRefCtx 𝜇 R M ref))) ;
@@ -1222,11 +1222,13 @@ Global Instance NewRef_KeepsRef (𝜇: BurrowCtx)
     S `{!EqDecision S} `{TPCM S}
     T `{!EqDecision T} `{TPCM T}
     `{!HasTPCM 𝜇 R} `{!HasTPCM 𝜇 M}
-    `{!HasTPCM 𝜇 S} `{!HasTPCM 𝜇 T}
+    (hastpcm_s: HasTPCM 𝜇 S) (hastpcm_t: HasTPCM 𝜇 T)
     (ref: Refinement R M)
     (ref': Refinement S T)
-    `{hr': !HasRef 𝜇 ref'}
-  : HasRef (NewRefCtx 𝜇 R M ref) ref'.
+    (hr': HasRef 𝜇 hastpcm_s hastpcm_t ref')
+  : HasRef (NewRefCtx 𝜇 R M ref)
+      (NewRef_KeepsTPCM 𝜇 R M S ref)
+      (NewRef_KeepsTPCM 𝜇 R M T ref) ref'.
 Proof.
   refine ({|
     hasref_ri := ((inl (@hasref_ri 𝜇 S T _ _ _ _ _ _ ref' hr')) : bc_small_RI ((NewRefCtx 𝜇 R M ref))) ;
@@ -1242,7 +1244,7 @@ Definition extend_loc {𝜇: BurrowCtx}
     `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
     `{r_hastpcm: !HasTPCM 𝜇 R} `{m_hastpcm: !HasTPCM 𝜇 M}
     (𝛼: nat) (ref: Refinement R M) (𝛾: BurrowLoc 𝜇)
-    `{hr: !HasRef 𝜇 ref} : BurrowLoc 𝜇
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref} : BurrowLoc 𝜇
     := (ExtLoc 𝛼 (FinalRINormal (bc_small_RI 𝜇) (@hasref_ri
         𝜇 R M r_eqdec r_tpcm m_eqdec m_tpcm r_hastpcm m_hastpcm ref hr
     )) 𝛾).
@@ -1412,7 +1414,7 @@ Lemma rel_defined_mu
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
     (ref : Refinement R M)
-    `{hr: !HasRef 𝜇 ref} (r: InfiniteCopies (bc_small_M 𝜇))
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref} (r: InfiniteCopies (bc_small_M 𝜇))
  : rel_defined (InfiniteCopies (bc_small_M 𝜇)) (InfiniteCopies (bc_small_M 𝜇))
       (refinement_of (FinalRINormal (bc_small_RI 𝜇) hasref_ri)) r
    <-> m_valid r /\ rel_defined R M ref (mu_eproject R 𝜇 r).
@@ -1436,7 +1438,7 @@ Lemma rel_mu
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
     (ref : Refinement R M)
-    `{hr: !HasRef 𝜇 ref} (r: InfiniteCopies (bc_small_M 𝜇))
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref} (r: InfiniteCopies (bc_small_M 𝜇))
  : rel (InfiniteCopies (bc_small_M 𝜇)) (InfiniteCopies (bc_small_M 𝜇))
       (refinement_of (FinalRINormal (bc_small_RI 𝜇) hasref_ri)) r
    = mu_embed M 𝜇 (rel R M ref (mu_eproject R 𝜇 r)).
@@ -1460,7 +1462,7 @@ Lemma borrow_back'
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
     (ref : Refinement R M)
-    `{hr: !HasRef 𝜇 ref}
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
     𝛼 𝛾 f m 𝜅 state
   (bbcond : ∀ p: R, rel_defined R M ref (dot f p) ->
       tpcm_le m (rel R M ref (dot f p)))
@@ -1592,7 +1594,7 @@ Lemma borrow_exchange_cond_mu_embed
     `{m_eqdec: !EqDecision M, m_tpcm: !TPCM M}
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
-    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
   (m m' : M) (f z f': R)
   (exchange_cond : borrow_exchange_cond ref z m f m' f')
   : borrow_exchange_cond (refinement_of (FinalRINormal (bc_small_RI 𝜇) hasref_ri))
@@ -1643,7 +1645,7 @@ Lemma borrow_exchange'
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
     (ref : Refinement R M)
-    `{hr: !HasRef 𝜇 ref}
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
       b 𝜅 𝛾 (m m' : M) (f z f': R) 𝛼 (p: BurrowState 𝜇)
   (isb: is_borrow' 𝜅 (extend_loc 𝛼 ref 𝛾) z b)
   (exchange_cond: borrow_exchange_cond ref z m f m' f')
@@ -1663,7 +1665,7 @@ Lemma initialize_ext'
     `{r_eqdec: !EqDecision R, r_tpcm: !TPCM R}
     `{m_hastpcm: !HasTPCM 𝜇 M} `{r_hastpcm: !HasTPCM 𝜇 R}
     (ref : Refinement R M)
-    `{hr: !HasRef 𝜇 ref}
+    `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
   𝛾 (m: M) (f: R) (p: BurrowState 𝜇)
   (is_rel_def: rel_defined R M ref f)
   (is_rel: rel R M ref f = m)

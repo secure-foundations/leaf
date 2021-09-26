@@ -55,9 +55,9 @@ Section RwlockProof.
 Context {𝜇: BurrowCtx}.
 
 Context {M} `{!EqDecision M} `{!TPCM M}.
-Context `{!HasTPCM 𝜇 M}.
-Context `{!HasTPCM 𝜇 (RwLock M)}.
-Context `{!HasRef 𝜇 (rwlock_ref M)}.
+Context `{m_hastpcm: !HasTPCM 𝜇 M}.
+Context `{rw_hastpcm: !HasTPCM 𝜇 (RwLock M)}.
+Context `{!HasRef 𝜇 rw_hastpcm m_hastpcm (rwlock_ref M)}.
 
 Context `{!simpGS 𝜇 Σ}.
 

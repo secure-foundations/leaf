@@ -399,9 +399,9 @@ Qed.
 (* Ext-BorrowBack *)
 
 Lemma BorrowBack
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
-    (ref: Refinement R M) `{hr: !HasRef 𝜇 ref}
+    {M} `{!EqDecision M} `{!TPCM M} `{m_hastpcm: !HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{r_hastpcm: !HasTPCM 𝜇 R}
+    (ref: Refinement R M) `{hr: !HasRef 𝜇 r_hastpc m_hastpcm ref}
     𝛼 𝛾 f m 𝜅
     (bbcond : ∀ p: R, rel_defined R M ref (dot f p) ->
         tpcm_le m (rel R M ref (dot f p)))
@@ -488,9 +488,9 @@ Qed.
 (* Ext-Exchange-Borrow *)
 
 Lemma FrameExchangeWithBorrow
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
-    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    {M} `{!EqDecision M} `{!TPCM M} `{m_hastpcm: !HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{r_hastpcm: !HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
     𝛼 𝜅 𝛾 (m m' : M) (f f' z: R)
     (exchange_cond: borrow_exchange_cond ref z m f m' f')
     : A 𝜅 -∗ L (extend_loc 𝛼 ref 𝛾) f -∗ L 𝛾 m -∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z ==∗
@@ -523,9 +523,9 @@ Definition normal_exchange_cond
 (* Ext-Exchange *)
 
 Lemma FrameExchange
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
-    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    {M} `{!EqDecision M} `{!TPCM M} `{m_hastpcm: !HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{r_hastpcm: !HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
     𝛼 𝛾 (m m' : M) (f f': R)
     (exchange_cond: normal_exchange_cond ref m f m' f')
     : L (extend_loc 𝛼 ref 𝛾) f -∗ L 𝛾 m ==∗
@@ -543,9 +543,9 @@ Qed.
 (* Ext-Init *)
 
 Lemma InitializeExt 
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {R} `{!EqDecision R} `{!TPCM R} `{!HasTPCM 𝜇 R}
-    (ref : Refinement R M) `{hr: !HasRef 𝜇 ref}
+    {M} `{!EqDecision M} `{!TPCM M} `{m_hastpcm: !HasTPCM 𝜇 M}
+    {R} `{!EqDecision R} `{!TPCM R} `{r_hastpcm: !HasTPCM 𝜇 R}
+    (ref : Refinement R M) `{hr: !HasRef 𝜇 r_hastpcm m_hastpcm ref}
     (𝛾: BurrowLoc 𝜇) (m: M) (f: R)
     (is_rel_def: rel_defined R M ref f)
     (is_rel: rel R M ref f = m)
@@ -555,7 +555,7 @@ Proof.
   iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛼 , a' = live' (extend_loc 𝛼 ref 𝛾) f) with "L") as "T".
   - rewrite cmra_discrete_updateP. intros.
     have j := initialize_ext' ref 𝛾 m f z is_rel_def is_rel H.
-    have j0 := j HasTPCM1 hr. deex.
+    have j0 := j r_hastpcm hr. deex.
     intros. exists (live' (extend_loc 𝛼 ref 𝛾) f). split; trivial.
     exists 𝛼. trivial.
   - iDestruct "T" as (a') "[%E T]".

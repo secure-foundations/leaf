@@ -116,9 +116,9 @@ Context {𝜇: BurrowCtx}.
 Context `{!simpGS 𝜇 Σ}.
 (*Context `{!HasTPCM 𝜇 (HeapT loc lang.val)}. *)
 
-Context `{!HasTPCM 𝜇 HT}.
-Context `{!HasTPCM 𝜇 (RwLock (HT * (HeapT loc lang.val)))}.
-Context `{!HasRef 𝜇 (rwlock_ref (HT * (HeapT loc lang.val)))}.
+Context `{ht_hastpcm: !HasTPCM 𝜇 HT}.
+Context `{rw_hastpcm: !HasTPCM 𝜇 (RwLock (HT * (HeapT loc lang.val)))}.
+Context `{!HasRef 𝜇 rw_hastpcm _ (rwlock_ref (HT * (HeapT loc lang.val)))}.
 
 Fixpoint seq_iprop (fn: nat -> iProp Σ) (n: nat) :=
   match n with
@@ -951,7 +951,7 @@ Qed.
    or nothing *)
 Lemma wp_main :
   {{{ True }}} main #() {{{ v , RET v ; ⌜ v = (#true, #17)%V \/ v = (#false, #())%V ⌝ }}}.
-Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
+Proof using HasRef0 simpGS0 Σ 𝜇.
   iIntros (Phi) "_ Phi". unfold main.
   wp_pures.
   wp_apply (wp_new_hash_table 2). { done. } iIntros (𝛾 ht) "[#is_ht L]".
@@ -985,7 +985,7 @@ Qed.
 
 Lemma wp_main' :
   ⊢ WP main #() {{ v0, ⌜v0 = (#true, #17)%V ∨ v0 = (#false, #())%V⌝ }}.
-Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
+Proof using HasRef0 simpGS0 Σ 𝜇.
   wp_apply wp_main. { done. } iIntros. iPureIntro. trivial.
 Qed.
 
@@ -1015,24 +1015,50 @@ Instance 𝜇1_has_tpcm_rw : HasTPCM 𝜇1 (RwLock (HT * (HeapT loc lang.val))).
     typeclasses eauto. Defined.
 Instance 𝜇1_has_tpcm_heap : HasTPCM 𝜇1 (HeapT loc lang.val).
     typeclasses eauto. Defined.
-Opaque 𝜇1.
 
-Definition main𝜇_has_tpcm_ht : HasTPCM main𝜇 HT. typeclasses eauto. Defined.
+Instance main𝜇_has_tpcm_ht : HasTPCM main𝜇 HT. typeclasses eauto. Defined.
 Instance main𝜇_has_tpcm_rw : HasTPCM main𝜇 (RwLock (HT * (HeapT loc lang.val))).
     typeclasses eauto. Defined.
 Instance main𝜇_has_tpcm_heap : HasTPCM main𝜇 (HeapT loc lang.val).
     typeclasses eauto. Defined.
 
-Instance main𝜇_has_ref : HasRef main𝜇 (rwlock_ref (HT * HeapT loc lang.val)).
+Instance main𝜇_has_ref : HasRef main𝜇
+      (NewRef_KeepsTPCM 𝜇1 _ _ _ (rwlock_ref (HT * HeapT loc lang.val)))
+      (NewRef_KeepsTPCM 𝜇1 _ _ _ (rwlock_ref (HT * HeapT loc lang.val)))
+    (rwlock_ref (HT * HeapT loc lang.val)).
     typeclasses eauto. Defined.
-Print main𝜇_has_ref.
 
-Opaque main𝜇.
+Global Instance product_fixer (𝜇: BurrowCtx)
+      R `{!EqDecision R} `{TPCM R}
+      M `{!EqDecision M} `{TPCM M}
+      N `{!EqDecision N} `{TPCM N}
+    `{!HasTPCM 𝜇 R} `{!HasTPCM 𝜇 M} `{!HasTPCM 𝜇 N}
+    (rf: Refinement R (M * N))
+    (hr: HasRef (NewRefCtx 𝜇 R (M * N) rf)
+      (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
+      (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
+      rf)
+  : HasRef (NewRefCtx 𝜇 R (M * N) rf)
+      (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
+      (@product_hastpcm (NewRefCtx 𝜇 R (M * N) rf) M N _ _ _ _ _ _
+        (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
+        (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
+      ) rf.
+Admitted.
+
+Instance main𝜇_has_ref' : HasRef main𝜇 _ (@product_hastpcm _ _ _ _ _ _ _ _ _ _ _)
+    (rwlock_ref (HT * HeapT loc lang.val)).
+Proof.
+  apply product_fixer.
+  - typeclasses eauto.
+  - typeclasses eauto.
+  - typeclasses eauto.
+  - apply main𝜇_has_ref.
+Qed.
 
 Definition mainΣ: gFunctors :=
   #[simpΣ main𝜇]. 
 
-(*
 Lemma main_returns_value σ σ' v : 
   rtc erased_step ([ (main #())%E ], σ) ([Val v], σ') →
   v = (#true, #17)%V \/ v = (#false, #())%V.
@@ -1046,11 +1072,15 @@ Proof.
   { typeclasses eauto. }
   intros.
   
-  Print prod_eq_dec.
+  Unset Printing Implicit.
+  
+  Print gen_heapGS_HasTPCM.
+  have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
+      main𝜇_has_ref'.
   
   have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
-      main𝜇_has_ref.
-  apply (@wp_main' main𝜇 mainΣ _ main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw main𝜇_has_ref).
+      main𝜇_has_ref'.
+  apply (@wp_main' main𝜇 mainΣ _ main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw main𝜇_has_ref').
   
   have r : simpGS main𝜇 mainΣ. { typeclasses eauto. }
   have r0 : (HasTPCM 𝜇1 (HeapT loc lang.val)). { typeclasses eauto. }
