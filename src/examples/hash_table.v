@@ -26,6 +26,28 @@ Require Import cpdt.CpdtTactics.
 
 Definition compute_hash: lang.val. Admitted.
 
+Definition init_slots: lang.val :=
+  (rec: "init_slots" "n" :=
+    if: (BinOp EqOp "n" #0) then
+      #()
+    else
+      Pair (ref (#false, #())) ("init_slots" ("n" + #(-1)))
+  ).
+  
+Definition init_locks: lang.val :=
+  (rec: "init_locks" "n" :=
+    if: (BinOp EqOp "n" #0) then
+      #()
+    else
+      Pair new_rwlock ("init_locks" ("n" + #(-1)))
+  ).
+
+Definition new_hash_table: lang.val :=
+  λ: "unit" ,
+    let: "slots" := init_slots #(ht_fixed_size) in
+    let: "locks" := init_locks #(ht_fixed_size) in
+    ("slots", "locks").
+
 Definition query_iter: lang.val :=
   (rec: "query_iter" "slots" "locks" "k" "i" :=
     if: (BinOp EqOp "i" #(ht_fixed_size)) then
@@ -185,6 +207,171 @@ Proof.
   - iExFalso. iFrame.
   - iExFalso. iFrame.
   - iPureIntro. exists ht1, ht2. trivial.
+Qed.
+
+Definition is_slot_i (slots: lang.val) (i: nat) :=
+  match (elem slots i) with
+  | LitV (LitInt l) => (l ↦ slot_as_val None)%I
+  | _ => (False) % I
+  end.
+  
+Lemma seq_iprop_is_slot_i_extend (n: nat) slots slot_ref :
+  ⊢ seq_iprop (is_slot_i slots) n -∗
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+              slot_ref (#0, #())%V -∗
+  seq_iprop (is_slot_i (#slot_ref, slots)) (S n).
+Proof.
+  induction n.
+    - iIntros "si sr".
+      unfold seq_iprop. unfold is_slot_i. unfold elem. unfold slot_as_val. iFrame.
+    - iIntros "si sr".
+      cbn [seq_iprop].
+      iDestruct "si" as "[isi si]".
+      iDestruct (IHn with "si sr") as "x".
+      cbn [seq_iprop]. iFrame.
+Qed.
+
+Lemma wp_init_slots (n: nat) :
+      {{{ True }}}
+      init_slots #n
+      {{{ slots , RET slots;
+          seq_iprop (is_slot_i slots) n ∗ ⌜ has_length slots n ⌝
+      }}}.
+Proof.
+  induction n.
+  - unfold init_slots. iIntros (Phi) "t Phi". wp_pures.
+    iModIntro. iApply "Phi". unfold seq_iprop. iFrame.
+  - unfold init_slots. iIntros (Phi) "t Phi".
+    wp_pure _. wp_pure _. wp_pure _. wp_pure _.
+    unfold init_slots in IHn.
+    replace (LitV ((Z.add (S n) (Zneg xH)))) with (LitV n) by (f_equal; f_equal; lia).
+    replace (#false) with (#0) in IHn by trivial.
+    full_generalize (rec: "init_slots" "n" :=
+        if: BinOp EqOp "n" #0 then #() else (ref (#0, #()), "init_slots" ("n" + #(-1))))%V as big_e.
+    wp_bind (big_e #n).
+    wp_apply IHn.
+    { done. }
+    iIntros (slots) "[si %hl]".
+    
+    wp_alloc slot_ref as "rslot".
+    wp_pures.
+    iModIntro. iApply "Phi".
+    iDestruct (seq_iprop_is_slot_i_extend with "si rslot") as "x".
+    iFrame.
+    iPureIntro. unfold has_length. destruct n; trivial.
+Qed.
+
+Definition is_lock_i (locks: lang.val) (i: nat) :=
+  match (elem locks i) with
+  | PairV (LitV (LitInt l1)) (LitV (LitInt l2)) => (l1 ↦ #0 ∗ l2 ↦ #0)%I
+  | _ => (False) % I
+  end.
+  
+Lemma seq_iprop_is_lock_i_extend (n: nat) locks lock_ref1 lock_ref2 :
+  ⊢ seq_iprop (is_lock_i locks) n -∗
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+              lock_ref1 #0 -∗
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+              lock_ref2 #0 -∗
+  seq_iprop (is_lock_i ((#lock_ref1, #lock_ref2), locks)) (S n).
+Proof.
+  induction n.
+    - iIntros "si sr1 sr2".
+      unfold seq_iprop. unfold is_lock_i. unfold elem. iFrame.
+    - iIntros "si sr1 sr2".
+      cbn [seq_iprop].
+      iDestruct "si" as "[isi si]".
+      iDestruct (IHn with "si sr1 sr2") as "x".
+      cbn [seq_iprop]. iFrame.
+Qed.
+
+Lemma wp_init_locks (n: nat) :
+      {{{ True }}}
+      init_locks #n
+      {{{ locks , RET locks;
+          seq_iprop (is_lock_i locks) n ∗ ⌜ has_length locks n ⌝
+      }}}.
+Proof.
+  induction n.
+  - unfold init_locks. iIntros (Phi) "t Phi". wp_pures.
+    iModIntro. iApply "Phi". unfold seq_iprop. done.
+  - unfold init_locks. iIntros (Phi) "t Phi".
+    wp_pure _. wp_pure _. wp_pure _. wp_pure _.
+    unfold init_locks in IHn.
+    replace (LitV ((Z.add (S n) (Zneg xH)))) with (LitV n) by (f_equal; f_equal; lia).
+    replace (#false) with (#0) in IHn by trivial.
+    full_generalize ((rec: "init_locks" "n" :=
+        if: BinOp EqOp "n" #0 then #() else (new_rwlock, "init_locks" ("n" + #(-1))))%V) as big_e.
+    wp_bind (big_e #n).
+    wp_apply IHn.
+    { done. }
+    iIntros (locks) "[si %hl]".
+    
+    wp_alloc r2 as "r2".
+    wp_alloc r1 as "r1".
+    wp_pures.
+    iModIntro. iApply "Phi".
+    iDestruct (seq_iprop_is_lock_i_extend with "si r1 r2") as "x".
+    iFrame.
+    iPureIntro. unfold has_length. destruct n; trivial.
+Qed.
+
+Lemma init_is_ht_sl 𝛾 slots locks :
+  L 𝛾 (sseq ht_fixed_size) -∗
+  seq_iprop (is_slot_i slots) ht_fixed_size -∗
+  seq_iprop (is_lock_i locks) ht_fixed_size -∗
+  |={⊤}=>
+  is_ht_sl 𝛾 slots locks.
+Proof.
+  unfold is_ht_sl. full_generalize ht_fixed_size as n. induction n.
+  - iIntros. trivial.
+  - iIntros "L slots locks".
+    rewrite sseq_append.
+    cbn [seq_iprop].
+    iDestruct "slots" as "[slot slots]".
+    iDestruct "locks" as "[lock locks]".
+    iDestruct (L_op with "L") as "[L me]".
+    iSplitL "slot lock me".
+    + unfold is_ht_i.
+      unfold is_slot_i.
+      unfold is_lock_i.
+      destruct (elem slots n); try (iExFalso; iFrame; fail).
+      destruct l; try (iExFalso; iFrame; fail).
+      destruct (elem locks n); try (iExFalso; iFrame; fail).
+      destruct v1; try (iExFalso; iFrame; fail).
+      destruct l; try (iExFalso; iFrame; fail).
+      destruct v2; try (iExFalso; iFrame; fail).
+      destruct l; try (iExFalso; iFrame; fail).
+      iMod (CrossJoin _ _ _ _ with "me slot") as "cross".
+      iMod (rw_new _ _ with "cross") as (𝛼) "rw".
+      iAssert (rwlock_inv 𝛼 (cross_loc 𝛾 (gen_heap_name simp_gen_heapG)) (ht_inv_i n n0) n1 n2) with "[lock rw]" as "ri".
+      { unfold rwlock_inv. iExists false. iExists 0.
+          iExists (s n None, n0 $↦ slot_as_val None). iFrame.
+          iPureIntro. unfold ht_inv_i. exists None. intuition. }
+      iMod (inv_alloc NS _ _ with "ri") as "i".
+      iModIntro.
+      iExists 𝛼.
+      unfold is_rwlock. trivial.
+    + iMod (IHn with "L slots locks") as "X". iModIntro. iFrame.
+Qed.
+
+Lemma wp_new_hash_table (maxkey: nat) :
+      {{{ True }}}
+      new_hash_table #()
+      {{{ 𝛾 ht , RET ht; is_ht 𝛾 ht ∗ L 𝛾 (mseq maxkey) }}}.
+Proof.
+  iIntros (Phi) "t Phi".
+  unfold new_hash_table.
+  wp_pures.
+  wp_apply wp_init_slots. { done. } iIntros (slots) "[slots %hl_slots]".
+  wp_apply wp_init_locks. { done. } iIntros (locks) "[locks %hl_locks]".
+  wp_pures.
+  iMod (ht_Init maxkey) as (𝛾) "[mseq sseq]".
+  iApply ("Phi" $! (𝛾)).
+  unfold is_ht.
+  iMod (init_is_ht_sl with "sseq slots locks") as "X".
+  iModIntro.
+  iFrame. iPureIntro. intuition.
 Qed.
 
 Lemma z_n_add1 (i: nat)

@@ -887,12 +887,154 @@ intros.
           -- rewrite lookup_singleton_ne in H4; trivial. discriminate.
 Qed.
 
+Fixpoint gmap_seq {V} `{!EqDecision V} (n: nat) (v: V) : gmap nat V :=
+  match n with
+  | 0 => empty
+  | S n => <[ n := v ]> (gmap_seq n v)
+  end.
+  
+Fixpoint gmap_zseq {V} `{!EqDecision V} (n: nat) (v: V) : gmap Z V :=
+  match n with
+  | 0 => empty
+  | S n => <[ (n : Z) := v ]> (gmap_zseq n v)
+  end.
+
+Definition mseq (n: nat) := HTR (gmap_zseq n (Some None)) empty.
+Definition sseq (n: nat) := HTR empty (gmap_seq n (Some None)).
+
+Lemma lookup_gmap_seq {V} `{!EqDecision V} (x: V) k (n: nat)
+  (lt: k < n) : gmap_seq n x !! k = Some x.
+Proof.
+  induction n.
+  - lia.
+  - cbn [gmap_seq]. have h : Decision (n = k) by solve_decision. destruct h.
+    + subst k. rewrite lookup_insert. trivial.
+    + rewrite lookup_insert_ne; trivial. apply IHn. lia.
+Qed.
+  
+Lemma lookup_gmap_seq_out {V} `{!EqDecision V} (x: V) k (n: nat)
+  (lt: ¬ k < n) : gmap_seq n x !! k = None.
+Proof.
+  induction n.
+  - unfold gmap_seq. rewrite lookup_empty. trivial.
+  - assert (n ≠ k) by lia.
+    cbn [gmap_seq]. rewrite lookup_insert_ne; trivial. apply IHn. lia.
+Qed.
+  
+Lemma lookup_gmap_zseq {V} `{!EqDecision V} (x: V) (k: Z) (n: nat)
+  (lt: Z.le 0 k /\ Z.lt k n) : gmap_zseq n x !! k = Some x.
+Proof.
+  induction n.
+  - lia.
+  - cbn [gmap_seq]. have h : Decision ((n:Z) = k) by solve_decision. destruct h.
+    + subst k. rewrite lookup_insert. trivial.
+    + rewrite lookup_insert_ne; trivial. apply IHn. lia.
+Qed.
+  
+Lemma lookup_gmap_zseq_out {V} `{!EqDecision V} (x: V) k (n: nat)
+  (lt: ¬ ( Z.le 0 k /\ Z.lt k n )) : gmap_zseq n x !! k = None.
+Proof.
+  induction n.
+  - unfold gmap_seq. rewrite lookup_empty. trivial.
+  - assert ((n: Z) ≠ k) by lia.
+    cbn [gmap_seq]. rewrite lookup_insert_ne; trivial. apply IHn. lia.
+Qed.
+
+Lemma valid_mseq_sseq (n: nat) : V (ht_dot (mseq n) (sseq ht_fixed_size)).
+Proof.
+  unfold V. exists ht_unit. rewrite ht_unit_dot. unfold mseq, sseq, ht_dot.
+      rewrite gmap_dot_empty. rewrite gmap_dot_empty_left. unfold P. repeat split.
+  - unfold gmap_valid. intro.
+    have h : Decision (k < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq; trivial.
+    + rewrite lookup_gmap_seq_out; trivial.
+  - unfold gmap_valid. intro.
+    have h : Decision (Z.le 0 k /\ Z.lt k n) by solve_decision. destruct h.
+    + rewrite lookup_gmap_zseq; trivial.
+    + rewrite lookup_gmap_zseq_out; trivial.
+  - intros.
+    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
+    + trivial.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  - intros. destruct_ands.
+    have h : Decision (i1 < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq in H; trivial. discriminate.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  - intros. exfalso.
+    have h : Decision (Z.le 0 k /\ Z.lt k n) by solve_decision. destruct h.
+    + rewrite lookup_gmap_zseq in H; trivial. discriminate.
+    + rewrite lookup_gmap_zseq_out in H; trivial. discriminate.
+  - intros. exfalso.
+    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq in H; trivial. discriminate.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  - exfalso.
+    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq in H; trivial. discriminate.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  - exfalso.
+    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq in H; trivial. discriminate.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+Qed.
+
+Lemma mseq_append (n: nat)
+  : mseq (S n) = ht_dot (mseq n) (m (n: Z) None).
+Proof.
+  unfold mseq, m, ht_dot. rewrite gmap_dot_empty. f_equal.
+  cbn [gmap_zseq]. apply map_eq. intro.
+  have h : Decision ((n: Z) = i) by solve_decision. destruct h.
+  - subst i. rewrite lookup_insert.
+    unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+    rewrite lookup_gmap_zseq_out.
+    { rewrite lookup_singleton. trivial. } lia.
+  - have h : Decision (0 ≤ i < n)%Z by solve_decision. destruct h.
+    + rewrite lookup_insert_ne; trivial.
+      unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+      rewrite lookup_gmap_zseq; trivial.
+      { rewrite lookup_singleton_ne; trivial. }
+    + rewrite lookup_insert_ne; trivial.
+      unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+      rewrite lookup_gmap_zseq_out; trivial.
+      rewrite lookup_singleton_ne; trivial.
+Qed.
+
+Lemma sseq_append (n: nat)
+  : sseq (S n) = ht_dot (sseq n) (s n None).
+Proof.
+  unfold sseq, s, ht_dot. rewrite gmap_dot_empty. f_equal.
+  cbn [gmap_seq]. apply map_eq. intro.
+  have h : Decision (n = i) by solve_decision. destruct h.
+  - subst i. rewrite lookup_insert.
+    unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+    rewrite lookup_gmap_seq_out.
+    { rewrite lookup_singleton. trivial. } lia.
+  - have h : Decision (i < n) by solve_decision. destruct h.
+    + rewrite lookup_insert_ne; trivial.
+      unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+      rewrite lookup_gmap_seq; trivial.
+      { rewrite lookup_singleton_ne; trivial. }
+    + rewrite lookup_insert_ne; trivial.
+      unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
+      rewrite lookup_gmap_seq_out; trivial.
+      rewrite lookup_singleton_ne; trivial.
+Qed.
+
 Section HashTableLogic.
 
 Context {𝜇: BurrowCtx}.
 Context `{hG : @gen_burrowGS 𝜇 Σ}.
 
 Context `{!HasTPCM 𝜇 HT}.
+
+Lemma ht_Init (n: nat) :
+  ⊢ |==> (∃ 𝛾 , L 𝛾 (mseq n) ∗ L 𝛾 (sseq ht_fixed_size))%I.
+Proof.
+  iIntros.
+  iMod (InitializeNormal (ht_dot (mseq n) (sseq ht_fixed_size))) as (𝛾) "x".
+  { apply valid_mseq_sseq. }
+  iModIntro. iExists 𝛾. iDestruct (L_op with "x") as "[x y]". iFrame.
+Qed.
 
 Lemma ht_QueryFound 𝜅 𝛾 j k v0 v :
   A 𝜅 -∗ B 𝜅 𝛾 (s j (Some (k, v0))) -∗ L 𝛾 (m k v) -∗ ⌜ v = Some v0 ⌝.
