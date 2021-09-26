@@ -5,6 +5,8 @@ From BurrowLang Require Import notation tactics class_instances.
 From BurrowLang Require Import heap_ra.
 From BurrowLang Require Import lang.
 From iris Require Import options.
+Require Import Tpcms.auth_frag.
+Require Import Burrow.tpcms.
 
 Require Import Burrow.ra.
 
@@ -61,8 +63,7 @@ global ghost names to the equivalent of `simpGS`, as long as you also instantiat
 them in `adequacy.v`.
 |*)
 
-
-Class simpGS 𝜇 Σ := SimpGS {
+Class simpGS 𝜇 Σ `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))} := SimpGS {
   simp_invG : invGS Σ;
   simp_gen_heapG :> gen_heapGS loc val 𝜇 Σ;
 }.
@@ -70,7 +71,9 @@ Class simpGS 𝜇 Σ := SimpGS {
 (* Observe that this instance assumes [simpGS Σ], which already has a fixed ghost
 name for the heap ghost state. We'll see in adequacy.v how to obtain a [simpGS Σ]
 after allocating that ghost state. *)
-Global Instance simpG_irisG `{!simpGS 𝜇 Σ} : irisGS simp_lang Σ := {
+Global Instance simpG_irisG {𝜇} {Σ}
+    `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+    `{!simpGS 𝜇 Σ} : irisGS simp_lang Σ := {
   iris_invG := simp_invG;
   state_interp σ _ κs _ := (gen_heap_interp σ.(heap))%I;
   fork_post _ := True%I;
@@ -90,6 +93,7 @@ Notation "p &{ k }↦ v" := (bmapsto k p v)
   (at level 20, format "p  &{ k }↦  v") : bi_scope.
 
 Section lifting.
+Context {𝜇} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
 Context `{!simpGS 𝜇 Σ}.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ Ψ : val → iProp Σ.

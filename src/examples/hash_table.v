@@ -4,6 +4,7 @@ Require Import Burrow.tpcms.
 Require Import Burrow.ra.
 Require Import Burrow.rollup.
 Require Import Burrow.tactics.
+Require Import Tpcms.auth_frag.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -113,6 +114,7 @@ Section HashTableProof.
 
 Context {𝜇: BurrowCtx}.
 
+Context `{heap_hastpcm: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
 Context `{!simpGS 𝜇 Σ}.
 (*Context `{!HasTPCM 𝜇 (HeapT loc lang.val)}. *)
 
@@ -225,7 +227,7 @@ Definition is_slot_i (slots: lang.val) (i: nat) :=
   
 Lemma seq_iprop_is_slot_i_extend (n: nat) slots slot_ref :
   ⊢ seq_iprop (is_slot_i slots) n -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
               slot_ref (#0, #())%V -∗
   seq_iprop (is_slot_i (#slot_ref, slots)) (S n).
 Proof.
@@ -277,9 +279,9 @@ Definition is_lock_i (locks: lang.val) (i: nat) :=
   
 Lemma seq_iprop_is_lock_i_extend (n: nat) locks lock_ref1 lock_ref2 :
   ⊢ seq_iprop (is_lock_i locks) n -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
               lock_ref1 #0 -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 Σ (@simp_gen_heapG 𝜇 Σ simpGS0)
+  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
               lock_ref2 #0 -∗
   seq_iprop (is_lock_i ((#lock_ref1, #lock_ref2), locks)) (S n).
 Proof.
@@ -993,8 +995,6 @@ End HashTableProof.
 
 (*** applying adequacy ***)
 
-Require Import Tpcms.auth_frag.
-
 Definition 𝜇1 := (
       NewTPCMCtx (
         NewTPCMCtx
@@ -1067,62 +1067,7 @@ Proof.
   cut (adequate NotStuck (main #()) σ (λ v _, 
       v = (#true, #17)%V \/ v = (#false, #())%V)).
   { intros H. eapply adequate_alt in H as [Hval _]; eauto. }
-  apply (@simp_adequacy mainΣ main𝜇).
+  apply (@simp_adequacy mainΣ main𝜇 main𝜇_has_tpcm_heap).
   { typeclasses eauto. }
-  { typeclasses eauto. }
-  intros.
-  
-  Unset Printing Implicit.
-  
-  Print gen_heapGS_HasTPCM.
-  have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
-      main𝜇_has_ref'.
-  
-  have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
-      main𝜇_has_ref'.
-  apply (@wp_main' main𝜇 mainΣ _ main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw main𝜇_has_ref').
-  
-  have r : simpGS main𝜇 mainΣ. { typeclasses eauto. }
-  have r0 : (HasTPCM 𝜇1 (HeapT loc lang.val)). { typeclasses eauto. }
-  have r1 : (HasTPCM 𝜇1 HT). { typeclasses eauto. }
-  have r2 : (HasTPCM 𝜇1 (RwLock (HT * HeapT loc lang.val))). { typeclasses eauto. }
-  (*have r3 : (HasRef main𝜇 (rwlock_ref (HT * HeapT loc lang.val))). { *)
-      unfold main𝜇.
-      have k := NewRef_HasRef 𝜇1
-      (RwLock (HT * (HeapT loc lang.val)))
-      (HT * (HeapT loc lang.val))
-      (rwlock_ref (HT * (HeapT loc lang.val))).
-      have k1 := k _ _ _ _ _ _ _ r2.
-      have k2 := k1 _ _ (@product_hastpcm 𝜇1 _ _ _ _ _ _ _ _ r1 r0).
-      Print prod_eq_dec.
-      have k3 := k2 (@rwlock_eqdec _ (prod_eq_dec)).
-      have k4 := k3 prod_eq_dec.
-      have k5 := k4 ht_eqdec.
-      have k6 := k5 (af_eqdec _).
-      have k7 := k6 gmap_eq_eq.
-      have k8 := k7 (option_eq_dec).
-      have k9 := k8 val_eq_dec'.
-      have k10 := k9 ht_eqdec.
-      
-      have k11 := k10 (af_eqdec _).
-      have k12 := k11 gmap_eq_eq.
-      have k13 := k12 (option_eq_dec).
-      have k14 := k13 val_eq_dec'.
-  
-  have r0q := @NewRef_KeepsTPCM 𝜇1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ r0
-      (rwlock_ref (HT * (HeapT loc lang.val))).
-   
-  have j := @wp_main main𝜇 mainΣ _ _ _ k14.
-  assert ({{{ True }}}
-            main #()
-          {{{ (v : lang.val), RET v; ⌜v = (#true, #17)%V ∨ v = (#false, #())%V⌝ }}}).
-  {
-    apply j.
-  }
-  apply (@wp_main' main𝜇).
-  by iApply (@wp_main main𝜇 with "[//]").
+  intros. apply wp_main'.
 Qed.
-
-Print Assumptions 
-
-*)

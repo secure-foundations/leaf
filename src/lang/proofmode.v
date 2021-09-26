@@ -3,6 +3,8 @@ From iris.proofmode Require Export tactics.
 From iris.program_logic Require Import atomic.
 From BurrowLang Require Import tactics class_instances primitive_laws notation.
 From iris.prelude Require Import options.
+Require Import Tpcms.auth_frag.
+Require Import Burrow.tpcms.
 
 (*|
 This is a heavily stripped-down version of HeapLang's proofmode support. To make
@@ -13,7 +15,9 @@ tactics like `wp_rec` and `wp_let` and such, while `wp_bind` is what powers
 `wp_apply`.
 |*)
 
-Lemma tac_wp_expr_eval `{!simpGS 𝜇 Σ} Δ s E Φ e e' :
+Lemma tac_wp_expr_eval
+    {𝜇} {Σ} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+    `{!simpGS 𝜇 Σ} Δ s E Φ e e' :
   (∀ (e'':=e'), e = e'') →
   envs_entails Δ (WP e' @ s; E {{ Φ }}) → envs_entails Δ (WP e @ s; E {{ Φ }}).
 Proof. by intros ->. Qed.
@@ -28,7 +32,9 @@ Tactic Notation "wp_expr_eval" tactic3(t) :=
   end.
 Ltac wp_expr_simpl := wp_expr_eval simpl.
 
-Lemma tac_wp_pure `{!simpGS 𝜇 Σ} Δ Δ' s E K e1 e2 φ n Φ :
+Lemma tac_wp_pure
+  {𝜇} {Σ} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+  `{!simpGS 𝜇 Σ} Δ Δ' s E K e1 e2 φ n Φ :
   PureExec φ n e1 e2 →
   φ →
   MaybeIntoLaterNEnvs n Δ Δ' →
@@ -41,11 +47,15 @@ Proof.
   rewrite HΔ' -lifting.wp_pure_step_later //.
 Qed.
 
-Lemma tac_wp_value_nofupd `{!simpGS 𝜇 Σ} Δ s E Φ v :
+Lemma tac_wp_value_nofupd
+  {𝜇} {Σ} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+  `{!simpGS 𝜇 Σ} Δ s E Φ v :
   envs_entails Δ (Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
 Proof. rewrite envs_entails_eq=> ->. by apply wp_value. Qed.
 
-Lemma tac_wp_value `{!simpGS 𝜇 Σ} Δ s E (Φ : val → iPropI Σ) v :
+Lemma tac_wp_value
+  {𝜇} {Σ} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+  `{!simpGS 𝜇 Σ} Δ s E (Φ : val → iPropI Σ) v :
   envs_entails Δ (|={E}=> Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
 Proof. rewrite envs_entails_eq=> ->. by rewrite wp_value_fupd. Qed.
 
@@ -133,7 +143,9 @@ Tactic Notation "wp_proj" := wp_pure (Fst _) || wp_pure (Snd _).
 Tactic Notation "wp_pair" := wp_pure (Pair _ _).
 Tactic Notation "wp_closure" := wp_pure (Rec _ _ _).
 
-Lemma tac_wp_bind `{!simpGS 𝜇 Σ} K Δ s E Φ e f :
+Lemma tac_wp_bind
+  {𝜇} {Σ} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}
+  `{!simpGS 𝜇 Σ} K Δ s E Φ e f :
   f = (λ e, fill K e) → (* as an eta expanded hypothesis so that we can `simpl` it *)
   envs_entails Δ (WP e @ s; E {{ v, WP f (Val v) @ s; E {{ Φ }} }})%I →
   envs_entails Δ (WP fill K e @ s; E {{ Φ }}).
@@ -165,6 +177,7 @@ Convenience tactics
 
 (** Heap tactics *)
 Section heap.
+Context {𝜇} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
 Context `{!simpGS 𝜇 Σ}.
 Implicit Types P Q : iProp Σ.
 Implicit Types Φ : val → iProp Σ.

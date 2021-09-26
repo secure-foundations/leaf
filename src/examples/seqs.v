@@ -6,6 +6,7 @@ Require Import Burrow.ra.
 Require Import Burrow.rollup.
 Require Import cpdt.CpdtTactics.
 Require Import Burrow.tactics.
+Require Import Tpcms.auth_frag.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -69,6 +70,7 @@ Fixpoint elem (v: lang.val) (i: nat) :=
   
 Section SeqProof.
 
+Context `{heap_hastpcm: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
 Context `{!simpGS 𝜇 Σ}.
 
 Lemma wp_seq_idx (seq: lang.val) (i: nat)

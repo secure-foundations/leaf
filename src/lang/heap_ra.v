@@ -38,19 +38,20 @@ precondition. See primitive_laws.v for where that happens.
 
 (** The CMRAs we need, and the global ghost names we are using. *)
 
-Class gen_heapGpreS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} := {
+Class gen_heapGpreS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} `{gen_heapGpreS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}
+:= {
   gen_burrow_pre_inG :> @gen_burrowGpreS 𝜇 Σ;
-  gen_heapGpreS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap P (option V)));
 }.
 
-Class gen_heapGS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} := GenHeapGS {
+Class gen_heapGS (P V : Type) (𝜇: BurrowCtx) (Σ : gFunctors) `{!EqDecision P} `{!Countable P} `{!EqDecision V} `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}
+:= GenHeapGS {
   (*gen_heap_inG :> gen_heapGpreS P V 𝜇 Σ;*)
   gen_burrow_inG :> @gen_burrowGS 𝜇 Σ;
-  gen_heapGS_HasTPCM :> HasTPCM 𝜇 (AuthFrag (gmap P (option V)));
   gen_heap_name : BurrowLoc 𝜇;
 }.
 Global Arguments GenHeapGS P V 𝜇 Σ {_ _ _ _ _} _ : assert.
-Global Arguments gen_heap_name {P V 𝜇 Σ _ _ _} _ : assert.
+Global Arguments gen_heap_name {P V 𝜇 Σ _ _ _ _} _ : assert.
+Print gen_heapGS.
 
 Definition gen_heapΣ (P V : Type) (𝜇: BurrowCtx) `{Countable P} `{EqDecision V}
     `{HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}
@@ -64,7 +65,9 @@ Global Instance subG_gen_heapGpreS {𝜇 Σ P V} `{Countable P} `{EqDecision V}
 Proof. solve_inG. Qed.
 
 Section definitions.
-  Context `{!EqDecision V, Countable P, hG : !gen_heapGS P V 𝜇 Σ}.
+  Context `{!EqDecision V, Countable P}.
+  Context `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}.
+  Context `{hG : !gen_heapGS P V 𝜇 Σ}.
 
 (*|
 These two definitions are the key idea behind the state interpretation.
@@ -90,7 +93,9 @@ Notation "p $↦ v" := (cmapsto p v)
   (at level 20, format "p  $↦  v").
   
 Section definitions2.
-  Context `{!EqDecision V, Countable P, hG : !gen_heapGS P V 𝜇 Σ}.
+  Context `{!EqDecision V, Countable P}.
+  Context `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}.
+  Context `{hG : !gen_heapGS P V 𝜇 Σ}.
   
   Definition mapsto (p: P) (v: V) := L (gen_heap_name hG) (p $↦ v).
   Definition bmapsto (𝜅: Lifetime) (p: P) (v: V) := B 𝜅 (gen_heap_name hG) (p $↦ v).
@@ -102,7 +107,9 @@ Notation "p &{ k }↦ v" := (bmapsto k p v)
   (at level 20, format "p  &{ k }↦  v") : bi_scope.
 
 Section gen_heap.
-  Context {P V} `{!EqDecision V} `{Countable P, !gen_heapGS P V 𝜇 Σ}.
+  Context {P V} `{!EqDecision V} `{Countable P}.
+  Context `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}.
+  Context `{!gen_heapGS P V 𝜇 Σ}.
   Implicit Types (P Q : iProp Σ).
   Implicit Types (Φ : V → iProp Σ).
   Implicit Types (σ : gmap P V) (l : P) (v : V).
@@ -178,7 +185,9 @@ Section gen_heap.
   Qed.
 End gen_heap.
 
-Lemma gen_heap_init `{EqDecision V, Countable P, !gen_heapGpreS P V 𝜇 Σ} σ :
+Lemma gen_heap_init `{EqDecision V, Countable P}
+  `{gen_heapGS_HasTPCM: !HasTPCM 𝜇 (AuthFrag (gmap P (option V)))}
+  `{!gen_heapGpreS P V 𝜇 Σ} σ :
   ⊢ |==> ∃ _ : gen_heapGS P V 𝜇 Σ, gen_heap_interp σ.
 Proof.
   iIntros.

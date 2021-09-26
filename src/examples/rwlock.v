@@ -6,6 +6,7 @@ Require Import Burrow.ra.
 Require Import Burrow.rollup.
 Require Import cpdt.CpdtTactics.
 Require Import Burrow.tactics.
+Require Import Tpcms.auth_frag.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -59,6 +60,7 @@ Context `{m_hastpcm: !HasTPCM 𝜇 M}.
 Context `{rw_hastpcm: !HasTPCM 𝜇 (RwLock M)}.
 Context `{!HasRef 𝜇 rw_hastpcm m_hastpcm (rwlock_ref M)}.
 
+Context `{heap_hastpcm: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
 Context `{!simpGS 𝜇 Σ}.
 
 Definition NS := nroot .@ "rwlock".

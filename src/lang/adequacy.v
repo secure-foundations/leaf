@@ -38,7 +38,7 @@ ghost name and associated state.
 
 (** These assumptions are just functors in Σ, unlike simpGS which also has a
 ghost name. *)
-Class simpGpreS 𝜇 Σ := SimpPreG {
+Class simpGpreS 𝜇 Σ `{!HasTPCM 𝜇 (AuthFrag (gmap loc (option val)))} := SimpPreG {
   simp_preG_iris :> invGpreS Σ;
   simp_preG_heap :> gen_heapGpreS loc val 𝜇 Σ;
 }.
@@ -62,7 +62,7 @@ Proof.
   iModIntro. iExists
     (λ σ κs, (gen_heap_interp σ.(heap))%I),
     (λ _, True%I).
-  iFrame. iApply (Hwp (SimpGS _ _ _ _)).
+  iFrame. iApply (Hwp (SimpGS _ _ _ _ _)).
 Qed.
 
 (*|
