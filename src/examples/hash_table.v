@@ -1032,6 +1032,7 @@ Opaque main𝜇.
 Definition mainΣ: gFunctors :=
   #[simpΣ main𝜇]. 
 
+(*
 Lemma main_returns_value σ σ' v : 
   rtc erased_step ([ (main #())%E ], σ) ([Val v], σ') →
   v = (#true, #17)%V \/ v = (#false, #())%V.
@@ -1044,6 +1045,8 @@ Proof.
   { typeclasses eauto. }
   { typeclasses eauto. }
   intros.
+  
+  Print prod_eq_dec.
   
   have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
       main𝜇_has_ref.
@@ -1092,3 +1095,4 @@ Qed.
 
 Print Assumptions 
 
+*)

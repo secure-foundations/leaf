@@ -986,7 +986,8 @@ Class HasTPCM (𝜇: BurrowCtx) (M: Type) `{!EqDecision M, !TPCM M}
 Global Instance product_hastpcm (𝜇: BurrowCtx) (M: Type) (N: Type)
     `{!EqDecision M, TPCM M}
     `{!EqDecision N, TPCM N}
-    `{m_ht: !HasTPCM 𝜇 M} `{n_ht: !HasTPCM 𝜇 N} : HasTPCM 𝜇 (M * N) := {
+    `{m_ht: !HasTPCM 𝜇 M} `{n_ht: !HasTPCM 𝜇 N} : HasTPCM 𝜇 (M * N)
+| 5 := { (* assign high priority so this is tried after the other HasTPCM instances *)
   inctx_embed := ic_tpcm_embed_two M N (bc_small_M 𝜇)
       (inctx_embed) (inctx_embed) ;
 }.
@@ -1013,7 +1014,7 @@ refine ({|
 Defined.
 
 Global Instance SingleTPCMCtx_HasTPCM M `{!EqDecision M} `{TPCM M}
-  : HasTPCM (SingleTPCMCtx M) M.
+  : HasTPCM (SingleTPCMCtx M) M | 3.
 Proof.
   split. typeclasses eauto. Qed.
 
@@ -1123,7 +1124,7 @@ Defined.
 
 Global Instance NewTPCM_HasTPCM M `{!EqDecision M} `{TPCM M}
     (𝜇 : BurrowCtx)
-  : HasTPCM (NewTPCMCtx 𝜇 M) M.
+  : HasTPCM (NewTPCMCtx 𝜇 M) M | 3.
 Proof.
   split. unfold bc_small_M, NewTPCMCtx.
   apply ic_tpcm_embed_extend.
@@ -1134,7 +1135,7 @@ Global Instance NewTPCM_KeepsTPCM
     M `{!EqDecision M} `{TPCM M}
     N `{!EqDecision N} `{TPCM N}
     (𝜇 : BurrowCtx) `{!HasTPCM 𝜇 N}
-  : HasTPCM (NewTPCMCtx 𝜇 M) N.
+  : HasTPCM (NewTPCMCtx 𝜇 M) N | 3.
 Proof.
   split. unfold bc_small_M, NewTPCMCtx.
   apply (embed_transitive N (InfiniteCopies (bc_small_M 𝜇))
@@ -1196,7 +1197,7 @@ Global Instance NewRef_KeepsTPCM (𝜇: BurrowCtx)
     T `{!EqDecision T} `{TPCM T}
     `{!HasTPCM 𝜇 R} `{!HasTPCM 𝜇 M} `{!HasTPCM 𝜇 T}
     (ref: Refinement R M)
-  : HasTPCM (NewRefCtx 𝜇 R M ref) T.
+  : HasTPCM (NewRefCtx 𝜇 R M ref) T | 3.
 Proof.
   split.  unfold NewRefCtx. cbn [bc_small_M].
   destruct HasTPCM2. trivial.
