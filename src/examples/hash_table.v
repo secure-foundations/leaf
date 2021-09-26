@@ -983,4 +983,112 @@ Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
   }
 Qed.
 
+Lemma wp_main' :
+  ⊢ WP main #() {{ v0, ⌜v0 = (#true, #17)%V ∨ v0 = (#false, #())%V⌝ }}.
+Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
+  wp_apply wp_main. { done. } iIntros. iPureIntro. trivial.
+Qed.
+
 End HashTableProof.
+
+(*** applying adequacy ***)
+
+Require Import Tpcms.auth_frag.
+
+Definition 𝜇1 := (
+      NewTPCMCtx (
+        NewTPCMCtx
+          (SingleTPCMCtx HT)
+          (RwLock (HT * (HeapT loc lang.val)))
+      )
+      (AuthFrag (gmap loc (option lang.val)))
+    ).
+Definition main𝜇 := 
+  NewRefCtx
+    𝜇1
+    (RwLock (HT * (HeapT loc lang.val)))
+    (HT * (HeapT loc lang.val))
+    (rwlock_ref (HT * (HeapT loc lang.val))).
+
+Instance 𝜇1_has_tpcm_ht : HasTPCM 𝜇1 HT. typeclasses eauto. Defined.
+Instance 𝜇1_has_tpcm_rw : HasTPCM 𝜇1 (RwLock (HT * (HeapT loc lang.val))).
+    typeclasses eauto. Defined.
+Instance 𝜇1_has_tpcm_heap : HasTPCM 𝜇1 (HeapT loc lang.val).
+    typeclasses eauto. Defined.
+Opaque 𝜇1.
+
+Definition main𝜇_has_tpcm_ht : HasTPCM main𝜇 HT. typeclasses eauto. Defined.
+Instance main𝜇_has_tpcm_rw : HasTPCM main𝜇 (RwLock (HT * (HeapT loc lang.val))).
+    typeclasses eauto. Defined.
+Instance main𝜇_has_tpcm_heap : HasTPCM main𝜇 (HeapT loc lang.val).
+    typeclasses eauto. Defined.
+
+Instance main𝜇_has_ref : HasRef main𝜇 (rwlock_ref (HT * HeapT loc lang.val)).
+    typeclasses eauto. Defined.
+Print main𝜇_has_ref.
+
+Opaque main𝜇.
+
+Definition mainΣ: gFunctors :=
+  #[simpΣ main𝜇]. 
+
+Lemma main_returns_value σ σ' v : 
+  rtc erased_step ([ (main #())%E ], σ) ([Val v], σ') →
+  v = (#true, #17)%V \/ v = (#false, #())%V.
+Proof.
+  intros Hstep.
+  cut (adequate NotStuck (main #()) σ (λ v _, 
+      v = (#true, #17)%V \/ v = (#false, #())%V)).
+  { intros H. eapply adequate_alt in H as [Hval _]; eauto. }
+  apply (@simp_adequacy mainΣ main𝜇).
+  { typeclasses eauto. }
+  { typeclasses eauto. }
+  intros.
+  
+  have j := @wp_main' main𝜇 mainΣ simpGS0 main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw
+      main𝜇_has_ref.
+  apply (@wp_main' main𝜇 mainΣ _ main𝜇_has_tpcm_ht main𝜇_has_tpcm_rw main𝜇_has_ref).
+  
+  have r : simpGS main𝜇 mainΣ. { typeclasses eauto. }
+  have r0 : (HasTPCM 𝜇1 (HeapT loc lang.val)). { typeclasses eauto. }
+  have r1 : (HasTPCM 𝜇1 HT). { typeclasses eauto. }
+  have r2 : (HasTPCM 𝜇1 (RwLock (HT * HeapT loc lang.val))). { typeclasses eauto. }
+  (*have r3 : (HasRef main𝜇 (rwlock_ref (HT * HeapT loc lang.val))). { *)
+      unfold main𝜇.
+      have k := NewRef_HasRef 𝜇1
+      (RwLock (HT * (HeapT loc lang.val)))
+      (HT * (HeapT loc lang.val))
+      (rwlock_ref (HT * (HeapT loc lang.val))).
+      have k1 := k _ _ _ _ _ _ _ r2.
+      have k2 := k1 _ _ (@product_hastpcm 𝜇1 _ _ _ _ _ _ _ _ r1 r0).
+      Print prod_eq_dec.
+      have k3 := k2 (@rwlock_eqdec _ (prod_eq_dec)).
+      have k4 := k3 prod_eq_dec.
+      have k5 := k4 ht_eqdec.
+      have k6 := k5 (af_eqdec _).
+      have k7 := k6 gmap_eq_eq.
+      have k8 := k7 (option_eq_dec).
+      have k9 := k8 val_eq_dec'.
+      have k10 := k9 ht_eqdec.
+      
+      have k11 := k10 (af_eqdec _).
+      have k12 := k11 gmap_eq_eq.
+      have k13 := k12 (option_eq_dec).
+      have k14 := k13 val_eq_dec'.
+  
+  have r0q := @NewRef_KeepsTPCM 𝜇1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ r0
+      (rwlock_ref (HT * (HeapT loc lang.val))).
+   
+  have j := @wp_main main𝜇 mainΣ _ _ _ k14.
+  assert ({{{ True }}}
+            main #()
+          {{{ (v : lang.val), RET v; ⌜v = (#true, #17)%V ∨ v = (#false, #())%V⌝ }}}).
+  {
+    apply j.
+  }
+  apply (@wp_main' main𝜇).
+  by iApply (@wp_main main𝜇 with "[//]").
+Qed.
+
+Print Assumptions 
+
