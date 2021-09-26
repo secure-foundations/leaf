@@ -96,10 +96,18 @@ Definition update_iter: lang.val :=
       "ret")%V
 .
 
+
 Definition update: lang.val :=
   λ: "ht" "k" "v" ,
     update_iter (Fst "ht") (Snd "ht") "k" "v" (compute_hash "k").
-
+    
+Definition main: lang.val :=
+  λ: "unit" ,
+    let: "ht" := new_hash_table #() in
+    let: "insert_success" := update "ht" #0 #17 in
+    Fork ( update "ht" #1 #9001 ) ;;
+    query "ht" #0
+.
 
 Section HashTableProof.
 
@@ -936,6 +944,43 @@ Proof.
   }
   
   iIntros "[l a]". iApply "Phi". iFrame.
+Qed.
+
+(* due to the simplifications, update isn't guaranteed to succeed,
+   so our spec for 'main' has to be that it either returns the value that was inserted,
+   or nothing *)
+Lemma wp_main :
+  {{{ True }}} main #() {{{ v , RET v ; ⌜ v = (#true, #17)%V \/ v = (#false, #())%V ⌝ }}}.
+Proof using HasRef0 HasTPCM0 HasTPCM1 simpGS0 Σ 𝜇.
+  iIntros (Phi) "_ Phi". unfold main.
+  wp_pures.
+  wp_apply (wp_new_hash_table 2). { done. } iIntros (𝛾 ht) "[#is_ht L]".
+  rewrite mseq_append.
+  rewrite mseq_append.
+  iDestruct (L_op with "L") as "[L L1]".
+  iDestruct (L_op with "L") as "[_ L0]".
+  wp_pures.
+  wp_apply (wp_ht_update 𝛾 ht 0 17 None with "[is_ht L0]").
+    { iFrame. iFrame "#". }
+  iIntros (b) "x".
+  wp_pures.
+  wp_apply (wp_fork with "[L1]").
+  {
+    iNext.
+    wp_apply (wp_ht_update 𝛾 ht 1 9001 None with "[is_ht L1]").
+    { iFrame. iFrame "#". }
+    iIntros. done.
+  }
+  wp_pures.
+  iDestruct "x" as "[[b0 L]|[b1 L]]".
+  {
+    wp_apply (wp_ht_query with "[is_ht L]"). { iFrame. iFrame "#". }
+    iIntros. iApply "Phi". iPureIntro. intuition.
+  }
+  {
+    wp_apply (wp_ht_query with "[is_ht L]"). { iFrame. iFrame "#". }
+    iIntros. iApply "Phi". iPureIntro. intuition.
+  }
 Qed.
 
 End HashTableProof.
