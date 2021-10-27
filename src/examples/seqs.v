@@ -3,7 +3,7 @@ From BurrowLang Require Import lang simp adequacy primitive_laws.
 From Tpcms Require Import rwlock.
 Require Import Burrow.tpcms.
 Require Import Burrow.ra.
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 Require Import cpdt.CpdtTactics.
 Require Import Burrow.tactics.
 Require Import Tpcms.auth_frag.

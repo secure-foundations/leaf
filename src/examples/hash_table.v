@@ -2,7 +2,7 @@ From iris.base_logic.lib Require Import invariants.
 From BurrowLang Require Import lang simp adequacy primitive_laws.
 Require Import Burrow.tpcms.
 Require Import Burrow.ra.
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 Require Import Burrow.tactics.
 Require Import Tpcms.auth_frag.
 

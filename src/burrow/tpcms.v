@@ -8,7 +8,7 @@ From stdpp Require Import mapset.
 From stdpp Require Import sets.
 From stdpp Require Import list.
 Require Import Burrow.gmap_utils.
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 Require Import Burrow.indexing.
 Require Import Burrow.tactics.
 Require Import Burrow.locations.

@@ -13,7 +13,7 @@ src/burrow/locations.v
 src/burrow/ra.v
 src/burrow/relive.v
 src/burrow/resource_proofs.v
-src/burrow/rollup.v
+src/burrow/trees.v
 src/burrow/tactics.v
 src/burrow/tpcms.v
 src/burrow/updog.v

@@ -1,4 +1,4 @@
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 Require Import Burrow.ra.
 From iris.prelude Require Import options.
 From iris.proofmode Require Import tactics.

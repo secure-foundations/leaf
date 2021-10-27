@@ -1,4 +1,4 @@
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 From stdpp Require Import gmap.
 From iris.prelude Require Import options.
 

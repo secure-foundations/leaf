@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 
 Require Import Burrow.ra.
 Require Import Burrow.tpcms.
-Require Import Burrow.rollup.
+Require Import Burrow.trees.
 
 Require Import Tpcms.auth_frag.
 Require Import Tpcms.gmap.
