@@ -46,7 +46,8 @@ Inductive base_lit :=
 Inductive bin_op :=
   | PlusOp
   | EqOp
-  | PairOp.
+  | PairOp
+  | ModuloOp.
 
 Inductive un_op :=
   | FstOp
@@ -173,8 +174,8 @@ Qed.
 Global Instance bin_op_countable : Countable bin_op.
 Proof.
   refine (inj_countable'
-            (λ op, match op with | PlusOp => 0 | EqOp => 1 | PairOp => 2  end)
-            (λ n, match n with | 0 => _ | 1 => _ | 2 => _
+            (λ op, match op with | PlusOp => 0 | EqOp => 1 | PairOp => 2 | ModuloOp => 3 end)
+            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _
                           | _ => ltac:(constructor) end) _).
   destruct x; eauto.
 Qed.
@@ -350,6 +351,11 @@ Definition bin_op_eval (op: bin_op) (v1 v2: val) : option val :=
   | PlusOp => match v1, v2 with
               | LitV (LitInt n1), LitV (LitInt n2) =>
                 Some (LitV (LitInt (n1 + n2)))
+              | _, _ => None
+              end
+  | ModuloOp => match v1, v2 with
+              | LitV (LitInt n1), LitV (LitInt n2) =>
+                Some (LitV (LitInt (Z.modulo n1 n2)))
               | _, _ => None
               end
   | EqOp => Some (LitV $ LitBool $ bool_decide (v1 = v2))

@@ -25,7 +25,9 @@ Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
 Require Import cpdt.CpdtTactics.
 
-Definition compute_hash: lang.val. Admitted.
+Definition compute_hash: lang.val :=
+  λ: "x" ,
+    BinOp ModuloOp "x" (#ht_fixed_size).
 
 Definition init_slots: lang.val :=
   (rec: "init_slots" "n" :=
@@ -42,7 +44,7 @@ Definition init_locks: lang.val :=
     else
       Pair new_rwlock ("init_locks" ("n" + #(-1)))
   ).
-
+  
 Definition new_hash_table: lang.val :=
   λ: "unit" ,
     let: "slots" := init_slots #(ht_fixed_size) in
@@ -625,7 +627,23 @@ Qed.
 Lemma wp_compute_hash (k: Key) :
       {{{ True }}}
       compute_hash #k
-      {{{ RET #(hash k) ; True }}}. Admitted.
+      {{{ RET #(hash k) ; True }}}.
+Proof.
+  iIntros (Phi) "_ Phi".
+  unfold compute_hash.
+  wp_pures.
+  iModIntro.
+  assert (#(hash k) = #(k `mod` ht_fixed_size)).
+  {
+    f_equal. unfold hash. f_equal.
+    have j := Z_mod_lt k ht_fixed_size.
+    unfold ht_fixed_size in *.
+    lia.
+  }
+  rewrite H.
+  iApply "Phi".
+  done.
+Qed. 
 
 Lemma wp_ht_update 𝛾 (ht: lang.val) (k: Key) (v: Value) (v0: option Value) :
       {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v0) }}}
@@ -1081,4 +1099,6 @@ Proof.
   intros. apply wp_main'.
 Qed.
 
+(* Check that there are not any unproved assumptions.
+   Should say 'Closed under global context'. *)
 Print Assumptions main_returns_value.

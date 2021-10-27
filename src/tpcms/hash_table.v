@@ -11,13 +11,25 @@ Require Import Tpcms.gmap.
 Require Import Burrow.tactics.
 Require Import coq_tricks.Deex.
 
-Definition ht_fixed_size: nat. Admitted.
+Definition ht_fixed_size: nat := 4.
 
 Definition Key := Z. 
 Definition Value := Z.
-Definition hash : Key -> nat. Admitted.
 
-Lemma hash_in_bound (k: Key) : hash k < ht_fixed_size. Admitted.
+(* we choose a concrete hash function for completeness, but the ht logic
+doens't depend on this choice *)
+Definition hash : Key -> nat := λ (k: Z) , Z.to_nat (Z.modulo k ht_fixed_size).
+
+Lemma hash_in_bound (k: Key) : hash k < ht_fixed_size.
+Proof. unfold hash.
+  have h := Z_mod_lt k ht_fixed_size.
+  unfold ht_fixed_size in *.
+  lia.
+Qed.
+
+(* the rest of the hash_table doesn't depend on the specifics of hash *)
+Opaque ht_fixed_size.
+Opaque hash.
 
 Inductive HT :=
   HTR (ms: gmap Key (option (option Value))) (slots: gmap nat (option (option (Key * Value)))) : HT
@@ -943,39 +955,57 @@ Qed.
 Lemma valid_mseq_sseq (n: nat) : V (ht_dot (mseq n) (sseq ht_fixed_size)).
 Proof.
   unfold V. exists ht_unit. rewrite ht_unit_dot. unfold mseq, sseq, ht_dot.
-      rewrite gmap_dot_empty. rewrite gmap_dot_empty_left. unfold P. repeat split.
-  - unfold gmap_valid. intro.
+      rewrite gmap_dot_empty. rewrite gmap_dot_empty_left. unfold P. split.
+  { unfold gmap_valid. intro.
     have h : Decision (k < ht_fixed_size) by solve_decision. destruct h.
     + rewrite lookup_gmap_seq; trivial.
     + rewrite lookup_gmap_seq_out; trivial.
-  - unfold gmap_valid. intro.
+  }
+  split.
+  { unfold gmap_valid. intro.
     have h : Decision (Z.le 0 k /\ Z.lt k n) by solve_decision. destruct h.
     + rewrite lookup_gmap_zseq; trivial.
     + rewrite lookup_gmap_zseq_out; trivial.
-  - intros.
+  }
+  split.
+  { intros.
     have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
     + trivial.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
-  - intros. destruct_ands.
+  } 
+  split.
+  { intros. destruct_ands.
     have h : Decision (i1 < ht_fixed_size) by solve_decision. destruct h.
     + rewrite lookup_gmap_seq in H; trivial. discriminate.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
-  - intros. exfalso.
+  } 
+  split.
+  {
+    intros. exfalso.
     have h : Decision (Z.le 0 k /\ Z.lt k n) by solve_decision. destruct h.
     + rewrite lookup_gmap_zseq in H; trivial. discriminate.
     + rewrite lookup_gmap_zseq_out in H; trivial. discriminate.
+  } 
+  split.
+  {
   - intros. exfalso.
     have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
     + rewrite lookup_gmap_seq in H; trivial. discriminate.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  } 
+  split.
+  {
+    exfalso.
+    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
+    + rewrite lookup_gmap_seq in H; trivial. discriminate.
+    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  } 
+  {
   - exfalso.
     have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
     + rewrite lookup_gmap_seq in H; trivial. discriminate.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
-  - exfalso.
-    have h : Decision (i < ht_fixed_size) by solve_decision. destruct h.
-    + rewrite lookup_gmap_seq in H; trivial. discriminate.
-    + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
+  }
 Qed.
 
 Lemma mseq_append (n: nat)
