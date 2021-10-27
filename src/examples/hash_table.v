@@ -1028,6 +1028,10 @@ Instance main𝜇_has_ref : HasRef main𝜇
     (rwlock_ref (HT * HeapT loc lang.val)).
     typeclasses eauto. Defined.
 
+(* type class inference has a standard embedding of M * N in the lifted 𝜇
+   which is different from the lifted embedding of M * N in 𝜇. 
+   Here we show those are equivalent ...
+   TODO fix the type class inference so we get this for free *)
 Global Instance product_fixer (𝜇: BurrowCtx)
       R `{!EqDecision R} `{TPCM R}
       M `{!EqDecision M} `{TPCM M}
@@ -1044,7 +1048,12 @@ Global Instance product_fixer (𝜇: BurrowCtx)
         (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
         (NewRef_KeepsTPCM 𝜇 _ _ _ rf)
       ) rf.
-Admitted.
+Proof.
+  refine ({|
+    hasref_ri := ((@hasref_ri (NewRefCtx 𝜇 R (M * N) rf) R (M * N) _ _ _ _ _ _ rf hr) : bc_small_RI (NewRefCtx 𝜇 R (M * N) rf));
+  |}).
+  - destruct hr. trivial.
+Qed.
 
 Instance main𝜇_has_ref' : HasRef main𝜇 _ (@product_hastpcm _ _ _ _ _ _ _ _ _ _ _)
     (rwlock_ref (HT * HeapT loc lang.val)).
@@ -1071,3 +1080,5 @@ Proof.
   { typeclasses eauto. }
   intros. apply wp_main'.
 Qed.
+
+Print Assumptions main_returns_value.
