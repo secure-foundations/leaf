@@ -106,6 +106,11 @@ Context `{hG : !gen_burrowGS Σ}.
 Definition L
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝛾: BurrowLoc 𝜇) (m: M) : iProp Σ
+    := own (gen_burrow_name hG) (live_rec' 𝛾 m).
+    
+Definition InternalL
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m: M) : iProp Σ
     := own (gen_burrow_name hG) (live' 𝛾 m).
     
 Definition R
@@ -131,6 +136,54 @@ Proof. unfold CmraTotal. intros. unfold pcore, cmra_pcore, burrowR, state_pcore.
   unfold is_Some. exists state_unit. trivial.
 Qed.
 
+Lemma to_Internal
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m: M)
+  : L 𝛾 m ==∗ InternalL 𝛾 m.
+Proof.
+  iIntros "L".
+  unfold L, InternalL.
+  iMod (own_update (gen_burrow_name hG) (live_rec' 𝛾 m) (live' 𝛾 m) with "L") as "$".
+  - rewrite cmra_discrete_update. intro. apply live_rec_to_live'.
+  - done.
+Qed.
+
+Lemma from_Internal
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m: M)
+  : InternalL 𝛾 m ==∗ L 𝛾 m.
+Proof.
+  iIntros "L".
+  unfold L, InternalL.
+  iMod (own_update (gen_burrow_name hG) (live' 𝛾 m) (live_rec' 𝛾 m) with "L") as "$".
+  - rewrite cmra_discrete_update. intro. apply live_to_live_rec'.
+  - done.
+Qed.
+
+Lemma InternalL_op
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m n: M)
+  : InternalL 𝛾 (dot m n) ⊣⊢ InternalL 𝛾 m ∗ InternalL 𝛾 n.
+Proof.
+  unfold InternalL.
+  setoid_rewrite <- live_dot_live'.
+  apply own_op.
+Qed.
+
+Lemma InternalL_join
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    (𝛾: BurrowLoc 𝜇) (m n: M)
+  : InternalL 𝛾 m -∗ InternalL 𝛾 n -∗ InternalL 𝛾 (dot m n).
+Proof. rewrite InternalL_op. trivial. iIntros. iFrame. Qed.
+
+Lemma InternalL_unit
+    M `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    𝛾
+  : ⊢ |==> InternalL 𝛾 (unit: M).
+Proof.
+  unfold InternalL. setoid_rewrite live_unit'. apply own_unit.
+Qed.
+
 (* TPCM-Compose *)
 
 Lemma L_op
@@ -139,7 +192,7 @@ Lemma L_op
   : L 𝛾 (dot m n) ⊣⊢ L 𝛾 m ∗ L 𝛾 n.
 Proof.
   unfold L.
-  setoid_rewrite <- live_dot_live'.
+  setoid_rewrite <- live_rec_dot_live_rec'.
   apply own_op.
 Qed.
 
@@ -156,7 +209,11 @@ Lemma L_unit
     𝛾
   : ⊢ |==> L 𝛾 (unit: M).
 Proof.
-  unfold L. setoid_rewrite live_unit'. apply own_unit.
+  iIntros.
+  iMod (InternalL_unit _ 𝛾) as "U".
+  iMod (from_Internal with "U") as "U".
+  iFrame.
+  done.
 Qed.
 
 (* BorrowUnit *)
@@ -198,8 +255,9 @@ Lemma LiveValid
     (𝛾: BurrowLoc 𝜇) (m : M)
   : L 𝛾 m  ⊢ ⌜ m_valid m ⌝.
 Proof.
-  unfold L.
   iIntros "L".
+  iMod (to_Internal with "L") as "L".
+  unfold InternalL.
   iDestruct (own_valid with "L") as "%H". 
   iPureIntro.
   apply (live_implies_valid' _ _ H).
@@ -223,8 +281,9 @@ Lemma LiveAndBorrowValid
     (𝛾: BurrowLoc 𝜇) (𝜅: Lifetime) (m k : M)
   : A 𝜅 -∗ L 𝛾 m -∗ B 𝜅 𝛾 k -∗ ⌜ m_valid (dot m k) ⌝.
 Proof.
-  unfold A, L, B.
   iIntros "H1 H2 H3".
+  iMod (to_Internal with "H2") as "H2".
+  unfold A, InternalL, B.
   iDestruct "H3" as (rstate) "[H4 %H5]".
   iDestruct (own_valid_3 with "H1 H2 H4") as "%H". 
   iPureIntro.
@@ -238,7 +297,7 @@ Lemma BorrowBegin_1
     (𝛾: BurrowLoc 𝜇) (m : M)
      : L 𝛾 m ==∗ (∃ 𝜅 , A 𝜅 ∗ R 𝜅 𝛾 m).
 Proof.
-  iIntros "L". unfold L, A, R.
+  iIntros "L". iMod (to_Internal with "L") as "L". unfold InternalL, A, R.
   iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝜅 , a' = active 𝜅 ⋅ reserved' 𝜅 𝛾 m /\ 𝜅 ≠ empty_lifetime) with "L") as "T".
    - rewrite cmra_discrete_updateP.
       intros.
@@ -308,12 +367,13 @@ Lemma BorrowExpire
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     (𝜅: Lifetime) (𝛾: BurrowLoc 𝜇) (m: M)
   : A 𝜅 ∗ R 𝜅 𝛾 m ==∗ L 𝛾 m.
-Proof. unfold A, R, L.
+Proof.
   iIntros "[H1 [H2 %H3]]". 
+  unfold A, R.
   iCombine "H1" "H2" as "H".
-  iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live' 𝛾 m) with "H") as "$".
+  iMod (own_update (gen_burrow_name hG) ((active 𝜅: BurrowState 𝜇) ⋅ reserved' 𝜅 𝛾 m) (live_rec' 𝛾 m) with "H") as "$".
   - rewrite cmra_discrete_update.
-    intro. apply borrow_expire'. trivial.
+    intro. intro. apply live_to_live_rec'. apply borrow_expire' with (𝜅0:=𝜅); trivial.
   - done.
 Qed.
 
@@ -457,16 +517,24 @@ Lemma FrameUpdateWithBorrow
     (exchange_cond: mov (dot m z) (dot m' z))
     : A 𝜅 -∗ L 𝛾 m -∗ B 𝜅 𝛾 z ==∗ A 𝜅 ∗ L 𝛾 m' ∗ B 𝜅 𝛾 z.
 Proof.
+  assert (A 𝜅 -∗ InternalL 𝛾 m -∗ B 𝜅 𝛾 z ==∗ A 𝜅 ∗ InternalL 𝛾 m' ∗ B 𝜅 𝛾 z) as X.
+  {
+    iIntros "A L B".
+    unfold A, InternalL, B.
+    iDestruct "B" as (rstate) "[B %h]". destruct_ands.
+    iMod (own_update_3 _ _ _ _ (
+      ((active 𝜅 : BurrowState 𝜇) ⋅ live' 𝛾 m' ⋅ rstate)
+    ) with "A L B") as "X".
+    - rewrite cmra_discrete_update.
+      intros. apply borrow_exchange_normal' with (m0:=m) (z1:=z); trivial.
+    - rewrite own_op. rewrite own_op. iDestruct "X" as "[[A L] B]".
+      iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+  }
   iIntros "A L B".
-  unfold A, L, B.
-  iDestruct "B" as (rstate) "[B %h]". destruct_ands.
-  iMod (own_update_3 _ _ _ _ (
-    ((active 𝜅 : BurrowState 𝜇) ⋅ live' 𝛾 m' ⋅ rstate)
-  ) with "A L B") as "X".
-  - rewrite cmra_discrete_update.
-    intros. apply borrow_exchange_normal' with (m0:=m) (z1:=z); trivial.
-  - rewrite own_op. rewrite own_op. iDestruct "X" as "[[A L] B]".
-    iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+  iMod (to_Internal with "L") as "L".
+  iMod (X with "A L B") as "[A [L B]]".
+  iMod (from_Internal with "L") as "L".
+  iFrame. done.
 Qed.
 
 (* TPCM-FrameUpdate *)
@@ -496,17 +564,29 @@ Lemma FrameExchangeWithBorrow
     : A 𝜅 -∗ L (extend_loc 𝛼 ref 𝛾) f -∗ L 𝛾 m -∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z ==∗
       A 𝜅  ∗ L (extend_loc 𝛼 ref 𝛾) f' ∗ L 𝛾 m' ∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z.
 Proof.
+  assert (A 𝜅 -∗ InternalL (extend_loc 𝛼 ref 𝛾) f -∗ InternalL 𝛾 m -∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z ==∗
+      A 𝜅  ∗ InternalL (extend_loc 𝛼 ref 𝛾) f' ∗ InternalL 𝛾 m' ∗ B 𝜅 (extend_loc 𝛼 ref 𝛾) z)
+      as X.
+  { 
+    iIntros "A F L B".
+    unfold A, InternalL, B.
+    iDestruct "B" as (rstate) "[B %h]". destruct_ands.
+    iCombine "A F" as "AF".
+    iMod (own_update_3 _ _ _ _ (
+      ((active 𝜅 : BurrowState 𝜇) ⋅ live' (extend_loc 𝛼 ref 𝛾) f' ⋅ rstate ⋅ live' 𝛾 m')
+    ) with "AF B L") as "X".
+    - rewrite cmra_discrete_update.
+      intros. apply borrow_exchange' with (m0:=m) (z1:=z) (f0:=f); trivial.
+    - rewrite own_op. rewrite own_op. rewrite own_op. iDestruct "X" as "[[[A L] B] L2]".
+      iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+  }
   iIntros "A F L B".
-  unfold A, L, B.
-  iDestruct "B" as (rstate) "[B %h]". destruct_ands.
-  iCombine "A F" as "AF".
-  iMod (own_update_3 _ _ _ _ (
-    ((active 𝜅 : BurrowState 𝜇) ⋅ live' (extend_loc 𝛼 ref 𝛾) f' ⋅ rstate ⋅ live' 𝛾 m')
-  ) with "AF B L") as "X".
-  - rewrite cmra_discrete_update.
-    intros. apply borrow_exchange' with (m0:=m) (z1:=z) (f0:=f); trivial.
-  - rewrite own_op. rewrite own_op. rewrite own_op. iDestruct "X" as "[[[A L] B] L2]".
-    iModIntro. iFrame. iExists rstate. iFrame. iPureIntro. split; trivial.
+  iMod (to_Internal with "L") as "L".
+  iMod (to_Internal with "F") as "F".
+  iMod (X with "A F L B") as "[A [F [L B]]]".
+  iMod (from_Internal with "L") as "L".
+  iMod (from_Internal with "F") as "F".
+  iFrame. done.
 Qed.
 
 Definition normal_exchange_cond
@@ -551,17 +631,25 @@ Lemma InitializeExt
     (is_rel: rel R M ref f = m)
     : L 𝛾 m ==∗ ∃ 𝛼 , L (extend_loc 𝛼 ref 𝛾) f.
 Proof.
-  iIntros "L". unfold L.
-  iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛼 , a' = live' (extend_loc 𝛼 ref 𝛾) f) with "L") as "T".
-  - rewrite cmra_discrete_updateP. intros.
-    have j := initialize_ext' ref 𝛾 m f z is_rel_def is_rel H.
-    have j0 := j r_hastpcm hr. deex.
-    intros. exists (live' (extend_loc 𝛼 ref 𝛾) f). split; trivial.
-    exists 𝛼. trivial.
-  - iDestruct "T" as (a') "[%E T]".
-    deex. destruct_ands. subst a'.
-    iModIntro. iExists 𝛼.
-    iFrame.
+  assert (InternalL 𝛾 m ==∗ ∃ 𝛼 , InternalL (extend_loc 𝛼 ref 𝛾) f) as X.
+  {
+    iIntros "L". unfold InternalL.
+    iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛼 , a' = live' (extend_loc 𝛼 ref 𝛾) f) with "L") as "T".
+    - rewrite cmra_discrete_updateP. intros.
+      have j := initialize_ext' ref 𝛾 m f z is_rel_def is_rel H.
+      have j0 := j r_hastpcm hr. deex.
+      intros. exists (live' (extend_loc 𝛼 ref 𝛾) f). split; trivial.
+      exists 𝛼. trivial.
+    - iDestruct "T" as (a') "[%E T]".
+      deex. destruct_ands. subst a'.
+      iModIntro. iExists 𝛼.
+      iFrame.
+  }
+  iIntros "L".
+  iMod (to_Internal with "L") as "L".
+  iMod (X with "L") as (𝛼) "L".
+  iMod (from_Internal with "L") as "L".
+  iFrame. iExists 𝛼. iFrame. done.
 Qed.
 
 (* TPCM-Alloc *)
@@ -572,52 +660,27 @@ Lemma InitializeNormal
     (is_val: m_valid m)
     : ⊢ |==> ∃ 𝛾 , L 𝛾 m.
 Proof.
-  iIntros. unfold L.
-  iMod (own_unit _ (gen_burrow_name hG)) as "U".
-  iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛾 , a' = live' 𝛾 m) with "U") as "T".
-  - rewrite cmra_discrete_updateP. intros.
-    have j := initialize_normal' m z is_val.
-    have j0 := j HasTPCM0.
-    setoid_rewrite state_comm in H.
-    setoid_rewrite op_state_unit in H.
-    have j1 := j0 H. deex.
-    exists (live' 𝛾 m). split; trivial. exists 𝛾. trivial.
-  - iDestruct "T" as (a') "[%E T]".
-    deex. subst a'.
-    iModIntro. iExists 𝛾.
-    iFrame.
-Qed.
-
-Lemma SwapCrossLeft
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
-  (𝛾1 𝛾2: BurrowLoc 𝜇) (m m1: M) (m2 : N)
-    : L 𝛾1 m -∗ L (cross_loc 𝛾1 𝛾2) (m1, m2) ==∗
-      L 𝛾1 m1 ∗ L (cross_loc 𝛾1 𝛾2) (m, m2).
-Proof.
-  iIntros "L C". unfold L.
-  iMod (own_update_2 _ _ _ (
-    (live' 𝛾1 m1 ⋅ live' (cross_loc 𝛾1 𝛾2) (m, m2))
-  ) with "L C") as "X".
-  - rewrite cmra_discrete_update.
-    intros. apply swap_cross_left'; trivial.
-  - rewrite own_op. iFrame. done.
-Qed.
-
-Lemma SwapCrossRight
-    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
-    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
-  (𝛾1 𝛾2: BurrowLoc 𝜇) (m: N) (m1: M) (m2 : N)
-    : L 𝛾2 m -∗ L (cross_loc 𝛾1 𝛾2) (m1, m2) ==∗
-      L 𝛾2 m2 ∗ L (cross_loc 𝛾1 𝛾2) (m1, m).
-Proof.
-  iIntros "L C". unfold L.
-  iMod (own_update_2 _ _ _ (
-    (live' 𝛾2 m2 ⋅ live' (cross_loc 𝛾1 𝛾2) (m1, m))
-  ) with "L C") as "X".
-  - rewrite cmra_discrete_update.
-    intros. apply swap_cross_right'; trivial.
-  - rewrite own_op. iFrame. done.
+  assert (⊢ |==> ∃ 𝛾 , InternalL 𝛾 m) as X.
+  {
+    iIntros. unfold InternalL.
+    iMod (own_unit _ (gen_burrow_name hG)) as "U".
+    iMod (own_updateP (λ a': BurrowState 𝜇, ∃ 𝛾 , a' = live' 𝛾 m) with "U") as "T".
+    - rewrite cmra_discrete_updateP. intros.
+      have j := initialize_normal' m z is_val.
+      have j0 := j HasTPCM0.
+      setoid_rewrite state_comm in H.
+      setoid_rewrite op_state_unit in H.
+      have j1 := j0 H. deex.
+      exists (live' 𝛾 m). split; trivial. exists 𝛾. trivial.
+    - iDestruct "T" as (a') "[%E T]".
+      deex. subst a'.
+      iModIntro. iExists 𝛾.
+      iFrame.
+  } 
+  iIntros.
+  iMod (X) as (𝛼) "L".
+  iMod (from_Internal with "L") as "L".
+  iFrame. iExists 𝛼. iFrame. done.
 Qed.
 
 (* Product *)
@@ -626,14 +689,9 @@ Lemma CrossJoin
     {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
     {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
   (𝛾1 𝛾2: BurrowLoc 𝜇) (m: M) (n: N)
-    : L 𝛾1 m -∗ L 𝛾2 n ==∗ L (cross_loc 𝛾1 𝛾2) (m, n).
+    : L 𝛾1 m -∗ L 𝛾2 n -∗ L (cross_loc 𝛾1 𝛾2) (m, n).
 Proof.
-  iIntros "m n".
-  iMod (L_unit (M * N) (cross_loc 𝛾1 𝛾2)) as "P".
-  unfold unit, pair_tpcm.
-  iMod (SwapCrossLeft 𝛾1 𝛾2 m unit unit with "m P") as "[m P]".
-  iMod (SwapCrossRight 𝛾1 𝛾2 n m unit with "n P") as "[n P]".
-  iModIntro. iFrame.
+  unfold L. rewrite live_rec_eq'. iIntros "X Y". rewrite own_op. iFrame.
 Qed.
 
 Lemma CrossSplit
@@ -642,12 +700,7 @@ Lemma CrossSplit
   (𝛾1 𝛾2: BurrowLoc 𝜇) (m: M) (n: N)
     : L (cross_loc 𝛾1 𝛾2) (m, n) ==∗ L 𝛾1 m ∗ L 𝛾2 n.
 Proof.
-  iIntros "P".
-  iMod (L_unit M 𝛾1) as "m".
-  iMod (L_unit N 𝛾2) as "n".
-  iMod (SwapCrossLeft 𝛾1 𝛾2 unit m n with "m P") as "[m P]".
-  iMod (SwapCrossRight 𝛾1 𝛾2 unit unit n with "n P") as "[n P]".
-  iModIntro. iFrame.
+  unfold L. rewrite live_rec_eq'. rewrite own_op. iIntros. iFrame. done.
 Qed.
 
 End BurrowLaws.

@@ -7,6 +7,7 @@ src/burrow/exchanges.v
 src/burrow/fresh.v
 src/burrow/gmap_utils.v
 src/burrow/indexing.v
+src/burrow/live_rec.v
 src/burrow/maxltunit.v
 src/burrow/parity.v
 src/burrow/locations.v

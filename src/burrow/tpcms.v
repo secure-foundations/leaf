@@ -15,6 +15,7 @@ Require Import Burrow.locations.
 Require Import Burrow.resource_proofs.
 Require Import Burrow.exchanges.
 Require Import Burrow.parity.
+Require Import Burrow.live_rec.
 Require Import coq_tricks.Deex.
 
 #[refine]
@@ -500,8 +501,8 @@ Qed.
   
 Lemma ic_get_ic_pair {M} `{!EqDecision M} `{!TPCM M} (a b : InfiniteCopies M) (i: nat)
   : ic_get (ic_pair a b) i = match parity i with
-    | Even k => ic_get a k
-    | Odd k => ic_get b k
+    | parity.Even k => ic_get a k
+    | parity.Odd k => ic_get b k
     end.
 Proof.
   have eoe := even_or_odd i. destruct eoe; deex; subst i.
@@ -1270,6 +1271,11 @@ Definition live' {𝜇: BurrowCtx} {M}
     `{!HasTPCM 𝜇 M} (loc: BurrowLoc 𝜇) (m: M) : BurrowState 𝜇
     := live loc (mu_embed M 𝜇 m).
     
+Definition live_rec' {𝜇: BurrowCtx} {M}
+    `{!EqDecision M} `{!TPCM M}
+    `{!HasTPCM 𝜇 M} (loc: BurrowLoc 𝜇) (m: M) : BurrowState 𝜇
+    := live_rec loc (mu_embed M 𝜇 m).
+    
 Definition reserved' {𝜇: BurrowCtx} {M}
     `{!EqDecision M} `{!TPCM M}
     `{!HasTPCM 𝜇 M} (kappa: Lifetime) (loc: BurrowLoc 𝜇) (m: M) : BurrowState 𝜇
@@ -1285,6 +1291,13 @@ Lemma live_dot_live' {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPC
     : live' 𝛾 m1 ⋅ live' 𝛾 m2 ≡ live' 𝛾 (dot m1 m2).
 Proof.
   unfold live'. setoid_rewrite live_dot_live. rewrite embed_dot. trivial.
+Qed.
+
+Lemma live_rec_dot_live_rec' {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  (𝛾: BurrowLoc 𝜇) (m1 m2: M)
+    : live_rec' 𝛾 m1 ⋅ live_rec' 𝛾 m2 ≡ live_rec' 𝛾 (dot m1 m2).
+Proof.
+  unfold live_rec'. setoid_rewrite live_rec_dot_live_rec. rewrite embed_dot. trivial.
 Qed.
 
 Lemma live_unit' {𝜇: BurrowCtx} {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
@@ -1736,6 +1749,41 @@ Proof.
   unfold pair_up, bc_refinement_index in j0.
   apply j0.
   trivial.
+Qed.
+
+Lemma live_rec_eq'
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+    {N} `{!EqDecision N} `{!TPCM N} `{!HasTPCM 𝜇 N}
+  (𝛾1 𝛾2: BurrowLoc 𝜇) (m1: M) (m2 : N)
+  : (live_rec' (cross_loc 𝛾1 𝛾2) (m1, m2) = live_rec' 𝛾1 m1 ⋅ live_rec' 𝛾2 m2).
+Proof.
+  unfold live_rec'.
+  rewrite mu_embed_product.
+  unfold cross_loc.
+  have t := live_rec_eq 𝛾1 𝛾2 (mu_embed M 𝜇 m1) (mu_embed N 𝜇 m2).
+  unfold pair_up in t.
+  apply t.
+Qed.
+
+Lemma live_to_live_rec'
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  (𝛾: BurrowLoc 𝜇) (m: M) (p: BurrowState 𝜇)
+  (si: ✓(live' 𝛾 m ⋅ p))
+     : ✓(live_rec' 𝛾 m ⋅ p).
+Proof.
+  unfold live', live_rec' in *. apply live_to_live_rec. trivial.
+Qed.
+
+Lemma live_rec_to_live'
+  {𝜇: BurrowCtx}
+    {M} `{!EqDecision M} `{!TPCM M} `{!HasTPCM 𝜇 M}
+  (𝛾: BurrowLoc 𝜇) (m: M) (p: BurrowState 𝜇)
+  (si: ✓(live_rec' 𝛾 m ⋅ p))
+     : ✓(live' 𝛾 m ⋅ p).
+Proof.
+  unfold live', live_rec' in *. apply live_rec_to_live. trivial.
 Qed.
 
 Lemma state_no_live_reserved'

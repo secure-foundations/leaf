@@ -354,7 +354,7 @@ Proof.
       destruct l; try (iExFalso; iFrame; fail).
       destruct v2; try (iExFalso; iFrame; fail).
       destruct l; try (iExFalso; iFrame; fail).
-      iMod (CrossJoin _ _ _ _ with "me slot") as "cross".
+      iDestruct (CrossJoin _ _ _ _ with "me slot") as "cross".
       iMod (rw_new _ _ with "cross") as (𝛼) "rw".
       iAssert (rwlock_inv 𝛼 (cross_loc 𝛾 (gen_heap_name simp_gen_heapG)) (ht_inv_i n n0) n1 n2) with "[lock rw]" as "ri".
       { unfold rwlock_inv. iExists false. iExists 0.
@@ -502,7 +502,7 @@ Proof.
         iIntros "_".
         
         iMod (ht_UpdateExisting _ _ v _ _ _ with "slot m") as "[slot m]".
-        iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+        iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
         
         (* release the lock *)
 
@@ -565,7 +565,7 @@ Proof.
        (* release the lock *)
        
        iDestruct (L_op _ _ _ with "a") as "[a slot]".
-       iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+       iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
        
        wp_bind (seq_idx #i locks).
         wp_apply wp_seq_idx.
@@ -610,7 +610,7 @@ Proof.
        { apply has_elem_of_has_length with (len := ht_fixed_size).
          - lia. - intuition. } { done. }
        iIntros "_".
-       iMod (CrossJoin _ _ _ _ with "slot mem") as "cross".
+       iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
 
        wp_bind (release_exc (elem locks i)).
        wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
