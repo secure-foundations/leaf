@@ -56,18 +56,6 @@ Proof.
    apply u.
 Qed.
 
-Lemma pair_up_unit_unit
-    : (pair_up RI (unit: M) unit) = unit.
-Proof.
-  assert (pair_up RI (unit: M) (unit: M) =
-      pair_up RI (rel M M (refinement_of (left_ri RI)) unit)
-                 (rel M M (refinement_of (right_ri RI)) unit)) as X.
-  { rewrite rel_unit. rewrite rel_unit. trivial. }
-  rewrite X.
-  rewrite <- self_eq_pair.
-  trivial.
-Qed.
-
 Lemma unit_unit_pair_is_unit (loc1 loc2: Loc RI)
   : live (CrossLoc loc1 loc2) (pair_up RI (unit: M) unit) ≡ (state_unit : State M RI).
 Proof.
@@ -162,32 +150,6 @@ Proof.
       apply update_b with (b := live_rec loc2 (rel M M (refinement_of (right_ri RI)) m)).
       { intro. apply IHloc2. }
       trivial.
-Qed.
-
-Lemma ref_left_dot (m1 m2: M)
-  : rel M M (refinement_of (left_ri RI)) (dot m1 m2) =
-  dot (rel M M (refinement_of (left_ri RI)) m1) (rel M M (refinement_of (left_ri RI)) m2).
-Proof.
-  rewrite (self_eq_pair m1).
-  rewrite (self_eq_pair m2).
-  rewrite dot_pair_up.
-  rewrite <- (self_eq_pair m1).
-  rewrite <- (self_eq_pair m2).
-  rewrite refinement_of_left_pair_up.
-  trivial.
-Qed.
-
-Lemma ref_right_dot (m1 m2: M)
-  : rel M M (refinement_of (right_ri RI)) (dot m1 m2) =
-  dot (rel M M (refinement_of (right_ri RI)) m1) (rel M M (refinement_of (right_ri RI)) m2).
-Proof.
-  rewrite (self_eq_pair m1).
-  rewrite (self_eq_pair m2).
-  rewrite dot_pair_up.
-  rewrite <- (self_eq_pair m1).
-  rewrite <- (self_eq_pair m2).
-  rewrite refinement_of_right_pair_up.
-  trivial.
 Qed.
 
 Lemma live_rec_dot_live_rec

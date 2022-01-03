@@ -203,6 +203,52 @@ Proof.
   apply le_add_right_side. apply self_le_self.
 Qed.
 
+Lemma pair_up_unit_unit
+        {M} `{!EqDecision M, !TPCM M}
+        {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+    : (pair_up RI (unit: M) unit) = unit.
+Proof.
+  assert (pair_up RI (unit: M) (unit: M) =
+      pair_up RI (rel M M (refinement_of (left_ri RI)) unit)
+                 (rel M M (refinement_of (right_ri RI)) unit)) as X.
+  { rewrite rel_unit. rewrite rel_unit. trivial. }
+  rewrite X.
+  rewrite <- self_eq_pair.
+  trivial.
+Qed.
+
+Lemma ref_left_dot
+        {M} `{!EqDecision M, !TPCM M}
+        {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+        (m1 m2: M)
+  : rel M M (refinement_of (left_ri RI)) (dot m1 m2) =
+  dot (rel M M (refinement_of (left_ri RI)) m1) (rel M M (refinement_of (left_ri RI)) m2).
+Proof.
+  rewrite (self_eq_pair m1).
+  rewrite (self_eq_pair m2).
+  rewrite dot_pair_up.
+  rewrite <- (self_eq_pair m1).
+  rewrite <- (self_eq_pair m2).
+  rewrite refinement_of_left_pair_up.
+  trivial.
+Qed.
+
+Lemma ref_right_dot
+        {M} `{!EqDecision M, !TPCM M}
+        {RI} `{!EqDecision RI, !Countable RI, !RefinementIndex M RI}
+        (m1 m2: M)
+  : rel M M (refinement_of (right_ri RI)) (dot m1 m2) =
+  dot (rel M M (refinement_of (right_ri RI)) m1) (rel M M (refinement_of (right_ri RI)) m2).
+Proof.
+  rewrite (self_eq_pair m1).
+  rewrite (self_eq_pair m2).
+  rewrite dot_pair_up.
+  rewrite <- (self_eq_pair m1).
+  rewrite <- (self_eq_pair m2).
+  rewrite refinement_of_right_pair_up.
+  trivial.
+Qed.
+
 Definition pls_of_loc_from_left
     {RI} `{!EqDecision RI, !Countable RI}
   (l r: Loc RI) : gset PathLoc :=
