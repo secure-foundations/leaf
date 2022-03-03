@@ -11,20 +11,10 @@ From iris.proofmode Require Import base.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
+
+Require Import free_monoid.
+
 Import uPred.
-
-Print authR.
-Print viewR.
-
-Print discreteR.
-Print inG.
-Print gFunctors.
-Print gFunctor.
-Print rFunctor.
-
-Print ucmra.
-Print ofe.
-Print agree.
 
 Section ownership_stuff.
     Record nPred : Type := UPred {
@@ -332,17 +322,11 @@ End ownership_stuff.
 
 Context {F : Type -> ucmra}.
 
-Context (ext_valid : ∀ iP , nat -> F iP -> Prop).
-Context (ext_interp : ∀ iP , F iP -> iP).
+Context (user_ext_valid: ∀ T (eq: Equiv T) , F T -> Prop).
+Context (user_ext_interp: ∀ T (eq: Equiv T) , F T -> free T).
 
-Print authUR.
-
-Print own.
-Print authUR.
-Print uPredO.
-Print iPropO.
-Print authUR.
-Print optionR.
+Print "▶".
+Print laterO.
 
 Class myG Σ := MyG { my_tokG :> inG Σ (authUR (F (laterO (iPropO Σ)))) }.
 
@@ -353,27 +337,38 @@ Global Instance subG_myΣ {Σ} : subG myΣ Σ → myG Σ.
 Proof. solve_inG. Qed.
 *)
 
-
 Context `{!myG Σ}.
 
-Print "▷".
-Print Next.
-Print "<$>".
-Print auth.
-Print "◯".
-Print Next.
-Print iPropI.
-Print uPredI.
-Print bi.
-Print Next.
+Definition ext_valid_n : nat -> F (laterO (iPropO Σ)) -> Prop :=
+    λ n , user_ext_valid (laterO (iPropO Σ)) (≡{n}≡).
 
-Definition is_valid_uPred_mono (M: ucmra) (x: F (laterO (iPropO Σ))) n1 n2 (x1 x2 : M) :
-  ext_valid _ n1 x → x1 ≼{n2} x2 → n2 ≤ n1 → ext_valid _ n2 x. Admitted.
-
-Definition is_valid {M} (x: F (laterO (iPropO Σ))) : uPred M := {|
-  uPred_holds n y := ext_valid _ n x ; (* ignore y *)
-  uPred_mono n1 n2 x1 x2 := is_valid_uPred_mono M x n1 n2 x1 x2 ;
+Program Definition ext_valid {M} (x: F (laterO (iPropO Σ))) : uPred M := {|
+  uPred_holds n y := ext_valid_n n x ; (* ignore y *)
 |}.
+Next Obligation. Admitted.
+
+Print uPredO.
+Print iPropO.
+Print laterO.
+Print iPropO.
+
+Print Next.
+
+Definition iprop_of_free : free (laterO (iPropO Σ)) -> iProp Σ. Admitted.
+
+Definition ext_interp : F (laterO (iPropO Σ)) -> iProp Σ :=
+    λ f , (iprop_of_free (user_ext_interp (laterO (iPropO Σ)) (≡) f)).
+
+(*
+Definition ext_interp : F (laterO (iPropO Σ)) -> iProp Σ :=
+    λ f , (▷ later_car (user_ext_interp (laterO (iPropO Σ)) (≡) f)) % I.
+    *)
+
+
+(*
+Definition ext_valid_n : nat -> F (iProp Σ) -> Prop :=
+    λ n f , user_ext_valid (iProp Σ) (≡) (user_fmap (λ p , ▷^n p) f).
+*)
 
 Program Definition eq_nPred `{A: ofe} (x y : A) : nPred :=
     {| nPred_holds n := x ≡{n}≡ y |}.
@@ -490,15 +485,6 @@ Proof.
   }
 Qed.
 
-(*
-Definition nondet_auth_update (𝛾: gname) (x x' z : F (laterO (iPropO Σ))) :
-    own 𝛾 (● z ⋅ ◯ x) ==∗
-    ∃ p , own 𝛾 (● (x' ⋅ p) ⋅ ◯ x') ∗ uPred_of_nPred (eq_nPred z (x ⋅ p)).
-Proof.
-  iIntros "O".
-  iMod (nondet_auth_update_helper 𝛾 x x' with "O") as (t) "[un O]".
-  iDestruct (helper_nPred_entail with "un") as (p) "[t_eq z_eq]".
-  *)
 
 Definition nondet_auth_update (𝛾: gname) (x x' z : F (laterO (iPropO Σ)))
   (cond: ∀ y n , ✓{n}(x ⋅ y) → ✓{n}(x' ⋅ y)) :
@@ -521,115 +507,56 @@ Qed.
 Definition bank (𝛾: gname) : iProp Σ :=
     ∃ (x: F (laterO (iPropO Σ))) ,
         own 𝛾 (● x)
-          ∗ is_valid x
-          ∗ later_car (ext_interp _ x).
+          ∗ ext_valid x
+          ∗ ext_interp x.
           
 Definition ext (𝛾: gname) (x: F (laterO (iPropO Σ))) : iProp Σ := own 𝛾 (◯ x).
 
 Instance ext_valid_proper (n: nat) :
-    Proper ((≡{n}≡) ==> iff) (ext_valid (laterO (iPropO Σ)) n). Admitted.
-
-(*
-Lemma auth_frag_both_valid (x z: F (laterO (iPropO Σ)))
-  : ✓ (● z ⋅ ◯ x) ⊢ (⌜ x ≼ z ⌝ : iProp Σ).
-Proof. 
-  uPred.unseal.
-  
-  unfold uPred_cmra_valid_def.
-  
-  split=> n t _ /=.
-  rewrite /uPred_holds /=.
-  rewrite auth_both_validN.
-  intros.
-  unfold includedN in H.
-  unfold included.
-  unfold "≡".
-  
-  
-  destruct H.
-  *)
-  
-  (*
-  Print cmra_total_update.
-  Print cmra_total_updateP.
-  Print "~~>:".
-  
-  Context `{i : !inG Σ A}.                                                                             
-
-Implicit Types a : A. 
-Lemma own_updateP P γ a : a ~~>: P → own γ a ==∗ ∃ a', ⌜P a'⌝ ∗ own γ a'. 
-Proof.
-  intros Hupd. rewrite !own_eq.
-  rewrite -(bupd_mono (∃ m,
-    ⌜ ∃ a', m = iRes_singleton γ a' ∧ P a' ⌝ ∧ uPred_ownM m)%I).
-  - apply bupd_ownM_updateP, (discrete_fun_singleton_updateP _ (λ m, ∃ x,
-      m = {[ γ := x ]} ∧ ∃ x', 
-      x = inG_unfold x' ∧ ∃ a', 
-      x' = cmra_transport inG_prf a' ∧ P a')); [|naive_solver].
-    apply singleton_updateP', (iso_cmra_updateP' inG_fold).
-    { apply inG_unfold_fold. }
-    { apply (cmra_morphism_op _). }
-    { apply inG_unfold_validN. }
-    by apply cmra_transport_updateP'.
-  - apply exist_elim=> m; apply pure_elim_l=> -[a' [-> HP]].
-    rewrite -(exist_intro a'). rewrite -persistent_and_sep.
-    by apply and_intro; [apply pure_intro|].
-Qed.
-  
-Lemma auth_frag_update (𝛾: gname) (x y z : F (laterO (iPropO Σ))) :
-    own 𝛾 (◯ x ⋅ ● z)
-      ==∗
-    own 𝛾 (◯ x ⋅ ● z).
-Proof.
-  unfold "|==>". unfold bi_bupd_bupd.
-  unfold uPred_bi_bupd.
-  uPred.unseal.
-  unfold uPred_bupd_def.
-  Print uPred_holds.
-  Print iResUR.
-  
-    ∃ p , x ⋅ p = z , own 𝛾 (◯ x ⋅ ● z)
-    ∃ (z' : F (laterO (iPropO Σ))) , own 𝛾 (◯ y ⋅ ● z').
-
-
-Lemma auth_frag_update (𝛾: gname) (x y z : F (laterO (iPropO Σ))) :
-    own 𝛾 (◯ x ⋅ ● z)
-      ==∗
-    ∃ (z' : F (laterO (iPropO Σ))) , own 𝛾 (◯ y ⋅ ● z').
-Proof.
-  uPred.unseal.
-  unfold uPred_bupd_def.
-  unfold bi_entails.
-  rewrite <- own_op.
-  *)
-
+    Proper ((≡{n}≡) ==> iff) (ext_valid_n n). Admitted.
 
   
-  
-Instance non_expansive_is_valid (M: ucmra) : NonExpansive (@is_valid M).
+Instance non_expansive_ext_valid (M: ucmra) : NonExpansive (@ext_valid M).
 Proof.
   intros n P1 P2 HP.
   split.
   intros n' x le v.
-  unfold is_valid, uPred_holds.
+  unfold ext_valid, uPred_holds.
   have HP' := dist_le _ _ _ _ HP le.
   apply ext_valid_proper. trivial.
 Qed.
+
+Definition valid_exchange `{eq: Equiv T} (x x' : F T) (p q : free T) :=
+    ∀ y , user_ext_valid T eq (x ⋅ y) → user_ext_valid T eq (x' ⋅ y)
+            /\ (user_ext_interp T eq (x ⋅ y)) ⋅ p ≡ (user_ext_interp T eq (x' ⋅ y)) ⋅ q.
+
+Lemma update_cond_from_valid_exchange
+    (x x' : F (laterO (iPropO Σ))) (p q : free (laterO (iPropO Σ)))
+    (ve: valid_exchange x x' p q)
+    : ∀ y n , ✓{n}(x ⋅ y) → ✓{n}(x' ⋅ y).
+Proof.
+  intros. unfold valid_exchange in ve.
+  have ve' := ve y.
+  unfold validN in H.
+  unfold cmra_validN in H.
   
-Lemma simple_update_helper (𝛾: gname) (x x' z : F (laterO (iPropO Σ))) (P Q : iProp Σ)
+Lemma simple_update_helper (𝛾: gname) (x x' z : F (laterO (iPropO Σ)))
+      (p q : free (laterO (iPropO Σ)))
+  (ve: valid_exchange (laterO (iPropO Σ)) (≡) x x' p q
   (* (cond: ∀ y n , ✓{n}(x ⋅ y) → ✓{n}(x' ⋅ y)) : *)
-  (cond: ∀ y n , ext_valid _ n (x ⋅ y) → ext_valid _ n (x' ⋅ y)
+  (*
+  (cond: ∀ y n , ext_valid_n _ n (x ⋅ y) → ext_valid_n _ n (x' ⋅ y)
       uPred_is_valid (x' ⋅ y)
-      
-    is_valid z
-      ∗ P
-      ∗ ▷ later_car (ext_interp (laterO (iPropO Σ)) z)
+      *)
+   : ext_valid z
+      ∗ iprop_of_free p
+      ∗ ext_interp z
       ∗ own 𝛾 (● z)
       ∗ own 𝛾 (◯ x)
     ==∗
-     ∃ z' , is_valid z'
-      ∗ Q
-      ∗ ▷ later_car (ext_interp (laterO (iPropO Σ)) z')
+     ∃ z' , ext_valid z'
+      ∗ iprop_of_free q
+      ∗ ext_interp z'
       ∗ own 𝛾 (● z')
       ∗ own 𝛾 (◯ x').
 Proof. 
@@ -640,17 +567,6 @@ Proof.
     Print internal_eq_rewrite.
       
       
- (*
-      ∗ 
-  "P" : P
-  "K" : ✓ (● z ⋅ ◯ x)
-  --------------------------------------∗
-  |==> (∃ (x0 : F (laterO (iPropO Σ))) (_ : iProp Σ),
-          own 𝛾 (● x0) ∗ is_valid x0 ∗ later_car (ext_interp (laterO (iPropO Σ)) x0))
-       ∗ own 𝛾 (◯ y) ∗ Q
-
- *) 
-          
 Lemma simple_update (𝛾: gname) (x y: F (laterO (iPropO Σ))) (P Q: iProp Σ)
     : bank 𝛾 ∗ ext 𝛾 x ∗ P ==∗ bank 𝛾 ∗ ext 𝛾 y ∗ Q.
 Proof. 
