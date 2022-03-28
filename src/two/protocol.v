@@ -323,7 +323,8 @@ End ownership_stuff.
 Context {F : Type -> ucmra}.
 
 Context (user_ext_valid: ∀ T (eq: Equiv T) , F T -> Prop).
-Context (user_ext_interp: ∀ T (eq: Equiv T) , F T -> free T).
+Context (user_ext_interp: ∀ T (eq: Equiv T) , F T -> free T). (* TODO remove eq? *)
+Context (user_fmap: ∀ S T , (S → T) → F S -> F T).
 
 Print "▶".
 Print laterO.
@@ -340,7 +341,7 @@ Proof. solve_inG. Qed.
 Context `{!myG Σ}.
 
 Definition ext_valid_n : nat -> F (laterO (iPropO Σ)) -> Prop :=
-    λ n , user_ext_valid (laterO (iPropO Σ)) (≡{n}≡).
+    λ n f , user_ext_valid (laterO (iPropO Σ)) (≡) (user_fmap _ _ (λ i , Next (▷^n (later_car i))%I) f).
 
 Program Definition ext_valid {M} (x: F (laterO (iPropO Σ))) : uPred M := {|
   uPred_holds n y := ext_valid_n n x ; (* ignore y *)

@@ -1,3 +1,7 @@
+-Q src/two Two
+
+src/two/own_updates.v
+
 -Q src/burrow Burrow
 
 src/burrow/assoc_comm.v
