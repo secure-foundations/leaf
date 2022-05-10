@@ -77,18 +77,73 @@ Definition upd_n (Q: iProp Σ) x (n: nat) :=
 Definition wand_n (P: iProp Σ) (Q: iProp Σ) x (n: nat) :=
    ∀ n' x', n' ≤ n → ✓{n'} (x ⋅ x') → uPred_holds P n' x' → uPred_holds Q n' (x ⋅ x').
    
-Definition tr_wand_n (P: iProp Σ) (Q: iProp Σ) n: nat) :=
-   ∀ n' x', n' ≤ n → ✓{n'} (x') → uPred_holds P n' x' → uPred_holds Q n' (x').
+(*
+Definition wand_upd_n (P: iProp Σ) (Q: iProp Σ) x (n: nat) :=
+    uPred_holds (P ==∗ Q)%I n x.
+    *)
 
-Definition 
+Definition wand_upd_n (P: iProp Σ) (Q: iProp Σ) x (n: nat) :=
+   ∀ n' x', n' ≤ n → ✓{n'} (x ⋅ x') → uPred_holds P n' x' →
+    ∀ k yf , k ≤ n' → ✓{k} (x ⋅ x' ⋅ yf) → ∃ x'', ✓{k} (x'' ⋅ yf) ∧ uPred_holds Q k x''.
 
-Definition upd_n (P: iProp Σ) (Q: iProp Σ) (n: nat) := ∀ k yf ,
-      k ≤ n → ✓{k} (x ⋅ yf) → ∃ x', ✓{k} (x' ⋅ yf) ∧ uPred_holds Q k x'.
+Notation "P ={ n }=> Q" := (∀ x , wand_upd_n P Q x n)
+  (at level 70).
 
-Definition upd_n (P : iProp Σ) (Q: iProp Σ) x (n: nat) := ∀ k yf ,
-      k ≤ n → ✓{k} (x ⋅ yf) → ∃ x', ✓{k} (x' ⋅ yf) ∧ uPred_holds Q k x'.
+(*
+(* set x=unit *)
+Definition wand_upd_n (P: iProp Σ) (Q: iProp Σ) (n: nat) :=
+   ∀ n' x', n' ≤ n → ✓{n'} (x') → uPred_holds P n' x' →
+    ∀ k yf , k ≤ n' → ✓{k} (x' ⋅ yf) → ∃ x'', ✓{k} (x'' ⋅ yf) ∧ uPred_holds Q k x''.
 
-Notation "P ={ n }=> Q" 
+Notation "P ={ n }=> Q" := (wand_upd_n P Q n)
+  (at level 70).
+  *)
+  
+Definition protocol_update_with_upd x x' (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
+    inv_n n (x ⋅ y) -> (inv_n n (x' ⋅ y) ∧
+        (Interp (x ⋅ y) ∗ P)%I ={n}=> (Interp (x' ⋅ y) ∗ Q)%I).
+        
+Lemma protocol_update_with_upd_in_logic x x' (P Q : iProp Σ) : protocol_update_with_upd x x' P Q ->
+    ∀ y , Inv (x ⋅ y) ⊢ Inv (x' ⋅ y) ∧
+        (Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q).
+Proof.
+    intros.
+    split.
+    
+   
+    intros.
+    unfold protocol_update_with_upd in H.
+    unfold uPred_holds.
+    
+    
+    have q := H n y H1.
+    generalize q. clear q.
+    uPred.unseal.
+    intuition.
+    
+    unfold uPred_bupd_def. unfold uPred_holds.
+    unfold uPred_sep_def.
+    
+    unfold wand_upd_n in H3. 
+    unfold uPred_bupd_def in H3. unfold uPred_holds in H3.
+    unfold uPred_sep_def in H3.
+    
+    apply H3; trivial.
+    
+    unfold uPred_and_def in H6. unfold uPred_sep_def in H6. unfold uPred_holds in H6.
+    
+    intuition.
+Qed.
+    
+    
+    
+    
+    unfold 
+Qed.
+
+  
+  
+  
 
 Definition protocol_update_with_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
     inv_n n (x ⋅ b ⋅ y) -> (inv_n n (x' ⋅ b ⋅ y) ∧
