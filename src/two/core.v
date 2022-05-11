@@ -22,6 +22,21 @@ Context (Interp : C -> iProp Σ).
 Context (inv_n : nat -> C -> Prop).
 Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
 
+
+Class myG Σ := MyG { my_tokG :> inG Σ (authUR C) }.
+Context `{!myG Σ}.
+
+Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
+
+Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n). Admitted.
+
+Instance proper_inv_2_n n : Proper (equiv ==> impl) (inv_n n). Admitted.
+
+Instance non_expansive_interp : NonExpansive Interp.
+Admitted.
+
+
+
 Program Definition Inv_nPred (c : C) : nPred :=
   {| nPred_holds n := inv_n n c |}.
 Next Obligation. 
@@ -29,6 +44,19 @@ intros. apply inv_n_monotonic with (n1 := n1); trivial.
 Qed.
 
 Definition Inv (c: C) : iProp Σ := uPred_of_nPred (Inv_nPred c).
+
+Instance non_expansive_inv : NonExpansive Inv.
+Proof.
+  split. intros. unfold Inv. unfold uPred_holds, uPred_of_nPred.
+  unfold nPred_holds, Inv_nPred.
+  enough (x ≡{n'}≡ y) as eq.
+  { split.
+    { intro. setoid_rewrite <- eq. trivial. }
+    { intro. setoid_rewrite eq. trivial. }
+  }
+  apply dist_le with (n0 := n); trivial.
+Qed.
+  
 
 (* draft 1 *)
 
@@ -167,14 +195,6 @@ Qed.
 (* Class myG Σ := MyG { my_tokG :> inG Σ (authUR (F (laterO (iPropO Σ)))) }. *)
 
 Print authUR.
-
-Class myG Σ := MyG { my_tokG :> inG Σ (authUR C) }.
-Context `{!myG Σ}.
-
-Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
-
-Instance proper_inv_n n : Proper (equiv ==> impl) (inv_n n). Admitted.
-
 Definition nondet_auth_update_inv_condition (𝛾: gname) (x x' z : C)
   (cond: ∀ y n , inv_n n (x ⋅ y) → inv_n n (x' ⋅ y)) :
     own 𝛾 (● z ⋅ ◯ x) ==∗
@@ -193,13 +213,7 @@ Proof.
     + rewrite assoc. trivial.
   - rewrite assoc. trivial.
 Qed.
-
-Instance non_expansive_interp : NonExpansive Interp.
-Admitted.
-
-Instance non_expansive_inv : NonExpansive Inv.
-Admitted.
-    
+   
 Lemma internal_update 𝛾 (x x' z: C) (P Q : iProp Σ)
     : protocol_update_with_upd x x' P Q ->
       ⊢
