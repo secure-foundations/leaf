@@ -116,6 +116,10 @@ Section protocol_map.
   apply protocol_map_ext; trivial.
  Qed.
   
+ Lemma protocol_map_ext2 (g : A → B) x n : 
+    (∀ a, f a ≡{n}≡ g a) → protocol_map1 f x ≡{n}≡ protocol_map1 g x.
+ Admitted. 
+  
     (*
   Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map1 f) := ne_proper _.
   
@@ -136,7 +140,12 @@ Definition protocolO_map {A B} (f : A -n> B) : protocolO A -n> protocolO B :=
   OfeMor (protocol_map1 f : protocolO A → protocolO B). 
   
 Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).
-Proof. Admitted.
+Proof. 
+    intros n f g Hfg x.
+    apply protocol_map_ext2; trivial.
+    typeclasses eauto.
+Qed.
+    
 (*
     intros n f g Hfg x. unfold protocolO_map.
     Print OfeMor.
@@ -153,10 +162,10 @@ Program Definition protocolRF (F : oFunctor) : rFunctor := {|
   rFunctor_car A _ B _ := protocolR (oFunctor_car F A B); 
   rFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (oFunctor_map F fg) 
 |}.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation. 
+Next Obligation. 
+Next Obligation. 
+Next Obligation. 
 *)
 
 
