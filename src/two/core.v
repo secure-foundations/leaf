@@ -40,9 +40,9 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
     
-    protocol_map: ∀ {A B: Type} (f : A → B) , (P A) -> P B;
-    protocol_map_id: ∀ {A: Type} (x: P A) , protocol_map id x = x;
-    protocol_map_compose: ∀ {A B C: Type} (f: A -> B) (g: B -> C) (x: P A) ,
+    protocol_map: ∀ {A B: ofe} (f : A → B) , (P A) -> P B;
+    protocol_map_id: ∀ {A: ofe} (x: P A) , protocol_map id x = x;
+    protocol_map_compose: ∀ {A B C: ofe} (f: A -> B) (g: B -> C) (x: P A) ,
         protocol_map (g ∘ f) x = protocol_map g (protocol_map f x);
         
     protocol_map_nonexpansive: ∀ {A B: ofe} (f : A → B) {Hf: NonExpansive f} , NonExpansive (protocol_map f);
@@ -97,13 +97,13 @@ Global Arguments protocolO : clear implicits.
 Global Arguments protocolR : clear implicits.
 Global Arguments protocolUR : clear implicits.
 
-Program Definition protocol_map1 {A B} (f : A → B) (x : protocol A) : protocol B
+Program Definition protocol_map1 {A B: ofe} (f : A → B) (x : protocol A) : protocol B
   := protocol_map protocol protocol_mixin f x.
 
-Lemma protocol_map_id1 {A} (x : protocol A) : protocol_map1 id x = x.
+Lemma protocol_map_id1 {A: ofe} (x : protocol A) : protocol_map1 id x = x.
 Proof. apply protocol_map_id. Qed.
 
-Lemma protocol_map_compose1 {A B C} (f : A → B) (g : B → C) (x : protocol A) :
+Lemma protocol_map_compose1 {A B C: ofe} (f : A → B) (g : B → C) (x : protocol A) :
   protocol_map1 (g ∘ f) x = protocol_map1 g (protocol_map1 f x). 
 Proof. apply protocol_map_compose. Qed.
 
