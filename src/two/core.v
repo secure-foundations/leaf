@@ -48,6 +48,8 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_map_nonexpansive: ∀ {A B: ofe} (f : A → B) {Hf: NonExpansive f} , NonExpansive (protocol_map f);
     protocol_map_ext: ∀ {A B: ofe} (f g : A → B) {Hf: NonExpansive f} (x: P A) ,
         (∀ a, f a ≡ g a) → protocol_map f x ≡ protocol_map g x;
+    protocol_map_extn: ∀ {A B: ofe} (f g : A → B) {Hf: NonExpansive f} (x: P A) n ,
+        (∀ a, f a ≡{n}≡ g a) → protocol_map f x ≡{n}≡ protocol_map g x;
     protocol_map_preserves_valid: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
         ∀ (n : nat) (x : P A), ✓{n} x → ✓{n} protocol_map f x;
     protocol_map_preserves_pcore: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
@@ -118,7 +120,9 @@ Section protocol_map.
   
  Lemma protocol_map_ext2 (g : A → B) x n : 
     (∀ a, f a ≡{n}≡ g a) → protocol_map1 f x ≡{n}≡ protocol_map1 g x.
- Admitted. 
+ Proof using A B Hf f. 
+  apply protocol_map_extn; trivial.
+ Qed.
   
     (*
   Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map1 f) := ne_proper _.
