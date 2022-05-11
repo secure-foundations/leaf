@@ -40,11 +40,20 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
     
-    protocol_map : ∀ {A B: Type} (f : A → B) , (P A) -> P B;
-    protocol_map_nonexpansive : ∀ {A B: ofe} (f : A → B) , NonExpansive (protocol_map f);
-    protocol_map_id : ∀ {A: Type} (x: P A) , protocol_map id x = x;
-    protocol_map_compose : ∀ {A B C: Type} (f: A -> B) (g: B -> C) (x: P A) ,
+    protocol_map: ∀ {A B: Type} (f : A → B) , (P A) -> P B;
+    protocol_map_id: ∀ {A: Type} (x: P A) , protocol_map id x = x;
+    protocol_map_compose: ∀ {A B C: Type} (f: A -> B) (g: B -> C) (x: P A) ,
         protocol_map (g ∘ f) x = protocol_map g (protocol_map f x);
+        
+    protocol_map_nonexpansive: ∀ {A B: ofe} (f : A → B) {Hf: NonExpansive f} , NonExpansive (protocol_map f);
+    protocol_map_ext: ∀ {A B: ofe} (f g : A → B) {Hf: NonExpansive f} (x: P A) ,
+        (∀ a, f a ≡ g a) → protocol_map f x ≡ protocol_map g x;
+    protocol_map_preserves_valid: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
+        ∀ (n : nat) (x : P A), ✓{n} x → ✓{n} protocol_map f x;
+    protocol_map_preserves_pcore: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
+        ∀ x : P A, protocol_map f <$> pcore x ≡ pcore (protocol_map f x);
+    protocol_map_preserves_op: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
+        ∀ x y : P A, protocol_map f (x ⋅ y) ≡ protocol_map f x ⋅ protocol_map f y;
 }.
 
 Print protocol_dist.
@@ -99,18 +108,27 @@ Proof. apply protocol_map_compose. Qed.
 Section protocol_map.
   Context {A B : ofe} (f : A → B) {Hf: NonExpansive f}.
   Global Instance protocol_map_ne : NonExpansive (protocol_map1 f).
-  Proof. apply protocol_map_nonexpansive. Qed.
+  Proof using A B Hf f. apply protocol_map_nonexpansive; trivial. Qed.
   
- Lemma protocol_map_ext (g : A → B) x : 
+ Lemma protocol_map_ext1 (g : A → B) x : 
     (∀ a, f a ≡ g a) → protocol_map1 f x ≡ protocol_map1 g x.
-    Admitted.
+ Proof using A B Hf f. 
+  apply protocol_map_ext; trivial.
+ Qed.
   
     (*
   Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map1 f) := ne_proper _.
   
   *)
   
-  Global Instance protocol_map_cmra_morphism : CmraMorphism (protocol_map1 f). Admitted.
+  Global Instance protocol_map_cmra_morphism : CmraMorphism (protocol_map1 f).
+  Proof using A B Hf f.
+    split.
+    - typeclasses eauto.
+    - apply protocol_map_preserves_valid; trivial.
+    - apply protocol_map_preserves_pcore; trivial.
+    - apply protocol_map_preserves_op; trivial.
+  Qed.
   
 End protocol_map.
 
@@ -150,11 +168,11 @@ Next Obligation. intros F A1 ? A2 ? B1 ? B2 ? n f g Hfg.
     apply protocolO_map_ne. apply oFunctor_map_ne. trivial. Qed.
 Next Obligation.
     intros F A ? B ? x; simpl in *. rewrite -{2}(protocol_map_id1 x).
-    apply (protocol_map_ext _ _ _)=> y; apply oFunctor_map_id. Qed.
+    apply (protocol_map_ext1 _ _ _)=> y; apply oFunctor_map_id. Qed.
 Next Obligation.
   intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x; simpl in *.
   rewrite -protocol_map_compose1.
-  apply (protocol_map_ext _ _ _)=> y; apply oFunctor_map_compose.
+  apply (protocol_map_ext1 _ _ _)=> y; apply oFunctor_map_compose.
 Qed.
 
 Global Instance protocolURF_contractive F : 
