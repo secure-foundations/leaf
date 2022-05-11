@@ -25,12 +25,21 @@ Record SimpleProtocol A `{Op A} := {
 
 (* my stuff *)
 
+
+Print ofe.
+Record ProtocolMixin (P: Type -> Type) := {
+    protocol_dist: ∀ (A: ofe) , Dist (P A);
+}.
+
 Context (protocol: Type -> Type).
+Context {protocol_mixin: ProtocolMixin protocol}.
 
 Section protocol.
     Context {A: ofe}.
 
-    Local Instance protocol_dist : Dist (protocol A). Admitted.
+    Local Instance inst_protocol_dist : Dist (protocol A) :=
+        protocol_dist protocol protocol_mixin A.
+    
     Local Instance protocol_equiv : Equiv (protocol A). Admitted.
     Local Instance protocol_pcore : PCore (protocol A). Admitted.
     Local Instance protocol_op : Op (protocol A). Admitted.
