@@ -15,6 +15,14 @@ From iris.proofmode Require Import coq_tactics.
 Require Import Two.auth_frag_util.
 Require Import Two.own_updates2.
 
+(* easiest, user-facing definition of a protocol *)
+
+(*
+Record SimpleProtocol A `{Op A} := {
+  
+}.
+*)
+
 (* my stuff *)
 
 Context (protocol: Type -> Type).
