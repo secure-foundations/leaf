@@ -29,7 +29,22 @@ Record SimpleProtocol A `{Op A} := {
 Print ofe.
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
+    protocol_equiv: ∀ (A: ofe) , Equiv (P A);
+    protocol_pcore: ∀ (A: ofe) , PCore (P A);
+    protocol_op: ∀ (A: ofe) , Op (P A);
+    protocol_valid: ∀ (A: ofe) , Valid (P A);
+    protocol_validN: ∀ (A: ofe) , ValidN (P A);
+    protocol_unit: ∀ (A: ofe) , Unit (P A);
+    
+    protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
+    protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
+    protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
+    
+    protocol_map : ∀ {A B: Type} (f : A → B) , (P A) -> P B;
 }.
+
+Print protocol_dist.
+Print protocol_dist.
 
 Context (protocol: Type -> Type).
 Context {protocol_mixin: ProtocolMixin protocol}.
@@ -39,27 +54,27 @@ Section protocol.
 
     Local Instance inst_protocol_dist : Dist (protocol A) :=
         protocol_dist protocol protocol_mixin A.
+    Local Instance inst_protocol_equiv : Equiv (protocol A) :=
+        protocol_equiv protocol protocol_mixin A.
+    Local Instance inst_protocol_pcore : PCore (protocol A) :=
+        protocol_pcore protocol protocol_mixin A.
+    Local Instance inst_protocol_op : Op (protocol A) :=
+        protocol_op protocol protocol_mixin A.
+    Local Instance inst_protocol_valid : Valid (protocol A) :=
+        protocol_valid protocol protocol_mixin A.
+    Local Instance inst_protocol_validN : ValidN (protocol A) :=
+        protocol_validN protocol protocol_mixin A.
+    Local Instance inst_protocol_unit : Unit (protocol A) :=
+        protocol_unit protocol protocol_mixin A.
     
-    Local Instance protocol_equiv : Equiv (protocol A). Admitted.
-    Local Instance protocol_pcore : PCore (protocol A). Admitted.
-    Local Instance protocol_op : Op (protocol A). Admitted.
-    Local Instance protocol_valid : Valid (protocol A). Admitted.
-    Local Instance protocol_validN : ValidN (protocol A). Admitted.
-    Local Instance protocol_unit : Unit (protocol A). Admitted.
+    Canonical Structure protocolO := Ofe (protocol A)
+        (protocol_ofe_mixin protocol protocol_mixin A).
     
-    Definition protocol_ofe_mixin : OfeMixin (protocol A). Admitted.
-    Canonical Structure protocolO := Ofe (protocol A) protocol_ofe_mixin.
-    
-    Definition protocol_cmra_mixin : CmraMixin (protocol A). Admitted.
-    Canonical Structure protocolR : cmra := Cmra (protocol A) protocol_cmra_mixin.
-
-    Definition protocol_ucmra_mixin : UcmraMixin (protocol A). Admitted.
-    Canonical Structure protocolUR : ucmra := Ucmra (protocol A) protocol_ucmra_mixin.
-    
-    Print iProp.
-    Print iPropO.
-    Print uPredO.
-    Print uPred.
+    Canonical Structure protocolR : cmra := Cmra (protocol A)
+        (protocol_cmra_mixin protocol protocol_mixin A).
+        
+    Canonical Structure protocolUR : ucmra := Ucmra (protocol A)
+        (protocol_ucmra_mixin protocol protocol_mixin A).
 
 End protocol.
 
@@ -67,22 +82,22 @@ Global Arguments protocolO : clear implicits.
 Global Arguments protocolR : clear implicits.
 Global Arguments protocolUR : clear implicits.
 
-Program Definition protocol_map {A B} (f : A → B) (x : protocol A) : protocol B.
-Admitted.
+Program Definition protocol_map1 {A B} (f : A → B) (x : protocol A) : protocol B
+  := protocol_map protocol protocol_mixin f x.
 
 Section protocol_map.
   Context {A B : ofe} (f : A → B) {Hf: NonExpansive f}.
-  Global Instance protocol_map_ne : NonExpansive (protocol_map f). Admitted.
+  Global Instance protocol_map_ne : NonExpansive (protocol_map1 f). Admitted.
   
     (*
-  Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map f) := ne_proper _.
+  Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map1 f) := ne_proper _.
   
-  Global Instance protocol_map_morphism : CmraMorphism (protocol_map f).
+  Global Instance protocol_map_morphism : CmraMorphism (protocol_map1 f).
   *)
 End protocol_map.
 
 Definition protocolO_map {A B} (f : A -n> B) : protocolO A -n> protocolO B :=
-  OfeMor (protocol_map f : protocolO A → protocolO B). 
+  OfeMor (protocol_map1 f : protocolO A → protocolO B). 
   
 Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).  Admitted.
 
