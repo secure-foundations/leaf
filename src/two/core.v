@@ -15,17 +15,6 @@ From iris.proofmode Require Import coq_tactics.
 Require Import Two.auth_frag_util.
 Require Import Two.own_updates2.
 
-(* sample *)
-
-Context `{!EqDecision K}.
-Context `{!Countable K}.
-Class libG Σ := { lib_inG : inG Σ (gmapR K (agreeR (prodO natO (laterO (iPropO Σ))))) }.
-Local Existing Instance lib_inG.
-
-Definition libΣ : gFunctors := #[GFunctor (gmapRF K (agreeRF (natO * ▶ ∙)))].
-Instance subG_libΣ {Σ} : subG libΣ Σ → libG Σ.
-Proof. solve_inG. Qed.
-
 (* my stuff *)
 
 Context (protocol: Type -> Type).
@@ -110,9 +99,8 @@ Local Existing Instance mylib_inG.
 
 Print "▶".
 Definition mylibΣ : gFunctors := #[GFunctor (authRF (protocolURF (laterOF ∙)))].
-Instance mysubG_libΣ {Σ} : subG libΣ Σ → libG Σ.
+Instance mysubG_libΣ {Σ} : subG mylibΣ Σ → mylibG Σ.
 Proof. solve_inG. Qed.
-
 
 (* stuff *)
 
