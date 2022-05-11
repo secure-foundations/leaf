@@ -41,6 +41,10 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
     
     protocol_map : ∀ {A B: Type} (f : A → B) , (P A) -> P B;
+    protocol_map_nonexpansive : ∀ {A B: ofe} (f : A → B) , NonExpansive (protocol_map f);
+    protocol_map_id : ∀ {A: Type} (x: P A) , protocol_map id x = x;
+    protocol_map_compose : ∀ {A B C: Type} (f: A -> B) (g: B -> C) (x: P A) ,
+        protocol_map (g ∘ f) x = protocol_map g (protocol_map f x);
 }.
 
 Print protocol_dist.
@@ -85,21 +89,46 @@ Global Arguments protocolUR : clear implicits.
 Program Definition protocol_map1 {A B} (f : A → B) (x : protocol A) : protocol B
   := protocol_map protocol protocol_mixin f x.
 
+Lemma protocol_map_id1 {A} (x : protocol A) : protocol_map1 id x = x.
+Proof. apply protocol_map_id. Qed.
+
+Lemma protocol_map_compose1 {A B C} (f : A → B) (g : B → C) (x : protocol A) :
+  protocol_map1 (g ∘ f) x = protocol_map1 g (protocol_map1 f x). 
+Proof. apply protocol_map_compose. Qed.
+
 Section protocol_map.
   Context {A B : ofe} (f : A → B) {Hf: NonExpansive f}.
-  Global Instance protocol_map_ne : NonExpansive (protocol_map1 f). Admitted.
+  Global Instance protocol_map_ne : NonExpansive (protocol_map1 f).
+  Proof. apply protocol_map_nonexpansive. Qed.
+  
+ Lemma protocol_map_ext (g : A → B) x : 
+    (∀ a, f a ≡ g a) → protocol_map1 f x ≡ protocol_map1 g x.
+    Admitted.
   
     (*
   Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map1 f) := ne_proper _.
   
-  Global Instance protocol_map_morphism : CmraMorphism (protocol_map1 f).
   *)
+  
+  Global Instance protocol_map_cmra_morphism : CmraMorphism (protocol_map1 f). Admitted.
+  
 End protocol_map.
 
 Definition protocolO_map {A B} (f : A -n> B) : protocolO A -n> protocolO B :=
   OfeMor (protocol_map1 f : protocolO A → protocolO B). 
   
-Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).  Admitted.
+Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).
+Proof. Admitted.
+(*
+    intros n f g Hfg x. unfold protocolO_map.
+    Print OfeMor.
+  intros.
+  unfold Proper, "==>", protocolO_map.
+  intros.
+  unfold dist, "-n>". unfold ofe_mor_ofe_mixin.
+  unfold protocolO_map.
+  unfold "-n>".
+  *)
 
 (*
 Program Definition protocolRF (F : oFunctor) : rFunctor := {|
@@ -112,19 +141,28 @@ Next Obligation. Admitted.
 Next Obligation. Admitted.
 *)
 
+
 Program Definition protocolURF (F : oFunctor) : urFunctor := {|
   urFunctor_car A _ B _ := protocolUR (oFunctor_car F A B); 
   urFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (oFunctor_map F fg) 
 |}.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
-Next Obligation. Admitted.
+Next Obligation. intros F A1 ? A2 ? B1 ? B2 ? n f g Hfg.
+    apply protocolO_map_ne. apply oFunctor_map_ne. trivial. Qed.
+Next Obligation.
+    intros F A ? B ? x; simpl in *. rewrite -{2}(protocol_map_id1 x).
+    apply (protocol_map_ext _ _ _)=> y; apply oFunctor_map_id. Qed.
+Next Obligation.
+  intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x; simpl in *.
+  rewrite -protocol_map_compose1.
+  apply (protocol_map_ext _ _ _)=> y; apply oFunctor_map_compose.
+Qed.
 
 Global Instance protocolURF_contractive F : 
   oFunctorContractive F → urFunctorContractive (protocolURF F). 
-  Admitted.
-
+Proof.
+  intros ? A1 ? A2 ? B1 ? B2 ? n f g Hfg.
+  apply protocolO_map_ne; by apply oFunctor_map_contractive.
+Qed. 
 
 Class mylibG Σ := { mylib_inG : inG Σ (authUR (protocolUR (laterO (iPropO Σ)))) }.
 Local Existing Instance mylib_inG.
