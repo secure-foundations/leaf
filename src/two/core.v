@@ -133,8 +133,12 @@ Proof.
     apply H3; trivial.
 Qed.
 
-Instance persistent_inv a : Persistent (Inv a). Admitted.
+Instance persistent_inv a : Persistent (Inv a).
+Proof.
+  split. intros. uPred.unseal. trivial.
+Qed.
         
+        (*
 Lemma protocol_update_with_upd_in_logic_sep x x' (P Q : iProp Σ) : protocol_update_with_upd x x' P Q ->
     ∀ y , Inv (x ⋅ y) ⊢ Inv (x' ⋅ y) ∗
         ((Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q)).
@@ -146,6 +150,7 @@ Proof.
   iDestruct "a" as "[b c]".
   iFrame.
 Qed.
+*)
 
 Definition protocol_update_with_upd_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
     inv_n n (x ⋅ b ⋅ y) -> (inv_n n (x' ⋅ b ⋅ y) ∧
@@ -212,7 +217,7 @@ Proof.
     { rewrite own_op. iFrame. }
     iRewrite "eq" in "interp_inv".
     iDestruct "interp_inv" as "[interp inv]".
-    iDestruct (protocol_update_with_upd_in_logic_sep x x' P Q h p with "[inv]") as "[inv t]".
+    iDestruct (protocol_update_with_upd_in_logic x x' P Q h p with "[inv]") as "[inv t]".
     { iFrame. }
     iMod ("t" with "[interp p]") as "[interp q]".
     { iFrame. }
@@ -221,7 +226,6 @@ Proof.
     iExists (x' ⋅ p).
     iFrame.
 Qed.
-  
 
 (*
 Context (C : ofe -> ucmra).
