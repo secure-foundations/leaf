@@ -105,7 +105,7 @@ Global Instance protocolURF_contractive F :
   Admitted.
 
 
-Class mylibG Σ := { mylib_inG : inG Σ (authR (protocolUR (laterO (iPropO Σ)))) }.
+Class mylibG Σ := { mylib_inG : inG Σ (authUR (protocolUR (laterO (iPropO Σ)))) }.
 Local Existing Instance mylib_inG.
 
 Print "▶".
@@ -117,6 +117,7 @@ Proof. solve_inG. Qed.
 (* stuff *)
 
 Context (Σ : gFunctors).
+Context `{!mylibG Σ}.
 
 Definition C: ucmra := (protocolUR (laterO (iPropO Σ))).
 
@@ -124,9 +125,6 @@ Context (Interp : C -> iProp Σ).
 Context (inv_n : nat -> C -> Prop).
 Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
 
-
-Class myG Σ := MyG { my_tokG :> inG Σ (authUR C) }.
-Context `{!myG Σ}.
 
 Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
 
