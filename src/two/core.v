@@ -15,9 +15,111 @@ From iris.proofmode Require Import coq_tactics.
 Require Import Two.auth_frag_util.
 Require Import Two.own_updates2.
 
+(* sample *)
+
+Context `{!EqDecision K}.
+Context `{!Countable K}.
+Class libG Σ := { lib_inG : inG Σ (gmapR K (agreeR (prodO natO (laterO (iPropO Σ))))) }.
+Local Existing Instance lib_inG.
+
+Definition libΣ : gFunctors := #[GFunctor (gmapRF K (agreeRF (natO * ▶ ∙)))].
+Instance subG_libΣ {Σ} : subG libΣ Σ → libG Σ.
+Proof. solve_inG. Qed.
+
+(* my stuff *)
+
+Context (protocol: Type -> Type).
+
+Section protocol.
+    Context {A: ofe}.
+
+    Local Instance protocol_dist : Dist (protocol A). Admitted.
+    Local Instance protocol_equiv : Equiv (protocol A). Admitted.
+    Local Instance protocol_pcore : PCore (protocol A). Admitted.
+    Local Instance protocol_op : Op (protocol A). Admitted.
+    Local Instance protocol_valid : Valid (protocol A). Admitted.
+    Local Instance protocol_validN : ValidN (protocol A). Admitted.
+    Local Instance protocol_unit : Unit (protocol A). Admitted.
+    
+    Definition protocol_ofe_mixin : OfeMixin (protocol A). Admitted.
+    Canonical Structure protocolO := Ofe (protocol A) protocol_ofe_mixin.
+    
+    Definition protocol_cmra_mixin : CmraMixin (protocol A). Admitted.
+    Canonical Structure protocolR : cmra := Cmra (protocol A) protocol_cmra_mixin.
+
+    Definition protocol_ucmra_mixin : UcmraMixin (protocol A). Admitted.
+    Canonical Structure protocolUR : ucmra := Ucmra (protocol A) protocol_ucmra_mixin.
+    
+    Print iProp.
+    Print iPropO.
+    Print uPredO.
+    Print uPred.
+
+End protocol.
+
+Global Arguments protocolO : clear implicits.
+Global Arguments protocolR : clear implicits.
+Global Arguments protocolUR : clear implicits.
+
+Program Definition protocol_map {A B} (f : A → B) (x : protocol A) : protocol B.
+Admitted.
+
+Section protocol_map.
+  Context {A B : ofe} (f : A → B) {Hf: NonExpansive f}.
+  Global Instance protocol_map_ne : NonExpansive (protocol_map f). Admitted.
+  
+    (*
+  Local Instance protocol_map_proper : Proper ((≡) ==> (≡)) (protocol_map f) := ne_proper _.
+  
+  Global Instance protocol_map_morphism : CmraMorphism (protocol_map f).
+  *)
+End protocol_map.
+
+Definition protocolO_map {A B} (f : A -n> B) : protocolO A -n> protocolO B :=
+  OfeMor (protocol_map f : protocolO A → protocolO B). 
+  
+Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).  Admitted.
+
+(*
+Program Definition protocolRF (F : oFunctor) : rFunctor := {|
+  rFunctor_car A _ B _ := protocolR (oFunctor_car F A B); 
+  rFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (oFunctor_map F fg) 
+|}.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+*)
+
+Program Definition protocolURF (F : oFunctor) : urFunctor := {|
+  urFunctor_car A _ B _ := protocolUR (oFunctor_car F A B); 
+  urFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (oFunctor_map F fg) 
+|}.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+Next Obligation. Admitted.
+
+Global Instance protocolURF_contractive F : 
+  oFunctorContractive F → urFunctorContractive (protocolURF F). 
+  Admitted.
+
+
+Class mylibG Σ := { mylib_inG : inG Σ (authR (protocolUR (laterO (iPropO Σ)))) }.
+Local Existing Instance mylib_inG.
+
+Print "▶".
+Definition mylibΣ : gFunctors := #[GFunctor (authRF (protocolURF (laterOF ∙)))].
+Instance mysubG_libΣ {Σ} : subG libΣ Σ → libG Σ.
+Proof. solve_inG. Qed.
+
+
+(* stuff *)
+
 Context (Σ : gFunctors).
 
-Context (C: ucmra).
+Definition C: ucmra := (protocolUR (laterO (iPropO Σ))).
+
 Context (Interp : C -> iProp Σ).
 Context (inv_n : nat -> C -> Prop).
 Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
