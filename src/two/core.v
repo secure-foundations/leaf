@@ -30,7 +30,13 @@ Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
 
 Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n). Admitted.
 
-Instance proper_inv_2_n n : Proper (equiv ==> impl) (inv_n n). Admitted.
+Instance proper_inv_2_n n : Proper (equiv ==> impl) (inv_n n).
+Proof.
+    unfold Proper, "==>", impl. intros.
+    assert (x ≡{n}≡ y) as q.
+    { setoid_rewrite H. trivial. }
+    setoid_rewrite <- q. trivial.
+Qed.
 
 Instance non_expansive_interp : NonExpansive Interp.
 Admitted.
