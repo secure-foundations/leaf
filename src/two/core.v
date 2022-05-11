@@ -57,7 +57,7 @@ Definition protocol_update_with_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat)
 
 Lemma protocol_update_with_b_in_logic x x' b (P Q : iProp Σ) : protocol_update_with_b x x' b P Q ->
     ∀ y , Inv (x ⋅ b ⋅ y) ⊢ Inv (x' ⋅ b ⋅ y) ∧
-        (Interp (x ⋅ b ⋅ y) ∗ P) ≡ (Interp (x' ⋅ b ⋅ y) ∗ Q).
+        ((Interp (x ⋅ b ⋅ y) ∗ P) ≡ (Interp (x' ⋅ b ⋅ y) ∗ Q)).
 Proof.
     intros.
     split.
@@ -105,7 +105,7 @@ Definition protocol_update_with_upd x x' (P Q : iProp Σ) : Prop := ∀ (n: nat)
         
 Lemma protocol_update_with_upd_in_logic x x' (P Q : iProp Σ) : protocol_update_with_upd x x' P Q ->
     ∀ y , Inv (x ⋅ y) ⊢ Inv (x' ⋅ y) ∧
-        (Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q).
+        ((Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q)).
 Proof.
     intros.
     split.
@@ -121,54 +121,81 @@ Proof.
     uPred.unseal.
     intuition.
     
-    unfold uPred_bupd_def. unfold uPred_holds.
-    unfold uPred_sep_def.
+    unfold uPred_bupd_def.
+    unfold uPred_sep_def. unfold uPred_wand_def.
+    unfold uPred_holds.
     
     unfold wand_upd_n in H3. 
     unfold uPred_bupd_def in H3. unfold uPred_holds in H3.
     unfold uPred_sep_def in H3.
     
     apply H3; trivial.
-    
-    unfold uPred_and_def in H6. unfold uPred_sep_def in H6. unfold uPred_holds in H6.
-    
-    intuition.
 Qed.
-    
-    
-    
-    
-    unfold 
-Qed.
+        
+Lemma protocol_update_with_upd_in_logic_sep x x' (P Q : iProp Σ) : protocol_update_with_upd x x' P Q ->
+    ∀ y , Inv (x ⋅ y) ⊢ Inv (x' ⋅ y) ∗
+        ((Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q)).
+Admitted.
 
-  
-  
-  
 
-Definition protocol_update_with_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
+Definition protocol_update_with_upd_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
     inv_n n (x ⋅ b ⋅ y) -> (inv_n n (x' ⋅ b ⋅ y) ∧
         (Interp (x ⋅ b ⋅ y) ∗ P)%I ={n}=> (Interp (x' ⋅ b ⋅ y) ∗ Q)%I).
-
-Lemma protocol_update_with_b_in_logic2 x x' b (P Q : iProp Σ) : protocol_update_with_b x x' b P Q ->
+        
+Lemma protocol_update_with_upd_b_in_logic x x' b (P Q : iProp Σ) : protocol_update_with_upd_b x x' b P Q ->
     ∀ y , Inv (x ⋅ b ⋅ y) ⊢ Inv (x' ⋅ b ⋅ y) ∧
-        (Interp (x ⋅ b ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ b ⋅ y) ∗ Q).
+        ((Interp (x ⋅ b ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ b ⋅ y) ∗ Q)).
 Proof.
-  uPred.unseal.
-  
-
-    intros.
-    split.
-   
-    intros.
-    unfold protocol_update in H.
-    unfold uPred_holds.
-    have q := H n y H1.
-    generalize q.
-    uPred.unseal.
-    intuition.
+    apply protocol_update_with_upd_in_logic.
 Qed.
+    
+    
+(* Class myG Σ := MyG { my_tokG :> inG Σ (authUR (F (laterO (iPropO Σ)))) }. *)
 
+Print authUR.
 
+Class myG Σ := MyG { my_tokG :> inG Σ (authUR C) }.
+Context `{!myG Σ}.
+
+Definition nondet_auth_update2 (𝛾: gname) (x x' z : C)
+  (cond: ∀ y n , inv_n n (x ⋅ y) → inv_n n (x' ⋅ y)) :
+    own 𝛾 (● z ⋅ ◯ x) ==∗
+    ∃ p , own 𝛾 (● (x' ⋅ p) ⋅ ◯ x') ∗ (z ≡ x ⋅ p).
+Admitted.
+
+Instance non_expansive_interp : NonExpansive Interp.
+Admitted.
+
+Instance non_expansive_inv : NonExpansive Inv.
+Admitted.
+    
+Lemma internal_update 𝛾 (x x' z: C) (P Q : iProp Σ)
+    : protocol_update_with_upd x x' P Q ->
+      ⊢
+        own 𝛾 (◯ x) ∗ P ∗
+        own 𝛾 (● z) ∗ Interp z ∗ Inv z
+        ==∗
+        own 𝛾 (◯ x') ∗ Q ∗
+        (∃ z , own 𝛾 (● z) ∗ Interp z ∗ Inv z).
+Proof. 
+    intro h.
+    
+    iIntros "[frag [p [auth interp_inv]]]".
+    iMod (nondet_auth_update2 𝛾 x x' z with "[auth frag]") as (p) "[[auth frag] eq]".
+    {intros. have r := h n y. intuition. }
+    { rewrite own_op. iFrame. }
+    iRewrite "eq" in "interp_inv".
+    iDestruct "interp_inv" as "[interp inv]".
+    iDestruct (protocol_update_with_upd_in_logic_sep x x' P Q h p with "[inv]") as "[inv t]".
+    { iFrame. }
+    iMod ("t" with "[interp p]") as "[interp q]".
+    { iFrame. }
+    iModIntro.
+    iFrame.
+    iExists (x' ⋅ p).
+    iFrame.
+Qed.
+  
 
 (*
 Context (C : ofe -> ucmra).

@@ -12,7 +12,7 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 
-Require Import free_monoid.
+(*Require Import free_monoid.*)
 
 Import uPred.
 
