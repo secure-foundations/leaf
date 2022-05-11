@@ -12,7 +12,8 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 
-Require Import Two.own_updates.
+Require Import Two.auth_frag_util.
+Require Import Two.own_updates2.
 
 Context (Σ : gFunctors).
 
@@ -131,12 +132,20 @@ Proof.
     
     apply H3; trivial.
 Qed.
+
+Instance persistent_inv a : Persistent (Inv a). Admitted.
         
 Lemma protocol_update_with_upd_in_logic_sep x x' (P Q : iProp Σ) : protocol_update_with_upd x x' P Q ->
     ∀ y , Inv (x ⋅ y) ⊢ Inv (x' ⋅ y) ∗
         ((Interp (x ⋅ y) ∗ P) ==∗ (Interp (x' ⋅ y) ∗ Q)).
-Admitted.
-
+Proof.
+  intro. intro.
+  iIntros "a".
+  iDestruct (protocol_update_with_upd_in_logic x x' P Q with "a") as "a".
+  { trivial. }
+  iDestruct "a" as "[b c]".
+  iFrame.
+Qed.
 
 Definition protocol_update_with_upd_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat) (y: C) ,
     inv_n n (x ⋅ b ⋅ y) -> (inv_n n (x' ⋅ b ⋅ y) ∧
@@ -157,11 +166,28 @@ Print authUR.
 Class myG Σ := MyG { my_tokG :> inG Σ (authUR C) }.
 Context `{!myG Σ}.
 
-Definition nondet_auth_update2 (𝛾: gname) (x x' z : C)
+Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
+
+Instance proper_inv_n n : Proper (equiv ==> impl) (inv_n n). Admitted.
+
+Definition nondet_auth_update_inv_condition (𝛾: gname) (x x' z : C)
   (cond: ∀ y n , inv_n n (x ⋅ y) → inv_n n (x' ⋅ y)) :
     own 𝛾 (● z ⋅ ◯ x) ==∗
     ∃ p , own 𝛾 (● (x' ⋅ p) ⋅ ◯ x') ∗ (z ≡ x ⋅ p).
-Admitted.
+Proof.
+  apply nondet_auth_update.
+  intro y. intro n.
+  rewrite valid_defn.
+  rewrite valid_defn.
+  intro h.
+  destruct h as (b&q).
+  exists b.
+  setoid_replace (x' ⋅ y ⋅ b) with (x' ⋅ (y ⋅ b)).
+  - setoid_replace (x ⋅ y ⋅ b) with (x ⋅ (y ⋅ b)) in q.
+    + apply cond. trivial.
+    + rewrite assoc. trivial.
+  - rewrite assoc. trivial.
+Qed.
 
 Instance non_expansive_interp : NonExpansive Interp.
 Admitted.
@@ -181,7 +207,7 @@ Proof.
     intro h.
     
     iIntros "[frag [p [auth interp_inv]]]".
-    iMod (nondet_auth_update2 𝛾 x x' z with "[auth frag]") as (p) "[[auth frag] eq]".
+    iMod (nondet_auth_update_inv_condition 𝛾 x x' z with "[auth frag]") as (p) "[[auth frag] eq]".
     {intros. have r := h n y. intuition. }
     { rewrite own_op. iFrame. }
     iRewrite "eq" in "interp_inv".

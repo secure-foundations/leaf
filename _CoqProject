@@ -1,6 +1,8 @@
 -Q src/two Two
 
 src/two/own_updates.v
+src/two/own_updates2.v
+src/two/auth_frag_util.v
 
 -Q src/burrow Burrow
 
