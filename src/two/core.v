@@ -25,8 +25,6 @@ Record SimpleProtocol A `{Op A} := {
 
 (* my stuff *)
 
-Print CmraMixin.
-
 Print ofe.
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
@@ -46,6 +44,8 @@ Record ProtocolMixin (P: Type -> Type) := {
         x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
     protocol_valid_inv: ∀ (A: ofe) (a: P A) n,
         ✓{n} a <-> ∃ b , protocol_invN A n (a ⋅ b);
+    protocol_invN_S : ∀ (A: ofe) (a: P A) n ,
+        protocol_invN A (S n) a -> protocol_invN A n a;
     
     protocol_map: ∀ {A B: ofe} (f : A → B) , (P A) -> P B;
     protocol_map_id: ∀ {A: ofe} (x: P A) , protocol_map id x = x;
@@ -233,7 +233,17 @@ Definition inv_n : nat -> C -> Prop :=
     λ n c ,
     protocol_invN protocol protocol_mixin (laterO (iPropO Σ)) n c.
     
-Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
+Lemma inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c.
+Proof.
+  intros.
+  induction n1.
+  - assert (n2 = 0) by lia. subst n2. trivial.
+  - have the_case : Decision (n2 = S n1) by solve_decision. destruct the_case.
+    + subst n2. trivial.
+    + apply IHn1.
+      * apply protocol_invN_S. trivial.
+      * lia.
+Qed.
 
 Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). 
 Proof.
