@@ -39,19 +39,12 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_op: ∀ (A: ofe) , Op (P A);
     protocol_valid: ∀ (A: ofe) , Valid (P A);
     protocol_validN: ∀ (A: ofe) , ValidN (P A);
-    protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
     protocol_unit: ∀ (A: ofe) , Unit (P A);
 
     protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
-    
-    protocol_invN_equiv: ∀ (A: ofe) (n: nat) (x y: P A) , 
-        x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
-    protocol_valid_true: ∀ (A: ofe) (a: P A) n, ✓{n} a;
-    protocol_invN_S : ∀ (A: ofe) (a: P A) n ,
-        protocol_invN A (S n) a -> protocol_invN A n a;
-    
+       
     protocol_map: ∀ {A B: ofe} (f : A → B) , (P A) -> P B;
     protocol_map_id: ∀ {A: ofe} (x: P A) , protocol_map id x = x;
     protocol_map_compose: ∀ {A B C: ofe} (f: A -> B) (g: B -> C) (x: P A) ,
@@ -70,6 +63,15 @@ Record ProtocolMixin (P: Type -> Type) := {
         ∀ x : P A, protocol_map f <$> pcore x ≡ pcore (protocol_map f x);
     protocol_map_preserves_op: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
         ∀ x y : P A, protocol_map f (x ⋅ y) ≡ protocol_map f x ⋅ protocol_map f y;
+        
+    protocol_valid_true: ∀ (A: ofe) (a: P A) n, ✓{n} a;
+        
+    protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
+    protocol_invN_equiv: ∀ (A: ofe) (n: nat) (x y: P A) , 
+        x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
+    protocol_invN_S : ∀ (A: ofe) (a: P A) n ,
+        protocol_invN A (S n) a -> protocol_invN A n a;
+
 }.
 
 Print protocol_dist.
@@ -229,6 +231,28 @@ Proof. solve_inG. Qed.
 
 Context (Σ : gFunctors).
 Context `{!mylibG Σ}.
+
+Unset Printing Notations.
+Print iResUR.
+Print iPropO.
+Print iProp.
+Print uPredO.
+
+(*
+Print later.
+Definition stuff (a b : (laterO (iPropO Σ))) : (laterO (iPropO Σ)) :=
+    {| later_car := uPred_sep_def (later_car a) (later_car b) |}.
+    *)
+  
+Print laterO.
+Print Ofe.
+Print laterO.
+Print later_ofe_mixin.
+Print later.
+have h := later_car a.
+have j := later_car b.
+have k := h ⋅ j.
+apply k.
 
 Definition C: ucmra := (protocolUR (laterO (iPropO Σ))).
 
