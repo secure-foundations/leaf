@@ -33,43 +33,43 @@ Record SimpleProtocol A `{Op A} := {
    *)
 
 Record ProtocolMixin (P: Type -> Type) := {
-    protocol_dist: ∀ (A: ofe) , Dist (P A);
-    protocol_equiv: ∀ (A: ofe) , Equiv (P A);
-    protocol_pcore: ∀ (A: ofe) , PCore (P A);
-    protocol_op: ∀ (A: ofe) , Op (P A);
-    protocol_valid: ∀ (A: ofe) , Valid (P A);
-    protocol_validN: ∀ (A: ofe) , ValidN (P A);
-    protocol_unit: ∀ (A: ofe) , Unit (P A);
+    protocol_dist: ∀ (A: ucmra) , Dist (P A);
+    protocol_equiv: ∀ (A: ucmra) , Equiv (P A);
+    protocol_pcore: ∀ (A: ucmra) , PCore (P A);
+    protocol_op: ∀ (A: ucmra) , Op (P A);
+    protocol_valid: ∀ (A: ucmra) , Valid (P A);
+    protocol_validN: ∀ (A: ucmra) , ValidN (P A);
+    protocol_unit: ∀ (A: ucmra) , Unit (P A);
 
-    protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
-    protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
-    protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
+    protocol_ofe_mixin: ∀ (A: ucmra) , OfeMixin (P A);
+    protocol_cmra_mixin: ∀ (A: ucmra) , CmraMixin (P A);
+    protocol_ucmra_mixin: ∀ (A: ucmra) , UcmraMixin (P A);
        
-    protocol_map: ∀ {A B: ofe} (f : A → B) , (P A) -> P B;
-    protocol_map_id: ∀ {A: ofe} (x: P A) , protocol_map id x = x;
-    protocol_map_compose: ∀ {A B C: ofe} (f: A -> B) (g: B -> C) (x: P A) ,
+    protocol_map: ∀ {A B: ucmra} (f : A → B) , (P A) -> P B;
+    protocol_map_id: ∀ {A: ucmra} (x: P A) , protocol_map id x = x;
+    protocol_map_compose: ∀ {A B C: ucmra} (f: A -> B) (g: B -> C) (x: P A) ,
         protocol_map (g ∘ f) x = protocol_map g (protocol_map f x);
         
-    protocol_map_nonexpansive: ∀ {A B: ofe} (f : A → B) {Hf: NonExpansive f} , NonExpansive (protocol_map f);
-    (*protocol_map_ext: ∀ {A B: ofe} (f g : A → B) {Hf: NonExpansive f} (x: P A) ,
+    protocol_map_nonexpansive: ∀ {A B: ucmra} (f : A → B) {Hf: NonExpansive f} , NonExpansive (protocol_map f);
+    (*protocol_map_ext: ∀ {A B: ucmra} (f g : A → B) {Hf: NonExpansive f} (x: P A) ,
         (∀ a, f a ≡ g a) → protocol_map f x ≡ protocol_map g x;*)
-    protocol_map_extn: ∀ {A B: ofe} (f g : A → B) {Hf: NonExpansive f} (x: P A) n ,
+    protocol_map_extn: ∀ {A B: ucmra} (f g : A → B) {Hf: NonExpansive f} (x: P A) n ,
         (∀ a, f a ≡{n}≡ g a) → protocol_map f x ≡{n}≡ protocol_map g x;
-    protocol_map_preserves_valid: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
+    protocol_map_preserves_valid: ∀ {A B : ucmra} (f : A → B) {Hf: NonExpansive f} ,
         ∀ (n : nat) (x : P A), ✓{n} x → ✓{n} protocol_map f x;
     (*protocol_map_preserves_inv: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
         ∀ (n : nat) (x : P A) , protocol_invN A n x → protocol_invN B n (protocol_map f x);*)
-    protocol_map_preserves_pcore: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
+    protocol_map_preserves_pcore: ∀ {A B : ucmra} (f : A → B) {Hf: NonExpansive f} , 
         ∀ x : P A, protocol_map f <$> pcore x ≡ pcore (protocol_map f x);
-    protocol_map_preserves_op: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
+    protocol_map_preserves_op: ∀ {A B : ucmra} (f : A → B) {Hf: NonExpansive f} , 
         ∀ x y : P A, protocol_map f (x ⋅ y) ≡ protocol_map f x ⋅ protocol_map f y;
         
-    protocol_valid_true: ∀ (A: ofe) (a: P A) n, ✓{n} a;
+    protocol_valid_true: ∀ (A: ucmra) (a: P A) n, ✓{n} a;
         
-    protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
-    protocol_invN_equiv: ∀ (A: ofe) (n: nat) (x y: P A) , 
+    protocol_invN: ∀ (A: ucmra) , nat -> P A -> Prop;
+    protocol_invN_equiv: ∀ (A: ucmra) (n: nat) (x y: P A) , 
         x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
-    protocol_invN_S : ∀ (A: ofe) (a: P A) n ,
+    protocol_invN_S : ∀ (A: ucmra) (a: P A) n ,
         protocol_invN A (S n) a -> protocol_invN A n a;
 
 }.
@@ -81,7 +81,7 @@ Context (protocol: Type -> Type).
 Context {protocol_mixin: ProtocolMixin protocol}.
 
 Section protocol.
-    Context {A: ofe}.
+    Context {A: ucmra}.
 
     Local Instance inst_protocol_dist : Dist (protocol A) :=
         protocol_dist protocol protocol_mixin A.
@@ -113,18 +113,18 @@ Global Arguments protocolO : clear implicits.
 Global Arguments protocolR : clear implicits.
 Global Arguments protocolUR : clear implicits.
 
-Program Definition protocol_map1 {A B: ofe} (f : A → B) (x : protocol A) : protocol B
+Program Definition protocol_map1 {A B: ucmra} (f : A → B) (x : protocol A) : protocol B
   := protocol_map protocol protocol_mixin f x.
 
-Lemma protocol_map_id1 {A: ofe} (x : protocol A) : protocol_map1 id x = x.
+Lemma protocol_map_id1 {A: ucmra} (x : protocol A) : protocol_map1 id x = x.
 Proof. apply protocol_map_id. Qed.
 
-Lemma protocol_map_compose1 {A B C: ofe} (f : A → B) (g : B → C) (x : protocol A) :
+Lemma protocol_map_compose1 {A B C: ucmra} (f : A → B) (g : B → C) (x : protocol A) :
   protocol_map1 (g ∘ f) x = protocol_map1 g (protocol_map1 f x). 
 Proof. apply protocol_map_compose. Qed.
 
 Section protocol_map.
-  Context {A B : ofe} (f : A → B) {Hf: NonExpansive f}.
+  Context {A B : ucmra} (f : A → B) {Hf: NonExpansive f}.
   Global Instance protocol_map_ne : NonExpansive (protocol_map1 f).
   Proof using A B Hf f. apply protocol_map_nonexpansive; trivial. Qed.
    
@@ -164,15 +164,41 @@ Section protocol_map.
   
 End protocol_map.
 
-Definition protocolO_map {A B} (f : A -n> B) : protocolO A -n> protocolO B :=
-  OfeMor (protocol_map1 f : protocolO A → protocolO B). 
+(*
+Definition protocolUR_map {A B: ucmra} (f : A -> B) : protocolUR A -> protocolUR B :=
+  (protocol_map1 f : protocolUR A -> protocolUR B). 
+  *)
   
-Global Instance protocolO_map_ne A B : NonExpansive (@protocolO_map A B).
+  (*
+Global Instance protocolUR_map_ne (A B: ucmra) : NonExpansive (@protocolUR_map A B).
 Proof. 
     intros n f g Hfg x.
     apply protocol_map_ext2; trivial.
     typeclasses eauto.
 Qed.
+*)
+
+(*
+Global Instance protocol_map1_ne (A B: ucmra) (f : A -> B) `{!NonExpansive f} : NonExpansive (protocol_map1 f).
+Proof. 
+    intros.
+    unfold Proper, "==>". intros.
+    apply protocol_map_nonexpansive; trivial.
+Qed.
+*)
+
+Definition protocolO_map {A B: ucmra} (f : A -> B) `{!NonExpansive f} : protocolUR A -n> protocolUR B :=
+  (OfeMor (protocol_map1 f) : protocolUR A -n> protocolUR B). 
+  
+  (*
+Global Instance protocolO_map_ne (A B: ucmra) (f : NonExpansive (@protocolO_map A B).
+Proof. 
+    intros n f g Hfg x.
+    apply protocol_map_ext2; trivial.
+    typeclasses eauto.
+Qed.
+*)
+
     
 (*
     intros n f g Hfg x. unfold protocolO_map.
@@ -196,28 +222,39 @@ Next Obligation.
 Next Obligation. 
 *)
 
+Print urFunctor.
 
-Program Definition protocolURF (F : oFunctor) : urFunctor := {|
-  urFunctor_car A _ B _ := protocolUR (oFunctor_car F A B); 
-  urFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (oFunctor_map F fg) 
+
+
+Program Definition protocolURF (F : urFunctor) : urFunctor := {|
+  urFunctor_car A _ B _ := protocolUR (urFunctor_car F A B); 
+  urFunctor_map A1 _ A2 _ B1 _ B2 _ fg := protocolO_map (urFunctor_map F fg) 
 |}.
 Next Obligation. intros F A1 ? A2 ? B1 ? B2 ? n f g Hfg.
-    apply protocolO_map_ne. apply oFunctor_map_ne. trivial. Qed.
+    unfold protocolO_map.
+    unfold dist, "-n>", ofe_dist, ofe_mor_dist. intros.
+    apply protocol_map_ext2; trivial.
+    - typeclasses eauto.
+    - intros.  apply urFunctor_map_ne. trivial. Qed.
 Next Obligation.
     intros F A ? B ? x; simpl in *. rewrite -{2}(protocol_map_id1 x).
-    apply (protocol_map_ext1 _ _ _)=> y; apply oFunctor_map_id. Qed.
+    apply (protocol_map_ext1 _ _ _)=> y; apply urFunctor_map_id. Qed.
 Next Obligation.
   intros F A1 ? A2 ? A3 ? B1 ? B2 ? B3 ? f g f' g' x; simpl in *.
   rewrite -protocol_map_compose1.
-  apply (protocol_map_ext1 _ _ _)=> y; apply oFunctor_map_compose.
+  apply (protocol_map_ext1 _ _ _)=> y; apply urFunctor_map_compose.
 Qed.
 
 Global Instance protocolURF_contractive F : 
-  oFunctorContractive F → urFunctorContractive (protocolURF F). 
+  urFunctorContractive F → urFunctorContractive (protocolURF F). 
 Proof.
   intros ? A1 ? A2 ? B1 ? B2 ? n f g Hfg.
-  apply protocolO_map_ne; by apply oFunctor_map_contractive.
-Qed. 
+  Print protocolURF.
+    unfold dist, "-n>", ofe_dist, ofe_mor_dist. intros.
+    apply protocol_map_ext2; trivial.
+    - typeclasses eauto.
+    - intro. apply urFunctor_map_contractive. trivial.
+Qed.
 
 Class mylibG Σ := { mylib_inG : inG Σ (authUR (protocolUR (laterO (iPropO Σ)))) }.
 Local Existing Instance mylib_inG.
