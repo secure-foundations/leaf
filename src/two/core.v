@@ -25,6 +25,8 @@ Record SimpleProtocol A `{Op A} := {
 
 (* my stuff *)
 
+Print CmraMixin.
+
 Print ofe.
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
@@ -36,12 +38,14 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
     protocol_unit: ∀ (A: ofe) , Unit (P A);
     
-    protocol_invN_equal : ∀ (A: ofe) (n: nat) (x y: P A) , 
-        x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
-    
     protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
+    
+    protocol_invN_equiv: ∀ (A: ofe) (n: nat) (x y: P A) , 
+        x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
+    protocol_valid_inv: ∀ (A: ofe) (a: P A) n,
+        ✓{n} a <-> ∃ b , protocol_invN A n (a ⋅ b);
     
     protocol_map: ∀ {A B: ofe} (f : A → B) , (P A) -> P B;
     protocol_map_id: ∀ {A: ofe} (x: P A) , protocol_map id x = x;
@@ -231,11 +235,14 @@ Definition inv_n : nat -> C -> Prop :=
     
 Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
 
-Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
+Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). 
+Proof.
+  apply protocol_valid_inv.
+Qed.
 
 Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n).
 Proof.
-  unfold Proper, "==>", impl. apply protocol_invN_equal.
+  unfold Proper, "==>", impl. apply protocol_invN_equiv.
 Qed.
 
 Instance proper_inv_2_n n : Proper (equiv ==> impl) (inv_n n).
