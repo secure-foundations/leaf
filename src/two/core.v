@@ -30,6 +30,7 @@ Record SimpleProtocol A `{Op A} := {
    3. can't define valid in terms of inv ...
    4. (just make valid true?)
    5. need to fix the proof below to not rely on validity being given by inv
+   *)
 
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
@@ -47,8 +48,7 @@ Record ProtocolMixin (P: Type -> Type) := {
     
     protocol_invN_equiv: ∀ (A: ofe) (n: nat) (x y: P A) , 
         x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
-    protocol_valid_inv: ∀ (A: ofe) (a: P A) n,
-        ✓{n} a <-> ∃ b , protocol_invN A n (a ⋅ b);
+    protocol_valid_true: ∀ (A: ofe) (a: P A) n, ✓{n} a;
     protocol_invN_S : ∀ (A: ofe) (a: P A) n ,
         protocol_invN A (S n) a -> protocol_invN A n a;
     
@@ -250,11 +250,6 @@ Proof.
       * lia.
 Qed.
 
-Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). 
-Proof.
-  apply protocol_valid_inv.
-Qed.
-
 Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n).
 Proof.
   unfold Proper, "==>", impl. apply protocol_invN_equiv.
@@ -432,12 +427,16 @@ Qed.
 
 Print authUR.
 Definition nondet_auth_update_inv_condition (𝛾: gname) (x x' z : C)
-  (cond: ∀ y n , inv_n n (x ⋅ y) → inv_n n (x' ⋅ y)) :
+  (* (cond: ∀ y n , inv_n n (x ⋅ y) → inv_n n (x' ⋅ y)) *) :
     own 𝛾 (● z ⋅ ◯ x) ==∗
     ∃ p , own 𝛾 (● (x' ⋅ p) ⋅ ◯ x') ∗ (z ≡ x ⋅ p).
 Proof.
   apply nondet_auth_update.
   intro y. intro n.
+  intro.
+  apply protocol_valid_true.
+Qed.
+(*
   rewrite valid_defn.
   rewrite valid_defn.
   intro h.
@@ -448,7 +447,7 @@ Proof.
     + apply cond. trivial.
     + rewrite assoc. trivial.
   - rewrite assoc. trivial.
-Qed.
+Qed. *)
    
 Lemma internal_update 𝛾 (x x' z: C) (P Q : iProp Σ)
     : protocol_update_with_upd x x' P Q ->
@@ -463,7 +462,7 @@ Proof.
     
     iIntros "[frag [p [auth interp_inv]]]".
     iMod (nondet_auth_update_inv_condition 𝛾 x x' z with "[auth frag]") as (p) "[[auth frag] eq]".
-    {intros. have r := h n y. intuition. }
+    (*{intros. have r := h n y. intuition. }*)
     { rewrite own_op. iFrame. }
     iRewrite "eq" in "interp_inv".
     iDestruct "interp_inv" as "[interp inv]".
