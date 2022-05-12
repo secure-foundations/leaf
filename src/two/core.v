@@ -25,7 +25,12 @@ Record SimpleProtocol A `{Op A} := {
 
 (* my stuff *)
 
-Print ofe.
+(* 1. anything needed to instantiate the functor has to be done abstract over an OFE
+   2. interp / inv need to be abstract over an OFE with monoidal structure
+   3. can't define valid in terms of inv ...
+   4. (just make valid true?)
+   5. need to fix the proof below to not rely on validity being given by inv
+
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
     protocol_equiv: ∀ (A: ofe) , Equiv (P A);
@@ -35,7 +40,7 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_validN: ∀ (A: ofe) , ValidN (P A);
     protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
     protocol_unit: ∀ (A: ofe) , Unit (P A);
-    
+
     protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
     protocol_ucmra_mixin: ∀ (A: ofe) , UcmraMixin (P A);
