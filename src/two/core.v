@@ -25,7 +25,6 @@ Record SimpleProtocol A `{Op A} := {
 
 (* my stuff *)
 
-
 Print ofe.
 Record ProtocolMixin (P: Type -> Type) := {
     protocol_dist: ∀ (A: ofe) , Dist (P A);
@@ -34,7 +33,11 @@ Record ProtocolMixin (P: Type -> Type) := {
     protocol_op: ∀ (A: ofe) , Op (P A);
     protocol_valid: ∀ (A: ofe) , Valid (P A);
     protocol_validN: ∀ (A: ofe) , ValidN (P A);
+    protocol_invN: ∀ (A: ofe) , nat -> P A -> Prop;
     protocol_unit: ∀ (A: ofe) , Unit (P A);
+    
+    protocol_invN_equal : ∀ (A: ofe) (n: nat) (x y: P A) , 
+        x ≡{n}≡ y -> protocol_invN A n x -> protocol_invN A n y;
     
     protocol_ofe_mixin: ∀ (A: ofe) , OfeMixin (P A);
     protocol_cmra_mixin: ∀ (A: ofe) , CmraMixin (P A);
@@ -52,6 +55,8 @@ Record ProtocolMixin (P: Type -> Type) := {
         (∀ a, f a ≡{n}≡ g a) → protocol_map f x ≡{n}≡ protocol_map g x;
     protocol_map_preserves_valid: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
         ∀ (n : nat) (x : P A), ✓{n} x → ✓{n} protocol_map f x;
+    (*protocol_map_preserves_inv: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} ,
+        ∀ (n : nat) (x : P A) , protocol_invN A n x → protocol_invN B n (protocol_map f x);*)
     protocol_map_preserves_pcore: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
         ∀ x : P A, protocol_map f <$> pcore x ≡ pcore (protocol_map f x);
     protocol_map_preserves_op: ∀ {A B : ofe} (f : A → B) {Hf: NonExpansive f} , 
@@ -219,13 +224,19 @@ Context `{!mylibG Σ}.
 Definition C: ucmra := (protocolUR (laterO (iPropO Σ))).
 
 Context (Interp : C -> iProp Σ).
-Context (inv_n : nat -> C -> Prop).
-Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
 
+Definition inv_n : nat -> C -> Prop :=
+    λ n c ,
+    protocol_invN protocol protocol_mixin (laterO (iPropO Σ)) n c.
+    
+Context (inv_n_monotonic : ∀ c n1 n2 , inv_n n1 c -> n2 ≤ n1 -> inv_n n2 c).
 
 Lemma valid_defn n (a: C) : ✓{n} a <-> ∃ b , inv_n n (a ⋅ b). Admitted.
 
-Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n). Admitted.
+Instance proper_inv_1_n n : Proper ((≡{n}≡) ==> impl) (inv_n n).
+Proof.
+  unfold Proper, "==>", impl. apply protocol_invN_equal.
+Qed.
 
 Instance proper_inv_2_n n : Proper (equiv ==> impl) (inv_n n).
 Proof.
