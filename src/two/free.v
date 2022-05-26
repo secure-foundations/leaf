@@ -16,6 +16,8 @@ Proof.
   - apply cons_equiv. + intuition. + intuition.
 Qed.
 
+Print CmraMixin.
+
 Definition perm_equiv {T} (eq: Equiv T) (a: list T) (b: list T) :=
   ∃ q , a ≡ₚ q ∧ q ≡ b.
 
@@ -72,19 +74,35 @@ Proof.
   - setoid_rewrite v. trivial.
 Qed.
 
+  (*{z1 : free A & {z2 : free A | x ≡ z1 ⋅ z2 ∧ z1 ≡{n}≡ y1 ∧ z2 ≡{n}≡ y2}}*)
+  
+Lemma compute_ex {T} (eq: Equiv T) {eqv: Equivalence eq} (a b: list T)
+  (e: ∃ q : list T, a ≡ₚ q ∧ q ≡ b) 
+  : sigT (fun q : list T => a ≡ₚ q ∧ q ≡ b). Admitted.
+  
+  Print CmraMixin.
 Lemma perm_equiv_front {T} (eq: Equiv T) {eqv: Equivalence eq} (a b: list T) (x: T)
-  : perm_equiv eq a (x :: b) -> ∃ (x': T) (b': list T) ,
-      a ≡ₚ x' :: b' ∧ eq x' x ∧ perm_equiv eq b' b.
+  : perm_equiv eq a (x :: b) -> sigT (fun x': T => (sigT (fun b': list T =>
+      a ≡ₚ x' :: b' ∧ eq x' x ∧ perm_equiv eq b' b))).
 Proof.
-  intros H. unfold perm_equiv in H. destruct H as [q [w v]].
+  intros H. unfold perm_equiv in H.
+  have J := compute_ex _ a (x :: b) H.
+  destruct J as [q [w v]]. { typeclasses eauto. }
   destruct q.
-  - inversion v.
-  - inversion v. subst. exists t. exists q. split; trivial. split; trivial.
+  - exfalso. inversion v.
+  - exists t. exists q. inversion v. subst. split; trivial. split; trivial.
       unfold perm_equiv. exists q. split; trivial.
 Qed.
 
 Lemma perm_equiv_skip {T} (eq: Equiv T) {eqv: Equivalence eq} (a b: list T) (x x': T)
-  : eq x x' -> perm_equiv eq a b -> perm_equiv eq (x :: a) (x' :: b). Admitted.
+  : eq x x' -> perm_equiv eq a b -> perm_equiv eq (x :: a) (x' :: b).
+Proof.
+  intros e pe.
+  unfold perm_equiv in *. destruct pe as [q [w v]].
+  exists (x :: q). split.
+  - apply perm_skip. trivial.
+  - apply cons_equiv; trivial.
+Qed.
   
 Lemma perm_equiv_extens {T} (eq: Equiv T) {eqv: Equivalence eq} (a b b': list T)
     (pe: perm_equiv eq a (b ++ b'))
@@ -155,7 +173,7 @@ Section free.
 Context {A : ofe}.
 Implicit Types a b : A.
 Implicit Types x y : free A.
- 
+
 (* OFE *)
 Local Instance free_dist : Dist (free A) := λ n x y,
   perm_equiv (≡{n}≡) x y.
@@ -229,6 +247,13 @@ Proof.
       unfold core. unfold pcore. unfold free_pcore_instance. unfold default.
       unfold "≼". exists {| free_car := [] |}. trivial.
   - intros.
+      assert (@Equivalence A (dist n)) as eqd by typeclasses eauto.
+      have j := @perm_equiv_extens A (≡{n}≡) eqd _ _ _ H0.
+      Unset Printing Notations.
+      Print sigT.
+      destruct j.
+      
+  - 
     
   - intros n x y1 y2 Hval Hx; exists x, x; simpl; split.
     + by rewrite free_idemp.
