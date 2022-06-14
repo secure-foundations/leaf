@@ -379,7 +379,7 @@ Definition protocol_update_with_b x x' b (P Q : iProp Σ) : Prop := ∀ (n: nat)
 Lemma protocol_update_with_b_in_logic x x' b (P Q : iProp Σ) : protocol_update_with_b x x' b P Q ->
     ∀ y , Inv (x ⋅ b ⋅ y) ⊢ Inv (x' ⋅ b ⋅ y) ∧
         ((Interp (x ⋅ b ⋅ y) ∗ P) ≡ (Interp (x' ⋅ b ⋅ y) ∗ Q)).
-Proof.
+Proof. 
     intros.
     split.
    
