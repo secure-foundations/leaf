@@ -31,6 +31,32 @@ Context `{!invGS Σ}.
 
 Definition supports x y : iProp Σ := x -∗ (y ∗ (y -∗ x)).
 
+Definition lift_later (a b : iProp Σ)
+  : (a -∗ b) ⊢ ((▷ a) -∗ (▷ b)).
+Proof.
+  iIntros "x y". iModIntro.
+  iApply "x". iFrame.
+Qed.
+
+(*
+Definition yearg (a b : iProp Σ)
+  : (▷ |==> a) ⊢ (|==> ▷ a).
+Proof.
+  iIntros "x".
+  iModIntro.
+  *)
+  
+
+(*
+Definition lift_later2 (a b : iProp Σ)
+  : (a ==∗ b) ⊢ ((▷ a) ==∗ (▷ b)).
+Proof.
+  iIntros "x y". iModIntro.
+  iApply "x". iFrame.
+Qed.
+*)
+
+
 Lemma lemma_compose (A B P Q C : iProp Σ)
     (a: ⊢ supports (A ∗ P) (A ∗ B))
     (b: ⊢ supports (B ∗ Q) (B ∗ C))
@@ -325,21 +351,18 @@ Proof.
       contradiction.
 Qed.
   
-Lemma and_own 𝛾 (x y z: M)
-  ∀ r , 
-  : (own 𝛾 x ∧ own 𝛾 y) ⊢ own 𝛾 z
-  ((⌜ ∃ z , ✓ z ∧ x ≼ z ∧ y ≼ z ⌝) : iProp Σ).
-
+  (*
 Lemma lemma_extend_1 (A B P Q C : iProp Σ)
     (a : supports P A ⊢ supports P B)
     : supports (P ∗ Q) A ⊢ supports (P ∗ Q) B.
 Proof.
   unfold supports in *.
   iIntros "x [p q]".
+  *)
 
   
   
- 
+(* 
 Lemma lemma_compose_4 (A B P Q C : iProp Σ)
     (a: (A ∗ P ∗ Q ⊢ A ∗ P ∗ Q ∗ (supports Q B)))
     (b: (B ∗ P ∗ Q ⊢ B ∗ P ∗ Q ∗ (supports Q C)))
@@ -351,9 +374,10 @@ Proof.
   iDestruct ("suppb" with "q") as "[b backb]".
   iModIntro. unfold supports in *.
   iIntros "q".
+ *) 
   
   
-  
+  (*
 Lemma lemma_compose (A B P Q C : iProp Σ)
     (a: (A ∗ P ⊢ □ (supports Q B)))
     (b: (B ∗ P ⊢ □ (supports Q C)))
@@ -364,7 +388,7 @@ Proof.
   iDestruct (a with "ap") as "#sb".
   iModIntro. unfold supports in *.
   iIntros "q".
-    
+  *)
 
 Definition supports E x y : iProp Σ := □ (x ={E, ∅}=∗ y ∗ (y ={∅, E}=∗ x))%I.
 Notation "P &&{ E }&&> Q" := (supports E P Q)
