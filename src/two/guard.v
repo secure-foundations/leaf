@@ -16,15 +16,15 @@ Section Guard.
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}. 
 
-Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ P.
+Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ ▷ P.
 
-Definition storage_bulk_inv (m: gmap positive ()) : iProp Σ :=
-    [∗ map] i ↦ u ∈ m, storage_inv i.
+Definition storage_bulk_inv (m: gset positive) : iProp Σ :=
+    [∗ map] i ↦ unused ∈ gset_to_gmap () m, storage_inv i.
 
 Definition guards_with (P Q X : iProp Σ) :=
     (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) ={∅}=∗ Q ∗ (Q -∗ X ∗ T))) % I.
 
-Definition guards (P Q : iProp Σ) (m: gmap positive ()) : iProp Σ :=
+Definition guards (P Q : iProp Σ) (m: gset positive) : iProp Σ :=
     guards_with P Q (storage_bulk_inv m).
 
 Notation "P &&{ E }&&> Q" := (guards P Q E)
@@ -45,9 +45,18 @@ Proof.
   iModIntro. iFrame.
 Qed.
 
-Lemma storage_bulk_inv_union (E F : gmap positive ()) (disj: E ##ₘ  F) :
+Lemma gset_to_gmap_union (E F : gset positive)
+  : gset_to_gmap () (E ∪ F) = gset_to_gmap () E ∪ gset_to_gmap () F. Admitted.
+  
+Lemma gset_to_gmap_disj (E F : gset positive) (disj : E ## F)
+  : gset_to_gmap () E ##ₘ gset_to_gmap () F. Admitted.
+
+Lemma storage_bulk_inv_union (E F : gset positive) (disj: E ## F) :
   storage_bulk_inv (E ∪ F) ⊣⊢ storage_bulk_inv E ∗ storage_bulk_inv F.
-  Admitted.
+Proof.
+  unfold storage_bulk_inv. rewrite gset_to_gmap_union.
+  apply big_sepM_union. apply gset_to_gmap_disj. trivial.
+Qed.
   
   (*
 Lemma union_eq_union_diff (E F : gmap positive ())
@@ -62,7 +71,7 @@ Lemma twoway_assoc (P Q R : iProp Σ)
 Proof. iIntros. iSplit. { iIntros "[[p q] r]". iFrame. }
     { iIntros "[p [q r]]". iFrame. } Qed.
 
-Lemma guards_superset E F P Q (disj: E ##ₘ  F) :
+Lemma guards_superset E F P Q (disj: E ## F) :
     (P &&{ E }&&> Q) ⊢ (P &&{ E ∪ F }&&> Q).
 Proof.
   unfold guards, guards_with.
@@ -83,5 +92,59 @@ Proof.
   iFrame.
 Qed.
 
+(*
+Lemma wsat_split E F :
+  (wsat ∗ ownE E) ⊢ (storage_bulk_inv F) ∗ (storage_bulk_inv F -∗ wsat ∗ ownE E).
+Admitted.
+*)
+
+Lemma wsat_split E F
+    (ss: ∀ x , x ∈ F -> x ∈ E) :
+   ⊢ |={E,∅}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={∅,E}=∗ True).
+Admitted.
+
+Lemma wsat_split2 E F E'
+    (ss: ∀ x , x ∈ F -> x ∈ E) :
+   ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
+Admitted.
+
+Lemma apply_guard_persistent (P Q: iProp Σ) F E
+    (ss: ∀ x , x ∈ F -> x ∈ E)
+    : (P &&{ F }&&> □ Q) ⊢ P ={E}=∗ □ Q.
+Proof.
+  unfold guards, guards_with. iIntros "g p".
+  (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
+  iDestruct ("g" $! P) as "g".
+  iMod (wsat_split E F) as "[sb back]"; trivial.
+  iMod ("g" with "[p sb]") as "t".
+  { iFrame. iIntros. iFrame. }
+  iDestruct "t" as "[q t]".
+  iDestruct (bi.intuitionistically_sep_dup with "q") as "[q q1]".
+  iDestruct ("t" with "q") as "[t p]".
+  iMod ("back" with "t").
+  iModIntro.
+  iFrame.
+Qed.
+
+Lemma apply_guard (P Q X Y : iProp Σ) E F D
+    (ss: ∀ x , x ∈ F -> x ∈ E)
+    : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F }&&> Q) ⊢ (P ∗ X ={E}=∗ P ∗ Y).
+Proof.
+  unfold guards, guards_with. iIntros "[upd g] [p x]".
+  iDestruct ("g" $! P) as "g".
+  iMod (wsat_split2 E F D) as "[sb back]"; trivial.
+  iDestruct ("g" with "[p sb]") as "g".
+  { iFrame. iIntros. iFrame. }
+  
+  iDestruct (fupd_mask_frame_r _ _ D _ with "g") as "g".
+  { apply disjoint_empty_l. }
+  replace (∅ ∪ D) with D by set_solver.
+  iMod "g" as "[q g]".
+  iMod ("upd" with "[q x]") as "[q y]". { iFrame. }
+  iDestruct ("g" with "q") as "[g p]".
+  iMod ("back" with "g") as "g".
+  iModIntro.
+  iFrame.
+Qed.
   
 End Guard.
