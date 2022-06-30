@@ -98,15 +98,52 @@ Lemma wsat_split E F :
 Admitted.
 *)
 
+(*
+Lemma wsat_split_disable_one E x
+    (eo: x ∈ E) :
+   ⊢ wsat ∗ ownE E ==∗ ◇ (wsat ∗ ownE (E ∖ {[ x ]}) ∗ ownD {[ x ]} ∗ storage_inv x).
+Proof.
+  iIntros "[w en]".
+  rewrite /wsat -!lock.
+  iDestruct "w" as (I) "[wi wm]".
+  *)
+
+(*
+Lemma wsat_split_one E x
+    (eo: x ∈ E) :
+   ⊢ |={E, (E ∖ {[ x ]})}=> (storage_inv x) ∗ (storage_inv x ={E ∖ {[ x ]}, E}=∗ True).
+Proof.
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+  rewrite /wsat -!lock.
+  iIntros "[w en]".
+  iDestruct "w" as (I) "[wi wm]".
+  destruct (I !! x) eqn:p.
+    
+
+Lemma wsat_split_main E F E'
+    (ss: ∀ x , x ∈ F \/ x ∈ E' <-> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False) :
+   ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
+Proof.
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+  iIntros "[w en]".
+  rewrite /wsat -!lock.
+  unfold wsat.
+  Print locked.
+Admitted.
+*)
+
 Lemma wsat_split E F
     (ss: ∀ x , x ∈ F -> x ∈ E) :
    ⊢ |={E,∅}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={∅,E}=∗ True).
 Admitted.
 
+
 Lemma wsat_split2 E F E'
     (ss: ∀ x , x ∈ F -> x ∈ E) :
    ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
-Admitted.
+   Admitted.
+  
 
 Lemma apply_guard_persistent (P Q: iProp Σ) F E
     (ss: ∀ x , x ∈ F -> x ∈ E)
@@ -146,5 +183,18 @@ Proof.
   iModIntro.
   iFrame.
 Qed.
+
+Lemma guard_remove_later (P : iProp Σ) E
+    (tl: Timeless P)
+    : ⊢ (▷ P) &&{E}&&> P.
+Proof.
+  unfold guards, guards_with.
+  iIntros (T) "[p g]".
+  iMod "p" as "p".
+  iModIntro.
+  iFrame.
+  iIntros "p". iApply "g". iModIntro. iFrame.
+Qed.
+
   
 End Guard.
