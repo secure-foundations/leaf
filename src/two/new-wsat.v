@@ -200,13 +200,16 @@ Lemma ownI_alloc_open φ P :
   (∀ E : gset positive, ∃ i, i ∉ E ∧ φ i) →
   wsat ==∗ ∃ i, ⌜φ i⌝ ∗ (ownE {[i]} -∗ wsat) ∗ ownI i P ∗ ownD {[i]}.
 Proof.
-  iIntros (Hfresh) "Hw". rewrite /wsat -!lock. iDestruct "Hw" as (I) "[Hw HI]".
-  iMod (own_unit (gset_disjUR positive) disabled_name) as "HD".
-  iMod (own_updateP with "[$]") as "HD".
-  { apply (gset_disj_alloc_empty_updateP_strong' (λ i, I !! i = None ∧ φ i)).
-    intros E. destruct (Hfresh (E ∪ dom _ I))
-      as (i & [? HIi%not_elem_of_dom]%not_elem_of_union & ?); eauto. }
-  iDestruct "HD" as (X) "[Hi HD]"; iDestruct "Hi" as %(i & -> & HIi & ?).
+  iIntros (Hfresh) "Hw". rewrite /wsat -!lock. iDestruct "Hw" as (I) "[Hw [HI Hd]]".
+  
+  have is_f := Hfresh (@dom _ (gset positive) (gset_dom) I).
+  destruct is_f as [i [ni phi]].
+  assert (I !! i = None) as HIi by (apply not_in_dom_to_none; trivial).
+  assert (i ∈ (⊤ ∖ gmap_dom_coPset I)) as in_comp. { apply not_in_dom. trivial. }
+  have du := diff_union _ _ in_comp.
+  rewrite du.
+  iDestruct (ownD_op with "Hd") as "[Hd HD]". { set_solver. }
+  
   iMod (own_update with "Hw") as "[Hw HiP]".
   { eapply (gmap_view_alloc _ i DfracDiscarded); last done.
     by rewrite /= lookup_fmap HIi. }
@@ -214,10 +217,36 @@ Proof.
   rewrite -/(ownD _). iFrame "HD".
   iIntros "HE". iExists (<[i:=P]>I); iSplitL "Hw".
   { by rewrite fmap_insert. }
+  
+  rewrite diff_domm_inserted. iFrame "Hd".
+  
   iApply (big_sepM_insert _ I); first done.
   iFrame "HI". by iRight.
 Qed.
+
+(*
+Lemma ownI_alloc_open_or_alloc i :
+  wsat ∗ ownE {[i]} ⊢ ∃ P , wsat ∗ ownD {[i]} ∗ ownI i P ∗ ▷ P.
+Proof.
+  rewrite /ownI /wsat -!lock.
+  iIntros "(Hw & HiE)". iDestruct "Hw" as (I) "[Hw [HI Hd]]".
+  destruct (I !! i) eqn:p.
+  + (* case 1: invariant exists; open it *)
+    iDestruct (big_sepM_delete _ _ i with "HI") as "[[[HQ $]|HiE'] HI]"; eauto.
+    - iExists u. iFrame.
+    
+    iSplitR "HQ"; last by iNext; iRewrite -"HPQ".
+      iExists I. iFrame "Hw". iFrame "Hd". iApply (big_sepM_delete _ _ i); eauto.
+      iFrame "HI"; eauto.
+    - iDestruct (ownE_singleton_twice with "[$HiE $HiE']") as %[].
+    *)
+
+
+
 End wsat.
+
+Lemma copset_diff_empty {A}
+    : (⊤ ∖ @gmap_dom_coPset A ∅) = ⊤. Admitted.
 
 (* Allocation of an initial world *)
 Lemma wsat_alloc `{!invGpreS Σ} : ⊢ |==> ∃ _ : invGS Σ, wsat ∗ ownE ⊤.
@@ -226,8 +255,10 @@ Proof.
   iMod (own_alloc (gmap_view_auth 1 ∅)) as (γI) "HI";
     first by apply gmap_view_auth_valid.
   iMod (own_alloc (CoPset ⊤)) as (γE) "HE"; first done.
-  iMod (own_alloc (GSet ∅)) as (γD) "HD"; first done.
+  iMod (own_alloc (CoPset ⊤)) as (γD) "HD"; first done.
   iModIntro; iExists (InvG _ _ γI γE γD).
-  rewrite /wsat /ownE -lock; iFrame.
-  iExists ∅. rewrite fmap_empty big_opM_empty. by iFrame.
+  rewrite /wsat /ownE /ownD -lock; iFrame.
+  iExists ∅. rewrite fmap_empty big_opM_empty.
+  rewrite copset_diff_empty.
+  iFrame.
 Qed.
