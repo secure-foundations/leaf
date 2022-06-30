@@ -11,7 +11,7 @@ Module invGS.
   Class invGpreS (Σ : gFunctors) : Set := InvGpreS {
     invGpreS_inv :> inG Σ (gmap_viewR positive (laterO (iPropO Σ)));
     invGpreS_enabled :> inG Σ coPset_disjR;
-    invGpreS_disabled :> inG Σ (gset_disjR positive);
+    invGpreS_disabled :> inG Σ coPset_disjR;
   }.
 
   Class invGS (Σ : gFunctors) : Set := InvG {
@@ -24,7 +24,7 @@ Module invGS.
   Definition invΣ : gFunctors :=
     #[GFunctor (gmap_viewRF positive (laterOF idOF));
       GFunctor coPset_disjR;
-      GFunctor (gset_disjR positive)].
+      GFunctor coPset_disjR].
 
   Global Instance subG_invΣ {Σ} : subG invΣ Σ → invGpreS Σ.
   Proof. solve_inG. Qed.
@@ -44,15 +44,17 @@ Definition ownE `{!invGS Σ} (E : coPset) : iProp Σ :=
 Typeclasses Opaque ownE.
 Global Instance: Params (@ownE) 3 := {}.
 
-Definition ownD `{!invGS Σ} (E : gset positive) : iProp Σ :=
-  own disabled_name (GSet E).
+Definition ownD `{!invGS Σ} (E : coPset) : iProp Σ :=
+  own disabled_name (CoPset E).
 Typeclasses Opaque ownD.
 Global Instance: Params (@ownD) 3 := {}.
 
 Definition wsat `{!invGS Σ} : iProp Σ :=
   locked (∃ I : gmap positive (iProp Σ),
     own invariant_name (gmap_view_auth 1 (invariant_unfold <$> I)) ∗
-    [∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]})%I.
+    ([∗ map] i ↦ Q ∈ I, ▷ Q ∗ ownD {[i]} ∨ ownE {[i]}) ∗
+    (ownD (⊤ ∖ gmap_dom_coPset I))
+    )%I.
 
 Section wsat.
 Context `{!invGS Σ}.
@@ -87,12 +89,12 @@ Proof. rewrite ownE_disjoint. iIntros (?); set_solver. Qed.
 Lemma ownD_empty : ⊢ |==> ownD ∅.
 Proof.
   rewrite /bi_emp_valid.
-  by rewrite (own_unit (gset_disjUR positive) disabled_name).
+  by rewrite (own_unit (coPset_disjUR) disabled_name).
 Qed.
 Lemma ownD_op E1 E2 : E1 ## E2 → ownD (E1 ∪ E2) ⊣⊢ ownD E1 ∗ ownD E2.
-Proof. intros. by rewrite /ownD -own_op gset_disj_union. Qed.
+Proof. intros. by rewrite /ownD -own_op coPset_disj_union. Qed.
 Lemma ownD_disjoint E1 E2 : ownD E1 ∗ ownD E2 ⊢ ⌜E1 ## E2⌝.
-Proof. rewrite /ownD -own_op own_valid. by iIntros (?%gset_disj_valid_op). Qed.
+Proof. rewrite /ownD -own_op own_valid. by iIntros (?%coPset_disj_valid_op). Qed.
 Lemma ownD_op' E1 E2 : ⌜E1 ## E2⌝ ∧ ownD (E1 ∪ E2) ⊣⊢ ownD E1 ∗ ownD E2.
 Proof.
   iSplit; [iIntros "[% ?]"; by iApply ownD_op|].
@@ -117,43 +119,79 @@ Qed.
 Lemma ownI_open i P : wsat ∗ ownI i P ∗ ownE {[i]} ⊢ wsat ∗ ▷ P ∗ ownD {[i]}.
 Proof.
   rewrite /ownI /wsat -!lock.
-  iIntros "(Hw & Hi & HiE)". iDestruct "Hw" as (I) "[Hw HI]".
+  iIntros "(Hw & Hi & HiE)". iDestruct "Hw" as (I) "[Hw [HI Hd]]".
   iDestruct (invariant_lookup I i P with "[$]") as (Q ?) "#HPQ".
   iDestruct (big_sepM_delete _ _ i with "HI") as "[[[HQ $]|HiE'] HI]"; eauto.
   - iSplitR "HQ"; last by iNext; iRewrite -"HPQ".
-    iExists I. iFrame "Hw". iApply (big_sepM_delete _ _ i); eauto.
+    iExists I. iFrame "Hw". iFrame "Hd". iApply (big_sepM_delete _ _ i); eauto.
     iFrame "HI"; eauto.
   - iDestruct (ownE_singleton_twice with "[$HiE $HiE']") as %[].
 Qed.
 Lemma ownI_close i P : wsat ∗ ownI i P ∗ ▷ P ∗ ownD {[i]} ⊢ wsat ∗ ownE {[i]}.
 Proof.
   rewrite /ownI /wsat -!lock.
-  iIntros "(Hw & Hi & HP & HiD)". iDestruct "Hw" as (I) "[Hw HI]".
+  iIntros "(Hw & Hi & HP & HiD)". iDestruct "Hw" as (I) "[Hw [HI Hd]]".
   iDestruct (invariant_lookup with "[$]") as (Q ?) "#HPQ".
   iDestruct (big_sepM_delete _ _ i with "HI") as "[[[HQ ?]|$] HI]"; eauto.
   - iDestruct (ownD_singleton_twice with "[$]") as %[].
-  - iExists I. iFrame "Hw". iApply (big_sepM_delete _ _ i); eauto.
+  - iExists I. iFrame "Hw". iFrame "Hd". iApply (big_sepM_delete _ _ i); eauto.
     iFrame "HI". iLeft. iFrame "HiD". by iNext; iRewrite "HPQ".
 Qed.
+
+
+Lemma get_fresh {V} (g: gmap positive V) : ∃ x , g !! x = None. Admitted.
+
+Lemma not_in_dom_to_none {V} (I: gmap positive V) (i: positive)
+  (HIi : i ∉ dom (gset positive) I) : I !! i = None. Admitted.
+
+Lemma not_in_dom {V} (I: gmap positive V) (i: positive) :
+  I !! i = None -> i ∈ (⊤ ∖ gmap_dom_coPset I). Admitted.
+  
+Lemma diff_union (s: coPset) (i: positive) :
+    i ∈ s -> s = (s ∖ {[ i ]}) ∪ {[ i ]}. Admitted.
+    
+Lemma diff_domm_inserted {V} (I: gmap positive V) (i: positive) (P: V)
+    : (⊤ ∖ gmap_dom_coPset (<[i:=P]> I))
+     = (⊤ ∖ gmap_dom_coPset I ∖ {[ i ]}). Admitted.
 
 Lemma ownI_alloc φ P :
   (∀ E : gset positive, ∃ i, i ∉ E ∧ φ i) →
   wsat ∗ ▷ P ==∗ ∃ i, ⌜φ i⌝ ∗ wsat ∗ ownI i P.
 Proof.
   iIntros (Hfresh) "[Hw HP]". rewrite /wsat -!lock.
-  iDestruct "Hw" as (I) "[Hw HI]".
-  iMod (own_unit (gset_disjUR positive) disabled_name) as "HE".
+  iDestruct "Hw" as (I) "[Hw [HI Hd]]".
+  
+  have is_f := Hfresh (@dom _ (gset positive) (gset_dom) I).
+  destruct is_f as [i [ni phi]].
+  
+  assert (I !! i = None) as HIi by (apply not_in_dom_to_none; trivial).
+  
+  (*have is_f := get_fresh I.
+  destruct is_f as [i HIi].*)
+  assert (i ∈ (⊤ ∖ gmap_dom_coPset I)) as in_comp. { apply not_in_dom. trivial. }
+  have du := diff_union _ _ in_comp.
+  rewrite du.
+  
+  iDestruct (ownD_op with "Hd") as "[Hd HE]". { set_solver. }
+  
+  
+  (*iMod (own_unit (coPset_disjUR) disabled_name) as "HE".
   iMod (own_updateP with "[$]") as "HE".
   { apply (gset_disj_alloc_empty_updateP_strong' (λ i, I !! i = None ∧ φ i)).
     intros E. destruct (Hfresh (E ∪ dom _ I))
       as (i & [? HIi%not_elem_of_dom]%not_elem_of_union & ?); eauto. }
-  iDestruct "HE" as (X) "[Hi HE]"; iDestruct "Hi" as %(i & -> & HIi & ?).
+  iDestruct "HE" as (X) "[Hi HE]"; iDestruct "Hi" as %(i & -> & HIi & ?).*)
+  
   iMod (own_update with "Hw") as "[Hw HiP]".
   { eapply (gmap_view_alloc _ i DfracDiscarded); last done.
     by rewrite /= lookup_fmap HIi. }
+  
   iModIntro; iExists i;  iSplit; [done|]. rewrite /ownI; iFrame "HiP".
   iExists (<[i:=P]>I); iSplitL "Hw".
   { by rewrite fmap_insert. }
+  
+  rewrite diff_domm_inserted. iFrame "Hd".
+  
   iApply (big_sepM_insert _ I); first done.
   iFrame "HI". iLeft. by rewrite /ownD; iFrame.
 Qed.
