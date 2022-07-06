@@ -20,6 +20,13 @@ Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ ▷ P.
 
 Definition storage_bulk_inv (m: gset positive) : iProp Σ :=
     [∗ map] i ↦ unused ∈ gset_to_gmap () m, storage_inv i.
+    
+Lemma storage_bulk_inv_empty :
+  True ⊢ storage_bulk_inv ∅. Admitted.
+  
+Lemma storage_bulk_inv_singleton_union i X
+  : storage_bulk_inv ({[i]} ∪ X) ⊣⊢ storage_inv i ∗ storage_bulk_inv X.
+  Admitted.
 
 Definition guards_with (P Q X : iProp Σ) :=
     (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) ={∅}=∗ Q ∗ (Q -∗ X ∗ T))) % I.
@@ -107,43 +114,124 @@ Proof.
   rewrite /wsat -!lock.
   iDestruct "w" as (I) "[wi wm]".
   *)
+  
+  (*
+Lemma wsat_split_one' x :
+   ⊢ |={{[ x ]}, ∅}=> (storage_inv x) ∗ (storage_inv x ={∅, {[ x ]}}=∗ True).
+Proof.
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+  iIntros "we".
+  iMod (ownI_alloc_open_or_alloc with "we") as (P) "[w [d [i p]]]".
+  unfold storage_inv.
+  iMod (ownE_empty) as "oemp".
+  iModIntro. iModIntro. iFrame.
+  iSplitL "i p".
+  { iExists P. iFrame. }
+  iIntros "op [w e]".
+  iDestruct "op" as (P0) "op".
+  iDestruct (ownI_close x P0 with "[w op d]") as "[w l]".
+  { iFrame. }
+  iModIntro. iModIntro. iFrame.
+Qed.
+*)
 
-(*
-Lemma wsat_split_one E x
+Lemma wsat_split_one_union x E 
+    (not_in: x ∉ E) :
+   ⊢ |={E ∪ {[ x ]}, E}=> (storage_inv x) ∗ (storage_inv x ={E, E ∪ {[ x ]}}=∗ True).
+Proof.
+  assert (E ## {[x]}) as disj by set_solver.
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+  iIntros "[w e]".
+  iDestruct (ownE_op with "e") as "[ee e]". { trivial. }
+  iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }
+  unfold storage_inv.
+  iMod (ownE_empty) as "oemp".
+  iModIntro. iModIntro. iFrame.
+  iSplitL "i p".
+  { iExists P. iFrame. }
+  iIntros "op [w e]".
+  iDestruct "op" as (P0) "op".
+  iDestruct (ownI_close x P0 with "[w op d]") as "[w l]".
+  { iFrame. }
+  iModIntro. iModIntro. rewrite ownE_op. { iFrame. } trivial.
+Qed.
+
+Lemma wsat_split_one_diff E x
     (eo: x ∈ E) :
    ⊢ |={E, (E ∖ {[ x ]})}=> (storage_inv x) ∗ (storage_inv x ={E ∖ {[ x ]}, E}=∗ True).
 Proof.
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-  rewrite /wsat -!lock.
-  iIntros "[w en]".
-  iDestruct "w" as (I) "[wi wm]".
-  destruct (I !! x) eqn:p.
-    
+  assert ((E ∖ {[ x ]}) ∪ {[ x ]} = E) as ue.
+      { apply set_eq. intros.  rewrite elem_of_union.
+          rewrite elem_of_difference. rewrite elem_of_singleton.
+          intuition. { subst x. trivial. }
+          have h : Decision (x0 = x) by solve_decision. destruct h; intuition.
+      }
+  rewrite <- ue at 1. 
+  rewrite <- ue at 4. 
+  apply wsat_split_one_union.
+  set_solver.
+Qed.
 
 Lemma wsat_split_main E F E'
     (ss: ∀ x , x ∈ F \/ x ∈ E' <-> x ∈ E)
     (di: ∀ x , x ∈ F /\ x ∈ E' -> False) :
    ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
 Proof.
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-  iIntros "[w en]".
-  rewrite /wsat -!lock.
-  unfold wsat.
-  Print locked.
-Admitted.
-*)
+  generalize ss. clear ss. generalize di. clear di. generalize E. clear E.
+  eapply (@set_ind_L positive (gset positive)) with (P := λ F , 
+    ∀ E : coPset,
+    (∀ x : positive, x ∈ F ∧ x ∈ E' → False)
+    → (∀ x : positive, x ∈ F ∨ x ∈ E' ↔ x ∈ E)
+      → ⊢ |={E,E'}=> storage_bulk_inv F ∗ (storage_bulk_inv F ={E',E}=∗ True)
+  ).
+    - typeclasses eauto.
+    - typeclasses eauto.
+    - intros. assert (E = E') by set_solver. subst E'.
+        iIntros. iModIntro. iSplitL.
+        { iDestruct storage_bulk_inv_empty as "x". iApply "x". done. }
+        { iIntros. iModIntro. done. }
+    - intros x X not_in m E di ss.
+      iIntros.
+      iMod (wsat_split_one_diff E x) as "[si back]".
+      { apply ss. left. set_solver. }
+      iMod (m (E ∖ {[x]})) as "[sbi back2]".
+      { intuition. apply di with (x0 := x0). set_solver. }
+      { intro x0. have ss0 := ss x0. set_solver. }
+      rewrite storage_bulk_inv_singleton_union.
+      iModIntro. iFrame "si sbi".
+      iIntros "[si sbi]".
+      iMod ("back2" with "sbi") as "l".
+      iMod ("back" with "si") as "q".
+      iModIntro. done.
+Qed.
 
-Lemma wsat_split E F
+Lemma wsat_split_superset E F E'
+    (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False) :
+   ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
+Proof.
+  iIntros.
+  iMod (fupd_mask_subseteq (gset_to_coPset F ∪ E')) as "back".
+  { unfold "⊆". unfold set_subseteq_instance. intro.
+      rewrite elem_of_union.
+      rewrite elem_of_gset_to_coPset.
+      intro. apply ss. trivial. }
+  iMod (wsat_split_main (gset_to_coPset F ∪ E') F E') as "[sbi back2]".
+  { intros. have j := ss x. rewrite elem_of_union. rewrite elem_of_gset_to_coPset.
+      intuition. }
+  { apply di. }
+  iModIntro. iFrame "sbi". iIntros "sbi". iMod ("back2" with "sbi") as "_".
+  iMod "back" as "_". iModIntro. done.
+Qed.
+
+Lemma wsat_split_empty E F
     (ss: ∀ x , x ∈ F -> x ∈ E) :
    ⊢ |={E,∅}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={∅,E}=∗ True).
-Admitted.
-
-
-Lemma wsat_split2 E F E'
-    (ss: ∀ x , x ∈ F -> x ∈ E) :
-   ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
-   Admitted.
-  
+Proof.
+  apply wsat_split_superset.
+  - intro. rewrite elem_of_empty. intuition.
+  - intro. rewrite elem_of_empty. intuition.
+Qed.
 
 Lemma apply_guard_persistent (P Q: iProp Σ) F E
     (ss: ∀ x , x ∈ F -> x ∈ E)
@@ -152,7 +240,7 @@ Proof.
   unfold guards, guards_with. iIntros "g p".
   (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
   iDestruct ("g" $! P) as "g".
-  iMod (wsat_split E F) as "[sb back]"; trivial.
+  iMod (wsat_split_empty E F) as "[sb back]"; trivial.
   iMod ("g" with "[p sb]") as "t".
   { iFrame. iIntros. iFrame. }
   iDestruct "t" as "[q t]".
@@ -164,12 +252,15 @@ Proof.
 Qed.
 
 Lemma apply_guard (P Q X Y : iProp Σ) E F D
-    (ss: ∀ x , x ∈ F -> x ∈ E)
+    (ss1: ∀ x , x ∈ F -> x ∈ E)
+    (ss2: ∀ x , x ∈ D -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ D -> False)
     : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F }&&> Q) ⊢ (P ∗ X ={E}=∗ P ∗ Y).
 Proof.
   unfold guards, guards_with. iIntros "[upd g] [p x]".
   iDestruct ("g" $! P) as "g".
-  iMod (wsat_split2 E F D) as "[sb back]"; trivial.
+  iMod (wsat_split_superset E F D) as "[sb back]"; trivial.
+  { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
   iDestruct ("g" with "[p sb]") as "g".
   { iFrame. iIntros. iFrame. }
   
