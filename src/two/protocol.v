@@ -37,13 +37,16 @@ Global Instance: Params (@inv) 2 := {}.
 
 Record ProtocolMixin P B
     `{Equiv P, PCore P, Op P, Valid P, Inv P, Unit P}
+    {equ: @Equivalence P (≡)}
     `{Equiv B, PCore B, Op B, Valid B, Unit B}
 := {
     protocol_ra_mixin: RAMixin P;
     base_ra_mixin: RAMixin B; (* completely ignore core *)
     
-    protocol_equivalence: @Equivalence P (≡);
- 
+    protocol_unit_valid : ✓ (ε : P);
+    protocol_unit_left_id : LeftId equiv (ε : P) op;
+    protocol_pcore_unit : pcore (ε : P) ≡ Some (ε : P);
+    
     interp: P -> B;
 
     inv_implies_valid: ∀ (p: P) , inv p -> ✓ p;
@@ -104,6 +107,7 @@ Qed.
 
 Definition inved_protocol_ra_mixin {P B}
     `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    {equ: @Equivalence P (≡)}
     `{Equiv B, PCore B, Op B, Valid B, Unit B}
     (pm: ProtocolMixin P B) : RAMixin (InvedProtocol P).
 Proof.
@@ -175,7 +179,54 @@ Proof.
     
     symmetry. apply ra_assoc.
 Qed.
+
+Global Instance inved_protocol_equivalence
+    {P}
+    `{Equiv P}
+    {equ: Equivalence (≡@{P})}
+    : Equivalence (≡@{InvedProtocol P}).
+Proof.
+  split.
+  - unfold Reflexive. intros. unfold "≡", inved_protocol_equiv. destruct x. trivial.
+  - unfold Symmetric. intros x y. unfold "≡", inved_protocol_equiv. destruct x, y.
+      intro. symmetry. trivial.
+  - unfold Transitive. intros x y z. 
+      unfold "≡", inved_protocol_equiv. destruct x, y, z.
+      intros a1 a2. setoid_rewrite a1. trivial.
+Qed.
+
+Canonical Structure inved_protocolO
+    {P}
+    `{Equiv P}
+    {equ: Equivalence (≡@{P})}
+    := discreteO (InvedProtocol P).
     
+Canonical Structure inved_protocolR
+    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    {equ: Equivalence (≡@{P})}
+    `{Equiv B, PCore B, Op B, Valid B, Unit B}
+    (pm: ProtocolMixin P B)
+    :=
+   discreteR (InvedProtocol P) (inved_protocol_ra_mixin pm). 
+
+Global Instance inved_protocol_unit P `{Unit P} : Unit (InvedProtocol P) := Inved (ε : P).
+
+Definition inved_protocol_ucmra_mixin 
+    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    {equ: Equivalence (≡@{P})}
+    `{Equiv B, PCore B, Op B, Valid B, Unit B}
+    (pm: ProtocolMixin P B) : UcmraMixin (InvedProtocol P).
+Proof.
+  destruct pm.
+  split.
+  - unfold "✓", inved_protocol_valid, ε, inved_protocol_unit. 
+  
+  
+
     
+Context {Σ: gFunctors}.
+Context `{!invGS Σ}.
+Context `{!inG Σ (authR (inved_protocolR prot))}.
+
     
   
