@@ -27,6 +27,11 @@ Lemma storage_bulk_inv_empty :
 Lemma storage_bulk_inv_singleton_union i X
   : storage_bulk_inv ({[i]} ∪ X) ⊣⊢ storage_inv i ∗ storage_bulk_inv X.
   Admitted.
+  
+Lemma storage_bulk_inv_singleton i
+  : storage_bulk_inv ({[i]}) ⊣⊢ storage_inv i.
+  Admitted.
+
 
 Definition guards_with (P Q X : iProp Σ) :=
     (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) ={∅}=∗ Q ∗ (Q -∗ X ∗ T))) % I.
@@ -289,3 +294,6 @@ Qed.
 
   
 End Guard.
+
+Notation "P &&{ E }&&> Q" := (guards P Q E)
+  (at level 99, E at level 50, Q at level 200).
