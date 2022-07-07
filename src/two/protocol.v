@@ -26,299 +26,78 @@ From iris.base_logic.lib Require Export wsat.
 
 From iris.bi Require Import derived_laws.
 
+Require Import Two.inved.
+Require Import Two.guard.
+
 (*
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}.
 *)
 
-Class Inv (A : Type) := inv : A → Prop.
-Global Hint Mode Inv ! : typeclass_instances.
-Global Instance: Params (@inv) 2 := {}.
-
-Record ProtocolMixin P B
-    `{Equiv P, PCore P, Op P, Valid P, Inv P, Unit P}
+Record StorageMixin P B
+    `{Equiv P, PCore P, Op P, Valid P, Inv P}
     {equ: @Equivalence P (≡)}
     `{Equiv B, PCore B, Op B, Valid B, Unit B}
 := {
-    protocol_ra_mixin: RAMixin P;
+    protocol_mixin: ProtocolMixin P;
     base_ra_mixin: RAMixin B; (* completely ignore core *)
-    
-    protocol_unit_valid : ✓ (ε : P);
-    protocol_unit_left_id : LeftId equiv (ε : P) op;
-    protocol_pcore_unit : pcore (ε : P) ≡ Some (ε : P);
     
     interp: P -> B;
 
-    inv_implies_valid: ∀ (p: P) , inv p -> ✓ p;
-    inv_proper: Proper ((≡) ==> impl) (@inv P _);
     interp_proper: Proper ((≡) ==> (≡)) (@inv P _);
 }. 
 
-Inductive InvedProtocol (P: Type) :=
-  | Nah : InvedProtocol P
-  | Inved : P -> InvedProtocol P.
-Global Arguments Inved {_} _.
-Global Arguments Nah {_}.
-
-Global Instance inved_protocol_equiv P `{Equiv P} : Equiv (InvedProtocol P) :=
-    λ x y , match x with
-      | Inved a => match y with
-        | Inved b => a ≡ b
-        | Nah => False
-      end
-      | Nah => match y with
-        | Inved b => False
-        | Nah => True
-      end
-    end.
-    
-Global Instance inved_protocol_pcore P `{PCore P} : PCore (InvedProtocol P) :=
-    λ x , match x with
-      | Inved a => 
-        match pcore a with
-          | Some t => Some (Inved t)
-          | None => Some Nah
-        end
-      | Nah => Some Nah
-    end.
-
-Global Instance inved_protocol_valid P `{Inv P} `{Op P} : Valid (InvedProtocol P) :=
-   λ x , match x with
-    | Inved a => ∃ b , inv (a ⋅ b)
-    | Nah => True
-   end.
-   
-Global Instance inved_protocol_op P `{Inv P} `{Op P} : Op (InvedProtocol P) :=
-   λ x y , 
-    match x with
-      | Inved a =>
-        match y with
-          | Inved b => Inved (a ⋅ b)
-          | Nah => Inved a
-        end
-      | Nah => y
-    end.
-   
-   (*
-Lemma whatever (x y z : A)
-  : (x ≡ z) -> (x ⋅ y ≡ z ⋅ y).
-Proof.
-  intros. setoid_rewrite H. trivial.
-Qed.
-*)
-
-Lemma inved_incl_to_incl {P} 
-    `{Equiv P, Op P, Inv P}
-    (a b : P) (mle : Inved a ≼ Inved b) : a ≼ b \/ b ≡ a.
-Proof.
-  unfold "≼".
-  unfold "≼" in mle.
-  destruct mle as [z mle].
-  destruct z.
-  - right. unfold "≡", inved_protocol_equiv, "⋅", inved_protocol_op in mle. trivial.
-  - left. exists p.
-    unfold "≡", inved_protocol_equiv, "⋅", inved_protocol_op in mle. trivial.
-Qed.
-
-Lemma incl_to_inved_incl {P} 
-    `{Equiv P, Op P, Inv P}
-    (a b : P) (mle : a ≼ b) : Inved a ≼ Inved b.
-Proof.
-  unfold "≼".
-  unfold "≼" in mle.
-  destruct mle as [z mle].
-  exists (Inved z).
-  unfold "≡". unfold inved_protocol_equiv. unfold "⋅". unfold inved_protocol_op. trivial.
-Qed.
-
-Global Instance inved_protocol_equivalence
-    {P}
-    `{Equiv P}
-    {equ: Equivalence (≡@{P})}
-    : Equivalence (≡@{InvedProtocol P}).
-Proof.
-  split.
-  - unfold Reflexive. intros. unfold "≡", inved_protocol_equiv. destruct x; trivial.
-  - unfold Symmetric. intros x y. unfold "≡", inved_protocol_equiv. destruct x, y; trivial.
-  - unfold Transitive. intros x y z. 
-      unfold "≡", inved_protocol_equiv. destruct x, y, z; trivial.
-      + contradiction.
-      + intros a1 a2. setoid_rewrite a1. trivial.
-Qed.
-
-
-Definition inved_protocol_ra_mixin {P B}
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
-    {equ: @Equivalence P (≡)}
-    `{Equiv B, PCore B, Op B, Valid B, Unit B}
-    (pm: ProtocolMixin P B) : RAMixin (InvedProtocol P).
-Proof.
-  destruct pm.
-  destruct protocol_ra_mixin0.
-  split.
- - intro.
-    + unfold Proper, equiv, "==>".
-      unfold inved_protocol_equiv.
-      intros a b. destruct a; destruct b; unfold "⋅", inved_protocol_op; intro e; destruct x; trivial; try contradiction.
-      eapply ra_op_proper; trivial.
- - intros x y cx e p.
-    destruct x, y.
-    + exists Nah. split; trivial.
-        destruct cx; trivial. unfold pcore, inved_protocol_pcore in p. inversion p.
-    + inversion e.
-    + inversion e.
-    + unfold "≡", inved_protocol_equiv in e.
-        destruct cx.
-        * unfold pcore, inved_protocol_pcore in p.
-          unfold pcore, inved_protocol_pcore.
-          destruct (pcore p0) eqn:l0.
-          { inversion p. }
-          destruct (pcore p1) eqn:l1.
-          {
-            assert (p1 ≡ p0) as esym. { symmetry. trivial. }
-            have t := ra_core_proper p1 p0 p2 esym l1. 
-            destruct t as [cy [t0 t1]].
-            rewrite t0 in l0. inversion l0.
-          }
-          exists Nah. split; trivial.
-        * 
-        have t := ra_core_proper p0 p1 p2 e.
-        unfold pcore, inved_protocol_pcore in p.
-        destruct (pcore p0) eqn:q.
-
-        ++ assert (Some p3 = Some p2) as pe. { f_equal. inversion p. trivial. }
-          have t0 := t pe. destruct t0 as [cy [t0 t1]]. exists (Inved cy). split.
-          ** unfold pcore. unfold inved_protocol_pcore. rewrite t0. trivial.
-          ** unfold "≡", inved_protocol_equiv. trivial.
-        ++ discriminate.
-    
- - unfold Proper, equiv, impl, "==>". intros x y ipe. unfold "✓", inved_protocol_valid.
-    destruct x; destruct y.
-    + trivial.
-    + inversion ipe.
-    + inversion ipe.
-    + intro h. destruct h as [b ipb]. exists b.
-      unfold inved_protocol_equiv in ipe.
-      eapply inv_proper0. Focus 2. apply ipb. 
-      assert (p ⋅ b ≡ b ⋅ p) as X. { eapply ra_comm. }
-      assert (p0 ⋅ b ≡ b ⋅ p0) as Y. { eapply ra_comm. }
-      setoid_rewrite X. setoid_rewrite Y.
-      eapply ra_op_proper. trivial.
- - unfold Assoc. intros. destruct x, y, z; unfold "⋅"; unfold inved_protocol_op;
-    unfold "≡"; unfold inved_protocol_equiv; trivial. (*apply ra_assoc.*)
- - unfold Comm. intros. destruct x, y; unfold "⋅"; unfold inved_protocol_op;
-    unfold "≡"; unfold inved_protocol_equiv; trivial. (*apply ra_comm.*)
- - intros x cx pc. destruct x, cx.
-    + trivial.
-    + inversion pc.
-    + unfold "⋅", inved_protocol_op. unfold "≡", inved_protocol_equiv. trivial.
-    + unfold "⋅". unfold inved_protocol_op. unfold "≡". unfold inved_protocol_equiv.
-      unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) eqn:pp.
-      * have t := ra_pcore_l p p1 pp. inversion pc. subst p0. trivial.
-      * discriminate.
- - intros x cx pc. destruct x, cx.
-    + unfold pcore. unfold inved_protocol_pcore.
-        unfold "≡". unfold option_equiv. apply Some_Forall2. trivial.
-    + inversion pc.
-    + unfold pcore. unfold inved_protocol_pcore.
-        unfold "≡". unfold option_equiv. apply Some_Forall2. trivial.
-    + unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) eqn:pp; try discriminate.
-      have t := ra_pcore_idemp p p1 pp.
-      inversion pc. subst p0.
-      unfold pcore, inved_protocol_pcore. destruct (pcore p1) eqn:pp1.
-      * unfold "≡". unfold option_equiv. apply Some_Forall2. unfold "≡".
-        unfold inved_protocol_equiv. inversion t. trivial.
-      * inversion t.
- - intros x y cx mle pc. destruct x, y.
-    + exists Nah. split; trivial. unfold "≼". exists Nah. inversion pc. subst cx. trivial.
-    + unfold pcore, inved_protocol_pcore. destruct (pcore p).
-        * exists (Inved p0). split; trivial. unfold "≼". exists (Inved p0).
-              inversion pc. subst cx. unfold "⋅", inved_protocol_op.
-              unfold "≡". unfold inved_protocol_equiv. trivial.
-        * exists Nah. split; trivial. unfold "≼". exists Nah.
-              inversion pc. subst cx. unfold "⋅", inved_protocol_op.
-              unfold "≡". unfold inved_protocol_equiv. trivial.
-    + unfold "≼" in mle. destruct mle as [z mle]. unfold "≡" in mle.
-        unfold inved_protocol_equiv in mle. destruct z; unfold "⋅", inved_protocol_op in mle;
-            contradiction.
-    + have mle2 := inved_incl_to_incl _ _ mle. destruct mle2 as [mle2|yy].
-        * destruct cx.
-          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0).
-            ** exists (Inved p1). split; trivial. unfold "≼". exists (Inved p1).
-                  inversion pc. unfold "⋅", inved_protocol_op.
-                  unfold "≡". unfold inved_protocol_equiv. trivial.
-            ** exists Nah. split; trivial. unfold "≼". exists Nah.
-                  inversion pc. trivial.
-          ++ unfold pcore, inved_protocol_pcore in pc.
-              destruct (pcore p) eqn:pp; try discriminate.
-              inversion pc. subst p2.
-              have t := ra_pcore_mono p p0 p1 mle2 pp.
-              destruct t as [cy [t1 t2]].
-              exists (Inved cy).
-              split.
-              ** unfold pcore, inved_protocol_pcore. rewrite t1. trivial.
-              ** apply incl_to_inved_incl. trivial.
-        * destruct cx.
-          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0).
-            ** exists (Inved p1). split; trivial. unfold "≼". exists (Inved p1).
-                  inversion pc. unfold "⋅", inved_protocol_op.
-                  unfold "≡". unfold inved_protocol_equiv. trivial.
-            ** exists Nah. split; trivial. unfold "≼". exists Nah.
-                  inversion pc. trivial.
-          ++ symmetry in yy. unfold pcore, inved_protocol_pcore in pc.
-              destruct (pcore p) eqn:pp; try discriminate.
-             have j := ra_core_proper p p0 p2 yy pp. destruct j as [cy [j1 j2]].
-             exists (Inved cy).
-             split. { unfold pcore. unfold inved_protocol_pcore. rewrite j1. trivial. }
-             inversion pc. subst p1.
-             unfold "≼". exists Nah. unfold "⋅". unfold inved_protocol_op.
-             unfold "≡", inved_protocol_equiv. symmetry. trivial.
- - intros x y.  unfold "✓". unfold inved_protocol_valid. destruct x, y.
-    + unfold "⋅", inved_protocol_op. trivial.
-    + unfold "⋅", inved_protocol_op. trivial.
-    + unfold "⋅", inved_protocol_op. trivial.
-    + assert (Inved p ⋅ Inved p0 = Inved (p ⋅ p0)) as X by trivial. rewrite X.
-      intro eb.
-      destruct eb as [b eb].
-      exists (p0 ⋅ b).
-
-      eapply inv_proper0. Focus 2. apply eb.
-
-      symmetry. apply ra_assoc.
-Qed.
-
-Canonical Structure inved_protocolO
-    {P}
-    `{Equiv P}
-    {equ: Equivalence (≡@{P})}
-    := discreteO (InvedProtocol P).
-    
-Canonical Structure inved_protocolR
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
-    {equ: Equivalence (≡@{P})}
-    `{Equiv B, PCore B, Op B, Valid B, Unit B}
-    (pm: ProtocolMixin P B)
-    :=
-   discreteR (InvedProtocol P) (inved_protocol_ra_mixin pm). 
-
-Global Instance inved_protocol_unit P `{Unit P} : Unit (InvedProtocol P) := Inved (ε : P).
-
-Definition inved_protocol_ucmra_mixin 
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
-    {equ: Equivalence (≡@{P})}
-    `{Equiv B, PCore B, Op B, Valid B, Unit B}
-    (pm: ProtocolMixin P B) : UcmraMixin (InvedProtocol P).
-Proof.
-  destruct pm.
-  split.
-  - unfold "✓", inved_protocol_valid, ε, inved_protocol_unit. 
+Section PropMap.
+  Context {Σ: gFunctors}.
   
+  Context `{Equiv B, Op B, Valid B, Unit B}.
   
+  Definition wf_prop_map (f: B -> iProp Σ) :=
+      Proper ((≡) ==> (≡)) f
+      /\ f ε ≡ (True)%I
+      /\ (∀ a b , ✓(a ⋅ b) -> f (a ⋅ b) ≡ (f a ∗ f b) % I).
+      
+  
+End PropMap.
 
-    
-Context {Σ: gFunctors}.
-Context `{!invGS Σ}.
-Context `{!inG Σ (authR (inved_protocolR prot))}.
+Section StorageDefs.
+  Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
+  Context `{Equiv P, PCore P, Op P, Inv P, Valid P}.
+  Context {equ: Equivalence (≡@{P})}.
+  Context {storage_mixin: StorageMixin P B}.
 
+  Definition storage_protocol_guards (p: P) (b: B) :=
+      ∀ q , inv (p ⋅ q) -> b ≼ interp P B storage_mixin (p ⋅ q).
+  
+End StorageDefs.
+
+Section StorageLogic.
+  Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
+  Context `{Equiv P, PCore P, Op P, Inv P, Valid P}.
+  Context {equ: Equivalence (≡@{P})}.
+  Context {storage_mixin: StorageMixin P B}.
+  
+  Context {Σ: gFunctors}.
+  Context `{!inG Σ (authUR (inved_protocolUR (protocol_mixin P B storage_mixin)))}.
+  Context `{!invGS Σ}.
+  
+  Definition maps (γ: gname) (f: B -> iProp Σ) : iProp Σ :=
+      ⌜ wf_prop_map f ⌝ ∗
+      ownI γ (
+        ∃ (state: P) ,
+          own γ (● (Inved state))
+          ∗ ⌜ inv state ⌝
+          ∗ (f (interp P B storage_mixin state))
+      ). 
+  
+  Definition p_own (γ: gname) (p: P) : iProp Σ := own γ (◯ (Inved p)).
+  
+  Lemma logic_guard (p: P) (b: B)
+    (g: storage_protocol_guards p b)
+    : maps γ f ⊢ p_own γ p &&{ {[ γ ]} }&&> f b.
+      
+
+Print own.
     
   
+End Storage.

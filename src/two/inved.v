@@ -114,7 +114,7 @@ Proof.
 Qed.
 
 Record ProtocolMixin P
-    `{Equiv P, PCore P, Op P, Valid P, Inv P, Unit P}
+    `{Equiv P, PCore P, Op P, Valid P, Inv P}
     {equ: @Equivalence P (≡)}
 := {
     protocol_ra_mixin: RAMixin P;
@@ -128,7 +128,7 @@ Record ProtocolMixin P
 }.
 
 Definition inved_protocol_ra_mixin {P}
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, Inv P, Valid P}
     {equ: @Equivalence P (≡)}
     (protocol_mixin: ProtocolMixin P) : RAMixin (InvedProtocol P).
 Proof.
@@ -273,7 +273,7 @@ Canonical Structure inved_protocolO
     := discreteO (InvedProtocol P).
     
 Canonical Structure inved_protocolR {P}
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, Inv P, Valid P}
     {equ: Equivalence (≡@{P})}
     (protocol_mixin: ProtocolMixin P)
     :=
@@ -283,7 +283,7 @@ Global Instance inved_protocol_unit P : Unit (InvedProtocol P) := Nah.
 
 
 Definition inved_protocol_ucmra_mixin {P}
-    `{Equiv P, PCore P, Op P, Inv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, Inv P, Valid P}
     {equ: Equivalence (≡@{P})}
     (protocol_mixin: ProtocolMixin P) :
       @UcmraMixin (InvedProtocol P)
@@ -302,10 +302,34 @@ Proof.
   - unfold pcore, inved_protocol_pcore, ε, inved_protocol_unit. trivial.
 Qed.
 
-(*
-Context {Σ: gFunctors}.
-Context `{!invGS Σ}.
-Context `{!inG Σ (authR (inved_protocolR prot))}.
-*)
-    
+Print Cmra'.
+Canonical Structure inved_protocolUR {P}
+    `{Equiv P, PCore P, Op P, Inv P, Valid P}
+    {equ: Equivalence (≡@{P})}
+    (protocol_mixin: ProtocolMixin P) : ucmra
+    :=
+    @Ucmra'
+      (InvedProtocol P)
+       (inved_protocol_equiv P)
+       (cmra_dist (inved_protocolR protocol_mixin))
+       (inved_protocol_pcore P)
+       (inved_protocol_op P)
+       (inved_protocol_valid P)
+       (cmra_validN (inved_protocolR protocol_mixin))
+       (inved_protocol_unit P)
+       (cmra_ofe_mixin (inved_protocolR protocol_mixin))
+       (cmra_mixin (inved_protocolR protocol_mixin))
+      (inved_protocol_ucmra_mixin protocol_mixin).
+
+Section Inved.
+
+
+  Context `{Equiv P, PCore P, Op P, Inv P, Valid P}.
+  Context {equ: Equivalence (≡@{P})}.
+  Context {protocol_mixin: ProtocolMixin P}.
+
+  Context {Σ: gFunctors}.
+  Context `{!inG Σ (authUR (inved_protocolUR protocol_mixin))}.
   
+
+End Inved.
