@@ -14,11 +14,6 @@ Context {Σ: gFunctors}.
 Context `{i : !inG Σ A}.
 Implicit Types a : A.
 
-Lemma stuff (x y: A) (𝛾: gname)  :
-    ((▷ (x ≡ y)) : iProp Σ) ⊢ □ (▷ (x ≡ y)).
-Proof.
-  iIntros.
-    
 Context `{Disc : CmraDiscrete A}.
 
 Definition project (x: iResUR Σ) (𝛾: gname) : option A :=

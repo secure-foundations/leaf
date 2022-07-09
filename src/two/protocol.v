@@ -86,11 +86,65 @@ Section StorageLogic.
   
   Definition p_own (γ: gname) (p: P) : iProp Σ := own γ (◯ (Inved p)).
   
-  Lemma ownIagree (γ : gname) (X Y : iProp Σ) : ownI γ X ∗ ownI γ Y ⊢ (▷ X ≡ ▷ Y).
-  Admitted.
+  (*
+  Lemma next_later (X Y : iProp Σ) :
+      ((Next X) ≡ (Next Y) : iProp Σ)%I ⊢ (internal_eq (▷ X) (▷ Y))%I.
+  Proof.
+    uPred.unseal. split.
+    intros.
+    
+    unfold uPred_holds, uPred_internal_eq_def in H10.
+    unfold uPred_later_def. unfold uPred_internal_eq_def, uPred_holds.
+    
+    Unset Printing Notations.
+    unfold dist in H10.
+    unfold ofe_dist in H10.
+    unfold laterO in H10.
+    unfold later_dist in H10.
+    unfold dist_later in H10.
+    unfold later_car in H10.
+    
+    unfold dist.
+    unfold uPredI.
+    unfold ofe_dist.
+    trivial.
+    uPred_ofe_mixin.
+    
+    
+    
+    unfold dist in H10. unfold laterO in H10.
+    
+    unfold uPred_holds, uPred_later_def.
+    unfold dist, ofe_dist.
+    
+    unfold "≡{n}≡".
+    
+    unfold uPred_later_def.
+    cbv [uPred_internal_eq_def].
+    *)
   
-  Lemma and_later_r (X Y : iProp Σ)
-      : X ∧ ▷ Y ⊢ ▷ (X ∧ Y). Admitted.
+  Lemma ownIagree (γ : gname) (X Y : iProp Σ) : ownI γ X ∗ ownI γ Y ⊢ (▷ X ≡ ▷ Y).
+  Proof.
+    unfold ownI.
+    rewrite <- own_op.
+    iIntros "x".
+    iDestruct (own_valid with "x") as "v".
+    rewrite gmap_view_frag_op_validI.
+    iDestruct "v" as "[#v iu]".
+    unfold invariant_unfold.
+    
+    iDestruct (later_equivI_1 with "iu") as "iu".
+    iDestruct (f_equivI_contractive (λ x , (▷ x)%I) with "iu") as "iu".
+    iFrame.
+  Qed.
+  
+  Lemma and_except0_r (X Y : iProp Σ)
+      : X ∧ ◇ Y ⊢ ◇ (X ∧ Y).
+  Proof.
+    iIntros "l". rewrite bi.except_0_and. iSplit.
+    { iDestruct "l" as "[l _]". iModIntro. iFrame. }
+    { iDestruct "l" as "[_ l]". iFrame. }
+  Qed.
   
   (*Lemma logic_guard_conjunct_fact (γ: gname) (p state: P) (f: B -> iProp Σ)
   : own γ (◯ Inved p)
@@ -101,6 +155,7 @@ Section StorageLogic.
     iDestruct (and_later_r with "x") as "x".
     iMod "x" as "x".*)
   
+  (*
   Lemma and_timeless (X Y : iProp Σ) (ti: Timeless Y)
       : ⊢ (X ∧ (▷ Y) -∗ ◇ (X ∧ Y)) % I.
   Proof.
@@ -115,22 +170,33 @@ Section StorageLogic.
   Proof.
     iIntros "x".  iMod (and_timeless with "x") as "x". iModIntro. iFrame.
   Qed.
+  *)
   
   Lemma apply_timeless (X Y Z W V : iProp Σ) (ti: Timeless Z) (ti2: Timeless W)
       : X ∧ (Y ∗ ▷ (Z ∗ W ∗ V)) -∗ ◇ (X ∧ (Y ∗ Z ∗ W ∗ ▷ (V))).
-      Admitted.
-      
+  Proof.
+      iIntros "l".
+      rewrite bi.except_0_and. iSplit.
+      { iDestruct "l" as "[l _]". iModIntro. iFrame. }
+      iDestruct "l" as "[_ [l [lat0 [lat1 lat2]]]]".
+      iMod "lat0" as "lat0".
+      iMod "lat1" as "lat1".
+      iModIntro. iFrame.
+  Qed.
+  
   Lemma stuff1 (X Y Z W V : iProp Σ)
-      : (X ∧ (Y ∗ Z ∗ W ∗ V)) ⊢ W. Admitted.
-      
+      : (X ∧ (Y ∗ Z ∗ W ∗ V)) ⊢ W.
+  Proof.
+    iIntros "x". iDestruct "x" as "[_ [_ [_ [w _]]]]". iFrame.
+  Qed.
+  
   Lemma stuff2 (γ: gname) (p state: P) (T W: iProp Σ)
-      : own γ (◯ Inved p) ∧ (T ∗ own γ (● Inved state) ∗ W)
-          ⊢ ⌜ p ≼ state ⌝. Admitted.
+      : own γ (◯ Inved p) ∧ (T ∗ own γ (● Inved state) ∗ W) ⊢ ⌜ p ≼ state ⌝. Admitted.
   
   Lemma logic_guard (p: P) (b: B) (γ: gname) (f: B -> iProp Σ)
     (g: storage_protocol_guards p b)
     : maps γ f ⊢ (p_own γ p &&{ {[ γ ]} }&&> ▷ f b).
-  Proof.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold guards, guards_with, maps.
     iIntros "[%wf #inv]".
     destruct wf as [wf exists_p].
@@ -138,7 +204,7 @@ Section StorageLogic.
     rewrite storage_bulk_inv_singleton. unfold storage_inv.
     unfold p_own.
     iAssert ((own γ (◯ Inved p) ∧
-        (∃ state : P, T ∗ ▷
+        (◇ ∃ state : P, T ∗ ▷
                (own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp P B storage_mixin state))))%I)
         with "[po b]" as "x".
     { iSplit. { iFrame. } 
@@ -147,9 +213,10 @@ Section StorageLogic.
       iDestruct (ownIagree γ P0 _ with "[inv own]") as "eq".
       { iSplitL. { iFrame "own". } iFrame "inv". }
       iRewrite "eq" in "lat".
-      iDestruct (bi.later_exist with "lat") as (state) "lat".
+      iMod (bi.later_exist_except_0 with "lat") as (state) "lat".
       iExists state. iFrame.
     }
+    iMod (and_except0_r with "x") as "x".
     rewrite bi.and_exist_l.
     iDestruct "x" as (state) "x".
     iMod (apply_timeless with "x") as "x".
@@ -188,11 +255,7 @@ Section StorageLogic.
     iFrame "inv".
     iNext. iExists state. iFrame.
     setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
-    
-    Unshelve.
-    apply inhabits.
-    apply exists_inhabited.
-    apply inhabitant.
+Qed.
       
       
 
