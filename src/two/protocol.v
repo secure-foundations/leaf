@@ -28,6 +28,7 @@ From iris.bi Require Import derived_laws.
 
 Require Import Two.inved.
 Require Import Two.guard.
+Require Import Two.auth_frag_util.
 
 (*
 Context {Σ: gFunctors}.
@@ -35,7 +36,7 @@ Context `{!invGS Σ}.
 *)
 
 Record StorageMixin P B
-    `{Equiv P, PCore P, Op P, Valid P, PInv P}
+    `{Equiv P, PCore P, Op P, Valid P, PInv P, Unit P}
     {equ: @Equivalence P (≡)}
     `{Equiv B, PCore B, Op B, Valid B, Unit B}
 := {
@@ -47,6 +48,26 @@ Record StorageMixin P B
     interp_proper: Proper ((≡) ==> (≡)) interp;
     interp_val: ∀ p: P , pinv p -> ✓ interp p;
 }. 
+
+Global Instance sm_interp_proper
+    {P B: Type}
+    `{Equiv P, PCore P, Op P, Valid P, PInv P, Unit P}
+    {equ: @Equivalence P (≡)}
+    `{Equiv B, PCore B, Op B, Valid B, Unit B}
+    {sm: StorageMixin P B}
+    : Proper ((≡) ==> (≡)) (interp P B sm).
+Proof.
+  destruct sm. trivial.
+Qed.
+
+Global Instance inved_proper
+    {P: Type}
+    `{Equiv P}
+    : Proper ((≡) ==> (≡)) (@Inved P).
+Proof.
+  unfold Proper, "==>". intros.
+  unfold "≡", inved_protocol_equiv. trivial.
+Qed.
 
 Section PropMap.
   Context {Σ: gFunctors}.
@@ -63,14 +84,21 @@ End PropMap.
 
 Section StorageLogic.
   Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
-  Context `{Equiv P, PCore P, Op P, PInv P, Valid P}.
+  Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}.
+  
+  
   Context {equ: Equivalence (≡@{P})}.
   Context {equb: Equivalence (≡@{B})}.
   Context {storage_mixin: StorageMixin P B}.
   
   Definition storage_protocol_guards (p: P) (b: B) :=
       ∀ q , pinv (p ⋅ q) -> b ≼ interp P B storage_mixin (p ⋅ q).
-  
+      
+  Definition storage_protocol_exchange (p1 p2: P) (b1 b2: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
+          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
+
   Context {Σ: gFunctors}.
   Context `{!inG Σ (authUR (inved_protocolUR (protocol_mixin P B storage_mixin)))}.
   Context `{!invGS Σ}.
@@ -190,8 +218,40 @@ Section StorageLogic.
     iIntros "x". iDestruct "x" as "[_ [_ [_ [w _]]]]". iFrame.
   Qed.
   
+  Definition incl_of_inved_incl_assumes_unital (p1 p2 : P)
+    (incll :
+      @included (InvedProtocol P) (inved_protocol_equiv P) (inved_protocol_op P)
+      (Inved p1) (Inved p2)) : p1 ≼ p2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    unfold "≼" in incll. destruct incll as [z incll].
+    destruct z.
+    - unfold "⋅", inved_protocol_op, "≡", inved_protocol_equiv in incll.
+      unfold "≼". exists ε.
+      setoid_rewrite (@comm P).
+      + destruct storage_mixin. destruct protocol_mixin0.
+          setoid_rewrite incll.
+          unfold LeftId in protocol_unit_left_id.
+          symmetry.
+          apply protocol_unit_left_id.
+      + destruct storage_mixin. destruct protocol_mixin0. destruct protocol_ra_mixin.
+          apply ra_comm.
+   - unfold "≡", inved_protocol_equiv, "⋅", inved_protocol_op in incll.
+      unfold "≼". exists p. trivial.
+  Qed.
+  
   Lemma stuff2 (γ: gname) (p state: P) (T W: iProp Σ)
-      : own γ (◯ Inved p) ∧ (T ∗ own γ (● Inved state) ∗ W) ⊢ ⌜ p ≼ state ⌝. Admitted.
+      : own γ (◯ Inved p) ∧ (T ∗ own γ (● Inved state) ∗ W) ⊢ ⌜ p ≼ state ⌝. 
+  Proof.
+    iIntros "x".
+    iAssert (((own γ (● Inved state)) ∧ (own γ (◯ Inved p)))%I) with "[x]" as "t".
+    { iSplit. 
+        { iDestruct "x" as "[_ [_ [x _]]]". iFrame. }
+        { iDestruct "x" as "[x _]". iFrame. }
+    }
+    iDestruct (auth_frag_conjunct with "t") as "%incll".
+    iPureIntro.
+    apply incl_of_inved_incl_assumes_unital. trivial.
+  Qed.
   
   Lemma logic_guard (p: P) (b: B) (γ: gname) (f: B -> iProp Σ)
     (g: storage_protocol_guards p b)
@@ -255,8 +315,95 @@ Section StorageLogic.
     iFrame "inv".
     iNext. iExists state. iFrame.
     setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
-Qed.
+  Qed.
+   
+  Lemma own_sep_inv_incll γ (p1 p2 state : P)
+      (cond: ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q))
+    : own γ (◯ Inved p1) ∗ own γ (● Inved state) ⊢
+      ∃ z , ⌜ state ≡ p1 ⋅ z ⌝ ∗ own γ (◯ Inved p2) ∗ own γ (● Inved (p2 ⋅ z)).
+  Proof.
+    iIntros "x".
+    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "x") as "x".
+    {
+      Print Instances Equiv.
+      intros z eq.
       
+      unfold "≡" in eq.
+      Set Printing Implicit.
+      unfold inved_protocolUR, inved_protocolR in eq.
+      
+      Print Ucmra'.
+      unfold inved_protocolUR, cmra_ofe_mixin, ofe_equiv in eq.
+      Print Ucmra'.
+      unfold inved_protocolR in eq.
+    
+  
+  Lemma exchange_guard
+    (p1 p2: P) (b1 b2: B) (γ: gname) (f: B -> iProp Σ)
+    (exchng: storage_protocol_exchange p1 p2 b1 b2)
+    : maps γ f ⊢
+        p_own γ p1 ∗ ▷ f b1 ={ {[ γ ]} }=∗ p_own γ p2 ∗ ▷ f b2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    unfold maps.
+    iIntros "[%wfm #m] [p f]".
+    destruct wfm as [wfm inh]. 
+    rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+    iIntros "[w oe]".
+    iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
+    { iFrame "w". iFrame "m". iFrame "oe". }
+    iMod (bi.later_exist_except_0 with "latp") as (state) "lat".
+    iDestruct "lat" as "[ois [ps fi]]".
+    iMod "ois" as "ois".
+    iMod "ps" as "%ps".
+    unfold p_own.
+    iDestruct (own_sep_inv_incll γ p1 p2 state with "[p ois]") as (z) "[%incll [p ois]]".
+    { unfold storage_protocol_exchange in exchng. intros q pi.
+        have exch := exchng q pi. intuition. }
+    { iFrame. }
+    
+    destruct wfm as [f_prop [f_unit f_op]]. (* need f Proper for the next step *)
+    
+    assert (f (interp P B storage_mixin state)
+          ≡ f(interp P B storage_mixin (p1 ⋅ z))) as equiv_interp_state.
+      { setoid_rewrite incll. trivial. }
+    
+    setoid_rewrite equiv_interp_state.
+    iDestruct (bi.later_sep with "[fi f]") as "f_op". { iFrame "fi". iFrame "f". }
+    
+    unfold storage_protocol_exchange in exchng.
+    assert (pinv (p1 ⋅ z)) as pinv_p1_z. {
+        destruct storage_mixin. destruct protocol_mixin0.
+        setoid_rewrite <- incll. trivial.
+    }
+
+    have exch := exchng z pinv_p1_z.
+    destruct exch as [pinv_p2_z [val_interp1 interp_eq]].
+    assert (✓ (interp P B storage_mixin (p2 ⋅ z) ⋅ b2)) as val_interp2.
+    {
+      destruct storage_mixin. destruct base_ra_mixin0.
+      setoid_rewrite <- interp_eq. trivial.
+    }
+    
+    setoid_rewrite <- f_op; trivial.
+
+    setoid_rewrite interp_eq.
+    setoid_rewrite f_op; trivial.
+    
+    iDestruct "f_op" as "[fi fb]".
+
+    iAssert ((▷ ∃ state0 : P,
+          own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp P B storage_mixin state0))%I)
+          with "[ois fi]"
+          as "inv_to_return".
+    {
+      iModIntro. (* strip later *)
+      iExists (p2 ⋅ z). iFrame "ois". iFrame "fi".
+      iPureIntro. trivial.
+    }
+    iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
+    { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
+    iModIntro. iModIntro. iFrame.
+Qed.
       
 
 Print own.

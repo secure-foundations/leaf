@@ -114,21 +114,22 @@ Proof.
 Qed.
 
 Record ProtocolMixin P
-    `{Equiv P, PCore P, Op P, Valid P, PInv P}
+    `{Equiv P, PCore P, Op P, Valid P, PInv P, Unit P}
     {equ: @Equivalence P (≡)}
 := {
     protocol_ra_mixin: RAMixin P;
     
     (*protocol_unit_valid : ✓ (ε : P);
-    protocol_unit_left_id : LeftId equiv (ε : P) op;
     protocol_pcore_unit : pcore (ε : P) ≡ Some (ε : P);*)
+    
+    protocol_unit_left_id : LeftId equiv (ε : P) op;
     
     inv_implies_valid: ∀ (p: P) , pinv p -> ✓ p;
     inv_proper: Proper ((≡) ==> impl) (@pinv P _);
 }.
 
 Definition inved_protocol_ra_mixin {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P}
+    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
     {equ: @Equivalence P (≡)}
     (protocol_mixin: ProtocolMixin P) : RAMixin (InvedProtocol P).
 Proof.
@@ -273,7 +274,7 @@ Canonical Structure inved_protocolO
     := discreteO (InvedProtocol P).
     
 Canonical Structure inved_protocolR {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P}
+    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
     (protocol_mixin: ProtocolMixin P)
     :=
@@ -283,7 +284,7 @@ Global Instance inved_protocol_unit P : Unit (InvedProtocol P) := Nah.
 
 
 Definition inved_protocol_ucmra_mixin {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P}
+    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
     (protocol_mixin: ProtocolMixin P) :
       @UcmraMixin (InvedProtocol P)
@@ -304,7 +305,7 @@ Qed.
 
 Print Cmra'.
 Canonical Structure inved_protocolUR {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P}
+    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
     (protocol_mixin: ProtocolMixin P) : ucmra
     :=
@@ -321,10 +322,11 @@ Canonical Structure inved_protocolUR {P}
        (cmra_mixin (inved_protocolR protocol_mixin))
       (inved_protocol_ucmra_mixin protocol_mixin).
 
+(*
 Section Inved.
 
 
-  Context `{Equiv P, PCore P, Op P, PInv P, Valid P}.
+  Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}.
   Context {equ: Equivalence (≡@{P})}.
   Context {protocol_mixin: ProtocolMixin P}.
 
@@ -333,3 +335,5 @@ Section Inved.
   
 
 End Inved.
+
+*)

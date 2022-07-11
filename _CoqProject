@@ -1,6 +1,9 @@
 -Q src/two Two
 
+src/two/auth_frag_util.v
+src/two/conjunct_own_rule.v
 src/two/guard.v
+src/two/inved.v
 src/two/protocol.v
 
 -Q src/burrow Burrow
