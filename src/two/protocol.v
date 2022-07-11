@@ -30,6 +30,8 @@ Require Import Two.inved.
 Require Import Two.guard.
 Require Import Two.auth_frag_util.
 
+From iris.base_logic Require Import bi.
+
 (*
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}.
@@ -86,11 +88,6 @@ Section StorageLogic.
   Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
   Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}.
   
-  Lemma own_sep_inv_incll_helper (p1 p2 st : P)
-    (cond : ∀ q : P, pinv (p1 ⋅ q) → pinv (p2 ⋅ q))
-   : ∀ (z: InvedProtocol P) , Inved p1 ⋅ z ≡ Inved st → ✓ (Inved p2 ⋅ z).
-   Admitted.
-  
   Context {equ: Equivalence (≡@{P})}.
   Context {equb: Equivalence (≡@{B})}.
   Context {storage_mixin: StorageMixin P B}.
@@ -102,6 +99,16 @@ Section StorageLogic.
       ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
           /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
           /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
+          
+          (*
+  Definition storage_protocol_deposit (p1 p2: P) (b1: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
+          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q).
+         *) 
+          
+  Global Instance my_discrete : CmraDiscrete (inved_protocolR (protocol_mixin P B storage_mixin)).
+  Proof. apply discrete_cmra_discrete. Qed.
 
   Context {Σ: gFunctors}.
   Context `{!inG Σ (authUR (inved_protocolUR (protocol_mixin P B storage_mixin)))}.
@@ -322,22 +329,113 @@ Section StorageLogic.
   Qed.
   
 
+  Lemma own_sep_inv_incll_helper (p1 p2 st : P)
+    (cond : ∀ q : P, pinv (p1 ⋅ q) → pinv (p2 ⋅ q))
+   : ∀ (z: InvedProtocol P) , ✓ (Inved st) -> Inved p1 ⋅ z ≡ Inved st → ✓ (Inved p2 ⋅ z).
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    intros z v eq.
+    destruct z.
+    - unfold "⋅", inved_protocol_op.
+      unfold "⋅", inved_protocol_op in eq.
+      unfold "≡", inved_protocol_equiv in eq.
+      unfold "✓", inved_protocol_valid. 
+      
+      setoid_rewrite <- eq in v.
+      {
+        unfold "✓", inved_protocol_valid in v. 
+        destruct v as [v pi].
+        have c := cond v pi.
+        exists v.
+        trivial.
+      }
+      { destruct storage_mixin. trivial. }
+    - unfold "⋅", inved_protocol_op in eq.
+      unfold "≡", inved_protocol_equiv in eq.
+      unfold "⋅", inved_protocol_op.
+      
+      setoid_rewrite <- eq in v.
+      {
+        unfold "✓", inved_protocol_valid in v.
+        unfold "✓", inved_protocol_valid.
+        destruct v as [v pi].
+        
+        assert (pinv (p1 ⋅ (p ⋅ v))) as pinv1. {
+          destruct storage_mixin.
+          destruct protocol_mixin0.
+          unfold Proper, "==>", impl in inv_proper.
+          apply inv_proper with (x := p1 ⋅ p ⋅ v); trivial.
+          destruct protocol_ra_mixin.
+          symmetry.
+          apply ra_assoc.
+        }
+        have c := cond (p ⋅ v) pinv1.
+        exists v.
+        
+        destruct storage_mixin.
+        destruct protocol_mixin0.
+        unfold Proper, "==>", impl in inv_proper.
+        apply inv_proper with (x := p2 ⋅ (p ⋅ v)); trivial.
+        destruct protocol_ra_mixin.
+        apply ra_assoc.
+      }
+      { destruct storage_mixin. trivial. }
+  Qed.
+        
+  Lemma op_nah (p1 state : P)
+    : Inved p1 ⋅ Nah ≡ Inved state -> p1 ≡ state.
+  Proof. intros. trivial. Qed.
   
-    
+  Lemma op_inved_inved (p1 p2 p : P)
+    : Inved p1 ⋅ Inved p2 ≡ Inved p -> p1 ⋅ p2 ≡ p.
+  Proof. intros. trivial. Qed.
+        
   Lemma own_sep_inv_incll γ (p1 p2 state : P)
       (cond: ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q))
     : own γ (◯ Inved p1) ∗ own γ (● Inved state) ⊢
       ∃ (z: P) , ⌜ state ≡ p1 ⋅ z ⌝ ∗ own γ (◯ Inved p2) ∗ own γ (● Inved (p2 ⋅ z)).
   Proof.
-    iIntros "x".
-    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "x") as (z) "x".
+    iIntros "[x y]".
+    iDestruct (own_valid with "y") as "%val".
+    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "[x y]") as "x".
     {
       intro.
-      apply own_sep_inv_incll_helper. trivial.
+      apply own_sep_inv_incll_helper; trivial.
+      generalize val. rewrite auth_auth_valid. trivial.
     }
-    iExists z.
-    
-    
+    { iFrame. }
+    iDestruct "x" as (z) "[%eq [frag auth]]".
+    destruct z.
+    {
+      have eq0 := op_nah _ _ eq.
+      assert (Inved p2 ⋅ Nah ≡ Inved p2) as eq1 by trivial.
+      setoid_rewrite eq1.
+      iExists (ε:P).
+      assert (p2 ⋅ ε ≡ p2) as eq2.
+      { destruct storage_mixin. destruct protocol_mixin0.
+          destruct protocol_ra_mixin.
+          rewrite ra_comm.
+          apply protocol_unit_left_id.
+      }
+      setoid_rewrite eq2.
+      iFrame.
+      iPureIntro.
+      assert (p1 ⋅ ε ≡ p1) as eq3.
+      { destruct storage_mixin. destruct protocol_mixin0.
+          destruct protocol_ra_mixin.
+          rewrite ra_comm.
+          apply protocol_unit_left_id.
+      }
+      setoid_rewrite eq3. symmetry. trivial.
+    }
+    {
+      iExists p.
+      
+      assert (Inved p2 ⋅ Inved p ≡ Inved (p2 ⋅ p)) as eq0 by trivial.
+      setoid_rewrite eq0.
+      iFrame.
+      iPureIntro. symmetry. apply op_inved_inved. trivial.
+    }
+   Qed.
   
   Lemma exchange_guard
     (p1 p2: P) (b1 b2: B) (γ: gname) (f: B -> iProp Σ)
@@ -404,10 +502,57 @@ Section StorageLogic.
     iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
     { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
     iModIntro. iModIntro. iFrame.
-Qed.
-      
-
-Print own.
-    
+  Qed.
   
+  Lemma inved_op (a b : P) :
+      Inved (a ⋅ b) ≡ Inved a ⋅ Inved b.
+  Proof using H4 H6 H7 P equ. trivial. Qed.
+
+  Lemma p_own_op a b γ :
+      p_own γ (a ⋅ b) ⊣⊢ p_own γ a ∗ p_own γ b.
+  Proof.
+    unfold p_own.
+    setoid_rewrite inved_op.
+    rewrite auth_frag_op.
+    apply own_op.
+  Qed.
+  
+  Lemma auth_inved_conjure_unit γ (state: P)
+      : own γ (● Inved state) ==∗ own γ (● Inved state) ∗ own γ (◯ Inved ε).
+  Admitted.
+  
+  Lemma p_own_valid γ f
+      : maps γ f ⊢ True ={ {[ γ ]} }=∗ p_own γ ε.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    unfold maps.
+    iIntros "[%wfm #m]".
+    destruct wfm as [wfm inh]. 
+      
+    rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+    iIntros "_ [w oe]".
+    iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
+    { iFrame "w". iFrame "m". iFrame "oe". }
+    iMod (bi.later_exist_except_0 with "latp") as (state) "lat".
+    iDestruct "lat" as "[ois [ps fi]]".
+    iMod "ois" as "ois".
+    iMod "ps" as "%ps".
+    unfold p_own.
+    iMod (auth_inved_conjure_unit γ state with "ois") as "[ois u]".
+    iAssert ((▷ ∃ state0 : P,
+          own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp P B storage_mixin state0))%I)
+          with "[ois fi]"
+          as "inv_to_return".
+    {
+      iModIntro. (* strip later *)
+      iExists state. iFrame "ois". iFrame "fi".
+      iPureIntro. trivial.
+    }
+    iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
+    { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
+    iModIntro. iModIntro. iFrame.
+   Qed.
+
+   Lemma       
+
+ 
 End Storage.

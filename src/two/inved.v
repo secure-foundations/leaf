@@ -27,7 +27,7 @@ Inductive InvedProtocol (P: Type) :=
 Global Arguments Inved {_} _.
 Global Arguments Nah {_}.
 
-Global Instance inved_protocol_equiv P `{Equiv P} : Equiv (InvedProtocol P) :=
+Global Instance inved_protocol_equiv P `{Equiv P} : Equiv (InvedProtocol P) | 0 :=
     λ x y , match x with
       | Inved a => match y with
         | Inved b => a ≡ b
@@ -39,7 +39,7 @@ Global Instance inved_protocol_equiv P `{Equiv P} : Equiv (InvedProtocol P) :=
       end
     end.
     
-Global Instance inved_protocol_pcore P `{PCore P} : PCore (InvedProtocol P) :=
+Global Instance inved_protocol_pcore P `{PCore P} : PCore (InvedProtocol P) | 0 :=
     λ x , match x with
       | Inved a => 
         match pcore a with
@@ -49,13 +49,13 @@ Global Instance inved_protocol_pcore P `{PCore P} : PCore (InvedProtocol P) :=
       | Nah => Some Nah
     end.
 
-Global Instance inved_protocol_valid P `{PInv P} `{Op P} : Valid (InvedProtocol P) :=
+Global Instance inved_protocol_valid P `{PInv P} `{Op P} : Valid (InvedProtocol P) | 0 :=
    λ x , match x with
     | Inved a => ∃ b , pinv (a ⋅ b)
     | Nah => True
    end.
    
-Global Instance inved_protocol_op P `{PInv P} `{Op P} : Op (InvedProtocol P) :=
+Global Instance inved_protocol_op P `{PInv P} `{Op P} : Op (InvedProtocol P) | 0 :=
    λ x y , 
     match x with
       | Inved a =>
