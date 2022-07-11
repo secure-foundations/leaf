@@ -86,6 +86,10 @@ Section StorageLogic.
   Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
   Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}.
   
+  Lemma own_sep_inv_incll_helper (p1 p2 st : P)
+    (cond : ∀ q : P, pinv (p1 ⋅ q) → pinv (p2 ⋅ q))
+   : ∀ (z: InvedProtocol P) , Inved p1 ⋅ z ≡ Inved st → ✓ (Inved p2 ⋅ z).
+   Admitted.
   
   Context {equ: Equivalence (≡@{P})}.
   Context {equb: Equivalence (≡@{B})}.
@@ -218,7 +222,7 @@ Section StorageLogic.
     iIntros "x". iDestruct "x" as "[_ [_ [_ [w _]]]]". iFrame.
   Qed.
   
-  Definition incl_of_inved_incl_assumes_unital (p1 p2 : P)
+  Lemma incl_of_inved_incl_assumes_unital (p1 p2 : P)
     (incll :
       @included (InvedProtocol P) (inved_protocol_equiv P) (inved_protocol_op P)
       (Inved p1) (Inved p2)) : p1 ≼ p2.
@@ -316,26 +320,23 @@ Section StorageLogic.
     iNext. iExists state. iFrame.
     setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
   Qed.
-   
+  
+
+  
+    
   Lemma own_sep_inv_incll γ (p1 p2 state : P)
       (cond: ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q))
     : own γ (◯ Inved p1) ∗ own γ (● Inved state) ⊢
-      ∃ z , ⌜ state ≡ p1 ⋅ z ⌝ ∗ own γ (◯ Inved p2) ∗ own γ (● Inved (p2 ⋅ z)).
+      ∃ (z: P) , ⌜ state ≡ p1 ⋅ z ⌝ ∗ own γ (◯ Inved p2) ∗ own γ (● Inved (p2 ⋅ z)).
   Proof.
     iIntros "x".
-    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "x") as "x".
+    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "x") as (z) "x".
     {
-      Print Instances Equiv.
-      intros z eq.
-      
-      unfold "≡" in eq.
-      Set Printing Implicit.
-      unfold inved_protocolUR, inved_protocolR in eq.
-      
-      Print Ucmra'.
-      unfold inved_protocolUR, cmra_ofe_mixin, ofe_equiv in eq.
-      Print Ucmra'.
-      unfold inved_protocolR in eq.
+      intro.
+      apply own_sep_inv_incll_helper. trivial.
+    }
+    iExists z.
+    
     
   
   Lemma exchange_guard
