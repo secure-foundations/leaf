@@ -101,6 +101,20 @@ Section StorageLogic.
       ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
           /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
           /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
+          
+  Definition storage_protocol_update (p1 p2: P) :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q).
+          
+  Definition storage_protocol_withdraw (p1 p2: P) (b2: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
+          
+  Definition storage_protocol_deposit (p1 p2: P) (b1: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
+          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q).
+          
                    
   Global Instance my_discrete : CmraDiscrete (inved_protocolR (protocol_mixin P B storage_mixin)).
   Proof. apply discrete_cmra_discrete. Qed.
@@ -569,11 +583,6 @@ Section StorageLogic.
     iModIntro. iModIntro. iFrame.
    Qed.
     
-   Definition storage_protocol_deposit (p1 p2: P) (b1: B)  :=
-      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
-          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
-          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q).
-
    Lemma logic_deposit
       (p1 p2: P) (b1: B) (γ: gname) (f: B -> iProp Σ)
       (exchng: storage_protocol_deposit p1 p2 b1)
@@ -592,11 +601,6 @@ Section StorageLogic.
     iModIntro. iFrame "pb".
    Qed.
    
-  Definition storage_protocol_withdraw (p1 p2: P) (b2: B)  :=
-      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
-          (*/\ ✓(interp P B storage_mixin (p1 ⋅ q))*)
-          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
-          
   Instance valid_proper_base : Proper ((≡) ==> impl) (@valid B _).
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
     destruct storage_mixin.
@@ -647,10 +651,6 @@ Section StorageLogic.
     iModIntro. iFrame.
    Qed.
    
-   Definition storage_protocol_update (p1 p2: P) :=
-      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
-          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q).
-          
   Lemma logic_update
       (p1 p2: P) (γ: gname) (f: B -> iProp Σ)
       (exchng: storage_protocol_update p1 p2)
