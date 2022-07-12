@@ -285,22 +285,18 @@ Proof.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Definition rw_borrow_back_cond {S} `{!EqDecision S} (f: RwLock S) (m: S)
-  := ∀ p ,
-    I_defined (f ⋅ p) -> ∃ z , (dot m z) = I (f ⋅ p).
-
 Lemma rw_mov_shared_borrow {S} `{!EqDecision S} (x: S)
-  : rw_borrow_back_cond (ShGuard x) x.
+  : storage_protocol_guards (ShGuard x) (Full x).
 Proof.
-  unfold rw_borrow_back_cond. intros. exists unit. rewrite unit_dot.
-  unfold ShGuard, "⋅", rw_op, I, I_defined in *. destruct p. destruct H.
-  - exfalso. unfold rw_unit in H. inversion H. unfold "⋅" in H5. unfold free_op in H5.
-      destruct f; try discriminate. case_decide; try discriminate.
-  - unfold "⋅", exc_op, free_op in *. unfold P in H. destruct e, e0, e1, f; try contradiction;
+  unfold storage_protocol_guards. intros p H. unfold "≼". exists ε. rewrite base_opt_unit_right_id.
+  unfold ShGuard, "⋅", rw_op, pinv, rwlock_pinv, interp, rwlock_interp  in *. destruct p.
+  unfold "⋅", exc_op, free_op in *. unfold pinv, rwlock_pinv in H. destruct e, e0, e1, f; try contradiction;
       try (case_decide); try contradiction; try (destruct p); try (destruct p);
       try intuition; try (destruct u); try contradiction; unfold free_count in *; try lia;
-      intuition; try discriminate; destruct b; intuition; destruct u0; intuition;
-      try discriminate.
+      intuition; try discriminate; destruct b; intuition; intuition;
+      try discriminate; try (subst x; trivial); try (subst s; trivial).
+      - destruct u0. intuition.
+      - destruct u0. intuition.
 Qed.
 
 Global Instance free_eqdec {S} `{!EqDecision S} : EqDecision (Free S).
@@ -312,129 +308,46 @@ Proof. solve_decision. Qed.
 Global Instance rwlock_eqdec {S} `{!EqDecision S} : EqDecision (RwLock S).
 Proof. solve_decision. Qed.
 
-Lemma rw_valid_monotonic {S} `{!EqDecision S} `{!TPCM S}
-  (f: RwLock S) (g: RwLock S) : V (f ⋅ g) -> V f.
-Proof.
-  unfold V. intro. deex. exists (g ⋅ z). unfold "⋅" in *. rewrite rw_op_assoc. trivial. Qed.
-  
-Lemma rw_unit_valid {S} `{!EqDecision S} `{!TPCM S}
-  : V (rw_unit S).
-Proof.
-  unfold V. exists (Central false 0 (unit: S)).
-    unfold "⋅".
-    rewrite rw_op_comm.
-    rewrite rw_unit_dot. unfold P, rw_unit, Central. unfold free_count. crush.
-Qed.
-  
-Lemma rw_mov_reflex {S} `{!EqDecision S} `{!TPCM S}
-  (f: RwLock S) : rw_mov f f.
-Proof.
-  unfold rw_mov. intros. split; trivial. Qed.
-  
-Lemma rw_mov_trans {S} `{!EqDecision S} `{!TPCM S}
-  (f g h: RwLock S) : rw_mov f g -> rw_mov g h -> rw_mov f h.
-Proof. unfold rw_mov. intuition.
-  - have q := H p. have q0 := H0 p. intuition.
-  - have q := H p. have q0 := H0 p. intuition.
-    rewrite H4. trivial.
+Global Instance rwlock_equiv {S} `{EqDecision S} : Equiv (RwLock S) := λ a b , a = b.
+
+Global Instance rwlock_pcore {S} `{EqDecision S} : PCore (RwLock S) := λ a , None.
+Global Instance rwlock_valid {S} `{EqDecision S} : Valid (RwLock S) := λ a , True.
+
+Lemma rwlock_valid_interp {S} `{EqDecision S} (p: RwLock S) : ✓ interp p.
+Proof. destruct p. unfold "✓", base_opt_valid. unfold interp, rwlock_interp.
+    destruct e; trivial. destruct p; trivial. destruct e1; trivial;
+    destruct p; trivial.
 Qed.
 
-Lemma left_is_unit {S} `{!EqDecision S} (a b: RwLock S)
-  : rw_op a b = rw_unit S -> a = rw_unit S.
-Proof.
-  intros. unfold rw_op, rw_unit in *. destruct a, b. inversion H. f_equal.
-  - unfold "⋅" in *. unfold exc_op in H1. destruct e; unfold exc_op in *; intuition.
-      destruct e2; intuition; try discriminate.
-  - unfold "⋅" in *. unfold exc_op in H2. destruct e; unfold exc_op in *; intuition;
-      destruct e2; intuition; try discriminate; destruct e1; intuition; destruct e0; intuition;
-      try discriminate; try subst e4; try subst e3; trivial; try destruct e3; trivial;
-      try discriminate; try destruct e4; try discriminate.
-  - unfold "⋅" in *. unfold exc_op in H3. destruct e1, e4; intuition; try discriminate.
-  - lia.
-  - unfold "⋅" in *. unfold free_op in *. destruct f; try (symmetry; trivial); destruct f0;
-      trivial; try case_decide; try discriminate.
-Qed.
-  
-Lemma rw_mov_monotonic {S} `{!EqDecision S} `{!TPCM S} : forall x y z ,
-      rw_mov x y -> V (rw_op x z) -> V (rw_op y z) /\ rw_mov (rw_op x z) (rw_op y z).
-Proof.
-  intros. assert (V (rw_op y z)) as Vrw.
-  - have h : Decision (rw_op y z = rw_unit S) by solve_decision. destruct h.
-    + rewrite e. apply rw_unit_valid.
-    + unfold V in *.
-      deex. unfold rw_mov in H. have h := H (rw_op z z0).
-      unfold I_defined in h. unfold "⋅" in *.  intuition.
-      rewrite rw_op_assoc in H2.
-      have h := H2 H0. destruct_ands. destruct H3.
-      * rewrite rw_op_assoc in H3.
-        have liu := left_is_unit _ _ H3. contradiction.
-      * exists z0. rewrite rw_op_assoc in H3. trivial.
-  - split; trivial. unfold rw_mov. intros. unfold rw_mov in H.
-    unfold "⋅" in *. rewrite <- rw_op_assoc. rewrite <- rw_op_assoc.
-      apply H.
-      rewrite <- rw_op_assoc in H1. trivial.
+Definition rwlock_ra_mixin S {eqdec: EqDecision S} : RAMixin (@RwLock S eqdec).
+Proof. split.
+  - typeclasses eauto.
+  - unfold pcore, base_opt_pcore. intros. discriminate.
+  - typeclasses eauto.
+  - unfold Assoc. intros. apply rw_op_assoc.
+  - unfold Comm. intros. apply rw_op_comm.
+  - unfold pcore, base_opt_pcore. intros. discriminate.
+  - unfold pcore, base_opt_pcore. intros. discriminate.
+  - unfold pcore, base_opt_pcore. intros. discriminate.
+  - trivial.
 Qed.
 
-Global Instance rwlock_tpcm {S} `{!EqDecision S} `{!TPCM S} : TPCM (RwLock S) := {
-  m_valid := V ;
-  dot := rw_op ;
-  mov := rw_mov ;
-  unit := rw_unit S ;
-  valid_monotonic := rw_valid_monotonic ;
-  unit_valid := rw_unit_valid ;
-  unit_dot := rw_unit_dot S ;
-  tpcm_comm := rw_op_comm ;
-  tpcm_assoc := rw_op_assoc ;
-  reflex := rw_mov_reflex ;
-  trans := rw_mov_trans ;
-  mov_monotonic := rw_mov_monotonic ;
-}.
-
-Lemma rwlock_I_valid_left
-    {S} `{!EqDecision S} `{!TPCM S}
-  : ∀ r : RwLock S, I_defined r → m_valid r.
-Proof. intro.
-  unfold m_valid, rwlock_tpcm.
-  unfold I_defined. intro. destruct H.
-  - rewrite H. apply rw_unit_valid.
-  - unfold V. exists (rw_unit S). unfold "⋅". rewrite rw_unit_dot. trivial.
+Definition rwlock_protocol_mixin S {eqdec: EqDecision S} : ProtocolMixin (RwLock S).
+Proof. split.
+  - apply rwlock_ra_mixin.
+  - unfold LeftId. unfold "⋅". apply rw_unit_dot_left.
+  - intros. unfold "✓", rwlock_valid. trivial.
+  - typeclasses eauto.
 Qed.
 
-Lemma rwlock_I_defined_unit
-    {S} `{!EqDecision S} `{!TPCM S}
-   : I_defined (unit: RwLock S).
-Proof.
-  unfold I_defined. left. trivial.
+Definition rwlock_storage_mixin S {eqdec: EqDecision S} : StorageMixin (RwLock S) (BaseOpt S).
+Proof. split.
+  - apply rwlock_protocol_mixin.
+  - apply base_opt_ra_mixin.
+  - unfold LeftId. apply base_opt_unit_left_id.
+  - typeclasses eauto.
+  - intros. apply rwlock_valid_interp.
 Qed.
-   
-Lemma rwlock_I_unit
-    {S} `{!EqDecision S} `{!TPCM S}
-  : I unit = unit.
-Proof.
-  trivial.
-Qed.
-
-Lemma rwlock_I_mov_refines
-    {S} `{!EqDecision S} `{!TPCM S}
-  : ∀ b b' : RwLock S, mov b b' → I_defined b → I_defined b' ∧ mov (I b) (I b').
-Proof.
-  intros.
-  unfold mov, rwlock_tpcm, rw_mov in H.
-  have h := H (rw_unit S). unfold "⋅" in h.
-  repeat (rewrite rw_unit_dot in h). intuition. rewrite H3. apply reflex.
-Qed.
-
-Definition rwlock_ref
-    S `{!EqDecision S} `{!TPCM S}
-    : Refinement (RwLock S) S :=
-({|
-  rel_defined := I_defined ;
-  rel := I ;
-  rel_valid_left := rwlock_I_valid_left ;
-  rel_defined_unit := rwlock_I_defined_unit ;
-  rel_unit := rwlock_I_unit ;
-  mov_refines := rwlock_I_mov_refines ;
-|}).
 
 Section RwlockLogic.
 
