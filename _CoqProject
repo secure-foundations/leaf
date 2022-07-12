@@ -5,53 +5,8 @@ src/two/conjunct_own_rule.v
 src/two/guard.v
 src/two/inved.v
 src/two/protocol.v
-
--Q src/burrow Burrow
-
-src/burrow/assoc_comm.v
-src/burrow/building.v
-src/burrow/exchange_proof.v
-src/burrow/exchanges.v
-src/burrow/fresh.v
-src/burrow/gmap_utils.v
-src/burrow/indexing.v
-src/burrow/live_rec.v
-src/burrow/maxltunit.v
-src/burrow/parity.v
-src/burrow/locations.v
-src/burrow/ra.v
-src/burrow/relive.v
-src/burrow/resource_proofs.v
-src/burrow/trees.v
-src/burrow/tactics.v
-src/burrow/tpcms.v
-src/burrow/updog.v
-
--Q src/tpcms Tpcms
-
-src/tpcms/gmap.v
-src/tpcms/auth_frag.v
-src/tpcms/heap.v
-src/tpcms/rwlock.v
-src/tpcms/hash_table.v
-
--Q src/lang BurrowLang
-
-src/lang/adequacy.v
-src/lang/class_instances.v
-src/lang/heap_ra.v
-src/lang/lang.v
-src/lang/notation.v
-src/lang/primitive_laws.v
-src/lang/proofmode.v
-src/lang/simp.v
-src/lang/tactics.v
-
--Q src/examples Examples
-
-src/examples/rwlock.v
-src/examples/seqs.v
-src/examples/hash_table.v
+src/two/base_storage_opt.v
+src/two/rwlock.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality

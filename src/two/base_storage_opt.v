@@ -118,6 +118,7 @@ Section BaseOptMap.
           try (setoid_rewrite <- true_l; trivial);
           try contradiction.
     } 
+  Qed.
 
 End BaseOptMap.
 
