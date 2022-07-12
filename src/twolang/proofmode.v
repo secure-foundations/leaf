@@ -1,7 +1,7 @@
 From iris.proofmode Require Import coq_tactics reduction.
 From iris.proofmode Require Export tactics.
 From iris.program_logic Require Import atomic.
-From iris_simp_lang Require Import tactics class_instances primitive_laws notation.
+From twolang Require Import tactics class_instances primitive_laws notation.
 From iris.prelude Require Import options.
 
 (*|

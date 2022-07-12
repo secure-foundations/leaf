@@ -1,8 +1,8 @@
 From iris.program_logic Require Export weakestpre.
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
-From iris_simp_lang Require Import notation tactics class_instances.
-From iris_simp_lang Require Import heap_ra.
+From twolang Require Import notation tactics class_instances.
+From twolang Require Import heap_ra.
 From iris Require Import options.
 
 (*|

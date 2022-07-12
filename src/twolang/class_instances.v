@@ -1,4 +1,4 @@
-From iris_simp_lang Require Import notation tactics.
+From twolang Require Import notation tactics.
 From iris.prelude Require Import options.
 
 (*|
@@ -46,7 +46,7 @@ Section atomic.
   Global Instance fork_atomic s e : Atomic s (Fork e).
   Proof. solve_atomic. Qed.
 
-  Global Instance heap_op_atomic op s v1 v2 : Atomic s (HeapOp op (Val v1) (Val v2)).
+  Global Instance heap_op_atomic op s v1 v2 v3 : Atomic s (HeapOp op (Val v1) (Val v2) (Val v3)).
   Proof. solve_atomic. Qed.
 End atomic.
 

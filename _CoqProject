@@ -8,6 +8,18 @@ src/two/protocol.v
 src/two/base_storage_opt.v
 src/two/rwlock.v
 
+-Q src/twolang twolang
+
+src/twolang/adequacy.v
+src/twolang/class_instances.v
+src/twolang/heap_ra.v
+src/twolang/lang.v
+src/twolang/notation.v
+src/twolang/primitive_laws.v
+src/twolang/proofmode.v
+src/twolang/simp.v
+src/twolang/tactics.v
+
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
 -arg -w -arg -deprecated-instance-without-locality

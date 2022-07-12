@@ -1,5 +1,5 @@
 From stdpp Require Export binders strings.
-From iris_simp_lang Require Export lang.
+From twolang Require Export lang.
 From iris Require Import options.
 
 (*|
@@ -29,10 +29,11 @@ write *)
 Notation Pair := (BinOp PairOp).
 Notation Fst := (UnOp FstOp).
 Notation Snd := (UnOp SndOp).
-Notation Alloc e := (HeapOp AllocOp e (Val (LitV LitUnit))).
-Notation Load e := (HeapOp LoadOp e (Val (LitV LitUnit))).
-Notation Store e1 e2 := (HeapOp StoreOp e1 e2).
-Notation FAA := (HeapOp FaaOp).
+Notation Alloc e := (HeapOp AllocOp e (Val (LitV LitUnit)) (Val (LitV LitUnit))).
+Notation Load e := (HeapOp LoadOp e (Val (LitV LitUnit)) (Val (LitV LitUnit))).
+Notation Store e1 e2 := (HeapOp StoreOp e1 e2 (Val (LitV LitUnit))).
+Notation FAA e1 e2 := (HeapOp FaaOp e1 e2 (Val (LitV LitUnit))).
+Notation CAS e1 e2 e3 := (HeapOp CasOp e1 e2 e3).
 
 (* Skip should be atomic, we sometimes open invariants around
    it. Hence, we need to explicitly use LamV instead of e.g., Seq. *)
@@ -54,6 +55,8 @@ Notation "'ref' e" := (Alloc e%E) (at level 10) : expr_scope.
 Notation "e1 <- e2" := (Store e1%E e2%E) (at level 80) : expr_scope.
 
 Notation "e1 + e2" := (BinOp PlusOp e1%E e2%E) : expr_scope.
+
+Definition op_eq e1 e2 := BinOp EqOp e1 e2.
 
 (* The breaking point '/  ' makes sure that the body of the rec is indented
 by two spaces in case the whole rec does not fit on a single line. *)

@@ -46,7 +46,8 @@ Inductive base_lit :=
 Inductive bin_op :=
   | PlusOp
   | EqOp
-  | PairOp.
+  | PairOp
+  | ModuloOp.
 
 Inductive un_op :=
   | FstOp
@@ -56,7 +57,8 @@ Inductive heap_op :=
   | AllocOp
   | LoadOp
   | StoreOp
-  | FaaOp.
+  | FaaOp
+  | CasOp.
 
 (*|
 Expressions are defined mutually recursively with values. As explained above, an
@@ -79,7 +81,7 @@ Inductive expr :=
   (* Concurrency *)
   | Fork (e : expr)
   (* Heap *)
-  | HeapOp (op : heap_op) (e1 : expr) (e2 : expr)
+  | HeapOp (op : heap_op) (e1 : expr) (e2 : expr) (e3: expr)
 with val :=
   | LitV (l : base_lit)
   | RecV (f x : binder) (e : expr)
@@ -137,10 +139,13 @@ Proof.
         | Rec f x e, Rec f' x' e' => cast_if_and3 (decide (f = f')) (decide (x = x')) (decide (e = e'))
         | App e1 e2, App e1' e2' =>
           cast_if_and (decide (e1 = e1')) (decide (e2 = e2'))
-        | BinOp op e1 e2, BinOp op' e1' e2' | HeapOp op e1 e2, HeapOp op' e1' e2' =>
+        | BinOp op e1 e2, BinOp op' e1' e2' =>
           cast_if_and3 (decide (op = op')) (decide (e1 = e1')) (decide (e2 = e2'))
         | If e1 e2 e3, If e1' e2' e3' =>
           cast_if_and3 (decide (e1 = e1')) (decide (e2 = e2')) (decide (e3 = e3'))
+        | HeapOp op e1 e2 e3, HeapOp op' e1' e2' e3' =>
+          cast_if_and4 (decide (op = op')) (decide (e1 = e1')) (decide (e2 = e2'))
+              (decide (e3 = e3'))
         | UnOp op e, UnOp op' e' =>
           cast_if_and (decide (op = op')) (decide (e = e'))
         | Fork e, Fork e' =>
@@ -169,8 +174,8 @@ Qed.
 Global Instance bin_op_countable : Countable bin_op.
 Proof.
   refine (inj_countable'
-            (λ op, match op with | PlusOp => 0 | EqOp => 1 | PairOp => 2  end)
-            (λ n, match n with | 0 => _ | 1 => _ | 2 => _
+            (λ op, match op with | PlusOp => 0 | EqOp => 1 | PairOp => 2 | ModuloOp => 3 end)
+            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _
                           | _ => ltac:(constructor) end) _).
   destruct x; eauto.
 Qed.
@@ -186,8 +191,8 @@ Qed.
 Global Instance heap_op_countable : Countable heap_op.
 Proof.
   refine (inj_countable'
-            (λ op, match op with | AllocOp => 0 | LoadOp => 1 | StoreOp => 2 | FaaOp => 3  end)
-            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _
+            (λ op, match op with | AllocOp => 0 | LoadOp => 1 | StoreOp => 2 | FaaOp => 3 | CasOp => 4 end)
+            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _ | 4 => _
                           | _ => ltac:(constructor) end) _).
   destruct x; eauto.
 Qed.
@@ -203,7 +208,7 @@ Proof.
      | App e1 e2 => GenNode 2 [go e1; go e2]
      | UnOp op e => GenNode 3 [GenLeaf (inr (inr (inl op))); go e]
      | BinOp op e1 e2 => GenNode 4 [GenLeaf (inr (inr (inr (inl op)))); go e1; go e2]
-     | HeapOp op e1 e2 => GenNode 5 [GenLeaf (inr (inr (inr (inr op)))); go e1; go e2]
+     | HeapOp op e1 e2 e3 => GenNode 5 [GenLeaf (inr (inr (inr (inr op)))); go e1; go e2; go e3]
      | If e0 e1 e2 => GenNode 6 [go e0; go e1; go e2]
      | Fork e => GenNode 7 [go e]
      end
@@ -224,7 +229,7 @@ Proof.
      | GenNode 2 [e1; e2] => App (go e1) (go e2)
      | GenNode 3 [GenLeaf (inr (inr (inl op))); e] => UnOp op (go e)
      | GenNode 4 [GenLeaf (inr (inr (inr (inl op)))); e1; e2] => BinOp op (go e1) (go e2)
-     | GenNode 5 [GenLeaf (inr (inr (inr (inr op)))); e1; e2] => HeapOp op (go e1) (go e2)
+     | GenNode 5 [GenLeaf (inr (inr (inr (inr op)))); e1; e2; e3] => HeapOp op (go e1) (go e2) (go e3)
      | GenNode 6 [e0; e1; e2] => If (go e0) (go e1) (go e2)
      | GenNode 7 [e] => Fork (go e)
      | _ => Val $ LitV LitUnit (* dummy *)
@@ -285,8 +290,9 @@ Inductive ectx_item :=
   | BinOpRCtx (op : bin_op) (e1 : expr)
   | UnOpCtx (op : un_op)
   | IfCtx (e1 e2 : expr)
-  | HeapOpLCtx (op : heap_op) (v2 : val)
-  | HeapOpRCtx (op : heap_op) (e1 : expr)
+  | HeapOpLCtx (op : heap_op) (v2 : val) (v3: val)
+  | HeapOpMCtx (op : heap_op) (e1 : expr) (v3: val)
+  | HeapOpRCtx (op : heap_op) (e1 : expr) (e2: expr)
 .
 
 Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
@@ -297,8 +303,9 @@ Definition fill_item (Ki : ectx_item) (e : expr) : expr :=
   | BinOpRCtx op e1 => BinOp op e1 e
   | UnOpCtx op => UnOp op e
   | IfCtx e1 e2 => If e e1 e2
-  | HeapOpLCtx op v2 => HeapOp op e (Val v2)
-  | HeapOpRCtx op e1 => HeapOp op e1 e
+  | HeapOpLCtx op v2 v3 => HeapOp op e (Val v2) (Val v3)
+  | HeapOpMCtx op e1 v3 => HeapOp op e1 e (Val v3)
+  | HeapOpRCtx op e1 e2 => HeapOp op e1 e2 e
   end.
 
 (*|
@@ -324,7 +331,7 @@ Fixpoint subst (x : string) (v : val) (e : expr)  : expr :=
   | UnOp op e => UnOp op (subst x v e)
   | If e0 e1 e2 => If (subst x v e0) (subst x v e1) (subst x v e2)
   | Fork e => Fork (subst x v e)
-  | HeapOp op e1 e2 => HeapOp op (subst x v e1) (subst x v e2)
+  | HeapOp op e1 e2 e3 => HeapOp op (subst x v e1) (subst x v e2) (subst x v e3)
   end.
 
 Definition subst' (mx : binder) (v : val) : expr → expr :=
@@ -344,6 +351,11 @@ Definition bin_op_eval (op: bin_op) (v1 v2: val) : option val :=
   | PlusOp => match v1, v2 with
               | LitV (LitInt n1), LitV (LitInt n2) =>
                 Some (LitV (LitInt (n1 + n2)))
+              | _, _ => None
+              end
+  | ModuloOp => match v1, v2 with
+              | LitV (LitInt n1), LitV (LitInt n2) =>
+                Some (LitV (LitInt (Z.modulo n1 n2)))
               | _, _ => None
               end
   | EqOp => Some (LitV $ LitBool $ bool_decide (v1 = v2))
@@ -421,27 +433,35 @@ Inductive head_step : expr → state → list observation → expr → state →
     head_step (Fork e) σ [] (Val $ LitV LitUnit) σ [e]
   | AllocS v σ l :
     σ.(heap) !! l = None →
-    head_step (HeapOp AllocOp (Val v) (Val $ LitV LitUnit)) σ
+    head_step (HeapOp AllocOp (Val v) (Val $ LitV LitUnit) (Val $ LitV LitUnit)) σ
               []
               (Val $ LitV $ LitInt l) (state_upd_heap <[l := v]> σ)
               []
   | LoadS v σ l :
     σ.(heap) !! l = Some v →
-    head_step (HeapOp LoadOp (Val $ LitV $ LitInt l) (Val $ LitV LitUnit)) σ
+    head_step (HeapOp LoadOp (Val $ LitV $ LitInt l) (Val $ LitV LitUnit) (Val $ LitV LitUnit)) σ
               []
               (Val $ v) σ
               []
   | StoreS v w σ l :
     σ.(heap) !! l = Some v →
-    head_step (HeapOp StoreOp (Val $ LitV $ LitInt l) (Val $ w)) σ
+    head_step (HeapOp StoreOp (Val $ LitV $ LitInt l) (Val $ w) (Val $ LitV LitUnit)) σ
               []
               (Val $ LitV $ LitUnit) (state_upd_heap <[l := w]> σ)
               []
   | FaaS l n1 n2 σ :
     σ.(heap) !! l = Some (LitV $ LitInt $ n1) →
-    head_step (HeapOp FaaOp (Val $ LitV $ LitInt l) (Val $ LitV $ LitInt $ n2)) σ
+    head_step (HeapOp FaaOp (Val $ LitV $ LitInt l) (Val $ LitV $ LitInt $ n2) (Val $ LitV LitUnit)) σ
               []
               (Val $ LitV $ LitInt $ n1) (state_upd_heap <[l:=LitV $ LitInt $ n1+n2]> σ)
+              []
+  | CasS l v_actual v_old v_new σ :
+    σ.(heap) !! l = Some (LitV $ v_actual) →
+    head_step (HeapOp CasOp (Val $ LitV $ LitInt l) (Val $ LitV $ v_old) (Val $ LitV $ v_new)) σ
+              []
+              (Val $ LitV $ LitBool $ (bool_decide (v_actual = v_old)))
+              (state_upd_heap <[l:=LitV $
+                (if decide (v_actual = v_old) then v_new else v_actual)]> σ)
               []
   .
 
@@ -485,7 +505,7 @@ Qed.
 prove a WP for it *)
 Lemma alloc_fresh v σ :
   let l := fresh_locs (dom (gset _) σ.(heap)) in
-  head_step (HeapOp AllocOp (Val v) (Val $ LitV $ LitUnit)) σ []
+  head_step (HeapOp AllocOp (Val v) (Val $ LitV $ LitUnit) (Val $ LitV $ LitUnit)) σ []
             (Val $ LitV $ LitInt l) (state_upd_heap <[l := v]> σ) [].
 Proof.
   intros.
