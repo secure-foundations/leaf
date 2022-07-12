@@ -604,6 +604,13 @@ Section StorageLogic.
     apply ra_validN_proper.
   Qed.
   
+  Instance pinv_proper : Proper ((≡) ==> impl) (@pinv P _).
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    destruct storage_mixin.
+    destruct protocol_mixin0.
+    apply inv_proper.
+  Qed.
+  
   Lemma valid_interp (p: P)
       : pinv p -> ✓ (interp P B storage_mixin p).
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
@@ -641,7 +648,11 @@ Section StorageLogic.
    Qed.
   
   Lemma valid_inved_of_pinv (p: P)
-    : pinv p -> ✓ (Inved p). Admitted.
+    : pinv p -> ✓ (Inved p). 
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    intro pi. unfold "✓", inved_protocol_valid. exists ε. setoid_rewrite op_unit.
+    trivial.
+  Qed.
   
   Lemma logic_init (p: P) (f: B -> iProp Σ) E
       (pi: pinv p) (wf: wf_prop_map f)
