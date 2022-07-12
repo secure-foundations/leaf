@@ -230,9 +230,9 @@ Proof.
 Qed.
 
 
-Lemma ownI_alloc_open_and_simultaneous_own_alloc P `{ing : !inG Σ A} (a: A) :
+Lemma ownI_alloc_open_and_simultaneous_own_alloc (P : positive -> iProp Σ) `{ing : !inG Σ A} (a: A) :
   (✓ a) ->
-  wsat ==∗ ∃ i, (ownE {[i]} -∗ wsat) ∗ ownI i P ∗ ownD {[i]} ∗ own i a.
+  wsat ==∗ ∃ i, (ownE {[i]} -∗ wsat) ∗ ownI i (P i) ∗ ownD {[i]} ∗ own i a.
 Proof.
   iIntros (valid_a) "Hw". rewrite /wsat -!lock. iDestruct "Hw" as (I) "[Hw [HI Hd]]".
   
@@ -254,7 +254,7 @@ Proof.
   iDestruct (bi.persistent_sep_dup with "HiP") as "[HiP HiP2]".
   rewrite /ownI; iFrame "HiP".
   rewrite -/(ownD _). iFrame "HD". iFrame "ow".
-  iIntros "HE". iExists (<[i:=P]>I); iSplitL "Hw".
+  iIntros "HE". iExists (<[i:=P i]>I); iSplitL "Hw".
   { by rewrite fmap_insert. }
   
   rewrite diff_domm_inserted. iFrame "Hd".
