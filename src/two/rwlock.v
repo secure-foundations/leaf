@@ -1,6 +1,7 @@
 Require Import Two.base_storage_opt.
 Require Import Two.protocol.
 Require Import Two.inved.
+Require Import Two.guard.
 
 Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
@@ -16,6 +17,7 @@ From iris.proofmode Require Import base.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
+From iris.base_logic.lib Require Export invariants.
 
 Inductive Free (S: Type) `{!EqDecision S} :=
   | Empty : Free S
@@ -153,11 +155,6 @@ Global Instance rwlock_interp (S: Type) `{!EqDecision S} : Interp (RwLock S) (Ba
     | _ => base_storage_opt.Empty
   end.
 
-(*
-Definition rw_mov {S} `{!EqDecision S} `{!TPCM S} (a b : RwLock S) :=
-  ∀ p, I_defined (a ⋅ p) -> I_defined (b ⋅ p) /\ I (a ⋅ p) = I (b ⋅ p).
-  *)
-
 Lemma rw_unit_dot (S: Type) `{!EqDecision S} (a : RwLock S) :
   rw_op a ε = a.
 Proof.
@@ -176,7 +173,7 @@ Proof.
   destruct a; trivial.
 Qed.
 
-Lemma rw_init_valid {S} `{!EqDecision S} `{!TPCM S} (x: S)
+Lemma rw_init_valid {S} `{!EqDecision S} (x: S)
   : pinv (Central false 0 x).
 Proof.
   unfold pinv, rwlock_pinv, Central, free_count. split; trivial.
@@ -351,106 +348,129 @@ Qed.
 
 Section RwlockLogic.
 
-Context {𝜇: BurrowCtx}.
-Context `{hG : @gen_burrowGS 𝜇 Σ}.
+Context {S: Type}.
+Context {eqdec: EqDecision S}.
 
-Context {S} `{!EqDecision S} `{!TPCM S}.
-Context `{m_hastpcm: !HasTPCM 𝜇 S}.
-Context `{rw_hastpcm: !HasTPCM 𝜇 (RwLock S)}.
-Context `{!HasRef 𝜇 rw_hastpcm m_hastpcm (rwlock_ref S)}.
+Context {Σ: gFunctors}.
+Context `{!inG Σ (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))}.
+Context `{!invGS Σ}.
 
-Definition rwloc 𝛼 𝛾 := extend_loc 𝛼 (rwlock_ref S) 𝛾.
+Definition rw_lock_inst (γ: gname) (f: S -> iProp Σ) : iProp Σ := maps γ (base_opt_prop_map f).
 
-Lemma rw_new 𝛾 (x: S)
-  : L 𝛾 x ==∗ ∃ 𝛼 , L (rwloc 𝛼 𝛾) (Central false 0 x).
+Definition central γ (e: bool) (r: Z) (x: S) : iProp Σ := p_own γ (Central e r x).
+Definition exc_pending γ : iProp Σ := p_own γ ExcPending.
+Definition exc_guard γ : iProp Σ := p_own γ ExcGuard.
+Definition sh_pending γ : iProp Σ := p_own γ ShPending.
+Definition sh_guard γ m : iProp Σ := p_own γ (ShGuard m).
+
+Lemma rw_new (x: S) (f: S -> iProp Σ) E
+  : f x ={E}=∗ ∃ γ , rw_lock_inst γ f ∗ central γ false 0 x.
 Proof. 
-  apply InitializeExt.
-  - unfold rel_defined, rwlock_ref.
-    unfold I_defined. right. apply rw_init_valid.
-  - trivial.
+  iIntros "fx".
+  iMod (logic_init (Central false 0 x) (base_opt_prop_map f) E with "[fx]") as "x".
+  { apply rw_init_valid. }
+  { apply wf_prop_base_base_opt. }
+  {
+    unfold interp, rwlock_interp, Central, base_opt_prop_map. iFrame.
+  }
+  iDestruct "x" as (γ) "x". iModIntro. iExists γ.
+  unfold rw_lock_inst, central. iFrame.
 Qed.
+  
 
-Lemma rw_exc_begin 𝛾 rc (x: S)
-  : L 𝛾 (Central false rc x) ==∗ L 𝛾 (Central true rc x) ∗ L 𝛾 ExcPending.
+Lemma rw_exc_begin γ f rc (x: S)
+  : rw_lock_inst γ f ⊢
+    central γ false rc x ={ {[ γ ]} }=∗ central γ true rc x ∗ exc_pending γ.
 Proof.
-  rewrite <- L_op.
-  apply FrameUpdate.
+  unfold central, exc_pending.
+  rewrite <- p_own_op.
+  apply logic_update.
   apply rw_mov_exc_begin.
 Qed.
 
-Lemma rw_exc_acquire 𝛼 𝛾 exc (x: S)
-   : L (rwloc 𝛼 𝛾) (Central exc 0 x)
-  -∗ L (rwloc 𝛼 𝛾) ExcPending
- ==∗ L (rwloc 𝛼 𝛾) (Central exc 0 x)
-   ∗ L (rwloc 𝛼 𝛾) ExcGuard
-   ∗ L 𝛾 x.
+Lemma rw_exc_acquire γ f exc (x: S)
+  : rw_lock_inst γ f ⊢
+    central γ exc 0 x ∗ exc_pending γ
+      ={ {[ γ ]} }=∗ 
+    central γ exc 0 x ∗ exc_guard γ ∗ ▷ f x.
 Proof.
-  iIntros "A B".
-  iDestruct (L_join with "A B") as "T".
-  iMod (L_unit S 𝛾) as "U".
-  iMod (FrameExchange _ _ _ _ x _ (dot (Central exc 0 x) ExcGuard) with "T U") as "T".
-  - apply rw_mov_exc_acquire.
-  - rewrite L_op.
-    iModIntro.
-    iDestruct "T" as "[[S R] U]".
-    iFrame.
+  unfold central, exc_pending, exc_guard, rw_lock_inst.
+  rewrite <- p_own_op.
+  rewrite <- bi.sep_assoc'.
+  rewrite <- p_own_op.
+  replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
+  apply logic_withdraw.
+  apply rw_mov_exc_acquire.
 Qed.
   
-Lemma rw_exc_release 𝛼 𝛾 exc rc (x y: S)
-   : L (rwloc 𝛼 𝛾) (Central exc rc y)
-  -∗ L (rwloc 𝛼 𝛾) ExcGuard
-  -∗ L 𝛾 x
- ==∗ L (rwloc 𝛼 𝛾) (Central false rc x).
+Lemma rw_exc_release γ f exc rc (x y: S)
+  : rw_lock_inst γ f ⊢
+    (central γ exc rc y ∗ exc_guard γ ∗ (▷ f x))
+      ={ {[ γ ]} }=∗
+    central γ false rc x.
 Proof.
-  iIntros "a b c".
-  iDestruct (L_join with "a b") as "a".
-  iMod (FrameExchange _ _ _ _ (unit: S) _ (Central false rc x) with "a c") as "[a b]".
-  - apply rw_mov_exc_release.
-  - iModIntro. iFrame.
+  unfold central, exc_pending, exc_guard, rw_lock_inst.
+  rewrite bi.sep_assoc.
+  rewrite <- p_own_op.
+  replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
+  apply logic_deposit.
+  apply rw_mov_exc_release.
 Qed.
 
-Lemma rw_shared_begin 𝛾 exc rc (x: S)
-  : L 𝛾 (Central exc rc x) ==∗ L 𝛾 (Central exc (rc+1) x) ∗ L 𝛾 ShPending.
+Lemma rw_shared_begin γ f exc rc (x: S)
+  : rw_lock_inst γ f ⊢
+      central γ exc rc x
+      ={ {[ γ ]} }=∗
+      central γ exc (rc+1) x ∗ sh_pending γ.
 Proof.
-  rewrite <- L_op.
-  apply FrameUpdate.
+  unfold central, sh_pending.
+  rewrite <- p_own_op.
+  apply logic_update.
   apply rw_mov_shared_begin.
 Qed.
   
-Lemma rw_shared_acquire 𝛾 rc (x: S)
-  : L 𝛾 (Central false rc x) -∗ L 𝛾 ShPending ==∗ L 𝛾 (Central false rc x) ∗ L 𝛾 (ShGuard x).
+Lemma rw_shared_acquire γ f rc (x: S)
+  : rw_lock_inst γ f ⊢
+      central γ false rc x ∗ sh_pending γ
+      ={ {[ γ ]} }=∗
+      central γ false rc x ∗ sh_guard γ x.
 Proof.
-  iIntros "A B".
-  iDestruct (L_join with "A B") as "A".
-  iMod (FrameUpdate _ _ (dot (Central false rc x) (ShGuard x)) with "A") as "A".
-  - apply rw_mov_shared_acquire.
-  - rewrite L_op. iModIntro. iFrame.
+  unfold central, sh_guard, sh_pending.
+  rewrite <- p_own_op.
+  rewrite <- p_own_op.
+  apply logic_update.
+  apply rw_mov_shared_acquire.
 Qed.
   
-Lemma rw_shared_release 𝛾 exc rc (x y: S)
-  : L 𝛾 (Central exc rc x) -∗ L 𝛾 (ShGuard y) ==∗ L 𝛾 (Central exc (rc-1) x).
+Lemma rw_shared_release γ f exc rc (x y: S)
+  : rw_lock_inst γ f ⊢
+    central γ exc rc x ∗ sh_guard γ y ={ {[ γ ]} }=∗ central γ exc (rc-1) x.
 Proof.
-  iIntros "A B".
-  iDestruct (L_join with "A B") as "A".
-  iMod (FrameUpdate _ _ ((Central exc (rc-1) x)) with "A") as "A".
-  - apply rw_mov_shared_release.
-  - iModIntro. iFrame.
+  unfold central, sh_guard, sh_pending.
+  rewrite <- p_own_op.
+  apply logic_update.
+  apply rw_mov_shared_release.
 Qed.
-  
-Lemma rw_shared_retry 𝛾 exc rc (x: S)
-  : L 𝛾 (Central exc rc x) -∗ L 𝛾 ShPending ==∗ L 𝛾 (Central exc (rc-1) x).
+
+Lemma rw_shared_retry γ f exc rc (x: S)
+  : rw_lock_inst γ f ⊢
+    central γ exc rc x ∗ sh_pending γ ={ {[ γ ]} }=∗ central γ exc (rc-1) x.
 Proof.
-  iIntros "A B".
-  iDestruct (L_join with "A B") as "A".
-  iMod (FrameUpdate _ _ ((Central exc (rc-1) x)) with "A") as "A".
-  - apply rw_mov_shared_retry.
-  - iModIntro. iFrame.
+  unfold central, sh_guard, sh_pending.
+  rewrite <- p_own_op.
+  apply logic_update.
+  apply rw_mov_shared_retry.
 Qed.
-  
-Lemma rw_borrow_back 𝛼 𝛾 (x: S) 𝜅
-  : B 𝜅 (rwloc 𝛼 𝛾) (ShGuard x) ⊢ B 𝜅 𝛾 x.
+
+Lemma rw_borrow_back γ f (x: S)
+  : rw_lock_inst γ f ⊢
+    sh_guard γ x &&{ {[ γ ]} }&&> ▷ f x.
 Proof.
-  apply BorrowBack. apply rw_mov_shared_borrow. Qed.
+  unfold sh_guard.
+  replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
+  apply logic_guard.
+  apply rw_mov_shared_borrow.
+Qed.
 
 End RwlockLogic.
 
