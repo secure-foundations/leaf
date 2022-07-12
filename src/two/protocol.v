@@ -640,9 +640,40 @@ Section StorageLogic.
     iModIntro. iFrame.
    Qed.
   
-  Lemma logic_init
-      (p: P) (b: B)
-
+  Lemma valid_inved_of_pinv (p: P)
+    : pinv p -> ✓ (Inved p). Admitted.
+  
+  Lemma logic_init (p: P) (f: B -> iProp Σ) E
+      (pi: pinv p)
+  : ⊢ f (interp P B storage_mixin p) ={E}=∗ ∃ γ , maps γ f ∗ p_own γ p.
+  Proof.
+    iIntros "f_init".
+    rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+    iIntros "[w oe]".
+    iMod (ownI_alloc_open_and_simultaneous_own_alloc
+      (λ γ , 
+        (∃ (state: P) ,
+          own γ (● (Inved state))
+          ∗ ⌜ pinv state ⌝
+          ∗ (f (interp P B storage_mixin state)))%I
+      )
+      (● (Inved p) ⋅ ◯ (Inved p))
+      with "w") as "w".
+    { rewrite auth_both_valid_discrete. split; trivial.
+      apply valid_inved_of_pinv. trivial.
+    }
+    
+    iDestruct "w" as (γ) "[w [oinv [d own]]]".
+    iDestruct "own" as "[auth frag]".
+    
+    iDestruct (ownI_close γ (∃ state : P,
+                own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp P B storage_mixin state))
+                with "[w oinv auth f_init]") as "[w en_i]".
+    {
+       
+     
+    
+    
           
 
     
