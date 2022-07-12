@@ -646,6 +646,33 @@ Section StorageLogic.
     { iFrame "pb". iFrame "u". }
     iModIntro. iFrame.
    Qed.
+   
+   Definition storage_protocol_update (p1 p2: P) :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q).
+          
+  Lemma logic_update
+      (p1 p2: P) (γ: gname) (f: B -> iProp Σ)
+      (exchng: storage_protocol_update p1 p2)
+      : maps γ f ⊢
+          p_own γ p1 ={ {[ γ ]} }=∗ p_own γ p2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    iIntros "#m pb".
+    iDestruct (logic_withdraw p1 p2 ε γ f with "m pb") as "pb".
+    {
+      unfold storage_protocol_withdraw.
+      unfold storage_protocol_update in exchng.
+      intros q pi.
+      have exch := exchng q.
+      intuition.
+      setoid_rewrite op_unit_base.
+      trivial.
+    }
+    iMod "pb".
+    iModIntro.
+    iDestruct "pb" as "[pb _]".
+    iFrame.
+  Qed.
   
   Lemma valid_inved_of_pinv (p: P)
     : pinv p -> ✓ (Inved p). 
@@ -691,4 +718,4 @@ Section StorageLogic.
   Qed.
 
  
-End Storage.
+End StorageLogic.
