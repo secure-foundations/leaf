@@ -21,6 +21,11 @@ Context {Σ: gFunctors}.
 Context {m: inG Σ (authUR C)}.
 Context `{Disc : CmraDiscrete C}.
 
+Lemma auth_inved_conjure_frag γ (p q: C)
+    (cond: p ⋅ q ≡ p)
+    : own γ (● p) ==∗ own γ (● p) ∗ own γ (◯ q).
+Admitted.
+
 Lemma own_sep_auth_incll γ (p1 p2 state : C)
     (cond: ∀ z , p1 ⋅ z ≡ state -> ✓ (p2 ⋅ z))
     : own γ (◯ p1) ∗ own γ (● state) ⊢

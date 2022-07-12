@@ -45,6 +45,8 @@ Record StorageMixin P B
     protocol_mixin: ProtocolMixin P;
     base_ra_mixin: RAMixin B; (* completely ignore core *)
     
+    base_unit_left_id : LeftId equiv (ε : B) op;
+    
     interp: P -> B;
 
     interp_proper: Proper ((≡) ==> (≡)) interp;
@@ -99,14 +101,7 @@ Section StorageLogic.
       ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
           /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
           /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
-          
-          (*
-  Definition storage_protocol_deposit (p1 p2: P) (b1: B)  :=
-      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
-          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
-          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q).
-         *) 
-          
+                   
   Global Instance my_discrete : CmraDiscrete (inved_protocolR (protocol_mixin P B storage_mixin)).
   Proof. apply discrete_cmra_discrete. Qed.
 
@@ -437,7 +432,7 @@ Section StorageLogic.
     }
    Qed.
   
-  Lemma exchange_guard
+  Lemma logic_exchange
     (p1 p2: P) (b1 b2: B) (γ: gname) (f: B -> iProp Σ)
     (exchng: storage_protocol_exchange p1 p2 b1 b2)
     : maps γ f ⊢
@@ -517,19 +512,43 @@ Section StorageLogic.
     apply own_op.
   Qed.
   
+  Lemma op_unit (p: P) : p ⋅ ε ≡ p.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    destruct storage_mixin.
+    destruct protocol_mixin.
+    destruct protocol_ra_mixin.
+    setoid_rewrite (@comm P).
+    - apply protocol_unit_left_id.
+    - trivial.
+  Qed.
+  
+  Lemma op_unit_base (b: B) : b ⋅ ε ≡ b.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 storage_mixin Σ.
+    destruct storage_mixin.
+    destruct base_ra_mixin0.
+    setoid_rewrite (@comm B).
+    - apply base_unit_left_id0.
+    - trivial.
+  Qed.
+  
   Lemma auth_inved_conjure_unit γ (state: P)
       : own γ (● Inved state) ==∗ own γ (● Inved state) ∗ own γ (◯ Inved ε).
-  Admitted.
+  Proof.
+      apply auth_inved_conjure_frag.
+      setoid_rewrite <- inved_op.
+      setoid_rewrite op_unit.
+      trivial.
+  Qed.
   
-  Lemma p_own_valid γ f
-      : maps γ f ⊢ True ={ {[ γ ]} }=∗ p_own γ ε.
+  Lemma p_own_unit γ f
+      : maps γ f ⊢ |={ {[ γ ]} }=> p_own γ ε.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
     iIntros "[%wfm #m]".
     destruct wfm as [wfm inh]. 
       
     rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-    iIntros "_ [w oe]".
+    iIntros "[w oe]".
     iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
     { iFrame "w". iFrame "m". iFrame "oe". }
     iMod (bi.later_exist_except_0 with "latp") as (state) "lat".
@@ -551,8 +570,83 @@ Section StorageLogic.
     { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
     iModIntro. iModIntro. iFrame.
    Qed.
+    
+   Definition storage_protocol_deposit (p1 p2: P) (b1: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          /\ ✓(interp P B storage_mixin (p1 ⋅ q) ⋅ b1)
+          /\ interp P B storage_mixin (p1 ⋅ q) ⋅ b1 ≡ interp P B storage_mixin (p2 ⋅ q).
 
-   Lemma       
+   Lemma logic_deposit
+      (p1 p2: P) (b1: B) (γ: gname) (f: B -> iProp Σ)
+      (exchng: storage_protocol_deposit p1 p2 b1)
+      : maps γ f ⊢
+          p_own γ p1 ∗ ▷ f b1 ={ {[ γ ]} }=∗ p_own γ p2.
+   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    iIntros "#m pb".
+    iMod (logic_exchange p1 p2 b1 (ε: B) γ f with "m pb") as "[pb u]".
+    {
+      unfold storage_protocol_exchange.
+      unfold storage_protocol_deposit in exchng.
+      intros q pi1. have t := exchng q pi1. intuition.
+      setoid_rewrite op_unit_base.
+      trivial.
+    }
+    iModIntro. iFrame "pb".
+   Qed.
+   
+  Definition storage_protocol_withdraw (p1 p2: P) (b2: B)  :=
+      ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
+          (*/\ ✓(interp P B storage_mixin (p1 ⋅ q))*)
+          /\ interp P B storage_mixin (p1 ⋅ q) ≡ interp P B storage_mixin (p2 ⋅ q) ⋅ b2.
+          
+  Instance valid_proper_base : Proper ((≡) ==> impl) (@valid B _).
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    destruct storage_mixin.
+    destruct base_ra_mixin0.
+    apply ra_validN_proper.
+  Qed.
+  
+  Lemma valid_interp (p: P)
+      : pinv p -> ✓ (interp P B storage_mixin p).
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    destruct storage_mixin.
+    apply interp_val0.
+  Qed.
+   
+  Lemma logic_withdraw
+      (p1 p2: P) (b2: B) (γ: gname) (f: B -> iProp Σ)
+      (exchng: storage_protocol_withdraw p1 p2 b2)
+      : maps γ f ⊢
+          p_own γ p1 ={ {[ γ ]} }=∗ p_own γ p2 ∗ ▷ f b2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    iIntros "#m pb".
+    iAssert (▷ f ε)%I as "u".
+    {
+      iModIntro. 
+      unfold maps.
+      iDestruct "m" as "[%wf #m]".
+      destruct wf as [wf _].
+      unfold wf_prop_map in wf.
+      destruct wf as [wf_prop [wf_unit _]].
+      setoid_rewrite wf_unit. done.
+    }
+    iMod (logic_exchange p1 p2 (ε: B) b2 γ f with "m [pb u]") as "[pb fb2]".
+    {
+      unfold storage_protocol_exchange.
+      unfold storage_protocol_withdraw in exchng.
+      intros q pi1. have t := exchng q pi1. intuition.
+      - setoid_rewrite op_unit_base.
+        apply valid_interp. trivial.
+      - setoid_rewrite op_unit_base. trivial.
+    }
+    { iFrame "pb". iFrame "u". }
+    iModIntro. iFrame.
+   Qed.
+
+          
+
+    
+
 
  
 End Storage.
