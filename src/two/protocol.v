@@ -399,12 +399,12 @@ Section StorageLogic.
         
   Lemma own_sep_inv_incll γ (p1 p2 state : P)
       (cond: ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q))
-    : own γ (◯ Inved p1) ∗ own γ (● Inved state) ⊢
+    : own γ (◯ Inved p1) ∗ own γ (● Inved state) ==∗
       ∃ (z: P) , ⌜ state ≡ p1 ⋅ z ⌝ ∗ own γ (◯ Inved p2) ∗ own γ (● Inved (p2 ⋅ z)).
   Proof.
     iIntros "[x y]".
     iDestruct (own_valid with "y") as "%val".
-    iDestruct (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "[x y]") as "x".
+    iMod (own_sep_auth_incll γ (Inved p1) (Inved p2) (Inved state) with "[x y]") as "x".
     {
       intro.
       apply own_sep_inv_incll_helper; trivial.
@@ -462,7 +462,7 @@ Section StorageLogic.
     iMod "ois" as "ois".
     iMod "ps" as "%ps".
     unfold p_own.
-    iDestruct (own_sep_inv_incll γ p1 p2 state with "[p ois]") as (z) "[%incll [p ois]]".
+    iMod (own_sep_inv_incll γ p1 p2 state with "[p ois]") as (z) "[%incll [p ois]]".
     { unfold storage_protocol_exchange in exchng. intros q pi.
         have exch := exchng q pi. intuition. }
     { iFrame. }
@@ -546,7 +546,7 @@ Section StorageLogic.
   Lemma auth_inved_conjure_unit γ (state: P)
       : own γ (● Inved state) ==∗ own γ (● Inved state) ∗ own γ (◯ Inved ε).
   Proof.
-      apply auth_inved_conjure_frag.
+      apply auth_conjure_frag.
       setoid_rewrite <- inved_op.
       setoid_rewrite op_unit.
       trivial.
