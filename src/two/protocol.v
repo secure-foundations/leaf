@@ -644,13 +644,13 @@ Section StorageLogic.
     : pinv p -> ✓ (Inved p). Admitted.
   
   Lemma logic_init (p: P) (f: B -> iProp Σ) E
-      (pi: pinv p)
+      (pi: pinv p) (wf: wf_prop_map f)
   : ⊢ f (interp P B storage_mixin p) ={E}=∗ ∃ γ , maps γ f ∗ p_own γ p.
-  Proof.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     iIntros "f_init".
     rewrite uPred_fupd_eq. unfold uPred_fupd_def.
     iIntros "[w oe]".
-    iMod (ownI_alloc_open_and_simultaneous_own_alloc
+    iMod (ownI_alloc_and_simultaneous_own_alloc
       (λ γ , 
         (∃ (state: P) ,
           own γ (● (Inved state))
@@ -663,21 +663,21 @@ Section StorageLogic.
       apply valid_inved_of_pinv. trivial.
     }
     
-    iDestruct "w" as (γ) "[w [oinv [d own]]]".
-    iDestruct "own" as "[auth frag]".
+    iDestruct "w" as (γ) "[w [oinv [auth frag]]]".
     
-    iDestruct (ownI_close γ (∃ state : P,
-                own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp P B storage_mixin state))
-                with "[w oinv auth f_init]") as "[w en_i]".
+    iDestruct ("w" with "[auth f_init]") as "w".
     {
-       
-     
+      iModIntro. iExists p. iFrame. iPureIntro. trivial.
+    }
     
-    
-          
-
-    
-
+    iModIntro. iModIntro.
+    iFrame "w". iFrame "oe".
+    iExists γ.
+    unfold p_own. iFrame "frag".
+    unfold maps.
+    iFrame "oinv".
+    iPureIntro. trivial.
+  Qed.
 
  
 End Storage.
