@@ -56,9 +56,6 @@ Section StorageLogic.
   Context `{Equiv B, PCore B, Op B, Valid B, Unit B}.
   Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P, Interp P B}.
   
-  Context {equ: Equivalence (≡@{P})}.
-  Context {equb: Equivalence (≡@{B})}.
-  Context {storage_mixin: StorageMixin P B}.
   
   Definition storage_protocol_guards (p: P) (b: B) :=
       ∀ q , pinv (p ⋅ q) -> b ≼ interp (p ⋅ q).
@@ -80,6 +77,10 @@ Section StorageLogic.
       ∀ q , pinv (p1 ⋅ q) -> pinv (p2 ⋅ q)
           /\ ✓(interp (p1 ⋅ q) ⋅ b1)
           /\ interp (p1 ⋅ q) ⋅ b1 ≡ interp (p2 ⋅ q).
+          
+  Context {equ: Equivalence (≡@{P})}.
+  Context {equb: Equivalence (≡@{B})}.
+  Context {storage_mixin: StorageMixin P B}.
 
   Instance sm_interp_proper
       : Proper ((≡) ==> (≡)) (interp).

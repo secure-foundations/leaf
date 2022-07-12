@@ -170,6 +170,12 @@ Proof.
   - destruct f; trivial.
 Qed.
 
+Lemma rw_unit_dot_left (S: Type) `{!EqDecision S} (a : RwLock S) :
+  rw_op ε a = a.
+Proof.
+  destruct a; trivial.
+Qed.
+
 Lemma rw_init_valid {S} `{!EqDecision S} `{!TPCM S} (x: S)
   : pinv (Central false 0 x).
 Proof.
@@ -177,133 +183,113 @@ Proof.
   - intuition; discriminate.
 Qed.
 
-Lemma rw_mov_exc_begin {S} `{!EqDecision S} `{!TPCM S} rc x
-  : storage_protocol_update (Central false rc x) (Central true rc x ⋅ ExcPending).
+Arguments storage_protocol_update B%type_scope {H} {P}%type_scope {H6 H7 H10} _ _.
+
+Lemma rw_mov_exc_begin {S} `{!EqDecision S} rc x
+  : storage_protocol_update (BaseOpt S) (Central false rc x) (Central true rc x ⋅ ExcPending).
 Proof.
-  unfold rw_mov. intros. unfold I_defined, I in *.
-  destruct H.
-  - exfalso. unfold "⋅", rw_op, rw_unit, Central in H. destruct p. inversion H.
-      unfold "⋅", exc_op in H1. destruct e; discriminate.
-  - split.
-    + right. unfold P in *. unfold Central, ExcPending in *. destruct p.
+  unfold storage_protocol_update. unfold pinv, rwlock_pinv, interp, rwlock_interp in *. intros p H.
+  split.
+    + unfold Central, ExcPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
-    + unfold P in *. unfold Central, ExcPending in *. destruct p.
+    + unfold Central, ExcPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Definition rw_exchange_cond {S} `{!EqDecision S} `{!TPCM S}
-    (f: RwLock S) (m: S) (f': RwLock S) (m': S) :=
-  ∀ p ,
-    I_defined (f ⋅ p) -> I_defined (f' ⋅ p) /\ mov (dot m (I (f ⋅ p))) (dot m' (I (f' ⋅ p))).
-
-Lemma rw_mov_exc_acquire {S} `{!EqDecision S} `{!TPCM S} (exc: bool) (x: S)
-  : rw_exchange_cond
+Lemma rw_mov_exc_acquire {S} `{!EqDecision S} (exc: bool) (x: S)
+  : storage_protocol_withdraw
     (Central exc 0 x ⋅ ExcPending)
-    (unit: S)
     (Central exc 0 x ⋅ ExcGuard)
-    x.
+    (base_storage_opt.Full x).
 Proof.
-  unfold rw_exchange_cond. intro. intro. split.
-  - unfold I_defined, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
-      unfold "⋅", exc_op, free_op in *.  right. destruct H.
-      + exfalso. unfold rw_unit in H. destruct e, e0, e1, f; inversion H.
-      + destruct e, e0, e1, f; unfold P in *; intuition; try destruct exc; try destruct u; intuition; unfold free_count in *; try lia; intuition; try discriminate.
-  - rewrite unit_dot_left. unfold I, I_defined in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
+  unfold storage_protocol_withdraw. intro p. intro H. split.
+  - unfold pinv, rwlock_pinv, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
+      unfold "⋅", exc_op, free_op in *.
+      + destruct e, e0, e1, f; unfold pinv, rwlock_pinv in *; intuition; try destruct exc; try destruct u; intuition; unfold free_count in *; try lia; intuition; try discriminate.
+  - unfold pinv, rwlock_pinv, interp, rwlock_interp in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
       destruct p. unfold "⋅", free_op, exc_op in *. destruct e, e1, e0; trivial;
         try (rewrite unit_dot);
         try (rewrite unit_dot_left);
         try (apply reflex);
-        unfold P in H; destruct f; try (destruct u); try (destruct exc); unfold rw_unit in *; intuition; try (inversion H0).
+        unfold pinv, rwlock_pinv in H; destruct f; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try (inversion H).
 Qed.
 
-Lemma rw_mov_exc_release {S} `{!EqDecision S} `{!TPCM S} (exc: bool) (rc: Z) (x y: S)
-  : rw_exchange_cond
+Lemma rw_mov_exc_release {S} `{!EqDecision S} (exc: bool) (rc: Z) (x y: S)
+  : storage_protocol_deposit
     (Central exc rc y ⋅ ExcGuard)
-    x
     (Central false rc x)
-    (unit: S).
+    (Full x).
 Proof.
-  unfold rw_exchange_cond. intro. intro. split.
-  - unfold I_defined, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
-      unfold "⋅", exc_op, free_op in *.  right. destruct H.
-      + exfalso. unfold rw_unit in H. destruct e, e0, e1, f; inversion H.
-      + destruct e, e0, e1, f; unfold P; intuition; try destruct exc; try destruct u; crush.
-  - rewrite unit_dot_left. unfold I, I_defined in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
+  unfold storage_protocol_deposit. intro p. intro H. split.
+  - unfold pinv, rwlock_pinv, interp, rwlock_interp, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
+      unfold "⋅", exc_op, free_op in *. 
+      destruct e, e0, e1, f; unfold pinv, rwlock_pinv; intuition; try destruct exc; try destruct u; crush.
+  - unfold pinv, rwlock_pinv, interp, rwlock_interp in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
       destruct p. unfold "⋅", free_op, exc_op in *. destruct e, e1, e0; trivial;
         try (rewrite unit_dot);
         try (rewrite unit_dot_left);
         try (apply reflex);
-        unfold P in H; destruct f; try (destruct u); try (destruct exc); unfold rw_unit in *; intuition; try (inversion H0).
+        unfold pinv, rwlock_pinv in H; destruct f; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try discriminate.
 Qed.
 
-Lemma rw_mov_shared_begin {S} `{!EqDecision S} `{!TPCM S} (exc: bool) (rc: Z) (x: S)
-  : rw_mov
+Lemma rw_mov_shared_begin {S} `{!EqDecision S} (exc: bool) (rc: Z) (x: S)
+  : storage_protocol_update (BaseOpt S)
     (Central exc rc x)
     (Central exc (rc + 1) x ⋅ ShPending).
 Proof.
-  unfold rw_mov. intros. unfold I_defined, I in *.
-  destruct H.
-  - exfalso. unfold "⋅", rw_op, rw_unit, Central in H. destruct p. inversion H.
-      unfold "⋅", exc_op in H1. destruct e; discriminate.
-  - split.
-    + right. unfold P in *. unfold Central, ShPending in *. destruct p.
+  unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
+  split.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f; try contradiction; try destruct exc; intuition; try lia.
-    + unfold P in *. unfold Central, ShPending in *. destruct p.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Lemma rw_mov_shared_acquire {S} `{!EqDecision S} `{!TPCM S} (rc: Z) (x: S)
-  : rw_mov
+Lemma rw_mov_shared_acquire {S} `{!EqDecision S} (rc: Z) (x: S)
+  : storage_protocol_update (BaseOpt S)
     (Central false rc x ⋅ ShPending)
     (Central false rc x ⋅ ShGuard x).
 Proof.
-  unfold rw_mov. intros. unfold I_defined, I in *.
-  destruct H.
-  - exfalso. unfold "⋅", rw_op, rw_unit, Central in H. destruct p. inversion H.
-  - split.
-    + right. unfold P in *. unfold Central, ShPending, ShGuard in *. destruct p.
+  unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
+  split.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending, ShGuard in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f; try contradiction; intuition; try lia; try discriminate.
         case_decide; intuition; try lia; try discriminate.
-    + unfold P in *. unfold Central, ShPending, ShGuard in *. destruct p.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending, ShGuard in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Lemma rw_mov_shared_release {S} `{!EqDecision S} `{!TPCM S} (exc: bool) (rc: Z) (x y: S)
-  : rw_mov
+Lemma rw_mov_shared_release {S} `{!EqDecision S} (exc: bool) (rc: Z) (x y: S)
+  : storage_protocol_update (BaseOpt S)
     (Central exc rc x ⋅ ShGuard y)
     (Central exc (rc - 1) x).
 Proof.
-  unfold rw_mov. intros. unfold I_defined, I in *.
-  destruct H.
-  - exfalso. unfold "⋅", rw_op, rw_unit, Central in H. destruct p. inversion H.
-      unfold "⋅", exc_op in H1. destruct e; discriminate.
-  - split.
-    + right. unfold P in *. unfold Central, ShGuard in *. destruct p.
+  unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
+  split.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShGuard in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f, exc; try contradiction; try case_decide; intuition; try lia; try discriminate; try subst x; trivial.
-    + unfold P in *. unfold Central, ShGuard in *. destruct p.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShGuard in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Lemma rw_mov_shared_retry {S} `{!EqDecision S} `{!TPCM S} (exc: bool) (rc: Z) (x: S)
-  : rw_mov
+Lemma rw_mov_shared_retry {S} `{!EqDecision S} (exc: bool) (rc: Z) (x: S)
+  : storage_protocol_update (BaseOpt S)
     (Central exc rc x ⋅ ShPending)
     (Central exc (rc - 1) x).
 Proof.
-  unfold rw_mov. intros. unfold I_defined, I in *.
-  destruct H.
-  - exfalso. unfold "⋅", rw_op, rw_unit, Central in H. destruct p. inversion H.
-  - split.
-    + right. unfold P in *. unfold Central, ShPending in *. destruct p.
+  unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
+  split.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f, exc; try contradiction; try case_decide; intuition; try lia.
-    + unfold P in *. unfold Central, ShPending in *. destruct p.
+    + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
       unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
 Qed.
 
-Definition rw_borrow_back_cond {S} `{!EqDecision S} `{!TPCM S} (f: RwLock S) (m: S)
+Definition rw_borrow_back_cond {S} `{!EqDecision S} (f: RwLock S) (m: S)
   := ∀ p ,
     I_defined (f ⋅ p) -> ∃ z , (dot m z) = I (f ⋅ p).
 
-Lemma rw_mov_shared_borrow {S} `{!EqDecision S} `{!TPCM S} (x: S)
+Lemma rw_mov_shared_borrow {S} `{!EqDecision S} (x: S)
   : rw_borrow_back_cond (ShGuard x) x.
 Proof.
   unfold rw_borrow_back_cond. intros. exists unit. rewrite unit_dot.
