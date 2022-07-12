@@ -635,6 +635,64 @@ Section StorageLogic.
     iFrame "oinv".
     iPureIntro. trivial.
   Qed.
+  
+  Lemma fupd_singleton_mask_frame (γ: gname) (X Y Z : iProp Σ) E
+    (premise: X ⊢ Y ={ {[ γ ]} }=∗ Z) (is_in: γ ∈ E) : X ⊢ Y ={ E }=∗ Z.
+  Proof using B H equb invGS0 Σ.
+    iIntros "x y".
+    iDestruct (premise with "x y") as "p".
+    iDestruct (fupd_mask_frame_r _ _ (E ∖ {[γ]}) with "p") as "p".
+    { set_solver. }
+    assert ({[γ]} ∪ E ∖ {[γ]} = E) as sete. {
+        replace ({[γ]} ∪ E ∖ {[γ]}) with ((E ∖ {[γ]}) ∪ {[γ]}) by set_solver.
+        apply elem_diff_union_singleton. trivial.
+    }
+    rewrite sete. 
+    trivial.
+  Qed.
+    
+  Lemma logic_exchange'
+    (p1 p2: P) (b1 b2: B) (γ: gname) (f: B -> iProp Σ) E
+    (exchng: storage_protocol_exchange p1 p2 b1 b2)
+    (gname_in_e: γ ∈ E)
+    : maps γ f ⊢
+        p_own γ p1 ∗ ▷ f b1 ={ E }=∗ p_own γ p2 ∗ ▷ f b2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    apply (fupd_singleton_mask_frame γ); trivial.
+    apply logic_exchange; trivial.
+  Qed.
+   
+  Lemma logic_deposit'
+      (p1 p2: P) (b1: B) (γ: gname) (f: B -> iProp Σ) E
+      (exchng: storage_protocol_deposit p1 p2 b1)
+      (gname_in_e: γ ∈ E)
+      : maps γ f ⊢
+          p_own γ p1 ∗ ▷ f b1 ={ E }=∗ p_own γ p2.
+   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    apply (fupd_singleton_mask_frame γ); trivial.
+    apply logic_deposit; trivial.
+   Qed.
 
+  Lemma logic_withdraw'
+      (p1 p2: P) (b2: B) (γ: gname) (f: B -> iProp Σ) E
+      (exchng: storage_protocol_withdraw p1 p2 b2)
+      (gname_in_e: γ ∈ E)
+      : maps γ f ⊢
+          p_own γ p1 ={ E }=∗ p_own γ p2 ∗ ▷ f b2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    apply (fupd_singleton_mask_frame γ); trivial.
+    apply logic_withdraw; trivial.
+  Qed.
+
+  Lemma logic_update'
+      (p1 p2: P) (γ: gname) (f: B -> iProp Σ) E
+      (exchng: storage_protocol_update p1 p2)
+      (gname_in_e: γ ∈ E)
+      : maps γ f ⊢
+          p_own γ p1 ={ E }=∗ p_own γ p2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    apply (fupd_singleton_mask_frame γ); trivial.
+    apply logic_update; trivial.
+  Qed.
  
 End StorageLogic.

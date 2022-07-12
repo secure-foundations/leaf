@@ -161,16 +161,21 @@ Proof.
   iModIntro. iModIntro. rewrite ownE_op. { iFrame. } trivial.
 Qed.
 
+Lemma elem_diff_union_singleton (x: positive) (E: coPset)
+  (eo: x ∈ E) : ((E ∖ {[ x ]}) ∪ {[ x ]} = E).
+Proof.
+  apply set_eq. intros.  rewrite elem_of_union.
+          rewrite elem_of_difference. rewrite elem_of_singleton.
+          intuition. { subst x. trivial. }
+          have h : Decision (x0 = x) by solve_decision. destruct h; intuition.
+Qed.
+
 Lemma wsat_split_one_diff E x
     (eo: x ∈ E) :
    ⊢ |={E, (E ∖ {[ x ]})}=> (storage_inv x) ∗ (storage_inv x ={E ∖ {[ x ]}, E}=∗ True).
 Proof.
   assert ((E ∖ {[ x ]}) ∪ {[ x ]} = E) as ue.
-      { apply set_eq. intros.  rewrite elem_of_union.
-          rewrite elem_of_difference. rewrite elem_of_singleton.
-          intuition. { subst x. trivial. }
-          have h : Decision (x0 = x) by solve_decision. destruct h; intuition.
-      }
+      { apply elem_diff_union_singleton; trivial. }
   rewrite <- ue at 1. 
   rewrite <- ue at 4. 
   apply wsat_split_one_union.
