@@ -110,7 +110,7 @@ Section StorageLogic.
   Context `{!invGS Σ}.
   
   Definition maps (γ: gname) (f: B -> iProp Σ) : iProp Σ :=
-      ⌜ wf_prop_map f /\ (∃ p: P , True) ⌝ ∗
+      ⌜ wf_prop_map f ⌝ ∗
       ownI γ (
         ∃ (state: P) ,
           own γ (● (Inved state))
@@ -265,7 +265,6 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold guards, guards_with, maps.
     iIntros "[%wf #inv]".
-    destruct wf as [wf exists_p].
     iIntros (T) "[po b]".
     rewrite storage_bulk_inv_singleton. unfold storage_inv.
     unfold p_own.
@@ -440,7 +439,6 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
     iIntros "[%wfm #m] [p f]".
-    destruct wfm as [wfm inh]. 
     rewrite uPred_fupd_eq. unfold uPred_fupd_def.
     iIntros "[w oe]".
     iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
@@ -625,7 +623,6 @@ Section StorageLogic.
       iModIntro. 
       unfold maps.
       iDestruct "m" as "[%wf #m]".
-      destruct wf as [wf _].
       unfold wf_prop_map in wf.
       destruct wf as [wf_prop [wf_unit _]].
       setoid_rewrite wf_unit. done.
@@ -642,6 +639,9 @@ Section StorageLogic.
     { iFrame "pb". iFrame "u". }
     iModIntro. iFrame.
    Qed.
+  
+  Lemma logic_init
+      (p: P) (b: B)
 
           
 

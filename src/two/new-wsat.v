@@ -229,6 +229,40 @@ Proof.
   iFrame "HI". iFrame "HiP2". by iRight.
 Qed.
 
+
+Lemma ownI_alloc_open_and_simultaneous_own_alloc P `{ing : !inG Σ A} (a: A) :
+  (✓ a) ->
+  wsat ==∗ ∃ i, (ownE {[i]} -∗ wsat) ∗ ownI i P ∗ ownD {[i]} ∗ own i a.
+Proof.
+  iIntros (valid_a) "Hw". rewrite /wsat -!lock. iDestruct "Hw" as (I) "[Hw [HI Hd]]".
+  
+  iMod (own_alloc_cofinite a (dom _ I)) as "ow". { trivial. }
+  iDestruct "ow" as (i) "[%ni ow]".
+  
+  (*have is_f := Hfresh (@dom _ (gset positive) (gset_dom) I).
+  destruct is_f as [i [ni phi]].*)
+  assert (I !! i = None) as HIi by (apply not_in_dom_to_none; trivial).
+  assert (i ∈ (⊤ ∖ gmap_dom_coPset I)) as in_comp. { apply not_in_dom. trivial. }
+  have du := diff_union _ _ in_comp.
+  rewrite du.
+  iDestruct (ownD_op with "Hd") as "[Hd HD]". { set_solver. }
+  
+  iMod (own_update with "Hw") as "[Hw HiP]".
+  { eapply (gmap_view_alloc _ i DfracDiscarded); last done.
+    by rewrite /= lookup_fmap HIi. }
+  iModIntro. iExists i.
+  iDestruct (bi.persistent_sep_dup with "HiP") as "[HiP HiP2]".
+  rewrite /ownI; iFrame "HiP".
+  rewrite -/(ownD _). iFrame "HD". iFrame "ow".
+  iIntros "HE". iExists (<[i:=P]>I); iSplitL "Hw".
+  { by rewrite fmap_insert. }
+  
+  rewrite diff_domm_inserted. iFrame "Hd".
+  
+  iApply (big_sepM_insert _ I); first done.
+  iFrame "HI". iFrame "HiP2". by iRight.
+Qed.
+
 Lemma ownI_alloc_open_or_alloc i :
   ⊢ wsat ∗ ownE {[i]} ==∗ ∃ P , wsat ∗ ownD {[i]} ∗ ownI i P ∗ ▷ P.
 Proof.
