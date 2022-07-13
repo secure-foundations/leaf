@@ -346,22 +346,36 @@ Proof. split.
   - intros. apply rwlock_valid_interp.
 Qed.
 
+Class rwlock_logicG {S: Type} {eqdec: EqDecision S} Σ :=
+    {
+      rwlock_logic_inG :> inG Σ 
+        (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))
+    }.
+
+Definition rwlock_logicΣ {S: Type} {eqdec: EqDecision S} : gFunctors := #[
+  GFunctor
+        (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))
+].
+
 Section RwlockLogic.
 
 Context {S: Type}.
 Context {eqdec: EqDecision S}.
 
 Context {Σ: gFunctors}.
-Context `{!inG Σ (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))}.
+Context `{@rwlock_logicG S _ Σ}.
 Context `{!invGS Σ}.
-
-Definition rw_lock_inst (γ: gname) (f: S -> iProp Σ) : iProp Σ := maps γ (base_opt_prop_map f).
 
 Definition central γ (e: bool) (r: Z) (x: S) : iProp Σ := p_own γ (Central e r x).
 Definition exc_pending γ : iProp Σ := p_own γ ExcPending.
 Definition exc_guard γ : iProp Σ := p_own γ ExcGuard.
 Definition sh_pending γ : iProp Σ := p_own γ ShPending.
 Definition sh_guard γ m : iProp Σ := p_own γ (ShGuard m).
+
+Definition rw_lock_inst (γ: gname) (f: S -> iProp Σ) : iProp Σ :=
+    @maps
+      (BaseOpt S) _ _ _ _ _ (RwLock S) _ _ _ _ _ _ _ _ _ Σ _ _
+    γ (base_opt_prop_map f).
 
 Lemma rw_new (x: S) (f: S -> iProp Σ) E
   : f x ={E}=∗ ∃ γ , rw_lock_inst γ f ∗ central γ false 0 x.

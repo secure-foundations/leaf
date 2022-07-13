@@ -20,6 +20,10 @@ src/twolang/proofmode.v
 src/twolang/simp.v
 src/twolang/tactics.v
 
+-Q src/two-examples TwoExamples
+
+src/two-examples/rwlock.v
+
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
 -arg -w -arg -deprecated-instance-without-locality
