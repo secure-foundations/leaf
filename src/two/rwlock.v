@@ -483,7 +483,8 @@ Proof.
   unfold sh_guard.
   replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
   apply logic_guard.
-  apply rw_mov_shared_borrow.
+  - apply rw_mov_shared_borrow.
+  - set_solver.
 Qed.
 
 End RwlockLogic.

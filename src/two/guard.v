@@ -335,7 +335,7 @@ Qed.
 Lemma fguards_persistent (P Q R : iProp Σ) E F
     (pers: Persistent R)
     (f_subset_e : ∀ x , x ∈ F -> x ∈ E)
-    : ⊢ (P ∗ (P &&{F}&&$> Q) ∗ (Q -∗ R)) ={E}=∗ R.
+    : ⊢ (P ∗ (P &&{F}&&$> Q) ∗ (Q -∗ R)) ={E}=∗ P ∗ R.
 Proof.
   iIntros "[p [g qr]]".
   iAssert (P ∗ True ={E}=∗ P ∗ R)%I with "[g qr]" as "X".
@@ -348,7 +348,7 @@ Proof.
     iModIntro. iFrame "q". iFrame "r".
   }
   iDestruct ("X" with "[p]") as "X". { iFrame. }
-  iMod "X" as "[p r]". iModIntro. iFrame "r".
+  iMod "X" as "[p r]". iModIntro. iFrame "r". iFrame "p".
 Qed.
 (*
   iIntros "[p [g qr]]".
@@ -473,7 +473,7 @@ Qed.
 Lemma guards_persistent (P Q R : iProp Σ) E F
     (pers: Persistent R)
     (su: F ⊆ E)
-    : ⊢ (P ∗ (P &&{F}&&> Q) ∗ (Q -∗ R)) ={E}=∗ R.
+    : ⊢ (P ∗ (P &&{F}&&> Q) ∗ (Q -∗ R)) ={E}=∗ P ∗ R.
 Proof.
   unfold guards.
   iIntros "[p [g impl]]".
