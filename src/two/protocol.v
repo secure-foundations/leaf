@@ -190,11 +190,11 @@ Section StorageLogic.
     apply incl_of_inved_incl_assumes_unital. trivial.
   Qed.
   
-  Lemma logic_guard (p: P) (b: B) (γ: gname) (f: B -> iProp Σ)
+  Lemma logic_fguard (p: P) (b: B) (γ: gname) (f: B -> iProp Σ)
     (g: storage_protocol_guards p b)
-    : maps γ f ⊢ (p_own γ p &&{ {[ γ ]} }&&> ▷ f b).
+    : maps γ f ⊢ (p_own γ p &&{ {[ γ ]} }&&$> ▷ f b).
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 P equ equb inG0 invGS0 storage_mixin Σ.
-    unfold guards, guards_with, maps.
+    unfold fguards, guards_with, maps.
     iIntros "[%wf #inv]".
     iIntros (T) "[po b]".
     rewrite storage_bulk_inv_singleton. unfold storage_inv.
@@ -253,6 +253,18 @@ Section StorageLogic.
     setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
   Qed.
   
+  Lemma logic_guard (p: P) (b: B) (γ: gname) (E: coPset) (f: B -> iProp Σ)
+    (g: storage_protocol_guards p b)
+    (is_in: γ ∈ E)
+    : maps γ f ⊢ (p_own γ p &&{ E }&&> ▷ f b).
+  Proof using B H H0 H1 H10 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    unfold guards.
+    iIntros "m".
+    iExists {[ γ ]}.
+    iSplit.
+    { iPureIntro. set_solver. }
+    iApply logic_fguard; trivial.
+  Qed.
 
   Lemma own_sep_inv_incll_helper (p1 p2 st : P)
     (cond : ∀ q : P, pinv (p1 ⋅ q) → pinv (p2 ⋅ q))
