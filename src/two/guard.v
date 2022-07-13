@@ -297,6 +297,69 @@ Proof.
   iIntros "p". iApply "g". iModIntro. iFrame.
 Qed.
 
+Lemma guard_persistent (P Q R : iProp Σ) E F
+    (pers: Persistent R)
+    (f_subset_e : ∀ x , x ∈ F -> x ∈ E)
+    : ⊢ (P ∗ (P &&{F}&&> Q) ∗ (Q -∗ R)) ={E}=∗ R.
+Proof.
+  iIntros "[p [g qr]]".
+  iAssert (P ∗ True ={E}=∗ P ∗ R)%I with "[g qr]" as "X".
+  { iApply (apply_guard _ Q _ _ E F ∅); trivial.
+      { intro. rewrite elem_of_empty. contradiction. }
+      { intro. rewrite elem_of_empty. intuition. }
+    iFrame "g".
+    iIntros "[q _]".
+    iDestruct ("qr" with "q") as "#r".
+    iModIntro. iFrame "q". iFrame "r".
+  }
+  iDestruct ("X" with "[p]") as "X". { iFrame. }
+  iMod "X" as "[p r]". iModIntro. iFrame "r".
+Qed.
+(*
+  iIntros "[p [g qr]]".
+  unfold guards, guards_with.
+  iMod (wsat_split_superset E F ∅) as "x".
+  { intro. have j := f_subset_e x. rewrite elem_of_empty.
+      intuition. }
+  { intro. rewrite elem_of_empty. intuition. }
+  iDestruct ("g" $! P) as "g".
+  iDestruct "x" as "[se x]".
+  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p se]" as "J".
+  { iFrame "p". iIntros. iFrame. }
+  iMod ("g" with "J") as "[q g]".
+  iDestruct ("qr" with "q") as "#r".
+  iModIntro. iFrame "r". i
+  *)
+
+Lemma open_guarded_obj (P Q : iProp Σ) (E E' : coPset) F
+    (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False)
+    : ⊢ P ∗ (P &&{F}&&> Q) ={E, E'}=∗
+        Q ∗ (Q ={E', E}=∗ P).
+Proof.
+  iIntros "[p g]".
+  unfold guards, guards_with.
+  iMod (wsat_split_superset E F E') as "[inv_f back]"; trivial.
+  iDestruct ("g" $! P) as "g".
+  
+  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p inv_f]" as "J".
+  { iFrame "p". iIntros. iFrame. }
+  
+  iDestruct ("g" with "J") as "g".
+  
+  iDestruct (fupd_mask_frame_r ∅ ∅ E' _ with "g") as "g". { set_solver. }
+  replace (∅ ∪ E') with E' by set_solver.
+  iMod "g" as "[q g]". iModIntro.
+  
+  iFrame "q".
+  
+  iIntros "q".
+  iDestruct ("g" with "q") as "[inv_f p]".
+  iMod ("back" with "inv_f") as "x".
+  iModIntro.
+  iFrame "p".
+Qed.
+  
   
 End Guard.
 
