@@ -138,21 +138,71 @@ Proof.
     iFrame "HI". iFrame "Ho". iLeft. iFrame "HiD". by iNext; iRewrite "HPQ".
 Qed.
 
-
-Lemma get_fresh {V} (g: gmap positive V) : ∃ x , g !! x = None. Admitted.
-
 Lemma not_in_dom_to_none {V} (I: gmap positive V) (i: positive)
-  (HIi : i ∉ dom (gset positive) I) : I !! i = None. Admitted.
+  (HIi : i ∉ dom (gset positive) I) : I !! i = None.
+Proof.
+  generalize HIi.
+  rewrite elem_of_dom.
+  intros J.
+  unfold is_Some in J.
+  destruct (I !! i); trivial.
+  exfalso. apply J. exists v. trivial.
+Qed.
+
+Lemma get_fresh {V} (g: gmap positive V) : ∃ x , g !! x = None.
+Proof.
+  exists (fresh (dom (gset positive) g)).
+  assert (fresh (dom (gset positive) g) ∉ dom (gset positive) g) as H.
+  {
+    apply is_fresh.
+  }
+  apply not_in_dom_to_none. trivial.
+Qed.
 
 Lemma not_in_dom {V} (I: gmap positive V) (i: positive) :
-  I !! i = None -> i ∈ (⊤ ∖ gmap_dom_coPset I). Admitted.
+  I !! i = None -> i ∈ (⊤ ∖ gmap_dom_coPset I).
+Proof.
+  intro J. rewrite elem_of_difference.
+  unfold gmap_dom_coPset.
+  rewrite elem_of_gset_to_coPset.
+  rewrite elem_of_dom.
+  rewrite J. split; trivial. apply elem_of_top. trivial.
+Qed.
   
 Lemma diff_union (s: coPset) (i: positive) :
-    i ∈ s -> s = (s ∖ {[ i ]}) ∪ {[ i ]}. Admitted.
+    i ∈ s -> s = (s ∖ {[ i ]}) ∪ {[ i ]}.
+Proof.
+  intro. apply set_eq. intros.  rewrite elem_of_union.
+          rewrite elem_of_difference. rewrite elem_of_singleton.
+          have h : Decision (x = i) by solve_decision. destruct h; intuition.
+          subst i. trivial.
+Qed.
+
+Lemma gmap_dom_coPset_insert {V} (I: gmap positive V) (i: positive) (P: V)
+    : gmap_dom_coPset (<[i:=P]> I) = gmap_dom_coPset I ∪ {[ i ]}.
+Proof.
+  apply set_eq.
+  intro x.
+  unfold gmap_dom_coPset.
+  rewrite elem_of_gset_to_coPset.
+  rewrite elem_of_dom.
+  rewrite elem_of_union.
+  rewrite elem_of_gset_to_coPset.
+  rewrite elem_of_dom.
+  have h : Decision (i = x) by solve_decision. destruct h.
+  - subst x. rewrite elem_of_singleton. rewrite lookup_insert. intuition.
+      + unfold is_Some. exists P. trivial.
+      + unfold is_Some. exists P. trivial.
+  - rewrite lookup_insert_ne; trivial. rewrite elem_of_singleton; trivial.
+        intuition. subst x. contradiction.
+Qed.
     
 Lemma diff_domm_inserted {V} (I: gmap positive V) (i: positive) (P: V)
     : (⊤ ∖ gmap_dom_coPset (<[i:=P]> I))
-     = (⊤ ∖ gmap_dom_coPset I ∖ {[ i ]}). Admitted.
+     = (⊤ ∖ gmap_dom_coPset I ∖ {[ i ]}).
+Proof using invGS0 Σ.
+  rewrite gmap_dom_coPset_insert. set_solver.
+Qed.
 
 Lemma ownI_alloc φ P :
   (∀ E : gset positive, ∃ i, i ∉ E ∧ φ i) →
@@ -345,7 +395,10 @@ Qed.
 End wsat.
 
 Lemma copset_diff_empty {A}
-    : (⊤ ∖ @gmap_dom_coPset A ∅) = ⊤. Admitted.
+    : (⊤ ∖ @gmap_dom_coPset A ∅) = ⊤.
+Proof.
+  set_solver.
+Qed.
 
 (* Allocation of an initial world *)
 Lemma wsat_alloc `{!invGpreS Σ} : ⊢ |==> ∃ _ : invGS Σ, wsat ∗ ownE ⊤.

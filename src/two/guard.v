@@ -22,16 +22,73 @@ Definition storage_bulk_inv (m: gset positive) : iProp Σ :=
     [∗ map] i ↦ unused ∈ gset_to_gmap () m, storage_inv i.
     
 Lemma storage_bulk_inv_empty :
-  True ⊢ storage_bulk_inv ∅. Admitted.
-  
-Lemma storage_bulk_inv_singleton_union i X
-  : storage_bulk_inv ({[i]} ∪ X) ⊣⊢ storage_inv i ∗ storage_bulk_inv X.
-  Admitted.
-  
+  True ⊢ storage_bulk_inv ∅.
+Proof.
+  unfold storage_bulk_inv.
+  replace (gset_to_gmap () ∅ : gmap positive ()) with (∅ : gmap positive ()).
+  - rewrite big_sepM_empty. trivial.
+  - apply map_eq. intros. rewrite lookup_empty. rewrite lookup_gset_to_gmap. trivial.
+Qed.
+
 Lemma storage_bulk_inv_singleton i
   : storage_bulk_inv ({[i]}) ⊣⊢ storage_inv i.
-  Admitted.
+Proof.
+  unfold storage_bulk_inv.
+  replace (gset_to_gmap () {[i]}) with ( {[ i := () ]} : gmap positive () ).
+  - apply big_sepM_singleton.
+  - apply map_eq. intros.
+      have h : Decision (i = i0) by solve_decision. destruct h.
+      + subst i0. rewrite lookup_singleton.
+        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
+            destruct (decide_rel elem_of i {[i]}); trivial.
+            generalize n. rewrite elem_of_singleton. contradiction.
+      + rewrite lookup_singleton_ne; trivial.
+        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
+            destruct (decide_rel elem_of i0 {[i]}); trivial.
+            generalize e. rewrite elem_of_singleton. intros. subst i. contradiction.
+Qed.
 
+Lemma gset_to_gmap_union (E F : gset positive)
+  : gset_to_gmap () (E ∪ F) = gset_to_gmap () E ∪ gset_to_gmap () F.
+  Proof.
+  apply map_eq. intros. rewrite lookup_union.
+    rewrite lookup_gset_to_gmap.
+    rewrite lookup_gset_to_gmap.
+    rewrite lookup_gset_to_gmap.
+    unfold union_with, option_union_with, mguard, option_guard.
+    destruct (decide_rel elem_of i E);
+    destruct (decide_rel elem_of i F);
+    destruct (decide_rel elem_of i (E ∪ F)); trivial; set_solver.
+Qed.
+  
+Lemma gset_to_gmap_disj (E F : gset positive) (disj : E ## F)
+  : gset_to_gmap () E ##ₘ gset_to_gmap () F.
+Proof.
+  unfold "##ₘ", map_relation. intros.  unfold option_relation.
+    destruct (gset_to_gmap () E !! i) eqn:x;
+    destruct (gset_to_gmap () F !! i) eqn:y; trivial.
+    rewrite lookup_gset_to_gmap in x.
+    rewrite lookup_gset_to_gmap in y.
+    unfold mguard, option_guard in x, y.
+    destruct (decide_rel elem_of i E); destruct (decide_rel elem_of i F); try discriminate.
+    set_solver.
+Qed.
+
+Lemma storage_bulk_inv_union (E F : gset positive) (disj: E ## F) :
+  storage_bulk_inv (E ∪ F) ⊣⊢ storage_bulk_inv E ∗ storage_bulk_inv F.
+Proof.
+  unfold storage_bulk_inv. rewrite gset_to_gmap_union.
+  apply big_sepM_union. apply gset_to_gmap_disj. trivial.
+Qed.
+
+Lemma storage_bulk_inv_singleton_union i X
+  (not_in : i ∉ X)
+  : storage_bulk_inv ({[i]} ∪ X) ⊣⊢ storage_inv i ∗ storage_bulk_inv X.
+Proof.
+  rewrite storage_bulk_inv_union.
+  - rewrite storage_bulk_inv_singleton. trivial.
+  - set_solver.
+Qed.
 
 Definition guards_with (P Q X : iProp Σ) :=
     (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) ={∅}=∗ Q ∗ (Q -∗ X ∗ T))) % I.
@@ -56,27 +113,6 @@ Proof.
   iMod ("b" with "q") as "r".
   iModIntro. iFrame.
 Qed.
-
-Lemma gset_to_gmap_union (E F : gset positive)
-  : gset_to_gmap () (E ∪ F) = gset_to_gmap () E ∪ gset_to_gmap () F. Admitted.
-  
-Lemma gset_to_gmap_disj (E F : gset positive) (disj : E ## F)
-  : gset_to_gmap () E ##ₘ gset_to_gmap () F. Admitted.
-
-Lemma storage_bulk_inv_union (E F : gset positive) (disj: E ## F) :
-  storage_bulk_inv (E ∪ F) ⊣⊢ storage_bulk_inv E ∗ storage_bulk_inv F.
-Proof.
-  unfold storage_bulk_inv. rewrite gset_to_gmap_union.
-  apply big_sepM_union. apply gset_to_gmap_disj. trivial.
-Qed.
-  
-  (*
-Lemma union_eq_union_diff (E F : gmap positive ())
-  : (E ∪ F = E ∪ (F ∖ E)). Admitted.
-  
-Lemma is_disjoint 
-  E ##ₘ F ∖ E
-  *)
   
 Lemma twoway_assoc (P Q R : iProp Σ)
   : (P ∗ Q) ∗ R ⊣⊢ P ∗ (Q ∗ R).
@@ -103,42 +139,6 @@ Proof.
   iDestruct ("x" with "[p q]") as "m". { iFrame. }
   iFrame.
 Qed.
-
-(*
-Lemma wsat_split E F :
-  (wsat ∗ ownE E) ⊢ (storage_bulk_inv F) ∗ (storage_bulk_inv F -∗ wsat ∗ ownE E).
-Admitted.
-*)
-
-(*
-Lemma wsat_split_disable_one E x
-    (eo: x ∈ E) :
-   ⊢ wsat ∗ ownE E ==∗ ◇ (wsat ∗ ownE (E ∖ {[ x ]}) ∗ ownD {[ x ]} ∗ storage_inv x).
-Proof.
-  iIntros "[w en]".
-  rewrite /wsat -!lock.
-  iDestruct "w" as (I) "[wi wm]".
-  *)
-  
-  (*
-Lemma wsat_split_one' x :
-   ⊢ |={{[ x ]}, ∅}=> (storage_inv x) ∗ (storage_inv x ={∅, {[ x ]}}=∗ True).
-Proof.
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-  iIntros "we".
-  iMod (ownI_alloc_open_or_alloc with "we") as (P) "[w [d [i p]]]".
-  unfold storage_inv.
-  iMod (ownE_empty) as "oemp".
-  iModIntro. iModIntro. iFrame.
-  iSplitL "i p".
-  { iExists P. iFrame. }
-  iIntros "op [w e]".
-  iDestruct "op" as (P0) "op".
-  iDestruct (ownI_close x P0 with "[w op d]") as "[w l]".
-  { iFrame. }
-  iModIntro. iModIntro. iFrame.
-Qed.
-*)
 
 Lemma wsat_split_one_union x E 
     (not_in: x ∉ E) :
@@ -207,7 +207,7 @@ Proof.
       iMod (m (E ∖ {[x]})) as "[sbi back2]".
       { intuition. apply di with (x0 := x0). set_solver. }
       { intro x0. have ss0 := ss x0. set_solver. }
-      rewrite storage_bulk_inv_singleton_union.
+      rewrite storage_bulk_inv_singleton_union; trivial.
       iModIntro. iFrame "si sbi".
       iIntros "[si sbi]".
       iMod ("back2" with "sbi") as "l".
