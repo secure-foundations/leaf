@@ -392,20 +392,22 @@ Proof.
 Qed.
   
 
-Lemma rw_exc_begin γ f rc (x: S)
+Lemma rw_exc_begin γ f rc (x: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ false rc x ={ {[ γ ]} }=∗ central γ true rc x ∗ exc_pending γ.
+    central γ false rc x ={ E }=∗ central γ true rc x ∗ exc_pending γ.
 Proof.
   unfold central, exc_pending.
   rewrite <- p_own_op.
-  apply logic_update.
+  apply logic_update'; trivial.
   apply rw_mov_exc_begin.
 Qed.
 
-Lemma rw_exc_acquire γ f exc (x: S)
+Lemma rw_exc_acquire γ f exc (x: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
     central γ exc 0 x ∗ exc_pending γ
-      ={ {[ γ ]} }=∗ 
+      ={ E }=∗ 
     central γ exc 0 x ∗ exc_guard γ ∗ ▷ f x.
 Proof.
   unfold central, exc_pending, exc_guard, rw_lock_inst.
@@ -413,66 +415,71 @@ Proof.
   rewrite <- bi.sep_assoc'.
   rewrite <- p_own_op.
   replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
-  apply logic_withdraw.
+  apply logic_withdraw'; trivial.
   apply rw_mov_exc_acquire.
 Qed.
   
-Lemma rw_exc_release γ f exc rc (x y: S)
+Lemma rw_exc_release γ f exc rc (x y: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
     (central γ exc rc y ∗ exc_guard γ ∗ (▷ f x))
-      ={ {[ γ ]} }=∗
+      ={ E }=∗
     central γ false rc x.
 Proof.
   unfold central, exc_pending, exc_guard, rw_lock_inst.
   rewrite bi.sep_assoc.
   rewrite <- p_own_op.
   replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
-  apply logic_deposit.
+  apply logic_deposit'; trivial.
   apply rw_mov_exc_release.
 Qed.
 
-Lemma rw_shared_begin γ f exc rc (x: S)
+Lemma rw_shared_begin γ f exc rc (x: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
       central γ exc rc x
-      ={ {[ γ ]} }=∗
+      ={ E }=∗
       central γ exc (rc+1) x ∗ sh_pending γ.
 Proof.
   unfold central, sh_pending.
   rewrite <- p_own_op.
-  apply logic_update.
+  apply logic_update'; trivial.
   apply rw_mov_shared_begin.
 Qed.
   
-Lemma rw_shared_acquire γ f rc (x: S)
+Lemma rw_shared_acquire γ f rc (x: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
       central γ false rc x ∗ sh_pending γ
-      ={ {[ γ ]} }=∗
+      ={ E }=∗
       central γ false rc x ∗ sh_guard γ x.
 Proof.
   unfold central, sh_guard, sh_pending.
   rewrite <- p_own_op.
   rewrite <- p_own_op.
-  apply logic_update.
+  apply logic_update'; trivial.
   apply rw_mov_shared_acquire.
 Qed.
   
-Lemma rw_shared_release γ f exc rc (x y: S)
+Lemma rw_shared_release γ f exc rc (x y: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ exc rc x ∗ sh_guard γ y ={ {[ γ ]} }=∗ central γ exc (rc-1) x.
+    central γ exc rc x ∗ sh_guard γ y ={ E }=∗ central γ exc (rc-1) x.
 Proof.
   unfold central, sh_guard, sh_pending.
   rewrite <- p_own_op.
-  apply logic_update.
+  apply logic_update'; trivial.
   apply rw_mov_shared_release.
 Qed.
 
-Lemma rw_shared_retry γ f exc rc (x: S)
+Lemma rw_shared_retry γ f exc rc (x: S) E
+  (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ exc rc x ∗ sh_pending γ ={ {[ γ ]} }=∗ central γ exc (rc-1) x.
+    central γ exc rc x ∗ sh_pending γ ={ E }=∗ central γ exc (rc-1) x.
 Proof.
   unfold central, sh_guard, sh_pending.
   rewrite <- p_own_op.
-  apply logic_update.
+  apply logic_update'; trivial.
   apply rw_mov_shared_retry.
 Qed.
 

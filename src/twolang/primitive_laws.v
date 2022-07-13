@@ -149,4 +149,47 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+Lemma wp_cas s E l (v_actual v_old v_new: base_lit) :
+  {{{ l ↦ (LitV v_actual) }}}
+    CAS (Val $ LitV $ LitInt l) (Val $ LitV $ v_old) (Val $ LitV $ v_new) @ s; E
+  {{{ RET (LitV $ LitBool (bool_decide (v_actual = v_old))) ;
+      l ↦ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) }}}.
+Proof.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
+  iSplit; first by eauto with head_step.
+  iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
+  iMod (gen_heap_update _ _ _ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) with "Hσ Hl") as "[Hσ Hl]".
+  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+Qed.
+
+Lemma wp_cas_eq s E l (v_actual v_new: base_lit) :
+  {{{ l ↦ (LitV v_actual) }}}
+    CAS (Val $ LitV $ LitInt l) (Val $ LitV $ v_actual) (Val $ LitV $ v_new) @ s; E
+  {{{ RET (LitV $ LitBool true) ;
+      l ↦ (LitV v_new) }}}.
+Proof.
+  have j := wp_cas s E l v_actual v_actual v_new.
+  case_decide.
+  - assert (bool_decide (v_actual = v_actual) = true) as X.
+     ** unfold bool_decide. case_decide; trivial. contradiction.
+     ** rewrite X in j. trivial.
+  - contradiction.
+Qed.
+
+Lemma wp_cas_ne s E l (v_actual v_old v_new: base_lit)
+  (ne: v_actual ≠ v_old) :
+  {{{ l ↦ (LitV v_actual) }}}
+    CAS (Val $ LitV $ LitInt l) (Val $ LitV $ v_old) (Val $ LitV $ v_new) @ s; E
+  {{{ RET (LitV $ LitBool false) ;
+      l ↦ (LitV v_actual) }}}.
+Proof.
+  have j := wp_cas s E l v_actual v_old v_new.
+  case_decide.
+  - contradiction.
+  - assert (bool_decide (v_actual = v_old) = false) as X.
+     ** unfold bool_decide. case_decide; trivial. contradiction.
+     ** rewrite X in j. trivial.
+Qed.
+
 End lifting.

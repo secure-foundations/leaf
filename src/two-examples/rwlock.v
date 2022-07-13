@@ -161,7 +161,8 @@ Proof.
      + iDestruct "u" as "%u". lia.
 Qed.
 
-Lemma acq1 γ (rwlock: lang.val) (g: iProp Σ) storage_fn E :
+Lemma acq1 γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
+    (not_in_e: γ ∉ E) :
       {{{ g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn) }}}
       loop_until (CAS (Fst rwlock) #0 #1)
       {{{ RET #(); exc_pending γ ∗
@@ -172,7 +173,9 @@ Proof.
   wp_apply (loop_w_invariant _
     (g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
     (g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
-    (exc_pending γ ∗ g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))).
+    (exc_pending γ ∗ g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+    with "g"
+  ).
   - iIntros (phi2) "[g #guard] t".
       iMod (guarded_rwlock_get_struct g ⊤ E with "[g guard]") as "[g %rwlock_form]".
       { set_solver. } { iFrame "g". iFrame "guard". }
@@ -187,43 +190,37 @@ Proof.
       unfold IsRwLock at 4.
       unfold IsRwLock at 4.
       unfold rw_lock_inst, rw_atomic_inv.
-      iDestruct "irl" as "[maps ex]".
+      iDestruct "irl" as "[#maps ex]".
       iDestruct "ex" as (exc rc x) "[c [mem_exc mem_rc]]".
       
       destruct exc.
-       -- (* exc=true case *)
-            wp_apply (wp_cas with "mem_exc").
-          
-     
-      wp_pures. iInv "t" as (exc rc) ">I".
-              iDestruct "I" as (x) "I".
-              iDestruct "I" as "[L [c [a b]]]".
-            unfold rwlock_inv.
-            wp_apply (wp_cas with "a").
-            destruct exc.
-              -- case_decide.
-                ++ exfalso. inversion H0.
-                ++ iIntros "n1". iModIntro. iSplitR "p".
-                  ** iModIntro. iExists true, rc, x. iFrame.
-                  ** simpl. iApply ("p" $! 0). iSplit.
-                    --- iIntros. iFrame "#".
-                    --- iSplit.
-                      +++ iIntros "%". inversion H1.
-                      +++ iPureIntro. lia.
-              -- case_decide.
-                ++ iIntros "n1".
-                  iMod (rw_exc_begin with "L") as "[L pend]". iModIntro. iSplitR "p pend".
-                   ** iModIntro. iExists true, rc, x. iFrame.
-                   ** simpl. iApply ("p" $! 1). iSplit.
-                    --- iIntros "%". inversion H1.
-                    --- iSplitL "pend".
-                      +++ iIntros. iFrame "#". iFrame.
-                      +++ iPureIntro. lia.
-                ++ contradiction.
-    - intros. trivial.
-    - iIntros. iFrame "#".
-    - iFrame "#".
-    - iIntros "[x y]". iApply "p". iFrame.
+       -- (* exc=true case, CAS fail *)
+            wp_apply (wp_cas_ne with "mem_exc"). { crush. }
+            iIntros "mem_exc".
+            iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+            { iFrame "maps". iExists true, rc, x. iFrame. }
+            iModIntro. iApply "t".
+            iSplitL "g".
+            { iIntros "%". iFrame "g". iFrame "guard". }
+            iSplitL.
+            { iIntros "%". exfalso. crush. }
+            { iPureIntro. lia. }
+       -- (* exc=false case, CAS success *)
+            wp_apply (wp_cas_eq with "mem_exc").
+            iMod (rw_exc_begin with "maps c") as "[c pend]". { set_solver. }
+            
+            iIntros "mem_exc".
+            iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+            { iFrame "maps". iExists true, rc, x. iFrame. }
+            iModIntro. iApply "t".
+            iSplitL "".
+            { iIntros "%". exfalso. crush. }
+            iSplitL.
+            { iIntros "%". iFrame "pend". iFrame "guard". iFrame "g". }
+            { iPureIntro. lia. }
+  - intros. trivial.
+  - iIntros. iFrame.
+  - iFrame.
 Qed.
 
 Lemma acq2 (rwlock: lang.val) (𝛼: nat) 𝛾 contents_inv :
