@@ -303,7 +303,6 @@ Proof.
   - unfold pcore, inved_protocol_pcore, ε, inved_protocol_unit. trivial.
 Qed.
 
-Print Cmra'.
 Canonical Structure inved_protocolUR {P}
     `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
