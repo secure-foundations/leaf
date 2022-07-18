@@ -99,6 +99,24 @@ Definition fguards (P Q : iProp Σ) (m: gset positive) : iProp Σ :=
 Notation "P &&{ E }&&$> Q" := (fguards P Q E)
   (at level 99, E at level 50, Q at level 200).
   
+Global Instance guards_with_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) guards_with.
+Proof.
+  unfold Proper, "==>", guards_with. intros x y Q x0 y0 Q0 x1 y1 Q1.
+  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
+Qed.
+
+Global Instance fguards_with_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) fguards.
+Proof.
+  unfold fguards. unfold Proper, "==>". intros x y Q x0 y0 Q0 x1 y1 Q1.
+  unfold storage_bulk_inv.
+  assert (x1 = y1) as H. {
+      apply set_eq. intro. setoid_rewrite Q1. trivial.
+  }
+  setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
+Qed.
+  
 Lemma fguards_refl E P : ⊢ P &&{ E }&&$> P.
 Proof.
   unfold fguards, guards_with. iIntros (T) "x". iModIntro. iFrame.
@@ -395,6 +413,21 @@ Proof.
   iFrame "p".
 Qed.
 
+Definition fguards_include_pers (P X Q : iProp Σ) F
+    (pers: Persistent P) :
+  P ∗ □ (X &&{ F }&&$> Q) ⊢ □ (X &&{ F }&&$> (Q ∗ P)).
+Proof.
+  iIntros "[#p #g]".
+  iModIntro.
+  unfold fguards, guards_with.
+  iIntros (T) "xk".
+  iMod ("g" $! T with "xk") as "[q m]".
+  iModIntro.
+  iFrame "q". iFrame "p".
+  iIntros "[q _]".
+  iApply "m". iFrame "q".
+Qed.
+
 (**** guards ****)
 
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
@@ -495,6 +528,29 @@ Proof.
   { set_solver. }
   { set_solver. }
   iApply "x". iFrame.
+Qed.
+
+Global Instance guards_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) guards.
+Proof.
+  unfold Proper, "==>", guards. intros x y Q x0 y0 Q0 x1 y1 Q1.
+  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
+Qed.
+    
+Definition guards_include_pers (P X Q : iProp Σ) F
+    (pers: Persistent P) :
+  P ∗ □ (X &&{ F }&&> Q) ⊢ □ (X &&{ F }&&> (Q ∗ P)).
+Proof.
+  unfold guards.
+  iIntros "[p #g]".
+  iDestruct "g" as (m) "[%cond g]".
+  iDestruct (fguards_include_pers P X Q m with "[p g]") as "#newg".
+  { iFrame "p". iFrame "g". }
+  iModIntro.
+  iExists m.
+  iSplit.
+  { iPureIntro. trivial. }
+  iFrame "newg".
 Qed.
   
 End Guard.
