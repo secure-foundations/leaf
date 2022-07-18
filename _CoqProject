@@ -24,6 +24,8 @@ src/twolang/tactics.v
 -Q src/two-examples TwoExamples
 
 src/two-examples/rwlock.v
+src/two-examples/gmap_option.v
+src/two-examples/hash_table_logic.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
