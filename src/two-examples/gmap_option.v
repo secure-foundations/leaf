@@ -6,7 +6,7 @@ From iris.prelude Require Import options.
 
 Require Import cpdt.CpdtTactics.
 
-Section GmapTPCM.
+Section GmapOptionDot.
 
 Context {K} `{!EqDecision K} `{!Countable K}.
 Context {V} `{!EqDecision V}.
@@ -160,8 +160,10 @@ Global Instance gmap_tpcm : TPCM (gmap K (option V)) := {
 Defined.
 *)
 
+Definition gmap_le (a b : gmap K (option V)) := ∃ c , gmap_dot a c = b.
+
 Lemma le_of_subset (a b : gmap K (option V))
-  (f: ∀ k v , a !! k = Some v -> b !! k = Some v) : (∃ c , gmap_dot a c = b).
+  (f: ∀ k v , a !! k = Some v -> b !! k = Some v) : gmap_le a b.
 Proof.
   assert (∀ x : K * option V, Decision (match x with (k,v) => a !! k = None end)) as X
     by solve_decision.
@@ -183,4 +185,4 @@ Proof.
     contradiction.
 Qed.
 
-End GmapTPCM.
+End GmapOptionDot.

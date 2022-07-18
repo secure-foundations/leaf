@@ -20,6 +20,7 @@ From twolang Require Import lang.
 From iris Require Import options.
 
 Require Import Two.guard_later.
+Require Import TwoExamples.misc_tactics.
 
 Definition loop_until e : lang.expr :=
     (rec: "loop" "c" :=
@@ -314,16 +315,6 @@ Proof.
     iApply "x".
     iFrame.
 Qed.
-
-Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
-  let EQ := fresh in
-  let name1 := fresh in
-  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
-    try (rewrite <- EQ);
-    (repeat match reverse goal with  
-    | [H : context[t] |- _ ] => rewrite <- EQ in H
-    end); clear EQ; try (clear name); rename name1 into name.
-
 
 Lemma wp_acquire_exc γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
