@@ -442,73 +442,108 @@ Proof.
   done.
 Qed.
 
-Lemma wp_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
-      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
+Lemma wp_acquire_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E
+    (not_in_e: γ ∉ E) :
+      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) }}}
       acquire_shared rwlock
-      {{{ x, RET #(); L (rwloc 𝛼 𝛾) (ShGuard x) ∗ ⌜ contents_inv x ⌝ }}}.
+      {{{ x, RET #();
+          g ∗ sh_guard γ x
+      }}}.
 Proof.
-  iIntros (phi) "#eg x".
+  iIntros (phi) "[g #guard_lat] P".
+  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
+  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  
   unfold acquire_shared.
   wp_pure _.
   
-  iDestruct (rwlock_get_struct with "eg") as "%".
-    destruct rwlock; try contradiction.
-    destruct rwlock1; try contradiction.
-    destruct l; try contradiction.
-    destruct rwlock2; try contradiction.
-    destruct l; try contradiction.
-    
+  iDestruct "guard" as "#guard".
+  iMod (guarded_rwlock_get_struct g ⊤ E with "[g guard]") as "[g %rwlock_form]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  destruct rwlock_form as [exc_loc [rw_loc rwlock_form]]. subst rwlock.
+  
   wp_pures.
   iLöb as "IH".
-  wp_pures.
+  
+  wp_bind (FAA #rw_loc #1).
+  
+  iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+    as "[irl irl_back]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  unfold IsRwLock at 3.
+  unfold IsRwLock at 3.
+  unfold rw_atomic_inv.
+  iDestruct "irl" as "[#maps ex]".
+  iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
+  
+  wp_apply (wp_faa with "mem_rc"). iIntros "mem_rc". 
+  iMod (rw_shared_begin with "maps c") as "[c pend]". { set_solver. }
+  
+  iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+  { iFrame "maps". iExists exc, (rc + 1)%Z, x0. iFrame. }
+  iModIntro.
   
   wp_pures.
   
-  wp_bind (FAA #n0 #1).
-  unfold is_rwlock.  iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
-  wp_apply (wp_faa with "lr"). iIntros "lr". 
-  iMod (rw_shared_begin with "L") as "[L pend]".
-  iModIntro. iSplitL "L le lr".
-  {
-    iModIntro. unfold rwlock_inv. iExists exc, (rc + 1), x. iFrame. iPureIntro. trivial.
-  }
-  wp_pures.
+  wp_bind (! #exc_loc)%E.
   
-  wp_bind (! #n)%E.
-  clear exc. clear rc. clear ci. clear x.
-  iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
+  clear exc. clear rc. clear x0.
+  
+  iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+    as "[irl irl_back]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  unfold IsRwLock at 3.
+  unfold IsRwLock at 3.
+  unfold rw_atomic_inv.
+  iDestruct "irl" as "[_ ex]".
+  iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
+  
   wp_load.
-  destruct exc.
   
-  (* exc = 1 case *)
-  - iModIntro. iSplitL "L le lr".
-    {
-      iModIntro. unfold rwlock_inv. iExists true, rc, x. iFrame. iPureIntro. trivial.
-    }
+  destruct exc.
+  - (* exc = 1, fail *)
+
+    iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+    { iFrame "maps". iExists true, rc, x0. iFrame. }
+    iModIntro.
     wp_pures.
     
-    wp_bind (FAA #n0 #(-1)).
-    clear rc. clear ci. clear x.
-    iInv "eg" as ">I". iDestruct "I" as (exc rc x) "[L [%ci [le lr]]]".
-    wp_apply (wp_faa with "lr"). iIntros "lr". 
-    iMod (rw_shared_retry with "L pend") as "L".
-    iModIntro. iSplitL "L le lr".
-    {
-      iModIntro. unfold rwlock_inv. iExists exc, (rc - 1), x. iFrame. iPureIntro. trivial.
-    }
-    wp_pures.
-    iApply ("IH" with "x").
-  
-  (* exc = 0 case *)
-  - iMod (rw_shared_acquire with "L pend") as "[L guard]".
+    wp_bind (FAA #rw_loc #(-1)).
+    
+    clear rc. clear x0.
+    iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+    as "[irl irl_back]".
+    { set_solver. } { iFrame "g". iFrame "guard". }
+    unfold IsRwLock at 3.
+    unfold IsRwLock at 3.
+    unfold rw_atomic_inv.
+    iDestruct "irl" as "[_ ex]".
+    iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
+    
+    wp_apply (wp_faa with "mem_rc"). iIntros "mem_rc". 
+    iMod (rw_shared_retry with "maps [c pend]") as "c". { set_solver. }
+    { iFrame "c". iFrame "pend". }
+    
+    iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+    { iFrame "maps". iExists exc, (Z.add rc (Zneg xH)), x0. iFrame. }
     iModIntro.
-    iSplitL "L le lr".
-    {
-      iModIntro. unfold rwlock_inv. iExists false, rc, x. iFrame. iPureIntro. trivial.
-    }
+    
     wp_pures.
-    iApply ("x" $! x).
-    iModIntro. iFrame. iPureIntro. trivial.
+    iApply ("IH" with "P").
+    iFrame "g".
+  - (* exc = 1, success *)
+  
+    iMod (rw_shared_acquire with "maps [c pend]") as "[c shg]". { set_solver. }
+    { iFrame "c". iFrame "pend". }
+    
+    iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+    { iFrame "maps". iExists false, rc, x0. iFrame. }
+    iModIntro.
+    
+    wp_pures.
+    
+    iModIntro. iApply "P".
+    iFrame "g". iFrame "shg".
 Qed.
 
 End RwlockProof.
