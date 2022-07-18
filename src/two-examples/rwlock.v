@@ -19,6 +19,8 @@ From twolang Require Import heap_ra.
 From twolang Require Import lang.
 From iris Require Import options.
 
+Require Import Two.guard_later.
+
 Definition loop_until e : lang.expr :=
     (rec: "loop" "c" :=
       if: e then #()
@@ -83,6 +85,17 @@ Definition IsRwLock γ rwlock (storage_fn: S -> iProp Σ) : iProp Σ :=
   
 Global Instance rw_atomic_inv_timeless γ l1 l2 : Timeless (rw_atomic_inv γ l1 l2).
 Proof. apply _. Qed.
+
+Global Instance rw_atomic_inv_extractable γ rwlock storage_fn
+    : LaterGuardExtractable (IsRwLock γ rwlock storage_fn).
+Proof. 
+  unfold IsRwLock.
+  destruct rwlock; try typeclasses eauto.
+  destruct rwlock1; try typeclasses eauto.
+  destruct l; try typeclasses eauto.
+  destruct rwlock2; try typeclasses eauto.
+  destruct l; try typeclasses eauto.
+Qed.
 
 Lemma rwlock_get_struct γ rwlock storage_fn
   : IsRwLock γ rwlock storage_fn -∗ ⌜
@@ -199,6 +212,7 @@ Proof.
             iIntros "mem_exc".
             iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
             { iFrame "maps". iExists true, rc, x. iFrame. }
+            iDestruct ("t" $! (0)) as "t".
             iModIntro. iApply "t".
             iSplitL "g".
             { iIntros "%". iFrame "g". iFrame "guard". }
@@ -212,6 +226,7 @@ Proof.
             iIntros "mem_exc".
             iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
             { iFrame "maps". iExists true, rc, x. iFrame. }
+            iDestruct ("t" $! 1) as "t".
             iModIntro. iApply "t".
             iSplitL "".
             { iIntros "%". exfalso. crush. }
@@ -223,81 +238,117 @@ Proof.
   - iFrame.
 Qed.
 
-Lemma acq2 (rwlock: lang.val) (𝛼: nat) 𝛾 contents_inv :
-      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending }}}
+Lemma acq2 γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
+    (not_in_e: γ ∉ E) :
+      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+          ∗ exc_pending γ
+       }}}
       loop_until (op_eq (!(Snd rwlock)) #0)
-      {{{ x, RET #(); L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}.
+      {{{ x, RET #(); 
+          g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+          ∗ exc_guard γ ∗ storage_fn x
+      }}}.
 Proof.
-  iIntros (phi) "[#isr ep] p".
+  iIntros (phi) "g x".
   wp_apply (loop_w_invariant _
-    (is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending)%I
-    (is_rwlock rwlock 𝛼 𝛾 contents_inv ∗ L (rwloc 𝛼 𝛾) ExcPending)%I
-    (∃ x, L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝)%I
-    with "[ep]"
-    ).
-  - iIntros (phi2) "[#t ep] p".
-      iDestruct (rwlock_get_struct with "t") as "%".
-        destruct rwlock; try contradiction.
-        destruct rwlock1; try contradiction.
-        destruct l; try contradiction.
-        destruct rwlock2; try contradiction.
-        destruct l; try contradiction.
-        * unfold op_eq. wp_pures.
-          wp_bind (HeapOp LoadOp _ _ _).
-          iInv "t" as (exc rc) ">I".
-              iDestruct "I" as (x) "I".
-              iDestruct "I" as "[L [%c [a b]]]".
-            wp_load.
-            have h : Decision (rc = 0) by solve_decision. destruct h.
-            -- subst rc.
-              iMod (rw_exc_acquire with "L ep") as "[L [eg x]]".
-              iModIntro.
-              iSplitL "L a b".
-              ++ iModIntro. unfold rwlock_inv. iExists  exc, 0, x. iFrame. iPureIntro. trivial.
-              ++ wp_pures. iModIntro. iApply "p". 
-                iSplitR.
-                ** iIntros "%". inversion H0.
-                ** iSplitL.
-                 --- iIntros. iExists x. iFrame. iPureIntro. trivial.
-                 --- iPureIntro. lia.
-            -- iModIntro.
-              iSplitL "L a b".
-              ++ iModIntro. unfold rwlock_inv. iExists  exc, rc, x. iFrame. iPureIntro. trivial.
-              ++ wp_pures. assert (bool_decide (#rc = #0) = false).
-                ** unfold bool_decide. case_decide; trivial. inversion H0. contradiction.
-                ** rewrite H0.
-                  iModIntro. iApply ("p" $! 0).
-                  iSplitL.
-                  --- iIntros. iFrame. iFrame "#".
-                  --- iSplit.
-                    +++ iIntros "%". lia.
-                    +++ iPureIntro. lia.
-    - intros. trivial.
-    - iIntros. iFrame "#". iFrame.
-    - iFrame "#". iFrame.
-    - iIntros "T". iDestruct "T" as (x) "T".
-      iApply ("p" $! x). iFrame.
+    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
+    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
+    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_guard γ
+        ∗ (∃ x , storage_fn x))
+    with "g"
+  ).
+  - iIntros (phi2) "[g [#guard pend]] t".
+      iMod (guarded_rwlock_get_struct g ⊤ E with "[g guard]") as "[g %rwlock_form]".
+      { set_solver. } { iFrame "g". iFrame "guard". }
+      destruct rwlock_form as [exc_loc [rw_loc rwlock_form]]. subst rwlock.
+      
+      unfold op_eq. wp_pures.
+      wp_bind (HeapOp LoadOp _ _ _).
+      
+      iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+        as "[irl irl_back]".
+      { set_solver. } { iFrame "g". iFrame "guard". }
+      
+      unfold IsRwLock at 4.
+      unfold IsRwLock at 4.
+      unfold rw_lock_inst, rw_atomic_inv.
+      iDestruct "irl" as "[#maps ex]".
+      iDestruct "ex" as (exc rc x) "[c [mem_exc mem_rc]]".
+      
+      wp_load.
+      
+      have h : Decision (rc = 0) by solve_decision. destruct h.
+      -- (* rc = 0 case, success *)
+        subst rc. iMod (rw_exc_acquire with "maps [c pend]") as "[c [handle fx]]". { set_solver. }
+        { iFrame "c". iFrame "pend". }
+        
+        iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+        { iFrame "maps". iExists exc, 0, x. iFrame. }
+        iModIntro. wp_pures.
+        iDestruct ("t" $! 1) as "t".
+        iModIntro. iApply "t".
+        iSplitL "".
+        { iIntros "%". exfalso. crush. }
+        iSplitL.
+        { iIntros "%". iFrame "handle". iFrame "guard". iFrame "g". iExists x. iFrame "fx". }
+        { iPureIntro. lia. }
+     -- (* rc != 0 case, failure *)
+        iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+        { iFrame "maps". iExists exc, rc, x. iFrame. }
+        iDestruct ("t" $! (0)) as "t".
+        iModIntro. wp_pures.
+        assert (bool_decide (#rc = #0) = false) as Xb.
+                { unfold bool_decide. case_decide; trivial. inversion H0. contradiction. }
+        rewrite Xb.
+        iModIntro. iApply "t".
+        iSplitL "g pend".
+        { iIntros "%". iFrame "g". iFrame "guard". iFrame "pend". }
+        iSplitL.
+        { iIntros "%". exfalso. crush. }
+        { iPureIntro. lia. }
+  - intros. trivial.
+  - iIntros. iFrame.
+  - iIntros "[g [guard [eg s]]]".
+    iDestruct "s" as (x) "s".
+    iDestruct ("x" $! (x)) as "x".
+    iApply "x".
+    iFrame.
 Qed.
 
-Lemma wp_acquire_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv :
-      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv }}}
+Tactic Notation "full_generalize" constr(t) "as" simple_intropattern(name) :=
+  let EQ := fresh in
+  let name1 := fresh in
+  assert (exists x , x = t) as EQ by (exists t; trivial); destruct EQ as [name1];
+    try (rewrite <- EQ);
+    (repeat match reverse goal with  
+    | [H : context[t] |- _ ] => rewrite <- EQ in H
+    end); clear EQ; try (clear name); rename name1 into name.
+
+
+Lemma wp_acquire_exc γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
+    (not_in_e: γ ∉ E) :
+      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) }}}
       acquire_exc rwlock
-      {{{ x, RET #(); L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}.
+      {{{ x, RET #();
+          g ∗ exc_guard γ ∗ storage_fn x
+      }}}.
 Proof.
   unfold acquire_exc.
-  iIntros (p) "#isr P".
+  iIntros (p) "[g #guard_lat] P".
+  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
+  { set_solver. } { iFrame "guard_lat". iFrame "g". }
   wp_pure _.
-  have j := acq1 rwlock 𝛼 𝛾 contents_inv. unfold loop_until in j.
+  have j := acq1 γ rwlock g storage_fn E not_in_e. unfold loop_until in j.
   wp_bind ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0).
   full_generalize ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0) as e.
-  wp_apply (j with "isr").
-  iIntros "m".
-  have k := acq2 rwlock 𝛼 𝛾 contents_inv. unfold loop_until in k. unfold op_eq in k.
+  wp_apply (j with "[guard g]"). { iFrame "g". iFrame "guard". }
+  iIntros "[e [g g2]]".
+  have k := acq2 γ rwlock g storage_fn E not_in_e. unfold loop_until in k. unfold op_eq in k.
   wp_seq.
   full_generalize ((rec: "loop" "c" := if: BinOp EqOp ! (Snd rwlock) #0 then #() else "loop" "c")%E #0) as e2.
-  wp_apply (k with "[m]").
-  - iFrame. iFrame "#".
+  wp_apply (k with "[g g2 e]").
   - iFrame.
+  - iIntros (x) "[g [g2 [e s]]]". iApply "P". iFrame.
 Qed.
 
 Lemma wp_release_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv x :

@@ -106,3 +106,5 @@ Proof.
   - apply lg_pers.
   - apply lg_timeless.
 Qed.
+
+End GuardLater.
