@@ -351,57 +351,95 @@ Proof.
   - iIntros (x) "[g [g2 [e s]]]". iApply "P". iFrame.
 Qed.
 
-Lemma wp_release_exc (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
-      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
-           L (rwloc 𝛼 𝛾) ExcGuard ∗ L 𝛾 x ∗ ⌜ contents_inv x ⌝ }}}
+Lemma wp_release_exc (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
+    (not_in_e: γ ∉ E) :
+      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) ∗
+          exc_guard γ ∗ storage_fn x }}}
       release_exc rwlock
       {{{ RET #(); True }}}.
 Proof.
   unfold release_exc.
-  iIntros (P) "[#eg [c [l %ci1]]] P".
-  iDestruct (rwlock_get_struct with "eg") as "%".
-    destruct rwlock; try contradiction.
-    destruct rwlock1; try contradiction.
-    destruct l; try contradiction.
-    destruct rwlock2; try contradiction.
-    destruct l; try contradiction.
-  wp_pures.
-  unfold is_rwlock.
-  iInv "eg" as (exc rc) ">I".
-  iDestruct "I" as (x0) "[ck [%ci [le lr]]]".
-  wp_store.
-  iMod (rw_exc_release with "ck c l") as "ck".
-  iModIntro.
-  iSplitL "lr le ck".
-  - iModIntro. unfold rwlock_inv. iExists false, rc, x. iFrame. iPureIntro. trivial.
-  - iApply "P". done.
-Qed.
+  iIntros (p) "[g [#guard_lat [e fx]]] P".
+  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
+  { set_solver. } { iFrame "guard_lat". iFrame "g". }
   
-Lemma wp_release_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv x :
-      {{{ is_rwlock rwlock 𝛼 𝛾 contents_inv ∗
-           L (rwloc 𝛼 𝛾) (ShGuard x) }}}
+  wp_pures.
+  
+  iDestruct "guard" as "#guard".
+  iMod (guarded_rwlock_get_struct g ⊤ E with "[g guard]") as "[g %rwlock_form]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  destruct rwlock_form as [exc_loc [rw_loc rwlock_form]]. subst rwlock.
+  
+  wp_pures.
+  
+  iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+    as "[irl irl_back]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  
+  unfold IsRwLock at 3.
+  unfold IsRwLock at 3.
+  unfold rw_atomic_inv.
+  iDestruct "irl" as "[#maps ex]".
+  iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
+  
+  wp_store.
+  
+  iMod (rw_exc_release with "maps [e c fx]") as "c".
+  { set_solver. }
+  { iFrame "c". iFrame "e". iFrame "fx". }
+  
+  iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+  { iFrame "maps". iExists false, rc, x. iFrame. }
+  
+  iModIntro.
+  iApply "P".
+  done.
+Qed.
+
+Lemma wp_release_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
+    (not_in_e: γ ∉ E) :
+      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) ∗
+          sh_guard γ x }}}
       release_shared rwlock
       {{{ dummy, RET dummy; True }}}.
 Proof.
   unfold release_shared.
-  iIntros (P) "[#eg l] P".
-  iDestruct (rwlock_get_struct with "eg") as "%".
-    destruct rwlock; try contradiction.
-    destruct rwlock1; try contradiction.
-    destruct l; try contradiction.
-    destruct rwlock2; try contradiction.
-    destruct l; try contradiction.
+  iIntros (p) "[g [#guard_lat e]] P".
+  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
+  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  
   wp_pures.
-  unfold is_rwlock.
-  iInv "eg" as (exc rc) ">I".
-  iDestruct "I" as (x0) "[ck [%ci [le lr]]]".
-  wp_apply (wp_faa with "lr").
-  iMod (rw_shared_release with "ck l") as "ck".
-  iIntros "lr".
+  
+  iDestruct "guard" as "#guard".
+  iMod (guarded_rwlock_get_struct g ⊤ E with "[g guard]") as "[g %rwlock_form]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  destruct rwlock_form as [exc_loc [rw_loc rwlock_form]]. subst rwlock.
+  
+  wp_pures.
+  
+  iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
+    as "[irl irl_back]".
+  { set_solver. } { iFrame "g". iFrame "guard". }
+  
+  unfold IsRwLock at 3.
+  unfold IsRwLock at 3.
+  unfold rw_atomic_inv.
+  iDestruct "irl" as "[#maps ex]".
+  iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
+  
+  wp_apply (wp_faa with "mem_rc").
+  iIntros "mem_rc".
+  
+  iMod (rw_shared_release with "maps [e c]") as "c".
+  { set_solver. }
+  { iFrame "c". iFrame "e". }
+  
+  iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
+  { iFrame "maps". iExists exc, (Z.add rc (Zneg xH)), x0. iFrame. }
+  
   iModIntro.
-  iSplitL "lr le ck".
-  - iModIntro. unfold rwlock_inv. iExists exc, (rc-1), x0. iFrame. iPureIntro. trivial.
-  - iApply "P". done.
+  iApply "P".
+  done.
 Qed.
 
 Lemma wp_acquire_shared (rwlock: lang.val) 𝛼 𝛾 contents_inv :
