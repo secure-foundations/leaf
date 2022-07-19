@@ -94,15 +94,18 @@ Proof.
   iModIntro. iFrame.
 Qed.
   
+  (*
 Definition Range γ k i j : iProp Σ :=
   ∃ a , ⌜ full a k i j ⌝ ∗ own γ a.
+  *)
   
-Lemma ht_QueryReachedEnd γ k v :
-    Range γ k (hash k) ht_fixed_size -∗ own γ (m k v) -∗ ⌜ v = None ⌝.
+Lemma ht_QueryReachedEnd γ k v r :
+    full r k (hash k) ht_fixed_size ->
+    (own γ r -∗ own γ (m k v) -∗ ⌜ v = None ⌝).
 Proof.
+  intro f.
   iIntros "range l".
-  iDestruct "range" as (a) "[%f range]".
-  iDestruct (own_op γ a (m k v) with "[range l]") as "l". { iFrame. }
+  iDestruct (own_op γ r (m k v) with "[range l]") as "l". { iFrame. }
   iDestruct (own_valid with "l") as "%t".
   iPureIntro.
   eapply ht_valid_QueryReachedEnd.
@@ -110,42 +113,47 @@ Proof.
     - trivial.
 Qed.
 
-Lemma ht_QueryReachedEnd_b γ k v g F E (su: F ⊆ E) :
+Lemma ht_QueryReachedEnd_b γ r k v g F E (su: F ⊆ E) :
+    full r k (hash k) ht_fixed_size ->
   ⊢
     g ∗ (g &&{F}&&>
-      Range γ k (hash k) ht_fixed_size ∗ own γ (m k v)
+      own γ r ∗ own γ (m k v)
     ) ={E}=∗ g ∗ ⌜ v = None ⌝.
 Proof.
+  intro f.
   iIntros "[g guards]".
   iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
   { trivial. }
   { iFrame "g". iFrame "guards".
     iIntros "[a b]".
-    iDestruct (ht_QueryReachedEnd with "a b") as "t". iFrame.
+    iDestruct (ht_QueryReachedEnd with "a b") as "t"; trivial.
   }
   iModIntro. iFrame.
 Qed.
 
-Lemma ht_QueryNotFound γ k v j :
-  Range γ k (hash k) j ∗ own γ (s j None) ∗ own γ (m k v) -∗ ⌜ v = None ⌝.
+Lemma ht_QueryNotFound γ r k v j :
+  full r k (hash k) j ->
+  own γ r ∗ own γ (s j None) ∗ own γ (m k v) -∗ ⌜ v = None ⌝.
 Proof.
+  intro f.
   iIntros "[range [c l]]".
-  iDestruct "range" as (a) "[%f range]".
   iDestruct (own_valid_3 with "range l c") as "%t".
   iPureIntro.
-  apply ht_valid_QueryNotFound with (a := a) (k := k) (j := j); trivial.
+  apply ht_valid_QueryNotFound with (a := r) (k := k) (j := j); trivial.
 Qed.
 
-Lemma ht_QueryNotFound_b γ k v j g F E (su: F ⊆ E) :
+Lemma ht_QueryNotFound_b γ r k v j g F E (su: F ⊆ E) :
+  full r k (hash k) j ->
   ⊢
     g ∗ (g &&{F}&&>
-      Range γ k (hash k) j ∗ own γ (s j None) ∗ own γ (m k v)
+      own γ r ∗ own γ (s j None) ∗ own γ (m k v)
     ) ={E}=∗ g ∗ ⌜ v = None ⌝.
 Proof.
+  intro f.
   iIntros "[g guards]".
   iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
   { trivial. }
-  { iFrame "g". iFrame "guards". iApply ht_QueryNotFound. }
+  { iFrame "g". iFrame "guards". iApply ht_QueryNotFound. trivial. }
   iModIntro. iFrame.
 Qed.
  
@@ -160,22 +168,30 @@ Qed.
 *)
 
 Lemma ht_BorrowedRangeEmpty γ k i
-  : ⊢ |==> Range γ k i i.
+  : ⊢ |==> ∃ r , ⌜ full r k i i ⌝ ∗ own γ r.
 Proof.
-  iIntros. unfold Range.
+  iIntros.
   iMod (own_unit htUR γ) as "u".
   iModIntro. iExists ε. iFrame.
   iPureIntro.
   apply full_trivial.
 Qed.
 
-Lemma ht_BorrowedRangeAppend γ k i j k0 v0 g1 g2 F1 F2 :
-    (g1 &&{F1}&&> Range γ k i j) ∗
+Lemma ht_BorrowedRangeAppend γ r k i j k0 v0 g1 g2 F1 F2
+    (ne: k0 ≠ k) (f: full r k i j) :
+    (g1 &&{F1}&&> own γ r) ∗
     (g2 &&{F2}&&> own γ (s j (Some (k0, v0))))
-    ⊢
-    (g1 ∗ g2 &&{F1 ∪ F2}&&> Range γ k i (j+1)).
+    ⊢ ∃ r' , ⌜ full r' k i (j+1) ⌝ ∗
+    (g1 ∗ g2 &&{F1 ∪ F2}&&> own γ r').
 Proof.
-  apply guards_and_sep_union.
+  iIntros "[a b]".
+  iExists (ht_dot r (s j (Some (k0, v0)))).
+  iSplit.
+  { iPureIntro. apply full_dot; trivial. }
+  Print guards_and_sep_union.
+  iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
+  {
+    
  
   (ne: k0 ≠ k) : BorrowedRange 𝜅 𝛾 k i j -∗ B 𝜅 𝛾 (s j (Some (k0, v0)))
       -∗ BorrowedRange 𝜅 𝛾 k i (j+1).
