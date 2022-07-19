@@ -87,7 +87,7 @@ Definition IsRwLock γ rwlock (storage_fn: S -> iProp Σ) : iProp Σ :=
 Global Instance rw_atomic_inv_timeless γ l1 l2 : Timeless (rw_atomic_inv γ l1 l2).
 Proof. apply _. Qed.
 
-Global Instance rw_atomic_inv_extractable γ rwlock storage_fn
+Global Instance is_rwlock_extractable γ rwlock storage_fn
     : LaterGuardExtractable (IsRwLock γ rwlock storage_fn).
 Proof. 
   unfold IsRwLock.

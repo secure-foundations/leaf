@@ -8,7 +8,13 @@ From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
 From TwoExamples Require Import rwlock.
+From Two Require Import rwlock.
+From Two Require Import guard_later.
 From TwoExamples Require Import seqs.
+From TwoExamples Require Import hash_table_logic.
+From TwoExamples Require Import hash_table_raw.
+From twolang Require Import heap_ra.
+From TwoExamples Require Import misc_tactics.
 
 Require Import coq_tricks.Deex.
 Require Import cpdt.CpdtTactics.
@@ -102,15 +108,10 @@ Definition main: lang.val :=
 
 Section HashTableProof.
 
-Context {𝜇: BurrowCtx}.
-
-Context `{heap_hastpcm: !HasTPCM 𝜇 (AuthFrag (gmap loc (option lang.val)))}.
-Context `{!simpGS 𝜇 Σ}.
-(*Context `{!HasTPCM 𝜇 (HeapT loc lang.val)}. *)
-
-Context `{ht_hastpcm: !HasTPCM 𝜇 HT}.
-Context `{rw_hastpcm: !HasTPCM 𝜇 (RwLock (HT * (HeapT loc lang.val)))}.
-Context `{!HasRef 𝜇 rw_hastpcm _ (rwlock_ref (HT * (HeapT loc lang.val)))}.
+Context {Σ: gFunctors}.
+Context `{@rwlock_logicG (option (Key * Value)) _ Σ}.
+Context `{!simpGS Σ}.
+Context {htl: ht_logicG Σ}.
 
 Fixpoint seq_iprop (fn: nat -> iProp Σ) (n: nat) :=
   match n with
@@ -126,11 +127,18 @@ Proof.
   - lia.
   - have h : Decision (i = n) by solve_decision. destruct h.
     + subst i. cbn [seq_iprop]. iIntros "[x y]". iFrame.
-    + assert (i < n) by lia. intuition.
+    + assert (i < n) as iln by lia. intuition.
       cbn [seq_iprop]. iIntros "[x y]". iDestruct (H0 with "y") as "y". iFrame.
 Qed.
 
 Instance seq_iprop_persistent fn n (pi: ∀ i , Persistent (fn i)) : Persistent (seq_iprop fn n).
+Proof.
+  induction n.
+  - apply _.
+  - apply _.
+Qed.
+
+Instance seq_iprop_extractable fn n (pi: ∀ i , LaterGuardExtractable (fn i)) : LaterGuardExtractable (seq_iprop fn n).
 Proof.
   induction n.
   - apply _.
@@ -149,48 +157,51 @@ Definition opt_as_val (val: option Value) :=
   | Some v => PairV #true #v
   end.
 
-Definition ht_inv_i (i: nat) (l: loc) : ((HT * (HeapT loc lang.val)) -> Prop) :=
-  λ p , match p with
-    | (ht, mem) => ∃ slot ,
-      mem = (l $↦ (slot_as_val slot))
-      /\ ht = (s i slot)
-  end.
+Definition storage_fn (γ: gname) (i: nat) (l: loc) (slot: option (Key * Value)) : iProp Σ :=
+    l ↦ slot_as_val slot ∗ own γ (s i slot).
   
-Definition heap_name := gen_heap_name simp_gen_heapG.
-
-Definition is_ht_i 𝛾 (slots locks: lang.val) (i: nat) :=
+Definition is_ht_i (γ: gname) (γrws: nat -> gname) (slots locks: lang.val) (i: nat) :=
   match (elem slots i) with
-  | LitV (LitInt l) => (∃ 𝛼 , is_rwlock (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l))%I
-  | _ => (False) % I
-  end.
-
-Definition is_ht_sl 𝛾 (slots locks: lang.val) :=
-  seq_iprop (is_ht_i 𝛾 slots locks) ht_fixed_size.
+  | LitV (LitInt slot_loc) =>
+      IsRwLock (γrws i) (elem locks i) (storage_fn γ i slot_loc)
+  | _ => (False)%I
+  end
+.
   
-Instance is_ht_sl_persistent 𝛾 slots locks : Persistent (is_ht_sl 𝛾 slots locks).
+Definition is_ht_sl (γ: gname) (γrws: nat -> gname) (slots locks: lang.val) :=
+  seq_iprop (is_ht_i γ γrws slots locks) ht_fixed_size.
+  
+Instance is_ht_i_extractable (γ: gname) (γrws: nat -> gname)
+    (slots locks: lang.val) (i: nat) : LaterGuardExtractable (is_ht_i γ γrws slots locks i).
 Proof.
-  apply seq_iprop_persistent.
-  intro. unfold is_ht_i.
+  unfold is_ht_i.
   destruct (elem slots i); try typeclasses eauto.
-  destruct l; typeclasses eauto.
+  destruct l; try typeclasses eauto.
+Qed.
+  
+Instance is_ht_sl_extractable (γ: gname) (γrws: nat -> gname)
+    (slots locks: lang.val) : LaterGuardExtractable (is_ht_sl γ γrws slots locks).
+Proof.
+  apply seq_iprop_extractable.
+  intro. apply is_ht_i_extractable.
 Qed.
 
-Definition is_ht 𝛾 (ht: lang.val) :=
+Definition is_ht (γ: gname) (γrws: nat -> gname) (ht: lang.val) :=
   match ht with
-  | PairV slots locks => (is_ht_sl 𝛾 slots locks
+  | PairV slots locks => (is_ht_sl γ γrws slots locks
       ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝
       )%I
   | _ => (False)%I
   end.
   
-Instance is_ht_persistent 𝛾 ht : Persistent (is_ht 𝛾 ht).
+Instance is_ht_extractable γ γrws ht : LaterGuardExtractable (is_ht γ γrws ht).
 Proof.
   unfold is_ht.
   destruct ht; try apply _.
 Qed.
 
-Lemma destruct_slots_i 𝛾 slots locks i
-  : is_ht_i 𝛾 slots locks i -∗ ⌜ ∃ (l: Z) , elem slots i = #l ⌝.
+Lemma destruct_slots_i γ γrws slots locks i
+  : is_ht_i γ γrws slots locks i -∗ ⌜ ∃ (l: Z) , elem slots i = #l ⌝.
 Proof.
   iIntros "ih". unfold is_ht_i. destruct (elem slots i).
   - destruct l.
@@ -200,8 +211,8 @@ Proof.
   - iExFalso. iFrame.
 Qed.
 
-Lemma destruct_ht 𝛾 ht
-  : is_ht 𝛾 ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
+Lemma destruct_ht γ γrws ht
+  : is_ht γ γrws ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
 Proof.
   iIntros "ih". unfold is_ht. destruct ht.
   - iExFalso. iFrame.
@@ -214,11 +225,11 @@ Definition is_slot_i (slots: lang.val) (i: nat) :=
   | LitV (LitInt l) => (l ↦ slot_as_val None)%I
   | _ => (False) % I
   end.
-  
-Lemma seq_iprop_is_slot_i_extend (n: nat) slots slot_ref :
+
+Lemma seq_iprop_is_slot_i_extend (n: nat) slots (slot_ref: Z) :
   ⊢ seq_iprop (is_slot_i slots) n -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
-              slot_ref (#0, #())%V -∗
+      (slot_ref ↦ (#0, #())%V)%I
+      -∗
   seq_iprop (is_slot_i (#slot_ref, slots)) (S n).
 Proof.
   induction n.
@@ -267,12 +278,10 @@ Definition is_lock_i (locks: lang.val) (i: nat) :=
   | _ => (False) % I
   end.
   
-Lemma seq_iprop_is_lock_i_extend (n: nat) locks lock_ref1 lock_ref2 :
+Lemma seq_iprop_is_lock_i_extend (n: nat) locks (lock_ref1 lock_ref2 : Z) :
   ⊢ seq_iprop (is_lock_i locks) n -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
-              lock_ref1 #0 -∗
-  @mapsto lang.val val_eq_dec' loc Z_eq_dec Z_countable 𝜇 _ Σ (@simp_gen_heapG 𝜇 Σ _ simpGS0)
-              lock_ref2 #0 -∗
+      (lock_ref1 ↦ (#0)%V) -∗
+      (lock_ref2 ↦ (#0)%V) -∗
   seq_iprop (is_lock_i ((#lock_ref1, #lock_ref2), locks)) (S n).
 Proof.
   induction n.
@@ -316,12 +325,15 @@ Proof.
     iPureIntro. unfold has_length. destruct n; trivial.
 Qed.
 
-Lemma init_is_ht_sl 𝛾 slots locks :
-  L 𝛾 (sseq ht_fixed_size) -∗
+Lemma seq_iprop_entails (fn1 fn2 : nat -> iProp Σ) (n: nat)
+    (cond: ∀ (i: nat) , i < n -> fn1 i ⊢ fn2 i)
+    : seq_iprop fn1 n ⊢ seq_iprop fn2 n. Admitted.
+
+Lemma init_is_ht_sl γ slots locks :
+  own γ (sseq ht_fixed_size) -∗
   seq_iprop (is_slot_i slots) ht_fixed_size -∗
-  seq_iprop (is_lock_i locks) ht_fixed_size -∗
-  |={⊤}=>
-  is_ht_sl 𝛾 slots locks.
+  seq_iprop (is_lock_i locks) ht_fixed_size
+  ={⊤}=∗ ∃ γrws , is_ht_sl γ γrws slots locks.
 Proof.
   unfold is_ht_sl. full_generalize ht_fixed_size as n. induction n.
   - iIntros. trivial.
@@ -330,35 +342,46 @@ Proof.
     cbn [seq_iprop].
     iDestruct "slots" as "[slot slots]".
     iDestruct "locks" as "[lock locks]".
-    iDestruct (L_op with "L") as "[L me]".
-    iSplitL "slot lock me".
-    + unfold is_ht_i.
-      unfold is_slot_i.
-      unfold is_lock_i.
-      destruct (elem slots n); try (iExFalso; iFrame; fail).
-      destruct l; try (iExFalso; iFrame; fail).
-      destruct (elem locks n); try (iExFalso; iFrame; fail).
-      destruct v1; try (iExFalso; iFrame; fail).
-      destruct l; try (iExFalso; iFrame; fail).
-      destruct v2; try (iExFalso; iFrame; fail).
-      destruct l; try (iExFalso; iFrame; fail).
-      iDestruct (CrossJoin _ _ _ _ with "me slot") as "cross".
-      iMod (rw_new _ _ with "cross") as (𝛼) "rw".
-      iAssert (rwlock_inv 𝛼 (cross_loc 𝛾 (gen_heap_name simp_gen_heapG)) (ht_inv_i n n0) n1 n2) with "[lock rw]" as "ri".
-      { unfold rwlock_inv. iExists false. iExists 0.
-          iExists (s n None, n0 $↦ slot_as_val None). iFrame.
-          iPureIntro. unfold ht_inv_i. exists None. intuition. }
-      iMod (inv_alloc NS _ _ with "ri") as "i".
-      iModIntro.
-      iExists 𝛼.
-      unfold is_rwlock. trivial.
-    + iMod (IHn with "L slots locks") as "X". iModIntro. iFrame.
+    iDestruct (own_op with "L") as "[L me]".
+    
+    iMod (IHn with "L slots locks") as (γrws) "X".
+    
+    unfold is_ht_i.
+    unfold is_slot_i.
+    unfold is_lock_i.
+    destruct (elem slots n); try (iExFalso; iFrame; fail).
+    destruct l; try (iExFalso; iFrame; fail).
+    destruct (elem locks n); try (iExFalso; iFrame; fail).
+    destruct v1; try (iExFalso; iFrame; fail).
+    destruct l; try (iExFalso; iFrame; fail).
+    destruct v2; try (iExFalso; iFrame; fail).
+    destruct l; try (iExFalso; iFrame; fail).
+
+    iMod (rw_new None (storage_fn γ n n0) ⊤ with "[slot me]") as (γi) "[maps rwcentral]".
+    { unfold storage_fn. iFrame. }
+    
+    iModIntro.
+    iExists (λ i , if decide (i = n) then γi else γrws i).
+    
+    iSplitL "lock maps rwcentral".
+    {
+      case_decide; try contradiction.
+      unfold IsRwLock, rw_lock_inst, rw_atomic_inv. iFrame "maps".
+      iExists false, 0, None.
+      iFrame.
+    }
+    iDestruct (seq_iprop_entails with "X") as "X".
+    2: { iFrame "X". }
+    intros i lt. iIntros "m".
+    
+    case_decide. { lia. }
+    iFrame "m".
 Qed.
 
 Lemma wp_new_hash_table (maxkey: nat) :
       {{{ True }}}
       new_hash_table #()
-      {{{ 𝛾 ht , RET ht; is_ht 𝛾 ht ∗ L 𝛾 (mseq maxkey) }}}.
+      {{{ γ γrws ht , RET ht; is_ht γ γrws ht ∗ own γ (mseq maxkey) }}}.
 Proof.
   iIntros (Phi) "t Phi".
   unfold new_hash_table.
@@ -366,10 +389,10 @@ Proof.
   wp_apply wp_init_slots. { done. } iIntros (slots) "[slots %hl_slots]".
   wp_apply wp_init_locks. { done. } iIntros (locks) "[locks %hl_locks]".
   wp_pures.
-  iMod (ht_Init maxkey) as (𝛾) "[mseq sseq]".
-  iApply ("Phi" $! (𝛾)).
+  iMod (ht_Init maxkey) as (γ) "[mseq sseq]".
   unfold is_ht.
-  iMod (init_is_ht_sl with "sseq slots locks") as "X".
+  iMod (init_is_ht_sl with "sseq slots locks") as (γrws) "X".
+  iApply ("Phi" $! (γ) (γrws)).
   iModIntro.
   iFrame. iPureIntro. intuition.
 Qed.
