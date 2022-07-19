@@ -28,6 +28,9 @@ src/two-examples/rwlock.v
 src/two-examples/gmap_option.v
 src/two-examples/hash_table_raw.v
 src/two-examples/misc_tactics.v
+src/two-examples/hash_table_logic.v
+src/two-examples/hash_table.v
+src/two-examples/seqs.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality

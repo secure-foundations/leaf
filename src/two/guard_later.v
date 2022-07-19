@@ -85,7 +85,7 @@ Proof.
   { iFrame "x". iFrame "g". iIntros "[_ latp]". iFrame "latp". }
   setoid_rewrite bi.later_sep.
   
-  iDestruct (guards_weaken F (▷ T) (▷ P)) as "g1".
+  iDestruct (guards_weaken_l F (▷ T) (▷ P)) as "g1".
   iDestruct (guards_remove_later T F) as "g2".
   iDestruct (guards_transitive F X _ (▷ T) with "[g g1]") as "g3".
     { iFrame "g". iFrame "g1". }
