@@ -10,6 +10,7 @@ From iris.base_logic.lib Require Export wsat invariants.
 From iris.algebra Require Import auth.
 
 From iris.proofmode Require Export tactics.
+Require Import Two.separable_and.
 
 Section Guard.
 
@@ -427,6 +428,23 @@ Proof.
   iIntros "[q _]".
   iApply "m". iFrame "q".
 Qed.
+
+(*
+Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
+    (qrx: (Q ∧ R ⊢ own γ x))
+    : (
+      (P &&{F}&&$> Q) ∗ (P &&{F}&&$> R)
+      ⊢
+      (P &&{F}&&$> own γ x)
+    ). 
+Proof.
+  iIntros "[pq pr]".
+  unfold fguards, guards_with.
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iDestruct ("pr" $! T) as "pr".
+  *)
+    
 
 (**** guards ****)
 
