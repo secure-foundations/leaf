@@ -118,9 +118,6 @@ Proof.
   setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
 
-Lemma except0_and (Q R: iProp Σ)
-  : (◇ Q) ∧ (◇ R) ⊢ ◇ (Q ∧ R). Admitted.
-  
   (*
 Lemma except0_2 (Q R: iProp Σ)
   : (Q -∗ ◇ R) ⊢ ◇ (Q -∗ R).
@@ -175,7 +172,7 @@ Proof.
   {
     iIntros "l".
     iAssert (◇ (Q ∧ R))%I with "[pq pr l]" as "J". {
-      iApply except0_and.
+      rewrite bi.except_0_and.
       iSplit.
       { iMod ("pq" with "l") as "[q j]". iModIntro. iFrame "q". }
       { iMod ("pr" with "l") as "[r j]". iModIntro. iFrame "r". }
@@ -541,6 +538,15 @@ Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
     
 Notation "P &&{ E }&&> Q" := (guards P Q E)
   (at level 99, E at level 50, Q at level 200).
+  
+  
+Global Instance guards_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) guards.
+Proof.
+  unfold Proper, "==>", guards. intros x y Q x0 y0 Q0 x1 y1 Q1.
+  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
+Qed.
+
 
 Lemma guards_refl E P : ⊢ P &&{ E }&&> P.
 Proof.
@@ -576,11 +582,17 @@ Proof.
   iExists m. iFrame "x". iPureIntro. set_solver.
 Qed.
 
-Lemma guards_weaken E P Q : ⊢ (P ∗ Q) &&{ E }&&> P.
+Lemma guards_weaken_l E P Q : ⊢ (P ∗ Q) &&{ E }&&> P.
 Proof.
   unfold guards. iIntros. iExists ∅. iSplit.
   { iPureIntro. set_solver. }
   iApply fguards_weaken.
+Qed.
+
+Lemma guards_weaken_r E P Q : ⊢ (P ∗ Q) &&{ E }&&> Q.
+Proof.
+  setoid_rewrite bi.sep_comm.
+  apply guards_weaken_l.
 Qed.
 
 Lemma guards_apply (P Q X Y : iProp Σ) E F
@@ -635,13 +647,6 @@ Proof.
   { set_solver. }
   iApply "x". iFrame.
 Qed.
-
-Global Instance guards_proper :
-    Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) guards.
-Proof.
-  unfold Proper, "==>", guards. intros x y Q x0 y0 Q0 x1 y1 Q1.
-  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
-Qed.
     
 Definition guards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
@@ -658,7 +663,48 @@ Proof.
   { iPureIntro. trivial. }
   iFrame "newg".
 Qed.
-  
+
+Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
+    (qrx: (Q ∧ R ⊢ own γ x))
+    : (
+      (P &&{F}&&> Q) ∗ (P &&{F}&&> R)
+      ⊢
+      (P &&{F}&&> own γ x)
+    ). 
+Proof.
+  iIntros "[q r]". unfold guards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iDestruct "r" as (m2) "[%cond2 r]".
+  iExists (m1 ∪ m2).
+  iSplit.
+  { iPureIntro. set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "q") as "q". { set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "r") as "r". { set_solver. }
+  iApply (fguards_and P Q R γ x (m1 ∪ m2)); trivial.
+  iFrame.
+Qed.
+
+Definition guards_and_sep_union (P1 P2 Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F1 F2
+    (qrx: (Q ∧ R ⊢ own γ x))
+    : (
+      (P1 &&{F1}&&> Q) ∗ (P2 &&{F2}&&> R)
+      ⊢
+      (P1 ∗ P2 &&{F1 ∪ F2}&&> own γ x)
+    ). 
+Proof.
+  iIntros "[a b]".
+  iDestruct (guards_weaken_l (F1 ∪ F2) P1 P2) as "a1".
+  iDestruct (guards_weaken_r (F1 ∪ F2) P1 P2) as "b1".
+  iDestruct (guards_mask_weaken _ _ _ (F1 ∪ F2) with "a") as "a". { set_solver. }
+  iDestruct (guards_mask_weaken _ _ _ (F1 ∪ F2) with "b") as "b". { set_solver. }
+  iDestruct (guards_transitive (F1 ∪ F2) (P1 ∗ P2) P1 Q with "[a1 a]") as "a".
+    { iFrame "a". iFrame "a1". }
+  iDestruct (guards_transitive (F1 ∪ F2) (P1 ∗ P2) P2 R with "[b1 b]") as "b".
+    { iFrame "b". iFrame "b1". }
+  iDestruct (guards_and (P1 ∗ P2) Q R γ x (F1 ∪ F2) with "[a b]") as "t"; trivial.
+  iFrame.
+Qed.
+
 End Guard.
 
 Notation "P &&{ E }&&$> Q" := (fguards P Q E)

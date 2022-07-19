@@ -7,6 +7,7 @@ From iris.algebra Require Export gmap.
 
 Require Import TwoExamples.hash_table_raw.
 Require Import iris.base_logic.lib.own.
+Require Import Two.guard.
 
 Global Instance ht_unit : Unit HT := ht_unit.
 Global Instance ht_equiv : Equiv HT := λ a b , a = b.
@@ -59,6 +60,7 @@ Section HashTableLogic.
 
 Context {Σ: gFunctors}.
 Context {htl: ht_logicG Σ}.
+Context `{!invGS Σ}. 
 
 Lemma ht_Init (n: nat) :
   ⊢ |==> (∃ γ , own γ (mseq n) ∗ own γ (sseq ht_fixed_size))%I.
@@ -69,7 +71,7 @@ Proof.
   iModIntro. iExists γ. iDestruct (own_op with "x") as "[x y]". iFrame.
 Qed.
 
-Lemma ht_QueryFound1 γ j k v0 v :
+Lemma ht_QueryFound γ j k v0 v :
   own γ (s j (Some (k, v0))) ∗ own γ (m k v) ⊢ ⌜ v = Some v0 ⌝.
 Proof.
   rewrite <- own_op.
@@ -79,53 +81,74 @@ Proof.
   apply val.
 Qed.
 
-Lemma ht_QueryFound 𝜅 𝛾 j k v0 v :
-  A 𝜅 -∗ B 𝜅 𝛾 (s j (Some (k, v0))) -∗ L 𝛾 (m k v) -∗ ⌜ v = Some v0 ⌝.
+Lemma ht_QueryFound_b γ j k v0 v g F E (su: F ⊆ E) :
+  ⊢ 
+    g ∗ (g &&{F}&&>
+      (own γ (s j (Some (k, v0))) ∗ own γ (m k v))
+    ) ={E}=∗ g ∗ ⌜ v = Some v0 ⌝.
 Proof.
-  iIntros "a b l".
-  iDestruct (LiveAndBorrowValid with "a l b") as "%t".
-  iPureIntro.
-  eapply ht_valid_QueryFound.
-    unfold m_valid, dot, ht_tpcm in t.
-    rewrite ht_dot_comm in t.
-    apply t.
+  iIntros "[g guards]".
+  iMod (guards_persistent g _ (⌜v = Some v0⌝)%I E F with "[g guards]") as "[g res]".
+  { trivial. }
+  { iFrame "g". iFrame "guards". iApply ht_QueryFound. }
+  iModIntro. iFrame.
 Qed.
-
-(*
-Definition Range 𝛾 k i j : iProp Σ :=
-  ∃ a , ⌜ full a k i j ⌝ ∗ L 𝛾 a.
-  *)
   
-Definition BorrowedRange 𝜅 𝛾 k i j : iProp Σ :=
-  ∃ a , ⌜ full a k i j ⌝ ∗ B 𝜅 𝛾 a.
-
-Lemma ht_QueryReachedEnd 𝜅 𝛾 k v :
-  A 𝜅 -∗ BorrowedRange 𝜅 𝛾 k (hash k) ht_fixed_size -∗ L 𝛾 (m k v) -∗ ⌜ v = None ⌝.
+Definition Range γ k i j : iProp Σ :=
+  ∃ a , ⌜ full a k i j ⌝ ∗ own γ a.
+  
+Lemma ht_QueryReachedEnd γ k v :
+    Range γ k (hash k) ht_fixed_size -∗ own γ (m k v) -∗ ⌜ v = None ⌝.
 Proof.
-  iIntros "a range l".
+  iIntros "range l".
   iDestruct "range" as (a) "[%f range]".
-  iDestruct (LiveAndBorrowValid with "a l range") as "%t".
+  iDestruct (own_op γ a (m k v) with "[range l]") as "l". { iFrame. }
+  iDestruct (own_valid with "l") as "%t".
   iPureIntro.
   eapply ht_valid_QueryReachedEnd.
     - apply f.
-    - rewrite ht_dot_comm. trivial.
+    - trivial.
 Qed.
 
-Lemma ht_QueryNotFound 𝜅 𝛾 k v j :
-  A 𝜅 -∗ BorrowedRange 𝜅 𝛾 k (hash k) j -∗ B 𝜅 𝛾 (s j None) -∗ L 𝛾 (m k v) -∗ ⌜ v = None ⌝.
+Lemma ht_QueryReachedEnd_b γ k v g F E (su: F ⊆ E) :
+  ⊢
+    g ∗ (g &&{F}&&>
+      Range γ k (hash k) ht_fixed_size ∗ own γ (m k v)
+    ) ={E}=∗ g ∗ ⌜ v = None ⌝.
 Proof.
-  iIntros "a range c l".
-  iDestruct "range" as (a) "[%f range]".
-  iDestruct (BorrowCombine 𝜅 𝛾 (a) (s j None) ((ht_dot a (s j None))) with "[range c]") as "t".
-  - intro. intros. apply full_add with (k := k) (i := hash k); trivial.
-  - iFrame.
-  - iDestruct (LiveAndBorrowValid with "a l t") as "%t".
-    iPureIntro. apply ht_valid_QueryNotFound with (a := a) (k := k) (j := j); trivial.
-    rewrite tpcm_assoc in t.
-    replace ((dot (m k v) a)) with (dot a (m k v)) in t; trivial.
-    apply tpcm_comm.
+  iIntros "[g guards]".
+  iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
+  { trivial. }
+  { iFrame "g". iFrame "guards".
+    iIntros "[a b]".
+    iDestruct (ht_QueryReachedEnd with "a b") as "t". iFrame.
+  }
+  iModIntro. iFrame.
 Qed.
 
+Lemma ht_QueryNotFound γ k v j :
+  Range γ k (hash k) j ∗ own γ (s j None) ∗ own γ (m k v) -∗ ⌜ v = None ⌝.
+Proof.
+  iIntros "[range [c l]]".
+  iDestruct "range" as (a) "[%f range]".
+  iDestruct (own_valid_3 with "range l c") as "%t".
+  iPureIntro.
+  apply ht_valid_QueryNotFound with (a := a) (k := k) (j := j); trivial.
+Qed.
+
+Lemma ht_QueryNotFound_b γ k v j g F E (su: F ⊆ E) :
+  ⊢
+    g ∗ (g &&{F}&&>
+      Range γ k (hash k) j ∗ own γ (s j None) ∗ own γ (m k v)
+    ) ={E}=∗ g ∗ ⌜ v = None ⌝.
+Proof.
+  iIntros "[g guards]".
+  iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
+  { trivial. }
+  { iFrame "g". iFrame "guards". iApply ht_QueryNotFound. }
+  iModIntro. iFrame.
+Qed.
+ 
 (*
 Lemma ht_RangeAppend 𝛾 k i j k0 v0
   (ne: k0 ≠ k) : Range 𝛾 k i j -∗ L 𝛾 (s j (Some (k0, v0))) -∗ Range 𝛾 k i (j+1).
@@ -136,17 +159,24 @@ Proof.
 Qed.
 *)
 
-Lemma ht_BorrowedRangeEmpty 𝛾 k i
-  : ⊢ |==> ∃ 𝜅 , BorrowedRange 𝜅 𝛾 k i i ∗ A 𝜅.
+Lemma ht_BorrowedRangeEmpty γ k i
+  : ⊢ |==> Range γ k i i.
 Proof.
-  iIntros.
-  iMod (L_unit HT 𝛾) as "u".
-  iMod (BorrowBegin _ _ with "u") as (𝜅) "[a [r b]]".
-  iModIntro. unfold BorrowedRange. iExists 𝜅. iFrame. iExists unit. iFrame. iPureIntro.
+  iIntros. unfold Range.
+  iMod (own_unit htUR γ) as "u".
+  iModIntro. iExists ε. iFrame.
+  iPureIntro.
   apply full_trivial.
 Qed.
 
-Lemma ht_BorrowedRangeAppend 𝜅 𝛾 k i j k0 v0
+Lemma ht_BorrowedRangeAppend γ k i j k0 v0 g1 g2 F1 F2 :
+    (g1 &&{F1}&&> Range γ k i j) ∗
+    (g2 &&{F2}&&> own γ (s j (Some (k0, v0))))
+    ⊢
+    (g1 ∗ g2 &&{F1 ∪ F2}&&> Range γ k i (j+1)).
+Proof.
+  apply guards_and_sep_union.
+ 
   (ne: k0 ≠ k) : BorrowedRange 𝜅 𝛾 k i j -∗ B 𝜅 𝛾 (s j (Some (k0, v0)))
       -∗ BorrowedRange 𝜅 𝛾 k i (j+1).
 Proof.
