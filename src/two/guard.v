@@ -92,7 +92,7 @@ Proof.
 Qed.
 
 Definition guards_with (P Q X : iProp Σ) :=
-    (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) ={∅}=∗ Q ∗ (Q -∗ X ∗ T))) % I.
+    (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) -∗ ◇ (Q ∗ (Q -∗ X ∗ T)))) % I.
 
 Definition fguards (P Q : iProp Σ) (m: gset positive) : iProp Σ :=
     guards_with P Q (storage_bulk_inv m).
@@ -117,10 +117,86 @@ Proof.
   }
   setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
+
+Lemma except0_and (Q R: iProp Σ)
+  : (◇ Q) ∧ (◇ R) ⊢ ◇ (Q ∧ R). Admitted.
+  
+  (*
+Lemma except0_2 (Q R: iProp Σ)
+  : (Q -∗ ◇ R) ⊢ ◇ (Q -∗ R).
+Proof.
+  unfold "◇". uPred.unseal.
+  split. intros n x val t.
+  
+  unfold uPred_holds, uPred_or_def.
+  destruct n.
+  {
+    left.
+    unfold uPred_holds, uPred_later_def. trivial.
+  }
+  {
+    right.
+    unfold uPred_holds, uPred_wand_def. intros n' x' lt valxx uh.
+    unfold uPred_holds, uPred_wand_def in t.
+    have t0 := t n' x' lt valxx uh.
+  
+  iIntros "x".
+  Print bi.later_timeless.
+  iRight.
+  : (◇ Q) ∧ (◇ R) ⊢ ◇ (Q ∧ R). Admitted.
+  *)
+  
+  (*   :  :  later_false_em
+ *)
+ (*
+Lemma except0_2 (Q R: iProp Σ)
+  : Q ∗ (Q -∗ ◇ R) ⊢ ◇ (Q ∗ (Q -∗ R)).
+Proof.
+  iIntros "[q qr]".
+  unfold "◇".
+  *)
+      
+
+Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
+    (qrx: (Q ∧ R ⊢ own γ x))
+    : (
+      (P &&{F}&&$> Q) ∗ (P &&{F}&&$> R)
+      ⊢
+      (P &&{F}&&$> own γ x)
+    ). 
+Proof.
+  iIntros "[pq pr]".
+  unfold fguards, guards_with.
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iDestruct ("pr" $! T) as "pr".
+  iIntros "k".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ◇ (own γ x))%I with "[pq pr]" as "X".
+  {
+    iIntros "l".
+    iAssert (◇ (Q ∧ R))%I with "[pq pr l]" as "J". {
+      iApply except0_and.
+      iSplit.
+      { iMod ("pq" with "l") as "[q j]". iModIntro. iFrame "q". }
+      { iMod ("pr" with "l") as "[r j]". iModIntro. iFrame "r". }
+    }
+    iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
+  } 
+  iDestruct (own_separates_out_except0 γ x _ with "[X k]") as "J".
+  { iFrame "X". iFrame "k". }
+  iDestruct "J" as "[J T]".
+  iMod "J" as "J".
+  iModIntro.
+  iFrame "J".
+  iIntros "o".
+  iDestruct ("T" with "o") as "[p m]".
+  iApply "m".
+  iFrame "p".
+Qed.
   
 Lemma fguards_refl E P : ⊢ P &&{ E }&&$> P.
 Proof.
-  unfold fguards, guards_with. iIntros (T) "x". iModIntro. iFrame.
+  unfold fguards, guards_with. iIntros (T) "x". iFrame.
 Qed.
 
 Lemma fguards_transitive E P Q R :
@@ -129,8 +205,8 @@ Proof.
   unfold fguards, guards_with.
   iIntros "[a b]". iIntros (T) "p".
   iMod ("a" with "p") as "q".
-  iMod ("b" with "q") as "r".
-  iModIntro. iFrame.
+  iDestruct ("b" with "q") as "r".
+  iFrame.
 Qed.
   
 Lemma twoway_assoc (P Q R : iProp Σ)
@@ -153,8 +229,8 @@ Qed.
 
 Lemma fguards_weaken E P Q : ⊢ (P ∗ Q) &&{ E }&&$> P.
 Proof.
-  unfold fguards, guards_with. iIntros (T) "[[p q] x]". iModIntro.
-  iFrame. iIntros "p".
+  unfold fguards, guards_with. iIntros (T) "[[p q] x]".
+  iFrame. iModIntro. iIntros "p".
   iDestruct ("x" with "[p q]") as "m". { iFrame. }
   iFrame.
 Qed.
@@ -184,9 +260,9 @@ Proof.
       iFrame.
     }
     {
-      iMod "x" as "[q k]". iModIntro.
+      iMod "x" as "[q k]".
       iFrame "q".
-      iIntros "q".
+      iModIntro. iIntros "q".
       iDestruct ("k" with "q") as "[e [t diff]]".
       iFrame.
     }
@@ -297,7 +373,7 @@ Proof.
   - intro. rewrite elem_of_empty. intuition.
 Qed.
 
-Lemma guards_apply_persistent (P Q: iProp Σ) F E
+Lemma fguards_apply_persistent (P Q: iProp Σ) F E
     (ss: ∀ x , x ∈ F -> x ∈ E)
     : (P &&{ F }&&$> □ Q) ⊢ P ={E}=∗ □ Q.
 Proof.
@@ -305,13 +381,16 @@ Proof.
   (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
   iDestruct ("g" $! P) as "g".
   iMod (wsat_split_empty E F) as "[sb back]"; trivial.
-  iMod ("g" with "[p sb]") as "t".
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
+  iDestruct ("g" with "[p sb]") as "t".
   { iFrame. iIntros. iFrame. }
-  iDestruct "t" as "[q t]".
+  iMod "t" as "[q t]".
   iDestruct (bi.intuitionistically_sep_dup with "q") as "[q q1]".
   iDestruct ("t" with "q") as "[t p]".
-  iMod ("back" with "t").
-  iModIntro.
+  iDestruct ("back" with "t [w eo]") as "b". { iFrame. }
+  iMod "b" as "b". iModIntro.
+  iMod "b" as "b". iModIntro.
+  iDestruct "b" as "[w [oe t]]".
   iFrame.
 Qed.
 
@@ -322,21 +401,27 @@ Lemma fguards_apply (P Q X Y : iProp Σ) E F D
     : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F }&&$> Q) ⊢ (P ∗ X ={E}=∗ P ∗ Y).
 Proof.
   unfold fguards, guards_with. iIntros "[upd g] [p x]".
-  iDestruct ("g" $! P) as "g".
+  iDestruct ("g" $! (P)%I) as "g".
   iMod (wsat_split_superset E F D) as "[sb back]"; trivial.
   { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
-  iDestruct ("g" with "[p sb]") as "g".
+  rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
+  iMod ("g" with "[p sb]") as "[q g]".
   { iFrame. iIntros. iFrame. }
   
+  (*
   iDestruct (fupd_mask_frame_r _ _ D _ with "g") as "g".
   { apply disjoint_empty_l. }
   replace (∅ ∪ D) with D by set_solver.
-  iMod "g" as "[q g]".
-  iMod ("upd" with "[q x]") as "[q y]". { iFrame. }
-  iDestruct ("g" with "q") as "[g p]".
-  iMod ("back" with "g") as "g".
-  iModIntro.
-  iFrame.
+  *)
+  
+  iMod ("upd" with "[q x] [w eo]") as "[>w [>ed [>q >y]]]". { iFrame. } { iFrame. }
+  iDestruct ("g" with "q") as "[f p]".
+  iDestruct ("back" with "f") as "back".
+  iDestruct ("back" with "[w ed]") as "back". { iFrame. }
+  
+  iMod "back". iModIntro.
+  iMod "back". iModIntro.
+  iDestruct "back" as "[w [e t]]". iFrame.
 Qed.
 
 Lemma fguards_remove_later (P : iProp Σ) E
@@ -403,7 +488,10 @@ Proof.
   
   iDestruct (fupd_mask_frame_r ∅ ∅ E' _ with "g") as "g". { set_solver. }
   replace (∅ ∪ E') with E' by set_solver.
-  iMod "g" as "[q g]". iModIntro.
+  iMod "g" as "[q g]".
+  iMod "q" as "q".
+  iMod "g" as "g".
+  iModIntro.
   
   iFrame "q".
   

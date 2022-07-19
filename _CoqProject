@@ -2,6 +2,7 @@
 
 src/two/auth_frag_util.v
 src/two/conjunct_own_rule.v
+src/two/separable_and.v
 src/two/guard.v
 src/two/guard_later.v
 src/two/inved.v
@@ -26,7 +27,6 @@ src/twolang/tactics.v
 src/two-examples/rwlock.v
 src/two-examples/gmap_option.v
 src/two-examples/hash_table_raw.v
-src/two-examples/hash_table_logic.v
 src/two-examples/misc_tactics.v
 
 -arg -w -arg -ssr-search-moved

@@ -128,7 +128,6 @@ Lemma guarded_rwlock_get_struct g E F γ rwlock storage_fn
   ⌝) .
 Proof.
   iIntros "[g guards]".
-  Print guards_persistent.
   iApply (guards_persistent g (IsRwLock γ rwlock storage_fn) _ E F); trivial.
   iFrame.
   iApply rwlock_get_struct.
