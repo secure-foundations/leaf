@@ -290,7 +290,7 @@ Proof.
 Qed.
 
 Lemma and_own2 γ (x y z: A)
-  (cond: ∀ (a b : option A) , x ⋅? a ≡ y ⋅? b -> ∃ (c: option A) , x ⋅? a ≡ z ⋅? c)
+  (cond: ∀ (a b : option A) , x ⋅? a ≡ y ⋅? b -> ✓(x ⋅? a) -> ∃ (c: option A) , x ⋅? a ≡ z ⋅? c)
   : (own γ x ∧ own γ y) ⊢ own γ z.
 Proof using A Disc i Σ.
   uPred.unseal.
@@ -318,7 +318,16 @@ Proof using A Disc i Σ.
       inversion eq2. trivial.
   }
   
-  have cond0 := cond (project a γ) (project b γ) xa_yb.
+  assert (✓ (x ⋅? project a γ)) as val.
+  {
+    rewrite (cmra_discrete_valid_iff n).
+    enough (✓{n} Some ((x ⋅? project a γ))) by trivial.
+    setoid_rewrite <- eq1.
+    apply valid_project.
+    trivial.
+  }
+  
+  have cond0 := cond (project a γ) (project b γ) xa_yb val.
   destruct cond0 as [c cond0].
   
   rewrite own_eq. unfold own_def.
@@ -374,19 +383,21 @@ Proof.
 Qed.
 
 Lemma and_own2_ucmra γ (x y z: A)
-  (cond: ∀ w , x ≼ w -> y ≼ w -> z ≼ w)
+  (cond: ∀ w , ✓ w -> x ≼ w -> y ≼ w -> z ≼ w)
   : (own γ x ∧ own γ y) ⊢ (own γ z).
 Proof using A Disc i Σ.
   iIntros "t".
   iDestruct (and_own2 γ x y z with "t") as "t".
   {
-    intros.
+    intros a b H val.
     assert (x ≼ x ⋅? a) as xxz. { apply incl_opq. }
     assert (y ≼ x ⋅? a) as yxz. { setoid_rewrite H. apply incl_opq. }
-    have c := cond (x ⋅? a) xxz yxz.
+    have c := cond (x ⋅? a) val xxz yxz.
     unfold "≼" in c. destruct c as [r c].
     exists (Some r).
     unfold "⋅?" at 2. trivial.
   }
   iFrame.
 Qed.
+
+End ConjunctOwnRuleU.

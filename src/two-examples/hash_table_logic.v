@@ -8,6 +8,7 @@ From iris.algebra Require Export gmap.
 Require Import TwoExamples.hash_table_raw.
 Require Import iris.base_logic.lib.own.
 Require Import Two.guard.
+Require Import Two.conjunct_own_rule.
 
 Global Instance ht_unit : Unit HT := ht_unit.
 Global Instance ht_equiv : Equiv HT := λ a b , a = b.
@@ -177,6 +178,15 @@ Proof.
   apply full_trivial.
 Qed.
 
+Lemma le_iff_ht_le a b
+  : (a ≼ b) <-> (ht_le a b).
+Proof.
+  unfold "≼". unfold ht_le.
+  unfold "⋅", ht_op. intuition.
+  - destruct H as [z H]. exists z. rewrite H. trivial.
+  - destruct H as [z H]. exists z. rewrite H. trivial.
+Qed.
+
 Lemma ht_BorrowedRangeAppend γ r k i j k0 v0 g1 g2 F1 F2
     (ne: k0 ≠ k) (f: full r k i j) :
     (g1 &&{F1}&&> own γ r) ∗
@@ -191,54 +201,51 @@ Proof.
   Print guards_and_sep_union.
   iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
   {
-    
- 
-  (ne: k0 ≠ k) : BorrowedRange 𝜅 𝛾 k i j -∗ B 𝜅 𝛾 (s j (Some (k0, v0)))
-      -∗ BorrowedRange 𝜅 𝛾 k i (j+1).
-Proof.
-  iIntros "r l". unfold BorrowedRange. iDestruct "r" as (a) "[%r q]".
-  iDestruct (BorrowCombine 𝜅 𝛾 (a) (s j (Some (k0, v0))) ((ht_dot a (s j (Some (k0, v0))))) with "[q l]") as "t".
-  - intro. intros. apply full_add with (k := k) (i := i); trivial.
-  - iFrame.
-  - iExists (ht_dot a (s j (Some (k0, v0)))).
-    iFrame. iPureIntro. apply full_dot; trivial.
-Qed.
-
-Lemma ht_BorrowedRangeShorten 𝜅 𝜅' 𝛾 k i j
-  (li: lifetime_included 𝜅' 𝜅)
-  : BorrowedRange 𝜅 𝛾 k i j -∗ BorrowedRange 𝜅' 𝛾 k i j.
-Proof.
-  iIntros "b".
-  unfold BorrowedRange. iDestruct "b" as (a) "[%f b]".
-  iDestruct (BorrowShorten _ 𝜅' _ _ with "b") as "b"; trivial.
-  iExists a. iFrame. iPureIntro. trivial.
-Qed.
-
-Lemma ht_UpdateExisting 𝛾 k v v0 v1 j :
-  L 𝛾 (s j (Some (k, v1))) -∗ L 𝛾 (m k v0) ==∗
-  L 𝛾 (s j (Some (k, v))) ∗ L 𝛾 (m k (Some v)).
-Proof.
-  iIntros "s m".
-  iDestruct (L_join with "s m") as "s".
-  iMod (FrameUpdate _ _ (ht_dot (s j (Some (k, v))) (m k (Some v))) with "s") as "A".
-  - apply ht_update_existing.
-  - iModIntro. rewrite <- L_op. iFrame.
-Qed.
-
-Lemma ht_UpdateNew 𝛾 k v j v0 a
-  (f: full a k (hash k) j) :
-  L 𝛾 a -∗ L 𝛾 (s j None) -∗ L 𝛾 (m k v0) ==∗
-  L 𝛾 a ∗ L 𝛾 (s j (Some (k, v))) ∗ L 𝛾 (m k (Some v)).
-Proof.
-  iIntros "r s m".
-  iDestruct (L_join with "s m") as "s".
-  iDestruct (L_join with "s r") as "s".
-  iMod (FrameUpdate _ _ (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) a) with "s") as "A".
-  - apply ht_update_new. trivial.
-  - iModIntro.
-  iDestruct (L_op with "A") as "[x y]".
-  iDestruct (L_op with "x") as "[x z]".
+    apply and_own2_ucmra.
+    intro w.
+    repeat (rewrite le_iff_ht_le).
+    apply (full_add r k i j (Some (k0, v0))); trivial.
+  }
   iFrame.
+Qed.
+
+Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
+    (f: full r k i j) :
+    (g1 &&{F1}&&> own γ r) ∗
+    (g2 &&{F2}&&> own γ (m k1 v1))
+    ⊢
+    (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ r ∗ own γ (m k1 v1))).
+Admitted.
+
+Lemma ht_UpdateExisting γ k v v0 v1 j :
+  own γ (s j (Some (k, v1))) -∗ own γ (m k v0) ==∗
+  own γ (s j (Some (k, v))) ∗ own γ (m k (Some v)).
+Proof.
+  rewrite <- own_op.
+  apply own_update_2.
+  rewrite cmra_discrete_update.
+  unfold "⋅", cmra_op, htR, ht_op.
+  intros.
+  have X := ht_update_existing j k v v0 v1.
+  unfold ht_mov in X.
+  apply X. trivial.
+Qed.
+
+Lemma ht_UpdateNew γ k v j v0 r
+  (f: full r k (hash k) j) :
+  own γ (s j None) -∗ own γ (m k v0) -∗ own γ r ==∗
+  own γ (s j (Some (k, v))) ∗ own γ (m k (Some v)) ∗ own γ r.
+Proof.
+  rewrite <- own_op.
+  rewrite <- own_op.
+  apply own_update_3.
+  rewrite cmra_discrete_update.
+  unfold "⋅", cmra_op, htR, ht_op.
+  intros.
+  have X := ht_update_new j k v v0 r.
+  unfold ht_mov in X.
+  rewrite ht_dot_assoc.
+  apply X; trivial.
 Qed.
 
 End HashTableLogic.
