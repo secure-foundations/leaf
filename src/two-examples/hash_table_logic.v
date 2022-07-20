@@ -216,6 +216,13 @@ Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
     (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ r ∗ own γ (m k1 v1))).
 Admitted.
 
+Lemma ht_SAddM γ k0 v0 k1 v1 g1 g2 F1 F2 :
+    (g1 &&{F1}&&> own γ (s k0 v0)) -∗
+    (g2 &&{F2}&&> own γ (m k1 v1))
+    -∗
+    (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ (s k0 v0) ∗ own γ (m k1 v1))).
+Admitted.
+
 Lemma ht_UpdateExisting γ k v v0 v1 j :
   own γ (s j (Some (k, v1))) -∗ own γ (m k v0) ==∗
   own γ (s j (Some (k, v))) ∗ own γ (m k (Some v)).

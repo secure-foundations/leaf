@@ -870,7 +870,7 @@ Proof.
     iDestruct (guards_remove_later2 with "guard_storage_lat") as "guard_storage".
     unfold storage_fn at 3.
     iDestruct (guards_weaken_rhs_l with "guard_storage") as "guard_mem".
-    iDestruct (guards_weaken_rhs_l with "guard_storage") as "guard_own_slot".
+    iDestruct (guards_weaken_rhs_r with "guard_storage") as "guard_own_slot".
     
     (* read the slot *)
     
@@ -902,16 +902,15 @@ Proof.
         
         (* get the answer using the borrowed props *)
         
-        iMod (ht_QueryFound_b _ _ _ _ _ _ with "[sh_guard guard_own_slot guardm]") as "[sh_guard %veq]".
+        iDestruct (ht_SAddM with "guard_own_slot guardm") as "guard_s_m".
+        replace ({[γrws i]} ∪ ⊤) with (⊤ : coPset) by set_solver.
+        
+        iMod (ht_QueryFound_b γ i k v0 v (sh_guard (γrws i) (Some (k, v0)) ∗ gm) ⊤ with "[sh_guard gm guard_s_m]") as "[[sh_guard gm] %veq]".
+        { set_solver. }
+        { iFrame "sh_guard". iFrame "gm". iFrame "guard_s_m". }
         rewrite veq.
         
         (* release lock *)
-        
-        iMod (@BorrowExpire _ _ _
-          (RwLock (HT * (HeapT loc lang.val))) _ _ _
-          _ _ _
-          with "[a0 r]") as "guard".
-        { iFrame. }
         
         wp_bind (seq_idx #i locks).
         wp_apply wp_seq_idx.
@@ -920,9 +919,10 @@ Proof.
         iIntros "_".
         
         wp_bind (release_shared (elem locks i)).
-        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        wp_apply (wp_release_shared (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k, v0)) with "[g rw sh_guard]").
+        { apply not_in. }
         { iFrame. iFrame "#". }
-        iIntros (dummy) "_".
+        iIntros (dummy) "g".
         
         wp_pures.
         unfold opt_as_val.
@@ -937,12 +937,7 @@ Proof.
         { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
         rewrite bd0.
 
-        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
-        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
-        { apply LifetimeInclusion_Left. }
-        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
-        { apply LifetimeInclusion_Right. }
-        iDestruct (ht_BorrowedRangeAppend _ _ _ _ _ _ _ with "range slot") as "range".
+        iDestruct (ht_BorrowedRangeAppend _ _ _ _ _ _ _ with "guardr guard_own_slot") as "range".
         { crush. }
         
         wp_pure _.
