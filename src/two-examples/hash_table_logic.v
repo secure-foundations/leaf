@@ -210,9 +210,9 @@ Qed.
 
 Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
     (f: full r k i j) :
-    (g1 &&{F1}&&> own γ r) ∗
+    (g1 &&{F1}&&> own γ r) -∗
     (g2 &&{F2}&&> own γ (m k1 v1))
-    ⊢
+    -∗
     (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ r ∗ own γ (m k1 v1))).
 Admitted.
 

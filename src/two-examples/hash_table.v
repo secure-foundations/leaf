@@ -781,20 +781,27 @@ Proof.
   iIntros (b) "[l [a o]]". iApply "Phi". iFrame.
 Qed.
 
-Lemma wp_ht_query_iter 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) :
+Lemma wp_ht_query_iter γ γrws range (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) (g gm gr: iProp Σ) F
+  (not_in: ∀ i , γrws i ∉ F)
+  :
       {{{
-        ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
-        is_ht_sl 𝛾 slots locks ∗ L 𝛾 (m k v) ∗ A 𝜅 ∗ BorrowedRange 𝜅 𝛾 k (hash k) i
+        ⌜ hash k ≤ i ≤ ht_fixed_size ⌝
+        ∗ g ∗ (□ (g &&{F}&&> is_ht_sl γ γrws slots locks))
+        ∗ gr ∗ (□ (gr &&{↑HT_RW_NAMESPACE}&&> own γ range))
+        ∗ gm ∗ (□ (gm &&{⊤}&&> own γ (m k v)))
+        ∗ ⌜ full range k (hash k) i ⌝
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
       query_iter slots locks #k #i
-      {{{ RET (opt_as_val v); L 𝛾 (m k v) ∗ A 𝜅 }}}.
+      {{{ RET (opt_as_val v); g ∗ gr ∗ gm }}}.
 Proof.
   unfold query_iter.
   iRevert (i).
-  iRevert (𝜅).
+  iRevert (range).
   iLöb as "IH".
-  iIntros (𝜅 i Phi) "[%i_bound [#ht [m [a [range %szs]]]]] Phi".
+  iIntros (range i Phi) "[%i_bound [g [#ht [gr [#guardr [gm [#guardm [%isf %szs]]]]]]]] Phi".
+  iDestruct (ht_BorrowedRangeAddM with "guardr guardm") as "guardrm". { apply isf. }
+  replace (↑HT_RW_NAMESPACE ∪ ⊤) with (⊤: coPset) by set_solver.
   wp_pures.
   
   unfold query_iter. wp_pures.
@@ -807,15 +814,22 @@ Proof.
     { unfold bool_decide. case_decide; crush. }
     rewrite bd.
     wp_pures.
-    iDestruct (ht_QueryReachedEnd with "a range m") as "%x". subst v.
+    Print ht_QueryReachedEnd_b.
+    iMod (ht_QueryReachedEnd_b γ range k v (gr ∗ gm) ⊤ ⊤ with "[gm gr guardrm]") as "[[gr gm] %is_none]". 
+    { set_solver. } { trivial. } { iFrame "gm". iFrame "gr". iFrame "guardrm". }
+    
+    rewrite is_none.
+    
     unfold opt_as_val. iModIntro.
     iApply "Phi". iFrame.
   
   (* case: i < fixed_size *)
   
   - 
+    iDestruct (guard_is_ht_i _ _ _ _ _ _ i with "ht") as "rw". { lia. }
+  
     assert (bool_decide (#i = #ht_fixed_size) = false) as bd.
-    { unfold bool_decide. case_decide; trivial. inversion H. lia. }
+    { unfold bool_decide. case_decide; trivial. inversion H0. lia. }
     rewrite bd.
     wp_if.
     wp_pures.
@@ -830,13 +844,16 @@ Proof.
     
     (* acquire lock *)
     
-    iDestruct (get_seq_iprop _ _ i with "ht") as "hti".
-    { lia. }
-    iDestruct (destruct_slots_i with "hti") as "%ds". 
-    deex. unfold is_ht_i. rewrite ds. iDestruct "hti" as (𝛼) "hti".
+    iMod (guarded_destruct_slots_i g ⊤ F with "[g rw]") as "[g %ds]".  { set_solver. }
+    { iFrame "g". iFrame "rw". }
+    destruct ds as [l ds].
+    unfold is_ht_i. rewrite ds.
+    
     wp_bind (acquire_shared (elem locks i)).
-    wp_apply (wp_acquire_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) with "hti").
-    iIntros (x) "[guard %xinv]".
+    wp_apply (wp_acquire_shared (γrws i) (elem locks i) g (storage_fn γ i l) F with "[g rw]").
+    { apply not_in. } { iFrame "g". iFrame "rw". }
+    
+    iIntros (x) "[g guard]".
     
     wp_pures. 
     
