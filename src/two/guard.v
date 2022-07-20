@@ -595,6 +595,24 @@ Proof.
   apply guards_weaken_l.
 Qed.
 
+Lemma guards_weaken_rhs_l E P Q R :
+    (P &&{ E }&&> (Q ∗ R))%I ⊢ P &&{ E }&&> Q.
+Proof.
+  iIntros "g".
+  iDestruct (guards_weaken_l E Q R) as "g2".
+  iApply guards_transitive.
+  iFrame "g". iFrame "g2".
+Qed.
+
+Lemma guards_weaken_rhs_r E P Q R :
+    (P &&{ E }&&> (Q ∗ R))%I ⊢ P &&{ E }&&> R.
+Proof.
+  iIntros "g".
+  iDestruct (guards_weaken_r E Q R) as "g2".
+  iApply guards_transitive.
+  iFrame "g". iFrame "g2".
+Qed.
+
 Lemma guards_apply (P Q X Y : iProp Σ) E F
     (disj: E ## F)
     : (Q ∗ X ={E}=∗ Q ∗ Y) ∗ (P &&{ F }&&> Q) ⊢ (P ∗ X ={E ∪ F}=∗ P ∗ Y).

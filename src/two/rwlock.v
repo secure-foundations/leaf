@@ -390,7 +390,21 @@ Proof.
   iDestruct "x" as (γ) "x". iModIntro. iExists γ.
   unfold rw_lock_inst, central. iFrame.
 Qed.
-  
+
+Lemma rw_new_ns (x: S) (f: S -> iProp Σ) E (N: namespace)
+  : f x ={E}=∗ ∃ γ , ⌜ γ ∈ (↑N : coPset) ⌝ ∗ rw_lock_inst γ f ∗ central γ false 0 x.
+Proof. 
+  iIntros "fx".
+  iMod (logic_init_ns (Central false 0 x) (base_opt_prop_map f) E N with "[fx]") as "x".
+  { apply rw_init_valid. }
+  { apply wf_prop_base_base_opt. }
+  {
+    unfold interp, rwlock_interp, Central, base_opt_prop_map. iFrame.
+  }
+  iDestruct "x" as (γ) "[%gn x]". iModIntro. iExists γ.
+  iSplitL "". { iPureIntro. trivial. }
+  unfold rw_lock_inst, central. iFrame.
+Qed.
 
 Lemma rw_exc_begin γ f rc (x: S) E
   (in_e: γ ∈ E)

@@ -204,10 +204,13 @@ Proof.
   intro. apply is_ht_i_extractable.
 Qed.
 
+Definition HT_RW_NAMESPACE := nroot .@ "ht-rwlock".
+
 Definition is_ht (γ: gname) (γrws: nat -> gname) (ht: lang.val) :=
   match ht with
   | PairV slots locks => (is_ht_sl γ γrws slots locks
-      ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝
+      ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size
+          /\ (∀ i , γrws i ∈ (↑ HT_RW_NAMESPACE : coPset)) ⌝
       )%I
   | _ => (False)%I
   end.
@@ -241,18 +244,24 @@ Proof.
 Qed.
 
 Lemma destruct_ht γ γrws ht
-  : is_ht γ γrws ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
+  : is_ht γ γrws ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks
+    /\ 
+    has_length slots ht_fixed_size /\ has_length locks ht_fixed_size
+          /\ (∀ i , γrws i ∈ (↑ HT_RW_NAMESPACE : coPset)) ⌝.
 Proof.
   iIntros "ih". unfold is_ht. destruct ht.
   - iExFalso. iFrame.
   - iExFalso. iFrame.
-  - iPureIntro. exists ht1, ht2. trivial.
+  - iDestruct "ih" as "[a %b]".
+  iPureIntro. exists ht1, ht2. intuition.
 Qed.
 
 Lemma guarded_destruct_ht g E F γ γrws ht
   (su: F ⊆ E)
   : ⊢ g ∗ (g &&{F}&&> is_ht γ γrws ht)
-    ={E}=∗ g ∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
+    ={E}=∗ g ∗ ⌜ ∃ slots locks , ht = PairV slots locks
+    /\ has_length slots ht_fixed_size /\ has_length locks ht_fixed_size
+          /\ (∀ i , γrws i ∈ (↑ HT_RW_NAMESPACE : coPset)) ⌝.
 Proof.
   iIntros "[g guards]".
   iApply (guards_persistent g (is_ht γ γrws ht) _ E F); trivial.
@@ -260,6 +269,14 @@ Proof.
   iApply destruct_ht.
 Qed.
 
+
+Lemma guarded_inner_ht g F γ γrws slots locks
+  : (g &&{F}&&> is_ht γ γrws (PairV slots locks))
+    ⊢ (g &&{F}&&> is_ht_sl γ γrws slots locks).
+Proof.
+  unfold is_ht.
+  apply guards_weaken_rhs_l.
+Qed.
 
 Lemma guard_is_ht_i g F γ γrws slots locks i
   (lt: i < ht_fixed_size)
@@ -388,10 +405,14 @@ Lemma init_is_ht_sl γ slots locks :
   own γ (sseq ht_fixed_size) -∗
   seq_iprop (is_slot_i slots) ht_fixed_size -∗
   seq_iprop (is_lock_i locks) ht_fixed_size
-  ={⊤}=∗ ∃ γrws , is_ht_sl γ γrws slots locks.
+  ={⊤}=∗ ∃ γrws , ⌜ (∀ i , γrws i ∈ (↑ HT_RW_NAMESPACE : coPset)) ⌝
+      ∗ is_ht_sl γ γrws slots locks.
 Proof.
   unfold is_ht_sl. full_generalize ht_fixed_size as n. induction n.
-  - iIntros. trivial.
+  - iIntros. iExists (λ i , coPpick (↑HT_RW_NAMESPACE)). iModIntro.
+    iSplitL "".
+    { iPureIntro. intro. apply coPpick_elem_of. apply nclose_infinite. }
+    trivial.
   - iIntros "L slots locks".
     rewrite sseq_append.
     cbn [seq_iprop].
@@ -399,7 +420,7 @@ Proof.
     iDestruct "locks" as "[lock locks]".
     iDestruct (own_op with "L") as "[L me]".
     
-    iMod (IHn with "L slots locks") as (γrws) "X".
+    iMod (IHn with "L slots locks") as (γrws) "[%ns X]".
     
     unfold is_ht_i.
     unfold is_slot_i.
@@ -412,11 +433,17 @@ Proof.
     destruct v2; try (iExFalso; iFrame; fail).
     destruct l; try (iExFalso; iFrame; fail).
 
-    iMod (rw_new None (storage_fn γ n n0) ⊤ with "[slot me]") as (γi) "[maps rwcentral]".
+    iMod (rw_new_ns None (storage_fn γ n n0) ⊤ HT_RW_NAMESPACE with "[slot me]") as (γi) "[%in_ns [maps rwcentral]]".
     { unfold storage_fn. iFrame. }
     
     iModIntro.
     iExists (λ i , if decide (i = n) then γi else γrws i).
+    
+    iSplitL "".
+    {
+      iPureIntro. intro.
+      case_decide; trivial.
+    }
     
     iSplitL "lock maps rwcentral".
     {
@@ -446,7 +473,7 @@ Proof.
   wp_pures.
   iMod (ht_Init maxkey) as (γ) "[mseq sseq]".
   unfold is_ht.
-  iMod (init_is_ht_sl with "sseq slots locks") as (γrws) "X".
+  iMod (init_is_ht_sl with "sseq slots locks") as (γrws) "[%inns X]".
   iApply ("Phi" $! (γ) (γrws)).
   iModIntro.
   iFrame. iPureIntro. intuition.
@@ -461,7 +488,7 @@ Lemma wp_ht_update_iter γ γrws range (slots locks: lang.val) (k: Key) (v: Valu
 :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
-        g ∗ (□ (g &&{F}&&> ▷ is_ht_sl γ γrws slots locks)) ∗
+        g ∗ (□ (g &&{F}&&> is_ht_sl γ γrws slots locks)) ∗
         own γ (m k v0) ∗ own γ range ∗ ⌜ full range k (hash k) i ⌝
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
@@ -474,9 +501,9 @@ Proof.
   iRevert (i).
   iRevert (range).
   iLöb as "IH".
-  iIntros (range i Phi) "[%i_bound [g [#ht_later [m [a [%isf %szs]]]]]] Phi".
-  iMod (extract_later g (is_ht_sl γ γrws slots locks) _ F with "[g ht_later]") as "[g #ht]". { set_solver. }
-    { iFrame "g". iFrame "ht_later". }
+  iIntros (range i Phi) "[%i_bound [g [#ht [m [a [%isf %szs]]]]]] Phi".
+  (*iMod (extract_later g (is_ht_sl γ γrws slots locks) _ F with "[g ht_later]") as "[g #ht]". { set_solver. }
+    { iFrame "g". iFrame "ht_later". }*)
   wp_pures.
   
   unfold update_iter. wp_pures.
@@ -712,17 +739,23 @@ Proof.
   done.
 Qed. 
 
-Lemma wp_ht_update 𝛾 (ht: lang.val) (k: Key) (v: Value) (v0: option Value) :
-      {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v0) }}}
+Lemma wp_ht_update γ γrws (ht: lang.val) (k: Key) (v: Value) (v0: option Value) g F
+  (F_disj: F ## ↑ HT_RW_NAMESPACE)
+  :
+      {{{ g ∗ (□ (g &&{F}&&> is_ht γ γrws ht)) ∗ own γ (m k v0) }}}
       update ht #k #v
-      {{{ b , RET (#b);
-          ((⌜ b = 0 ⌝ ∗ L 𝛾 (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ L 𝛾 (m k (Some v))))
+      {{{ b , RET (#b); g ∗
+          ((⌜ b = 0 ⌝ ∗ own γ (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ own γ (m k (Some v))))
       }}}.
 Proof.
   unfold update.
-  iIntros (Phi) "[#ht l] Phi".
-  
-  iDestruct (destruct_ht with "ht") as "%ds". deex. subst ht.
+  iIntros (Phi) "[g [#guard o]] Phi".
+
+  iMod (guarded_destruct_ht g ⊤ F γ γrws ht with "[guard g]") as "[g %ds]".
+  { set_solver. }
+  { iFrame "g". iFrame "guard". }
+  destruct ds as [slots [locks [ds [l1 [l2 all_in_ns]]]]].
+  subst ht.
   
   wp_pures.
   
@@ -730,23 +763,24 @@ Proof.
   wp_apply (wp_compute_hash k). { done. }
   iIntros "_".
   
-  iMod (L_unit HT 𝛾) as "u".
+  iMod (own_unit htUR γ) as "u".
   
   wp_pures.
   
-  wp_apply (wp_ht_update_iter 𝛾 unit slots locks k v v0 with "[l u]").
+  iDestruct (guarded_inner_ht with "guard") as "guard2".
+  
+  wp_apply (wp_ht_update_iter γ γrws ε slots locks k v v0 _ g F with "[o g u]").
+  { set_solver. }
   {
-    unfold is_ht.
-    iDestruct "ht" as "[#iht %l]".
     iFrame. iFrame "#".
     iPureIntro. intuition.
     - assert (hash k < ht_fixed_size) by (apply hash_in_bound). lia. 
     - apply full_trivial.
   }
   
-  iIntros (b) "[l a]". iApply "Phi". iFrame.
+  iIntros (b) "[l [a o]]". iApply "Phi". iFrame.
 Qed.
-     
+
 Lemma wp_ht_query_iter 𝜅 𝛾 (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗

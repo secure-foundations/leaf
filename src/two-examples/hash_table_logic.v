@@ -198,7 +198,6 @@ Proof.
   iExists (ht_dot r (s j (Some (k0, v0)))).
   iSplit.
   { iPureIntro. apply full_dot; trivial. }
-  Print guards_and_sep_union.
   iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
   {
     apply and_own2_ucmra.

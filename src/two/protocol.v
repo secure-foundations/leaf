@@ -9,6 +9,8 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 
+From stdpp Require Export namespaces.
+
 (*From iris.base_logic.lib Require Export wsat.*)
 
 Require Import Two.inved.
@@ -612,14 +614,14 @@ Section StorageLogic.
     trivial.
   Qed.
   
-  Lemma logic_init (p: P) (f: B -> iProp Σ) E
+  Lemma logic_init_ns (p: P) (f: B -> iProp Σ) E (N: namespace)
       (pi: pinv p) (wf: wf_prop_map f)
-  : ⊢ f (interp p) ={E}=∗ ∃ γ , maps γ f ∗ p_own γ p.
+  : ⊢ f (interp p) ={E}=∗ ∃ γ , ⌜ γ ∈ (↑ N : coPset) ⌝ ∗ maps γ f ∗ p_own γ p.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     iIntros "f_init".
     rewrite uPred_fupd_eq. unfold uPred_fupd_def.
     iIntros "[w oe]".
-    iMod (ownI_alloc_and_simultaneous_own_alloc
+    iMod (ownI_alloc_and_simultaneous_own_alloc_ns
       (λ γ , 
         (∃ (state: P) ,
           own γ (● (Inved state))
@@ -627,12 +629,14 @@ Section StorageLogic.
           ∗ (f (interp state)))%I
       )
       (● (Inved p) ⋅ ◯ (Inved p))
+      (↑ N)
       with "w") as "w".
+    { apply nclose_infinite. }
     { rewrite auth_both_valid_discrete. split; trivial.
       apply valid_inved_of_pinv. trivial.
     }
     
-    iDestruct "w" as (γ) "[w [oinv [auth frag]]]".
+    iDestruct "w" as (γ) "[%in_ns [w [oinv [auth frag]]]]".
     
     iDestruct ("w" with "[auth f_init]") as "w".
     {
@@ -645,7 +649,16 @@ Section StorageLogic.
     unfold p_own. iFrame "frag".
     unfold maps.
     iFrame "oinv".
-    iPureIntro. trivial.
+    iPureIntro. split; trivial.
+  Qed.
+  
+  Lemma logic_init (p: P) (f: B -> iProp Σ) E
+      (pi: pinv p) (wf: wf_prop_map f)
+  : ⊢ f (interp p) ={E}=∗ ∃ γ , maps γ f ∗ p_own γ p.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    iIntros "f_init".
+    iMod (logic_init_ns p f E nroot with "f_init") as (γ) "[_ t]"; trivial.
+    iModIntro. iExists γ. iFrame.
   Qed.
   
   Lemma fupd_singleton_mask_frame (γ: gname) (X Y Z : iProp Σ) E

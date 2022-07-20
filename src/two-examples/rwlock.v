@@ -67,7 +67,7 @@ Context `{!simpGS Σ}.
 
 (* DON'T add an extra invGS, it will conflict with the one in simpGS Context `{!invGS Σ}.*)
 
-Definition NS := nroot .@ "rwlock".
+(*Definition NS := nroot .@ "rwlock".*)
 
 Definition rw_atomic_inv (γ: gname) (loc_exc loc_rc: loc) : iProp Σ :=
   (∃ exc rc (x: S) ,
