@@ -126,7 +126,7 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
-Lemma wp_load_b s E l v F (su: F ⊆ E) g :
+Lemma wp_load_b s E l v F g (su: F ⊆ E) :
   {{{ g ∗ (g &&{F}&&> (l ↦ v)) }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; g }}}.
 Proof.
   iIntros (Φ) "[g Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.

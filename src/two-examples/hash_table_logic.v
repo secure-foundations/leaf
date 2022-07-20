@@ -216,11 +216,20 @@ Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
     (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ r ∗ own γ (m k1 v1))).
 Admitted.
 
-Lemma ht_SAddM γ k0 v0 k1 v1 g1 g2 F1 F2 :
-    (g1 &&{F1}&&> own γ (s k0 v0)) -∗
+Lemma ht_SAddM γ i slot k1 v1 g1 g2 F1 F2 :
+    (g1 &&{F1}&&> own γ (s i slot)) -∗
     (g2 &&{F2}&&> own γ (m k1 v1))
     -∗
-    (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ (s k0 v0) ∗ own γ (m k1 v1))).
+    (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ (s i slot) ∗ own γ (m k1 v1))).
+Admitted.
+
+Lemma ht_RangeAddSAddM γ r k i j slot k1 v1 g1 g2 g3 F1 F2 F3
+    (f: full r k i j) :
+    (g1 &&{F1}&&> own γ r) -∗
+    (g2 &&{F2}&&> own γ (s j slot)) -∗
+    (g3 &&{F3}&&> own γ (m k1 v1))
+    -∗
+    (g1 ∗ g2 ∗ g3 &&{F1 ∪ F2 ∪ F3}&&> (own γ r ∗ own γ (s j slot) ∗ own γ (m k1 v1))).
 Admitted.
 
 Lemma ht_UpdateExisting γ k v v0 v1 j :

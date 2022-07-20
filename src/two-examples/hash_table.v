@@ -782,7 +782,8 @@ Proof.
 Qed.
 
 Lemma wp_ht_query_iter γ γrws range (slots locks: lang.val) (k: Key) (v: option Value) (i: nat) (g gm gr: iProp Σ) F
-  (not_in: ∀ i , γrws i ∉ F)
+  (F_disj: F ## ↑ HT_RW_NAMESPACE)
+  (is_in: ∀ i , γrws i ∈ (↑HT_RW_NAMESPACE : coPset))
   :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝
@@ -798,8 +799,9 @@ Proof.
   unfold query_iter.
   iRevert (i).
   iRevert (range).
+  iRevert (gr).
   iLöb as "IH".
-  iIntros (range i Phi) "[%i_bound [g [#ht [gr [#guardr [gm [#guardm [%isf %szs]]]]]]]] Phi".
+  iIntros (gr range i Phi) "[%i_bound [g [#ht [gr [#guardr [gm [#guardm [%isf %szs]]]]]]]] Phi".
   iDestruct (ht_BorrowedRangeAddM with "guardr guardm") as "guardrm". { apply isf. }
   replace (↑HT_RW_NAMESPACE ∪ ⊤) with (⊤: coPset) by set_solver.
   wp_pures.
@@ -851,7 +853,7 @@ Proof.
     
     wp_bind (acquire_shared (elem locks i)).
     wp_apply (wp_acquire_shared (γrws i) (elem locks i) g (storage_fn γ i l) F with "[g rw]").
-    { apply not_in. } { iFrame "g". iFrame "rw". }
+    { set_solver. } { iFrame "g". iFrame "rw". }
     
     iIntros (slot) "[g [sh_guard #guard_storage_lat]]".
     
@@ -875,7 +877,8 @@ Proof.
     (* read the slot *)
     
     rewrite ds.
-    wp_apply (wp_load_b _ ⊤ l (slot_as_val slot) {[γrws i]} _ (sh_guard (γrws i) slot) with "[sh_guard guard_own_slot]").
+    wp_apply (wp_load_b _ ⊤ l (slot_as_val slot) {[γrws i]} (sh_guard (γrws i) slot) with "[sh_guard guard_own_slot]").
+    { set_solver. }
     { iFrame "sh_guard". iFrame "guard_mem". }
     
     iIntros "sh_guard".
@@ -920,7 +923,7 @@ Proof.
         
         wp_bind (release_shared (elem locks i)).
         wp_apply (wp_release_shared (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k, v0)) with "[g rw sh_guard]").
-        { apply not_in. }
+        { set_solver. }
         { iFrame. iFrame "#". }
         iIntros (dummy) "g".
         
@@ -937,8 +940,15 @@ Proof.
         { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
         rewrite bd0.
 
-        iDestruct (ht_BorrowedRangeAppend _ _ _ _ _ _ _ with "guardr guard_own_slot") as "range".
+        iDestruct (ht_BorrowedRangeAppend γ range k (hash k) i k0 v0
+            gr (sh_guard (γrws i) (Some (k0, v0)))
+            (↑HT_RW_NAMESPACE) ({[γrws i]})
+            with "[guardr guard_own_slot]") as (r') "[%f' guardr2]".
         { crush. }
+        { trivial. }
+        { iFrame "guardr". iFrame "guard_own_slot". }
+        replace (↑HT_RW_NAMESPACE ∪ {[γrws i]})
+            with (↑HT_RW_NAMESPACE : coPset) by set_solver.
         
         wp_pure _.
         wp_pure _.
@@ -960,28 +970,21 @@ Proof.
                            
        wp_bind (big_e slots locks #k #(i + 1)).
        rewrite z_n_add1.
-       wp_apply ("IH" $! (lifetime_intersect 𝜅0 𝜅) (i + 1) with "[m a range]").
+       wp_apply ("IH" $! (gr ∗ sh_guard (γrws i) (Some (k0, v0)))%I (r') (i + 1) with "[gr sh_guard g gm]").
        {
-          iSplitR. { iPureIntro. lia. }
-          iSplitR. { iFrame "#". }
-          iSplitL "m". { iFrame. }
-          iSplitL "a". { iFrame. }
-          iSplitL "range". { iFrame. }
-          iPureIntro. intuition.
+          iFrame. iFrame "ht". iFrame "guardm". iFrame "guardr2".
+          iPureIntro. split.
+          { lia. }
+          split.
+          { trivial. }
+          split.
+          { intuition. }
+          intuition.
        }
-       
-       iIntros "[m a]".
+       iIntros "[g [[gr sh_guard] gm]]".
        
        (* release the lock *)
        
-        iDestruct (ActiveSplit with "a") as "[a0 a]".
-               
-        iMod (@BorrowExpire _ _ _
-          (RwLock (HT * (HeapT loc lang.val))) _ _ _
-          _ _ _
-          with "[a0 r]") as "guard".
-        { iFrame. }
-        
         wp_pure _.
         wp_pure _.
         
@@ -992,13 +995,14 @@ Proof.
         iIntros "_".
         
         wp_bind (release_shared (elem locks i)).
-        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        wp_apply (wp_release_shared (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k0, v0)) with "[rw g sh_guard]").
+        { set_solver. }
         { iFrame. iFrame "#". }
-        iIntros (dummy) "_".
+        iIntros (dummy) "g".
         
         wp_pures.
         
-        iModIntro. iApply ("Phi" with "[m a]"). { iFrame. }
+        iModIntro. iApply ("Phi" with "[g gr gm]"). { iFrame. }
     +
         (* case: the slot has nothing in it *)
         
@@ -1007,24 +1011,19 @@ Proof.
         wp_pure _.
         wp_pure _.
         
-        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
-        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
-        { apply LifetimeInclusion_Left. }
-        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
-        { apply LifetimeInclusion_Right. }
-
-        iDestruct (ht_QueryNotFound _ _ _ _ _ with "a range slot m") as "%veq".
+        (* get the answer using the borrowed props *)
+        
+        iDestruct (ht_RangeAddSAddM with "guardr guard_own_slot guardm") as "guard_s_m".
+        { apply isf. }
+        replace (↑HT_RW_NAMESPACE ∪ {[γrws i]} ∪ ⊤) with (⊤ : coPset) by set_solver.
+        
+        iMod (ht_QueryNotFound_b γ range k v i (gr ∗ sh_guard (γrws i) None ∗ gm)%I ⊤ with "[sh_guard gm guard_s_m gr]") as "[[gr [sh_guard gm]] %veq]".
+        { set_solver. }
+        { trivial. }
+        { iFrame "sh_guard". iFrame "gm". iFrame "guard_s_m". iFrame "gr". }
         rewrite veq.
         
         (* release lock *)
-        
-        iDestruct (ActiveSplit with "a") as "[a0 a]".
-        
-        iMod (@BorrowExpire _ _ _
-          (RwLock (HT * (HeapT loc lang.val))) _ _ _
-          _ _ _
-          with "[a0 r]") as "guard".
-        { iFrame. }
         
         wp_bind (seq_idx #i locks).
         wp_apply wp_seq_idx.
@@ -1033,43 +1032,54 @@ Proof.
         iIntros "_".
         
         wp_bind (release_shared (elem locks i)).
-        wp_apply (wp_release_shared (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard]").
+        wp_apply (wp_release_shared (γrws i) (elem locks i) g (storage_fn γ i l) F None with "[g rw sh_guard]").
+        { set_solver. }
         { iFrame. iFrame "#". }
-        iIntros (dummy) "_".
+        iIntros (dummy) "g".
         
         wp_pures.
         unfold opt_as_val.
         iApply "Phi". iModIntro. iFrame.
 Qed.
 
-Lemma wp_ht_query 𝛾 (ht: lang.val) (k: Key) (v: option Value) :
-      {{{ is_ht 𝛾 ht ∗ L 𝛾 (m k v) }}}
+Lemma wp_ht_query γ γrws (ht: lang.val) (k: Key) (v: option Value) g gm F
+  (F_disj: F ## ↑ HT_RW_NAMESPACE) :
+      {{{
+          g ∗ (□ (g &&{F}&&> is_ht γ γrws ht)) ∗
+          gm ∗ (□ (gm &&{⊤}&&> own γ (m k v)))
+      }}}
       query ht #k
-      {{{ RET (opt_as_val v); L 𝛾 (m k v) }}}.
+      {{{ RET (opt_as_val v); g ∗ gm }}}.
 Proof.
   unfold query.
-  iIntros (Phi) "[#ht l] Phi".
+  iIntros (Phi) "[g [#guard [gm #guardm]]] Phi".
   
-  iDestruct (destruct_ht with "ht") as "%ds". deex. subst ht.
+  iMod (guarded_destruct_ht g ⊤ F γ γrws ht with "[guard g]") as "[g %ds]".
+  { set_solver. }
+  { iFrame "g". iFrame "guard". }
+  destruct ds as [slots [locks [ds [l1 [l2 all_in_ns]]]]].
+  subst ht.
   
-  wp_pure _. wp_pure _. wp_pure _.
+  wp_pures.
   
   wp_bind (compute_hash #k).
   wp_apply (wp_compute_hash k). { done. }
   iIntros "_".
   
-  iMod (ht_BorrowedRangeEmpty 𝛾 k (hash k)) as (𝜅) "[range a]".
+  iMod (ht_BorrowedRangeEmpty γ k (hash k)) as (range) "[%is_f o]".
   
-  wp_apply (wp_ht_query_iter with "[l range a]").
-  {
-    unfold is_ht.
-    iDestruct "ht" as "[#iht %l]".
-    iFrame. iFrame "#".
-    iPureIntro. intuition.
+  iDestruct (guarded_inner_ht with "guard") as "guard2".
+  iDestruct (guards_refl (↑ HT_RW_NAMESPACE) (own γ range)) as "guard3".
+  
+  wp_apply (wp_ht_query_iter γ γrws range slots locks k v (hash k) g gm (own γ range) F with "[gm g o]").
+  { trivial. }
+  { set_solver. }
+  { iFrame. iFrame "#". iPureIntro.
+    intuition.
     assert (hash k < ht_fixed_size) by (apply hash_in_bound). lia. 
   }
   
-  iIntros "[l a]". iApply "Phi". iFrame.
+  iIntros "[l [a b]]". iApply "Phi". iFrame.
 Qed.
 
 (* due to the simplifications, update isn't guaranteed to succeed,
