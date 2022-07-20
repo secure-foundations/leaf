@@ -317,16 +317,14 @@ Qed.
 
 Lemma wp_acquire_exc γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) }}}
+      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
       acquire_exc rwlock
       {{{ x, RET #();
           g ∗ exc_guard γ ∗ storage_fn x
       }}}.
 Proof.
   unfold acquire_exc.
-  iIntros (p) "[g #guard_lat] P".
-  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
-  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  iIntros (p) "[g #guard] P".
   wp_pure _.
   have j := acq1 γ rwlock g storage_fn E not_in_e. unfold loop_until in j.
   wp_bind ((rec: "loop" "c" := if: CAS (Fst rwlock) #0 #1 then #() else "loop" "c")%E #0).
@@ -343,15 +341,13 @@ Qed.
 
 Lemma wp_release_exc (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) ∗
+      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
           exc_guard γ ∗ storage_fn x }}}
       release_exc rwlock
-      {{{ RET #(); True }}}.
+      {{{ RET #(); g }}}.
 Proof.
   unfold release_exc.
-  iIntros (p) "[g [#guard_lat [e fx]]] P".
-  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
-  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  iIntros (p) "[g [#guard [e fx]]] P".
   
   wp_pures.
   
@@ -366,8 +362,8 @@ Proof.
     as "[irl irl_back]".
   { set_solver. } { iFrame "g". iFrame "guard". }
   
-  unfold IsRwLock at 3.
-  unfold IsRwLock at 3.
+  unfold IsRwLock at 2.
+  unfold IsRwLock at 2.
   unfold rw_atomic_inv.
   iDestruct "irl" as "[#maps ex]".
   iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
@@ -388,15 +384,13 @@ Qed.
 
 Lemma wp_release_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) ∗
+      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
           sh_guard γ x }}}
       release_shared rwlock
-      {{{ dummy, RET dummy; True }}}.
+      {{{ dummy, RET dummy; g }}}.
 Proof.
   unfold release_shared.
-  iIntros (p) "[g [#guard_lat e]] P".
-  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
-  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  iIntros (p) "[g [#guard e]] P".
   
   wp_pures.
   
@@ -411,8 +405,8 @@ Proof.
     as "[irl irl_back]".
   { set_solver. } { iFrame "g". iFrame "guard". }
   
-  unfold IsRwLock at 3.
-  unfold IsRwLock at 3.
+  unfold IsRwLock at 2.
+  unfold IsRwLock at 2.
   unfold rw_atomic_inv.
   iDestruct "irl" as "[#maps ex]".
   iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
@@ -434,15 +428,13 @@ Qed.
 
 Lemma wp_acquire_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> ▷ IsRwLock γ rwlock storage_fn)) }}}
+      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
       acquire_shared rwlock
       {{{ x, RET #();
           g ∗ sh_guard γ x
       }}}.
 Proof.
-  iIntros (phi) "[g #guard_lat] P".
-  iMod (extract_later _ _ _ E with "[guard_lat g]") as "[g #guard]".
-  { set_solver. } { iFrame "guard_lat". iFrame "g". }
+  iIntros (phi) "[g #guard] P".
   
   unfold acquire_shared.
   wp_pure _.
@@ -460,8 +452,8 @@ Proof.
   iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
     as "[irl irl_back]".
   { set_solver. } { iFrame "g". iFrame "guard". }
-  unfold IsRwLock at 3.
-  unfold IsRwLock at 3.
+  unfold IsRwLock at 2.
+  unfold IsRwLock at 2.
   unfold rw_atomic_inv.
   iDestruct "irl" as "[#maps ex]".
   iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
@@ -482,8 +474,8 @@ Proof.
   iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
     as "[irl irl_back]".
   { set_solver. } { iFrame "g". iFrame "guard". }
-  unfold IsRwLock at 3.
-  unfold IsRwLock at 3.
+  unfold IsRwLock at 2.
+  unfold IsRwLock at 2.
   unfold rw_atomic_inv.
   iDestruct "irl" as "[_ ex]".
   iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".
@@ -504,8 +496,8 @@ Proof.
     iMod (guards_open g (IsRwLock γ (#exc_loc, #rw_loc) storage_fn) ⊤ E with "[g guard]")
     as "[irl irl_back]".
     { set_solver. } { iFrame "g". iFrame "guard". }
-    unfold IsRwLock at 3.
-    unfold IsRwLock at 3.
+    unfold IsRwLock at 2.
+    unfold IsRwLock at 2.
     unfold rw_atomic_inv.
     iDestruct "irl" as "[_ ex]".
     iDestruct "ex" as (exc rc x0) "[c [mem_exc mem_rc]]".

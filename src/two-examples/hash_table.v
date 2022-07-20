@@ -10,6 +10,7 @@ From iris Require Import options.
 From TwoExamples Require Import rwlock.
 From Two Require Import rwlock.
 From Two Require Import guard_later.
+Require Import Two.guard.
 From TwoExamples Require Import seqs.
 From TwoExamples Require Import hash_table_logic.
 From TwoExamples Require Import hash_table_raw.
@@ -119,13 +120,30 @@ Fixpoint seq_iprop (fn: nat -> iProp Σ) (n: nat) :=
   | (S i) => (fn i ∗ seq_iprop fn i)%I
   end.
 
-Lemma get_seq_iprop (fn: nat -> iProp Σ) (n: nat) (i: nat)
+Lemma get_seq_iprop_guard (fn: nat -> iProp Σ) (n: nat) (i: nat) F
   (i_lt_n : i < n)
-  : seq_iprop fn n ⊢ fn i.
+  : ⊢ (seq_iprop fn n &&{F}&&> fn i)%I.
 Proof.
   induction n.
   - lia.
   - have h : Decision (i = n) by solve_decision. destruct h.
+    + subst i. cbn [seq_iprop].
+      apply guards_weaken_l.
+    + assert (i < n) as iln by lia. intuition.
+      cbn [seq_iprop].
+      iApply (guards_transitive F _ (seq_iprop fn n) _).
+      iSplitL.
+      { iApply guards_weaken_r. }
+      iApply H0.
+Qed.
+
+Lemma get_seq_iprop (fn: nat -> iProp Σ) (n: nat) (i: nat)
+  (i_lt_n : i < n)
+  : seq_iprop fn n ⊢ fn i.
+ Proof.
+   induction n.
+   - lia.
+   - have h : Decision (i = n) by solve_decision. destruct h.
     + subst i. cbn [seq_iprop]. iIntros "[x y]". iFrame.
     + assert (i < n) as iln by lia. intuition.
       cbn [seq_iprop]. iIntros "[x y]". iDestruct (H0 with "y") as "y". iFrame.
@@ -211,6 +229,17 @@ Proof.
   - iExFalso. iFrame.
 Qed.
 
+Lemma guarded_destruct_slots_i g E F γ γrws slots locks i
+  (su: F ⊆ E)
+  : ⊢ g ∗ (g &&{F}&&> is_ht_i γ γrws slots locks i)
+    ={E}=∗ g ∗ ⌜ ∃ (l: Z) , elem slots i = #l ⌝.
+Proof.
+  iIntros "[g guards]".
+  iApply (guards_persistent g (is_ht_i γ γrws slots locks i) _ E F); trivial.
+  iFrame.
+  iApply destruct_slots_i.
+Qed.
+
 Lemma destruct_ht γ γrws ht
   : is_ht γ γrws ht -∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
 Proof.
@@ -218,6 +247,32 @@ Proof.
   - iExFalso. iFrame.
   - iExFalso. iFrame.
   - iPureIntro. exists ht1, ht2. trivial.
+Qed.
+
+Lemma guarded_destruct_ht g E F γ γrws ht
+  (su: F ⊆ E)
+  : ⊢ g ∗ (g &&{F}&&> is_ht γ γrws ht)
+    ={E}=∗ g ∗ ⌜ ∃ slots locks , ht = PairV slots locks ⌝.
+Proof.
+  iIntros "[g guards]".
+  iApply (guards_persistent g (is_ht γ γrws ht) _ E F); trivial.
+  iFrame.
+  iApply destruct_ht.
+Qed.
+
+
+Lemma guard_is_ht_i g F γ γrws slots locks i
+  (lt: i < ht_fixed_size)
+  :
+  (g &&{ F }&&> is_ht_sl γ γrws slots locks)%I ⊢
+    (g &&{ F }&&> is_ht_i γ γrws slots locks i)%I.
+Proof.
+  iIntros "guard". unfold is_ht_sl.
+  iDestruct (get_seq_iprop_guard (is_ht_i γ γrws slots locks) ht_fixed_size i F)
+      as "guard2"; trivial.
+  iDestruct (guards_transitive with "[guard guard2]") as "j".
+  { iSplitL "guard". - iFrame "guard". - iFrame "guard2". }
+  iFrame "j".
 Qed.
 
 Definition is_slot_i (slots: lang.val) (i: nat) :=
@@ -401,22 +456,27 @@ Lemma z_n_add1 (i: nat)
   : ((LitV (Z.add i (Zpos xH))) = (LitV (Init.Nat.add i (S O)))). 
 Proof.  f_equal. f_equal. lia. Qed.
 
-Lemma wp_ht_update_iter 𝛾 range (slots locks: lang.val) (k: Key) (v: Value) (v0: option Value) (i: nat) :
+Lemma wp_ht_update_iter γ γrws range (slots locks: lang.val) (k: Key) (v: Value) (v0: option Value) (i: nat) (g: iProp Σ) F
+  (not_in: ∀ i , γrws i ∉ F)
+:
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
-        is_ht_sl 𝛾 slots locks ∗ L 𝛾 (m k v0) ∗ L 𝛾 range ∗ ⌜ full range k (hash k) i ⌝
+        g ∗ (□ (g &&{F}&&> ▷ is_ht_sl γ γrws slots locks)) ∗
+        own γ (m k v0) ∗ own γ range ∗ ⌜ full range k (hash k) i ⌝
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
       update_iter slots locks #k #v #i
       {{{ b , RET (#b);
-          ((⌜ b = 0 ⌝ ∗ L 𝛾 (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ L 𝛾 (m k (Some v)))) ∗ L 𝛾 range
+          g ∗ ((⌜ b = 0 ⌝ ∗ own γ (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ own γ (m k (Some v)))) ∗ own γ range
       }}}.
 Proof.
   unfold update_iter.
   iRevert (i).
   iRevert (range).
   iLöb as "IH".
-  iIntros (range i Phi) "[%i_bound [#ht [m [a [%isf %szs]]]]] Phi".
+  iIntros (range i Phi) "[%i_bound [g [#ht_later [m [a [%isf %szs]]]]]] Phi".
+  iMod (extract_later g (is_ht_sl γ γrws slots locks) _ F with "[g ht_later]") as "[g #ht]". { set_solver. }
+    { iFrame "g". iFrame "ht_later". }
   wp_pures.
   
   unfold update_iter. wp_pures.
@@ -436,8 +496,10 @@ Proof.
   (* case: i < fixed_size *)
   
   - 
+    iDestruct (guard_is_ht_i _ _ _ _ _ _ i with "ht") as "rw". { lia. }
+  
     assert (bool_decide (#i = #ht_fixed_size) = false) as bd.
-    { unfold bool_decide. case_decide; trivial. inversion H. lia. }
+    { unfold bool_decide. case_decide; trivial. inversion H0. lia. }
     rewrite bd.
     wp_if.
     wp_pures.
@@ -452,15 +514,15 @@ Proof.
     
     (* acquire lock *)
     
-    iDestruct (get_seq_iprop _ _ i with "ht") as "hti".
-    { lia. }
-    iDestruct (destruct_slots_i with "hti") as "%ds". 
-    deex. unfold is_ht_i. rewrite ds. iDestruct "hti" as (𝛼) "hti".
+    iMod (guarded_destruct_slots_i g ⊤ F with "[g rw]") as "[g %ds]".  { set_solver. }
+    { iFrame "g". iFrame "rw". }
+    destruct ds as [l ds].
+    unfold is_ht_i. rewrite ds.
     wp_bind (acquire_exc (elem locks i)).
-    wp_apply (wp_acquire_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) with "hti").
-    iIntros (x) "[guard [cross %hti]]".
-    unfold ht_inv_i in hti. destruct x. deex. destruct_ands. subst h. subst h0.
-    iMod (CrossSplit _ _ _ _ with "cross") as "[slot mem]".
+    wp_apply (wp_acquire_exc (γrws i) (elem locks i) g (storage_fn γ i l) F with "[g rw]").
+    { apply not_in. } { iFrame "g". iFrame "rw". }
+    iIntros (x) "[g [guard sf]]".
+    iDestruct "sf" as "[mem os]".
     
     wp_pures. 
     
@@ -479,11 +541,11 @@ Proof.
     iIntros "mem".
     wp_pures.
     
-    destruct slot.
+    destruct x.
     
     + (* case: the slot has something in it *)
     
-      unfold slot_as_val. destruct p. wp_pures.
+      unfold slot_as_val. destruct p as [k0 v1]. wp_pures.
       
       have h : Decision (k = k0) by solve_decision. destruct h.
       
@@ -512,15 +574,14 @@ Proof.
           - lia. - intuition. } { done. }
         iIntros "_".
         
-        iMod (ht_UpdateExisting _ _ v _ _ _ with "slot m") as "[slot m]".
-        iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
+        iMod (ht_UpdateExisting _ _ v _ _ _ with "os m") as "[os m]".
         
         (* release the lock *)
 
         wp_bind (release_exc (elem locks i)).
-        wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
-        { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k, v)).
-          split; trivial. }
+        wp_apply (wp_release_exc (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k, v)) with "[g rw mem os guard]"). { apply not_in. }
+        { iFrame "g". iFrame "#". iFrame "guard".
+            unfold storage_fn. iFrame. }
           
         iIntros. 
         wp_pures.
@@ -537,8 +598,6 @@ Proof.
         { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
         rewrite bd0.
         
-        iDestruct (L_join with "a slot") as "a'".
-
         wp_pure _.
         wp_pure _.
         replace (#true) with (#1) by trivial.
@@ -560,40 +619,38 @@ Proof.
                            
        wp_bind (big_e slots locks #k #v #(i + 1)).
        rewrite z_n_add1.
-       wp_apply ("IH" $! (dot range (s i (Some (k0, v1)))) (i + 1) with "[m a']").
+       wp_apply ("IH" $! (range ⋅ (s i (Some (k0, v1)))) (i + 1) with "[g m a os]").
        {
-          iSplitR. { iPureIntro. lia. }
-          iSplitR. { iFrame "#". }
-          iSplitL "m". { iFrame. }
-          iSplitL "a'". { iFrame. }
-          iSplitL. { iPureIntro. apply full_dot; trivial. crush. }
-          iPureIntro. intuition.
+          iFrame. iFrame "#".
+          rewrite own_op. iFrame.
+          iPureIntro. split. { lia. }
+          split.
+          { apply full_dot; trivial. crush. }
+          intuition.
        }
        
-       iIntros (b) "[m a]".
+       iIntros (b) "[g [m a]]".
        wp_pures.
        
        (* release the lock *)
        
-       iDestruct (L_op _ _ _ with "a") as "[a slot]".
-       iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
+       iDestruct (own_op _ _ _ with "a") as "[a slot]".
        
        wp_bind (seq_idx #i locks).
-        wp_apply wp_seq_idx.
+       wp_apply wp_seq_idx.
         { apply has_elem_of_has_length with (len := ht_fixed_size).
           - lia. - intuition. } { done. }
        iIntros.
 
-       wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
-        { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k0, v1)).
-          split; trivial. }
-       iIntros.
+       wp_apply (wp_release_exc (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k0, v1)) with "[g rw mem slot guard]"). { apply not_in. }
+        { iFrame. iFrame "#". }
+        
+       iIntros "g".
        
        wp_pures.
        iModIntro.
        
        iApply ("Phi" $! b). iFrame.
-    
     
     + 
        (* case: the slot has nothing in it *)
@@ -611,7 +668,7 @@ Proof.
        wp_store.
        wp_pures.
        
-       iMod (ht_UpdateNew _ _ v _ _ _ with "a slot m") as "[a [slot m]]".
+       iMod (ht_UpdateNew _ _ v _ _ _ with "os m a") as "[slot [m a]]".
        { trivial. }
        
        (* release the lock *)
@@ -621,12 +678,11 @@ Proof.
        { apply has_elem_of_has_length with (len := ht_fixed_size).
          - lia. - intuition. } { done. }
        iIntros "_".
-       iDestruct (CrossJoin _ _ _ _ with "slot mem") as "cross".
 
        wp_bind (release_exc (elem locks i)).
-       wp_apply (wp_release_exc (elem locks i) 𝛼 (cross_loc 𝛾 heap_name) (ht_inv_i i l) _ with "[hti guard cross]").
-       { iFrame. iFrame "#". iPureIntro. unfold ht_inv_i. exists (Some (k, v)).
-          split; trivial. }
+       wp_apply (wp_release_exc (γrws i) (elem locks i) g (storage_fn γ i l) F (Some (k, v)) with "[g rw mem slot guard]"). { apply not_in. }
+        { iFrame "g". iFrame "#". iFrame "guard".
+            unfold storage_fn. iFrame. }
           
        iIntros. 
        wp_pures.
@@ -644,14 +700,14 @@ Proof.
   unfold compute_hash.
   wp_pures.
   iModIntro.
-  assert (#(hash k) = #(k `mod` ht_fixed_size)).
+  assert (#(hash k) = #(k `mod` ht_fixed_size)) as X.
   {
     f_equal. unfold hash. f_equal.
     have j := Z_mod_lt k ht_fixed_size.
     unfold ht_fixed_size in *.
     lia.
   }
-  rewrite H.
+  rewrite X.
   iApply "Phi".
   done.
 Qed. 
