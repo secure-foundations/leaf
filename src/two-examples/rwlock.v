@@ -432,6 +432,7 @@ Lemma wp_acquire_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn 
       acquire_shared rwlock
       {{{ x, RET #();
           g ∗ sh_guard γ x
+          ∗ (□ (sh_guard γ x &&{ {[γ]} }&&> ▷ storage_fn x))
       }}}.
 Proof.
   iIntros (phi) "[g #guard] P".
@@ -518,6 +519,8 @@ Proof.
     iMod (rw_shared_acquire with "maps [c pend]") as "[c shg]". { set_solver. }
     { iFrame "c". iFrame "pend". }
     
+    iDestruct (rw_borrow_back γ storage_fn x0 with "maps") as "sh_guard_is_g".
+    
     iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
     { iFrame "maps". iExists false, rc, x0. iFrame. }
     iModIntro.
@@ -525,7 +528,7 @@ Proof.
     wp_pures.
     
     iModIntro. iApply "P".
-    iFrame "g". iFrame "shg".
+    iFrame "g". iFrame "shg". iModIntro. iFrame "sh_guard_is_g".
 Qed.
 
 End RwlockProof.

@@ -4,6 +4,7 @@ From iris.program_logic Require Import ectx_lifting.
 From twolang Require Import notation tactics class_instances.
 From twolang Require Import heap_ra.
 From iris Require Import options.
+Require Import Two.guard.
 
 (*|
 This is one of the most interesting parts of the instantiation. Now that we have
@@ -120,6 +121,27 @@ Lemma wp_load s E l dq v :
 Proof.
   iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
+  iSplit; first by eauto with head_step.
+  iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
+  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+Qed.
+
+Lemma wp_load_b s E l v F (su: F ⊆ E) g :
+  {{{ g ∗ (g &&{F}&&> (l ↦ v)) }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; g }}}.
+Proof.
+  iIntros (Φ) "[g Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ". (*"Hσ !>".*)
+  
+  iMod (guards_persistent2
+      (state_interp σ1 κ (κs ++ n) nt)
+      g (l ↦ v) (⌜ (heap σ1) !! l = Some v ⌝) E F with "[Hσ g Hl]") as "[Hσ [g %j]]".
+  { trivial. }
+  { iFrame. iIntros "[Hσ Hl]".
+    iDestruct (gen_heap_valid with "Hσ Hl") as %?.
+    iPureIntro. trivial.
+  }
+  
+  iModIntro.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".

@@ -232,7 +232,13 @@ Proof.
   iFrame.
 Qed.
 
-Lemma copset_diff_union (E E': gset positive) (su: E ⊆ E') : E' = (E ∪ (E' ∖ E)).
+Lemma gset_diff_union (E E': gset positive) (su: E ⊆ E') : E' = (E ∪ (E' ∖ E)).
+Proof.
+  apply set_eq. intro x.
+  have h : Decision (x ∈ E) by solve_decision. destruct h; set_solver.
+Qed.
+
+Lemma copset_diff_union (E E': coPset) (su: E ⊆ E') : E' = (E ∪ (E' ∖ E)).
 Proof.
   apply set_eq. intro x.
   have h : Decision (x ∈ E) by solve_decision. destruct h; set_solver.
@@ -245,7 +251,7 @@ Proof.
   unfold fguards, guards_with.
   iIntros "x".
   iIntros (T) "[p q]".
-  rewrite (copset_diff_union E E'); trivial.
+  rewrite (gset_diff_union E E'); trivial.
   iDestruct ("x" $! (T ∗ storage_bulk_inv (E' ∖ E))%I) as "x".
   rewrite storage_bulk_inv_union.
   {
@@ -639,6 +645,15 @@ Proof.
   iApply fguards_remove_later.
 Qed.
 
+Lemma guards_remove_later2 (X P : iProp Σ) E
+    (tl: Timeless P)
+    : (X &&{E}&&> ▷ P) ⊢ (X &&{E}&&> P).
+Proof.
+  iIntros "a".
+  iDestruct (guards_remove_later P E) as "b".
+  iApply guards_transitive. iFrame "a". iFrame "b".
+Qed.
+
 Lemma guards_persistent (P Q R : iProp Σ) E F
     (pers: Persistent R)
     (su: F ⊆ E)
@@ -650,6 +665,29 @@ Proof.
   iApply (fguards_persistent P Q R E m).
   { set_solver. }
   iFrame.
+Qed.
+
+Lemma guards_persistent2 (X P Q R : iProp Σ) E F
+    (pers: Persistent R)
+    (su: F ⊆ E)
+    : ⊢ (X ∗ P ∗ (P &&{F}&&> Q) ∗ (X ∗ Q -∗ R)) ={E}=∗ X ∗ P ∗ R.
+Proof.
+  iIntros "[x [p [g impl]]]".
+  iAssert (Q ∗ X ={∅}=∗ Q ∗ (X ∗ R))%I with "[impl]" as "m".
+  {
+    iIntros "[q x]". iModIntro.
+        iDestruct ("impl" with "[x q]") as "#r". { iFrame. } 
+        iFrame. iFrame "#".
+  }
+  iDestruct (guards_apply P Q X (X ∗ R) ∅ F with "[m g]") as "newg".
+  { set_solver. } { iFrame. }
+  iDestruct ("newg" with "[x p]") as "newg". { iFrame. }
+  Print fupd_mask_frame_r.
+  iDestruct (fupd_mask_frame_r _ _ (E ∖ F) with "newg") as "l".
+  { set_solver. }
+  replace (∅ ∪ F ∪ E ∖ F) with E. { iMod "l" as "[p [x r]]". iModIntro. iFrame. }
+  have j := copset_diff_union F E.
+  set_solver.
 Qed.
 
 Lemma guards_open (P Q : iProp Σ) (E F : coPset)

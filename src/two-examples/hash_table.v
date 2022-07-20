@@ -853,7 +853,7 @@ Proof.
     wp_apply (wp_acquire_shared (γrws i) (elem locks i) g (storage_fn γ i l) F with "[g rw]").
     { apply not_in. } { iFrame "g". iFrame "rw". }
     
-    iIntros (x) "[g guard]".
+    iIntros (slot) "[g [sh_guard #guard_storage_lat]]".
     
     wp_pures. 
     
@@ -865,19 +865,20 @@ Proof.
       - lia. - intuition. } { done. }
     iIntros "_".
     
-    (* borrow from the guard *)
+    (* unpack all the stuff from the sh_guard *)
     
-    iMod (BorrowBegin _ _ with "guard") as (𝜅0) "[a0 [r guard]]".
-    iDestruct (rw_borrow_back _ _ _ _ with "guard") as "cross".
-    unfold ht_inv_i in xinv. destruct x. deex. destruct_ands. subst h. subst h0.
-    iDestruct (BorrowBackBoth _ _ _ _ _ with "cross") as "[slot mem]".
+    iDestruct (guards_remove_later2 with "guard_storage_lat") as "guard_storage".
+    unfold storage_fn at 3.
+    iDestruct (guards_weaken_rhs_l with "guard_storage") as "guard_mem".
+    iDestruct (guards_weaken_rhs_l with "guard_storage") as "guard_own_slot".
     
     (* read the slot *)
     
     rewrite ds.
-    wp_apply (wp_load_borrow _ _ _ _ _ with "[a0 mem]").
-    { iFrame. }
-    iIntros "[a0 mem]".
+    wp_apply (wp_load_b _ ⊤ l (slot_as_val slot) {[γrws i]} _ (sh_guard (γrws i) slot) with "[sh_guard guard_own_slot]").
+    { iFrame "sh_guard". iFrame "guard_mem". }
+    
+    iIntros "sh_guard".
     wp_pures.
     
     destruct slot.
@@ -901,15 +902,7 @@ Proof.
         
         (* get the answer using the borrowed props *)
         
-        (*
-        iDestruct (ActiveJoin with "[a a0]") as "a". { iFrame. }
-        iDestruct (BorrowShorten _ (lifetime_intersect 𝜅0 𝜅) _ _ with "slot") as "slot".
-        { apply LifetimeInclusion_Left. }
-        iDestruct (ht_BorrowedRangeShorten _ (lifetime_intersect 𝜅0 𝜅) with "range") as "range".
-        { apply LifetimeInclusion_Right. }
-        *)
-        
-        iDestruct (ht_QueryFound _ _ _ _ _ _ with "a0 slot m") as "%veq".
+        iMod (ht_QueryFound_b _ _ _ _ _ _ with "[sh_guard guard_own_slot guardm]") as "[sh_guard %veq]".
         rewrite veq.
         
         (* release lock *)
