@@ -1,0 +1,6 @@
+*.v gitlab-language=coq
+
+# Convert to native line endings on checkout.
+*.ref text
+# Shell scripts need Linux line endings.
+*.sh eol=lf

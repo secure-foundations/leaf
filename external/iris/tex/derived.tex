@@ -1,0 +1,336 @@
+\section{Derived Constructions}
+
+\subsection{Cancellable Invariants}
+
+Iris invariants as described in \Sref{sec:invariants} are persistent---once established, they hold forever.
+However, based on them, it is possible to \emph{encode} a form of invariants that can be ``cancelled'' again.
+
+First, we need some ghost state:
+\begin{align*}
+  \textdom{CInvTok} \eqdef{}& \fracm
+\end{align*}
+
+Now we define:
+\begin{align*}
+  \CInvTok{\gname}{q} \eqdef{}& \ownGhost\gname{q} \\
+  \CInv{\gname}{\namesp}{\prop} \eqdef{}& \knowInv\namesp{\prop \lor \ownGhost\gname{1}}
+\end{align*}
+
+It is then straightforward to prove:
+\begin{mathpar}
+  \inferH{CInv-new}{}
+  {\later\prop \vs[\bot] \Exists \gname. \CInvTok\gname{1} * \always\CInv\gname\namesp\prop}
+
+  \inferH{CInv-acc}{}
+  {\CInv\gname\namesp\prop \proves \Acc[\namesp][\emptyset]{\CInvTok\gname{q}}{\later\prop}}
+
+  \inferH{CInv-cancel}{}
+  {\CInv\gname\namesp\prop \proves \CInvTok\gname{1} \vs[\namesp] \later\prop}
+\end{mathpar}
+
+Cancellable invariants are useful, for example, when reasoning about data structures that will be deallocated:  Every reference to the data structure comes with a fraction of the token, and when all fractions have been gathered, \ruleref{CInv-cancel} is used to cancel the invariant, after which the data structure can be deallocated.
+
+\subsection{Non-atomic (``Thread-Local'') Invariants}
+
+Sometimes it is necessary to maintain invariants that we need to open non-atomically.
+Clearly, for this mechanism to be sound we need something that prevents us from opening the same invariant twice, something like the masks that avoid reentrancy on the ``normal'', atomic invariants.
+The idea is to use tokens\footnote{Very much like the tokens that are used to encode ``normal'', atomic invariants} that guard access to non-atomic invariants.
+Having the token $\NaTokE\pid\mask$ indicates that we can open all invariants in $\mask$.
+The $\pid$ here is the name of the \emph{invariant pool}.
+This mechanism allows us to have multiple, independent pools of invariants that all have their own namespaces.
+
+One way to think about non-atomic invariants is as ``thread-local invariants'',
+where every pool is a thread.
+Every thread thus has its own, independent set of invariants.
+Every thread threads through all the tokens for its own pool, so that each invariant can only be opened in the thread it belongs to.
+As a consequence, they can be kept open around any sequence of expressions (\ie there is no restriction to atomic expressions) -- after all, there cannot be any races with other threads.
+
+Concretely, this is the monoid structure we need:
+\begin{align*}
+\textdom{PId} \eqdef{}& \GName \\
+\textdom{NaTok} \eqdef{}& \finpset{\InvName} \times \pset{\InvName}
+\end{align*}
+For every pool, there is a set of tokens designating which invariants are \emph{enabled} (closed).
+This corresponds to the mask of ``normal'' invariants.
+We re-use the structure given by namespaces for non-atomic invariants.
+Furthermore, there is a \emph{finite} set of invariants that is \emph{disabled} (open).
+
+Owning tokens is defined as follows:
+\begin{align*}
+\NaTokE\pid\mask \eqdef{}& \ownGhost{\pid}{ (\emptyset, \mask) } \\
+\NaTok\pid \eqdef{}& \NaTokE\pid\top
+\end{align*}
+
+Next, we define non-atomic invariants.
+To simplify this construction,we piggy-back into ``normal'' invariants.
+\begin{align*}
+  \NaInv\pid\namesp\prop \eqdef{}& \Exists \iname\in\namesp. \knowInv\namesp{\prop * \ownGhost\pid{(\set{\iname},\emptyset)} \lor \NaTokE\pid{\set{\iname}}}
+\end{align*}
+
+
+We easily obtain:
+\begin{mathpar}
+  \axiomH{NAInv-new-pool}
+  {\TRUE \vs[\bot] \Exists\pid. \NaTok\pid}
+
+  \axiomH{NAInv-tok-split}
+  {\NaTokE\pid{\mask_1 \uplus \mask_2} \Lra \NaTokE\pid{\mask_1} * \NaTokE\pid{\mask_2}}
+  
+  \axiomH{NAInv-new-inv}
+  {\later\prop  \vs[\namesp] \always\NaInv\pid\namesp\prop}
+
+  \axiomH{NAInv-acc}
+  {\NaInv\pid\namesp\prop \proves \Acc[\namesp]{\NaTokE\pid\namesp}{\later\prop}}
+\end{mathpar}
+from which we can derive
+\begin{mathpar}
+  \infer
+  {\namesp \subseteq \mask}
+  {\NaInv\pid\namesp\prop \proves \Acc[\namesp]{\NaTokE\pid\mask}{\later\prop * \NaTokE\pid{\mask \setminus \namesp}}}
+\end{mathpar}
+
+\subsection{Boxes}
+
+The idea behind the \emph{boxes} is to have a proposition $\prop$ that is actually split into a number of pieces, each of which can be taken out and back in separately.
+In some sense, this is a replacement for having an ``authoritative PCM of Iris propositions itself''.
+It is similar to the pattern involving saved propositions that was used for the barrier~\cite{iris2}, but more complicated because there are some operations that we want to perform without a later.
+
+Roughly, the idea is that a \emph{box} is a container for a proposition $\prop$.
+A box consists of a bunch of \emph{slices} which decompose $\prop$ into a separating conjunction of the propositions $\propB_\sname$ governed by the individual slices.
+Each slice is either \emph{full} (it right now contains $\propB_\sname$), or \emph{empty} (it does not contain anything currently).
+The proposition governing the box keeps track of the state of all the slices that make up the box.
+The crux is that opening and closing of a slice can be done even if we only have ownership of the boxes ``later'' ($\later$).
+
+The interface for boxes is as follows:
+The two core propositions are: $\BoxSlice\namesp\prop\sname$, saying that there is a slice in namespace $\namesp$ with name $\sname$  and content $\prop$; and $\ABox\namesp\prop{f}$, saying that $f$ describes the slices of a box in namespace $\namesp$, such that all the slices together contain $\prop$. Here, $f$ is of type $\nat \fpfn \BoxState$ mapping names to states, where $\BoxState \eqdef \set{\BoxFull, \BoxEmp}$.
+\begin{mathpar}
+  \inferH{Box-create}{}
+  {\TRUE \vs[\namesp] \ABox\namesp\TRUE\emptyset}
+
+  \inferH{Slice-insert-empty}{}
+  {\lateropt b\ABox\namesp\prop{f} \vs[\namesp] \Exists\sname \notin \dom(f). \always\BoxSlice\namesp\propB\sname * \lateropt b\ABox\namesp{\prop * \propB}{\mapinsert\sname\BoxEmp{f}}}
+
+  \inferH{Slice-delete-empty}
+  {f(\sname) = \BoxEmp}
+  {\BoxSlice\namesp\propB\sname \proves \lateropt b\ABox\namesp\prop{f} \vs[\namesp] \Exists \prop'. \lateropt b(\later(\prop = \prop' * \propB) * \ABox\namesp{\prop'}{\mapinsert\sname\bot{f}})}
+
+  \inferH{Slice-fill}
+  {f(\sname) = \BoxEmp}
+  {\BoxSlice\namesp\propB\sname \proves \lateropt b\propB * \later\ABox\namesp\prop{f} \vs[\namesp] \lateropt b\ABox\namesp\prop{\mapinsert\sname\BoxFull{f}}}
+
+  \inferH{Slice-empty}
+  {f(\sname) = \BoxFull}
+  {\BoxSlice\namesp\propB\sname \proves \lateropt b\ABox\namesp\prop{f} \vs[\namesp] \later\propB * \lateropt b\ABox\namesp\prop{\mapinsert\sname\BoxEmp{f}}}
+
+  \inferH{Box-fill}
+  {\All\sname\in\dom(f). f(\sname) = \BoxEmp}
+  {\later\prop * \ABox\namesp\prop{f} \vs[\namesp] \ABox\namesp\prop{\mapinsertComp\sname\BoxFull{\sname\in\dom(f)}{f}}}
+
+  \inferH{Box-empty}
+  {\All\sname\in\dom(f). f(\sname) = \BoxFull}
+  {\ABox\namesp\prop{f} \vs[\namesp] \later\prop * \ABox\namesp\prop{\mapinsertComp\sname\BoxEmp{\sname\in\dom(f)}{f}}}
+\end{mathpar}
+Above, $\lateropt b \prop$ is syntactic sugar for $\later\prop$ (if $b$ is $1$) or $\prop$ (if $b$ is $0$).
+This is essentially an \emph{optional later}, indicating that the lemmas can be applied with \textlog{Box} being owned now or later, and that ownership is returned the same way.
+
+\begingroup
+\paragraph{Model.}
+\newcommand\BoxM{\textdom{Box}}
+\newcommand\SliceInv{\textlog{SliceInv}}
+
+The above rules are validated by the following model.
+We need a camera as follows:
+\begin{align*}
+  \BoxState \eqdef{}& \BoxFull + \BoxEmp \\
+  \BoxM \eqdef{}& \authm(\maybe{\exm(\BoxState)}) \times \maybe{\agm(\latert \iProp)}
+\end{align*}
+
+Now we can define the propositions:
+\begin{align*}
+  \SliceInv(\sname, \prop) \eqdef{}& \Exists b. \ownGhost\sname{(\authfull b, \munit)} * ((b = \BoxFull) \Ra \prop) \\
+  \BoxSlice\namesp\prop\sname \eqdef{}& \ownGhost\sname{(\munit, \prop)} * \knowInv\namesp{\SliceInv(\sname,\prop)} \\
+  \ABox\namesp\prop{f} \eqdef{}& \Exists \propB : \nat \to \Prop. \later\left( \prop = \Sep_{\sname \in \dom(f)} \propB(\sname) \right ) * {}\\
+  & \Sep_{\sname \in \dom(f)} \ownGhost\sname{(\authfrag f(\sname), \propB(\sname))} * \knowInv\namesp{\SliceInv(\sname,\propB(\sname))}
+\end{align*}
+\endgroup % Model paragraph
+
+\paragraph{Derived rules.}
+Here are some derived rules:
+\begin{mathpar}
+  \inferH{Slice-insert-full}{}
+  {\later\propB * \lateropt b\ABox\namesp\prop{f} \vs[\namesp] \Exists\sname \notin \dom(f). \always\BoxSlice\namesp\propB\sname * \lateropt b\ABox\namesp{\prop * \propB}{\mapinsert\sname\BoxFull{f}}}
+
+  \inferH{Slice-delete-full}
+  {f(\sname) = \BoxFull}
+  {\BoxSlice\namesp\propB\sname \proves \lateropt b \ABox\namesp\prop{f} \vs[\namesp] \later\propB * \Exists \prop'. \lateropt b (\later(\prop = \prop' * \propB) * \ABox\namesp{\prop'}{\mapinsert\sname\bot{f}})}
+
+  \inferH{Slice-split}
+  {f(\sname) = s}
+  {\kern-4ex\BoxSlice\namesp{\propB_1 * \propB_2}\sname \proves \lateropt b \ABox\namesp\prop{f} \vs[\namesp] \Exists \sname_1 \notin \dom(f), \sname_2 \notin \dom(f). \sname_1 \neq \sname_2 \land {}\\\kern5ex \always\BoxSlice\namesp{\propB_1}{\sname_1} * \always\BoxSlice\namesp{\propB_2}{\sname_2} * \lateropt b \ABox\namesp\prop{\mapinsert{\sname_2}{s}{\mapinsert{\sname_1}{s}{\mapinsert\sname\bot{f}}}}}
+
+  \inferH{Slice-merge}
+  {\sname_1 \neq \sname_2 \and f(\sname_1) = f(\sname_2) = s}
+  {\BoxSlice\namesp{\propB_1}{\sname_1}, \BoxSlice\namesp{\propB_2}{\sname_2} \proves \lateropt b \ABox\namesp\prop{f} \vs[\namesp] \Exists \sname \notin \dom(f) \setminus \set{\sname_1, \sname_2}. {}\\\kern5ex \always\BoxSlice\namesp{\propB_1 * \propB_2}\sname * \lateropt b \ABox\namesp\prop{\mapinsert\sname{s}{\mapinsert{\sname_2}{\bot}{\mapinsert{\sname_1}{\bot}{f}}}}}
+\end{mathpar}
+
+
+
+
+% TODO: These need syncing with Coq
+% \subsection{STSs with interpretation}\label{sec:stsinterp}
+
+% Building on \Sref{sec:stsmon}, after constructing the monoid $\STSMon{\STSS}$ for a particular STS, we can use an invariant to tie an interpretation, $\pred : \STSS \to \Prop$, to the STS's current state, recovering CaReSL-style reasoning~\cite{caresl}.
+
+% An STS invariant asserts authoritative ownership of an STS's current state and that state's interpretation:
+% \begin{align*}
+%   \STSInv(\STSS, \pred, \gname) \eqdef{}& \Exists s \in \STSS. \ownGhost{\gname}{(s, \STSS, \emptyset):\STSMon{\STSS}} * \pred(s) \\
+%   \STS(\STSS, \pred, \gname, \iname) \eqdef{}& \knowInv{\iname}{\STSInv(\STSS, \pred, \gname)}
+% \end{align*}
+
+% We can specialize \ruleref{NewInv}, \ruleref{InvOpen}, and \ruleref{InvClose} to STS invariants:
+% \begin{mathpar}
+%  \inferH{NewSts}
+%   {\infinite(\mask)}
+%   {\later\pred(s) \vs[\mask] \Exists \iname \in \mask, \gname.   \STS(\STSS, \pred, \gname, \iname) * \ownGhost{\gname}{(s, \STST \setminus \STSL(s)) : \STSMon{\STSS}}}
+%  \and
+%  \axiomH{StsOpen}
+%   {  \STS(\STSS, \pred, \gname, \iname) \vdash \ownGhost{\gname}{(s_0, T) : \STSMon{\STSS}} \vsE[\{\iname\}][\emptyset] \Exists s\in \upclose(\{s_0\}, T). \later\pred(s) * \ownGhost{\gname}{(s, \upclose(\{s_0\}, T), T):\STSMon{\STSS}}}
+%  \and
+%  \axiomH{StsClose}
+%   {  \STS(\STSS, \pred, \gname, \iname), (s, T) \ststrans (s', T')  \proves \later\pred(s') * \ownGhost{\gname}{(s, S, T):\STSMon{\STSS}} \vs[\emptyset][\{\iname\}] \ownGhost{\gname}{(s', T') : \STSMon{\STSS}} }
+% \end{mathpar}
+% \begin{proof}
+% \ruleref{NewSts} uses \ruleref{NewGhost} to allocate $\ownGhost{\gname}{(s, \upclose(s, T), T) : \STSMon{\STSS}}$ where $T \eqdef \STST \setminus \STSL(s)$, and \ruleref{NewInv}.
+
+% \ruleref{StsOpen} just uses \ruleref{InvOpen} and \ruleref{InvClose} on $\iname$, and the monoid equality $(s, \upclose(\{s_0\}, T), T) = (s, \STSS, \emptyset) \mtimes (\munit, \upclose(\{s_0\}, T), T)$.
+
+% \ruleref{StsClose} applies \ruleref{StsStep} and \ruleref{InvClose}.
+% \end{proof}
+
+% Using these view shifts, we can prove STS variants of the invariant rules \ruleref{Inv} and \ruleref{VSInv}~(compare the former to CaReSL's island update rule~\cite{caresl}):
+% \begin{mathpar}
+%  \inferH{Sts}
+%   {\All s \in \upclose(\{s_0\}, T). \hoare{\later\pred(s) * P}{\expr}{\Ret \val. \Exists s', T'. (s, T) \ststrans (s', T') * \later\pred(s') * Q}[\mask]
+%    \and \physatomic{\expr}}
+%   {  \STS(\STSS, \pred, \gname, \iname) \vdash \hoare{\ownGhost{\gname}{(s_0, T):\STSMon{\STSS}} * P}{\expr}{\Ret \val. \Exists s', T'. \ownGhost{\gname}{(s', T'):\STSMon{\STSS}} * Q}[\mask \uplus \{\iname\}]}
+%  \and
+%  \inferH{VSSts}
+%   {\forall s \in \upclose(\{s_0\}, T).\; \later\pred(s) * P \vs[\mask_1][\mask_2] \exists s', T'.\; (s, T) \ststrans (s', T') * \later\pred(s') * Q}
+%   {  \STS(\STSS, \pred, \gname, \iname) \vdash \ownGhost{\gname}{(s_0, T):\STSMon{\STSS}} * P \vs[\mask_1 \uplus \{\iname\}][\mask_2 \uplus \{\iname\}] \Exists s', T'. \ownGhost{\gname}{(s', T'):\STSMon{\STSS}} * Q}
+% \end{mathpar}
+
+% \begin{proof}[Proof of \ruleref{Sts}]\label{pf:sts}
+%  We have to show
+%  \[\hoare{\ownGhost{\gname}{(s_0, T):\STSMon{\STSS}} * P}{\expr}{\Ret \val. \Exists s', T'. \ownGhost{\gname}{(s', T'):\STSMon{\STSS}} * Q}[\mask \uplus \{\iname\}]\]
+%  where $\val$, $s'$, $T'$ are free in $Q$.
+ 
+%  First, by \ruleref{ACsq} with \ruleref{StsOpen} and \ruleref{StsClose} (after moving $(s, T) \ststrans (s', T')$ into the view shift using \ruleref{VSBoxOut}), it suffices to show
+%  \[\hoareV{\Exists s\in \upclose(\{s_0\}, T). \later\pred(s) * \ownGhost{\gname}{(s, \upclose(\{s_0\}, T), T)} * P}{\expr}{\Ret \val. \Exists s, T, S, s', T'. (s, T) \ststrans (s', T') * \later\pred(s') * \ownGhost{\gname}{(s, S, T):\STSMon{\STSS}} * Q(\val, s', T')}[\mask]\]
+
+%  Now, use \ruleref{Exist} to move the $s$ from the precondition into the context and use \ruleref{Csq} to (i)~fix the $s$ and $T$ in the postcondition to be the same as in the precondition, and (ii)~fix $S \eqdef \upclose(\{s_0\}, T)$.
+%  It remains to show:
+%  \[\hoareV{s\in \upclose(\{s_0\}, T) * \later\pred(s) * \ownGhost{\gname}{(s, \upclose(\{s_0\}, T), T)} * P}{\expr}{\Ret \val. \Exists s', T'. (s, T) \ststrans (s', T') * \later\pred(s') * \ownGhost{\gname}{(s, \upclose(\{s_0\}, T), T)} * Q(\val, s', T')}[\mask]\]
+ 
+%  Finally, use \ruleref{BoxOut} to move $s\in \upclose(\{s_0\}, T)$ into the context, and \ruleref{Frame} on $\ownGhost{\gname}{(s, \upclose(\{s_0\}, T), T)}$:
+%  \[s\in \upclose(\{s_0\}, T) \vdash \hoare{\later\pred(s) * P}{\expr}{\Ret \val. \Exists s', T'. (s, T) \ststrans (s', T') * \later\pred(s') * Q(\val, s', T')}[\mask]\]
+ 
+%  This holds by our premise.
+% \end{proof}
+
+% % \begin{proof}[Proof of \ruleref{VSSts}]
+% % This is similar to above, so we only give the proof in short notation:
+
+% % \hproof{%
+% % 	Context: $\knowInv\iname{\STSInv(\STSS, \pred, \gname)}$ \\
+% % 	\pline[\mask_1 \uplus \{\iname\}]{
+% % 		\ownGhost\gname{(s_0, T)} * P
+% % 	} \\
+% % 	\pline[\mask_1]{%
+% % 		\Exists s. \later\pred(s) * \ownGhost\gname{(s, S, T)} * P
+% % 	} \qquad by \ruleref{StsOpen} \\
+% % 	Context: $s \in S \eqdef \upclose(\{s_0\}, T)$ \\
+% % 	\pline[\mask_2]{%
+% % 		 \Exists s', T'. \later\pred(s') * Q(s', T') * \ownGhost\gname{(s, S, T)}
+% % 	} \qquad by premiss \\
+% % 	Context: $(s, T) \ststrans (s', T')$ \\
+% % 	\pline[\mask_2 \uplus \{\iname\}]{
+% % 		\ownGhost\gname{(s', T')} * Q(s', T')
+% % 	} \qquad by \ruleref{StsClose}
+% % }
+% % \end{proof}
+
+% \subsection{Authoritative monoids with interpretation}\label{sec:authinterp}
+
+% Building on \Sref{sec:auth}, after constructing the monoid $\auth{M}$ for a cancellative monoid $M$, we can tie an interpretation, $\pred : \mcarp{M} \to \Prop$, to the authoritative element of $M$, recovering reasoning that is close to the sharing rule in~\cite{krishnaswami+:icfp12}.
+
+% Let $\pred_\bot$ be the extension of $\pred$ to $\mcar{M}$ with $\pred_\bot(\mzero) = \FALSE$.
+% Now define
+% \begin{align*}
+%   \AuthInv(M, \pred, \gname) \eqdef{}& \exists \melt \in \mcar{M}.\; \ownGhost{\gname}{\authfull \melt:\auth{M}} * \pred_\bot(\melt) \\
+%   \Auth(M, \pred, \gname, \iname) \eqdef{}& M~\textlog{cancellative} \land \knowInv{\iname}{\AuthInv(M, \pred, \gname)}
+% \end{align*}
+
+% The frame-preserving updates for $\auth{M}$ gives rise to the following view shifts:
+% \begin{mathpar}
+%  \inferH{NewAuth}
+%   {\infinite(\mask) \and M~\textlog{cancellative}}
+%   {\later\pred_\bot(a) \vs[\mask] \exists \iname \in \mask, \gname.\; \Auth(M, \pred, \gname, \iname) * \ownGhost{\gname}{\authfrag a : \auth{M}}}
+%  \and
+%  \axiomH{AuthOpen}
+%   {\Auth(M, \pred, \gname, \iname) \vdash \ownGhost{\gname}{\authfrag \melt : \auth{M}} \vsE[\{\iname\}][\emptyset] \exists \melt_\f.\; \later\pred_\bot(\melt \mtimes \melt_\f) * \ownGhost{\gname}{\authfull \melt \mtimes \melt_\f, \authfrag a:\auth{M}}}
+%  \and
+%  \axiomH{AuthClose}
+%   {\Auth(M, \pred, \gname, \iname) \vdash \later\pred_\bot(\meltB \mtimes \melt_\f) * \ownGhost{\gname}{\authfull a \mtimes \melt_\f, \authfrag a:\auth{M}} \vs[\emptyset][\{\iname\}] \ownGhost{\gname}{\authfrag \meltB : \auth{M}} }
+% \end{mathpar}
+
+% These view shifts in turn can be used to prove variants of the invariant rules:
+% \begin{mathpar}
+%  \inferH{Auth}
+%   {\forall \melt_\f.\; \hoare{\later\pred_\bot(a \mtimes \melt_\f) * P}{\expr}{\Ret\val. \exists \meltB.\; \later\pred_\bot(\meltB\mtimes \melt_\f) * Q}[\mask]
+%    \and \physatomic{\expr}}
+%   {\Auth(M, \pred, \gname, \iname) \vdash \hoare{\ownGhost{\gname}{\authfrag a:\auth{M}} * P}{\expr}{\Ret\val. \exists \meltB.\; \ownGhost{\gname}{\authfrag \meltB:\auth{M}} * Q}[\mask \uplus \{\iname\}]}
+%  \and
+%  \inferH{VSAuth}
+%   {\forall \melt_\f.\; \later\pred_\bot(a \mtimes \melt_\f) * P \vs[\mask_1][\mask_2] \exists \meltB.\; \later\pred_\bot(\meltB \mtimes \melt_\f) * Q(\meltB)}
+%   {\Auth(M, \pred, \gname, \iname) \vdash
+%    \ownGhost{\gname}{\authfrag a:\auth{M}} * P \vs[\mask_1 \uplus \{\iname\}][\mask_2 \uplus \{\iname\}]
+%    \exists \meltB.\; \ownGhost{\gname}{\authfrag \meltB:\auth{M}} * Q(\meltB)}
+% \end{mathpar}
+
+
+% \subsection{Ghost heap}
+% \label{sec:ghostheap}%
+% FIXME use the finmap provided by the global ghost ownership, instead of adding our own
+% We define a simple ghost heap with fractional permissions.
+% Some modules require a few ghost names per module instance to properly manage ghost state, but would like to expose to clients a single logical name (avoiding clutter).
+% In such cases we use these ghost heaps.
+
+% We seek to implement the following interface:
+% \newcommand{\GRefspecmaps}{\textsf{GMapsTo}}%
+% \begin{align*}
+%  \exists& {\fgmapsto[]} : \textsort{Val} \times \mathbb{Q}_{>} \times \textsort{Val} \ra \textsort{Prop}.\;\\
+%   & \All x, q, v. x \fgmapsto[q] v \Ra x \fgmapsto[q] v \land q \in (0, 1] \\
+%   &\forall x, q_1, q_2, v, w.\; x \fgmapsto[q_1] v * x \fgmapsto[q_2] w \Leftrightarrow x \fgmapsto[q_1 + q_2] v * v = w\\
+%   & \forall v.\; \TRUE \vs[\emptyset] \exists x.\; x \fgmapsto[1] v \\
+%   & \forall x, v, w.\; x \fgmapsto[1] v \vs[\emptyset] x \fgmapsto[1] w
+% \end{align*}
+% We write $x \fgmapsto v$ for $\exists q.\; x \fgmapsto[q] v$ and $x \gmapsto v$ for $x \fgmapsto[1] v$.
+% Note that $x \fgmapsto v$ is duplicable but cannot be boxed (as it depends on resources); \ie we have $x \fgmapsto v \Lra x \fgmapsto v * x \fgmapsto v$ but not $x \fgmapsto v \Ra \always x \fgmapsto v$.
+
+% To implement this interface, allocate an instance $\gname_G$ of $\FHeap(\Val)$ and define
+% \[
+% 	x \fgmapsto[q] v \eqdef
+% 	  \begin{cases}
+%     	\ownGhost{\gname_G}{x \mapsto (q, v)} & \text{if $q \in (0, 1]$} \\
+%     	\FALSE & \text{otherwise}
+%     \end{cases}
+% \]
+% The view shifts in the specification follow immediately from \ruleref{GhostUpd} and the frame-preserving updates in~\Sref{sec:fheapm}.
+% The first implication is immediate from the definition.
+% The second implication follows by case distinction on $q_1 + q_2 \in (0, 1]$.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "iris"
+%%% End:

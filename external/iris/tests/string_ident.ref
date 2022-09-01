@@ -1,0 +1,14 @@
+"test_invalid_ident"
+     : string
+The command has indeed failed with message:
+Uncaught Ltac2 exception: StringToIdent.InvalidIdent ("has a space")
+"test_not_string"
+     : string
+The command has indeed failed with message:
+Uncaught Ltac2 exception: StringToIdent.NotStringLiteral (constr:(4))
+"test_not_literal"
+     : string
+The command has indeed failed with message:
+Uncaught Ltac2 exception: StringToIdent.NotStringLiteral (constr:(s))
+"test_string_to_ident_not_fresh"
+     : string

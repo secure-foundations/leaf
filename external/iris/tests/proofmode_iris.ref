@@ -1,0 +1,205 @@
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  N : namespace
+  P : iProp Σ
+  ============================
+  "H" : inv N (<pers> P)
+  "H2" : ▷ <pers> P
+  --------------------------------------□
+  |={⊤ ∖ ↑N}=> ▷ <pers> P ∗ (|={⊤}=> ▷ P)
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  N : namespace
+  P : iProp Σ
+  ============================
+  "H" : inv N (<pers> P)
+  "H2" : ▷ <pers> P
+  --------------------------------------□
+  "Hclose" : ▷ <pers> P ={⊤ ∖ ↑N,⊤}=∗ emp
+  --------------------------------------∗
+  |={⊤ ∖ ↑N,⊤}=> ▷ P
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  γ : gname
+  p : Qp
+  N : namespace
+  P : iProp Σ
+  ============================
+  cinv N γ (<pers> P) ∗ cinv_own γ p ={⊤}=∗ cinv_own γ p ∗ ▷ P
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  γ : gname
+  p : Qp
+  N : namespace
+  P : iProp Σ
+  ============================
+  _ : cinv N γ (<pers> P)
+  "HP" : ▷ <pers> P
+  --------------------------------------□
+  "Hown" : cinv_own γ p
+  --------------------------------------∗
+  |={⊤ ∖ ↑N}=> ▷ <pers> P ∗ (|={⊤}=> cinv_own γ p ∗ ▷ P)
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  γ : gname
+  p : Qp
+  N : namespace
+  P : iProp Σ
+  ============================
+  _ : cinv N γ (<pers> P)
+  "HP" : ▷ <pers> P
+  --------------------------------------□
+  "Hown" : cinv_own γ p
+  "Hclose" : ▷ <pers> P ={⊤ ∖ ↑N,⊤}=∗ emp
+  --------------------------------------∗
+  |={⊤ ∖ ↑N,⊤}=> cinv_own γ p ∗ ▷ P
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  t : na_inv_pool_name
+  N : namespace
+  E1, E2 : coPset
+  P : iProp Σ
+  H : ↑N ⊆ E2
+  ============================
+  _ : na_inv t N (<pers> P)
+  "HP" : ▷ <pers> P
+  --------------------------------------□
+  "Hown1" : na_own t E1
+  "Hown2" : na_own t (E2 ∖ ↑N)
+  --------------------------------------∗
+  |={⊤}=> (▷ <pers> P ∗ na_own t (E2 ∖ ↑N))
+          ∗ (na_own t E2 ={⊤}=∗ na_own t E1 ∗ na_own t E2 ∗ ▷ P)
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  t : na_inv_pool_name
+  N : namespace
+  E1, E2 : coPset
+  P : iProp Σ
+  ============================
+  ↑N ⊆ E2
+  → na_inv t N (<pers> P) ∗ na_own t E1 ∗ na_own t E2
+    ={⊤}=∗ na_own t E1 ∗ na_own t E2 ∗ ▷ P
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  t : na_inv_pool_name
+  N : namespace
+  E1, E2 : coPset
+  P : iProp Σ
+  H : ↑N ⊆ E2
+  ============================
+  _ : na_inv t N (<pers> P)
+  "HP" : ▷ <pers> P
+  --------------------------------------□
+  "Hown1" : na_own t E1
+  "Hown2" : na_own t (E2 ∖ ↑N)
+  "Hclose" : ▷ <pers> P ∗ na_own t (E2 ∖ ↑N) ={⊤}=∗ na_own t E2
+  --------------------------------------∗
+  |={⊤}=> na_own t E1 ∗ na_own t E2 ∗ ▷ P
+  
+"test_iInv_12"
+     : string
+The command has indeed failed with message:
+Tactic failure: iInv: selector 34 is not of the right type .
+The command has indeed failed with message:
+Tactic failure: iInv: invariant nroot not found.
+The command has indeed failed with message:
+Tactic failure: iInv: invariant "H2" not found.
+"test_frac_split_combine"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  inG0 : inG Σ fracR
+  γ : gname
+  ============================
+  "H1" : own γ (1 / 2)%Qp
+  "H2" : own γ (1 / 2)%Qp
+  --------------------------------------∗
+  own γ 1%Qp
+  
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  cinvG0 : cinvG Σ
+  na_invG0 : na_invG Σ
+  inG0 : inG Σ fracR
+  γ : gname
+  ============================
+  "H" : own γ 1%Qp
+  --------------------------------------∗
+  own γ 1%Qp
+  
+"test_iInv"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  I : biIndex
+  N : namespace
+  E : coPset
+  𝓟 : iProp Σ
+  H : ↑N ⊆ E
+  ============================
+  "HP" : ⎡ ▷ 𝓟 ⎤
+  --------------------------------------∗
+  |={E ∖ ↑N}=> ⎡ ▷ 𝓟 ⎤ ∗ (|={E}=> emp)
+  
+"test_iInv_with_close"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  invGS0 : invGS Σ
+  I : biIndex
+  N : namespace
+  E : coPset
+  𝓟 : iProp Σ
+  H : ↑N ⊆ E
+  ============================
+  "HP" : ⎡ ▷ 𝓟 ⎤
+  "Hclose" : ⎡ ▷ 𝓟 ={E ∖ ↑N,E}=∗ emp ⎤
+  --------------------------------------∗
+  |={E ∖ ↑N,E}=> emp
+  

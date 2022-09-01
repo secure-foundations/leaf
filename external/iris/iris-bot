@@ -1,0 +1,155 @@
+#!/usr/bin/python3
+import sys, os, subprocess
+import requests, argparse
+from datetime import datetime, timezone
+
+################################################################################
+# This script lets you autoamtically trigger some operations on the Iris CI to
+# do further test/analysis on a branch (usually an MR).
+# Set the GITLAB_TOKEN environment variable to a GitLab access token.
+# Set at least one of IRIS_REV or STDPP_REV to control which branches of these
+# projects to build against (defaults to default git branch). IRIS_REPO and
+# STDPP_REPO can be used to take branches from forks. Setting IRIS to
+# "user:branch" will use the given branch on that user's fork of Iris, and
+# similar for STDPP.
+#
+# Supported commands:
+# - `./iris-bot build [$filter]`: Builds all reverse dependencies against the
+#   given branches. The optional `filter` argument only builds projects whose
+#   names contains that string.
+# - `./iris-bot time $project`: Measure the impact of this branch on the build
+#   time of the given reverse dependency. Only Iris branches are supported for
+#   now.
+################################################################################
+
+PROJECTS = {
+    'lambda-rust': { 'name': 'lambda-rust', 'branch': 'master', 'timing': True },
+    'lambda-rust-weak': { 'name': 'lambda-rust', 'branch': 'masters/weak_mem' }, # covers GPFSL and ORC11
+    'examples': { 'name': 'examples', 'branch': 'master', 'timing': True },
+    'iron': { 'name': 'iron', 'branch': 'master', 'timing': True },
+    'reloc': { 'name': 'reloc', 'branch': 'master' },
+    'spygame': { 'name': 'spygame', 'branch': 'master' },
+    'time-credits': { 'name': 'time-credits', 'branch': 'master' },
+    'actris': { 'name': 'actris', 'branch': 'master' },
+    'tutorial-popl20': { 'name': 'tutorial-popl20', 'branch': 'master' },
+    'tutorial-popl21': { 'name': 'tutorial-popl21', 'branch': 'master' },
+}
+
+if not "GITLAB_TOKEN" in os.environ:
+    print("You need to set the GITLAB_TOKEN environment variable to a GitLab access token.")
+    print("You can create such tokens at <https://gitlab.mpi-sws.org/profile/personal_access_tokens>.")
+    print("Make sure you grant access to the 'api' scope.")
+    sys.exit(1)
+GITLAB_TOKEN = os.environ["GITLAB_TOKEN"]
+
+# Pre-processing for branch variables of dependency projects: you can set
+# 'PROJECT' to 'user:branch', or set 'PROJECT_REPO' and 'PROJECT_REV'
+# automatically.
+BUILD_BRANCHES = {}
+for project in ['stdpp', 'iris', 'orc11', 'gpfsl']:
+    var = project.upper()
+    if var in os.environ:
+        (repo, rev) = os.environ[var].split(':')
+        repo = repo + "/" + project
+    else:
+        repo = os.environ.get(var+"_REPO", "iris/"+project)
+        rev = os.environ.get(var+"_REV")
+    if rev is not None:
+        BUILD_BRANCHES[project] = (repo, rev)
+
+if not "iris" in BUILD_BRANCHES:
+    print("Please set IRIS_REV, STDPP_REV, ORC11_REV and GPFSL_REV environment variables to the branch/tag/commit of the respective project that you want to use.")
+    print("Only IRIS_REV is mandatory, the rest defaults to the default git branch.")
+    sys.exit(1)
+
+# Useful helpers
+def trigger_build(project, branch, vars):
+    id = "iris%2F{}".format(project)
+    url = "https://gitlab.mpi-sws.org/api/v4/projects/{}/pipeline".format(id)
+    json = {
+        'ref': branch,
+        'variables': [{ 'key': key, 'value': val } for (key, val) in vars.items()],
+    }
+    r = requests.post(url, headers={'PRIVATE-TOKEN': GITLAB_TOKEN}, json=json)
+    r.raise_for_status()
+    return r.json()
+
+# The commands
+def build(args):
+    # Convert BUILD_BRANCHES into suitable dictionary
+    vars = {}
+    for project in BUILD_BRANCHES.keys():
+        (repo, rev) = BUILD_BRANCHES[project]
+        var = project.upper()
+        vars[var+"_REPO"] = repo
+        vars[var+"_REV"] = rev
+    # Loop over all projects, and trigger build.
+    for (name, project) in PROJECTS.items():
+        if args.filter in name:
+            print("Triggering build for {}...".format(name))
+            pipeline_url = trigger_build(project['name'], project['branch'], vars)['web_url']
+            print("    Pipeline running at {}".format(pipeline_url))
+
+def time(args):
+    # Make sure only 'iris' variables are set.
+    for project in BUILD_BRANCHES.keys():
+        if project != 'iris':
+            print("'time' command only supports Iris branches")
+            sys.exit(1)
+    (iris_repo, iris_rev) = BUILD_BRANCHES['iris']
+    # Get project to test and ensure it supports timing
+    project_name = args.project
+    if project_name not in PROJECTS:
+        print("ERROR: no such project: {}".format(project_name))
+        sys.exit(1)
+    project = PROJECTS[project_name]
+    if not project.get('timing'):
+        print("ERROR: {} does not support timing".format(project_name))
+        sys.exit(1)
+    # Obtain a unique ID for this experiment
+    id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    # Determine the branch commit to build
+    subprocess.run(["git", "fetch", "-q", "https://gitlab.mpi-sws.org/{}".format(iris_repo), iris_rev], check=True)
+    test_commit = subprocess.run(["git", "rev-parse", "FETCH_HEAD"], check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+    # Determine the base commit in master
+    subprocess.run(["git", "fetch", "-q", "origin", "master"], check=True)
+    base_commit = subprocess.run(["git", "merge-base", test_commit, "origin/master"], check=True, stdout=subprocess.PIPE).stdout.decode().strip()
+    # Trigger the builds
+    print("Triggering timing builds for {} with Iris base commit {} and test commit {} using ad-hoc ID {}...".format(project_name, base_commit[:8], test_commit[:8], id))
+    vars = {
+        'IRIS_REPO': iris_repo,
+        'IRIS_REV': base_commit,
+        'TIMING_AD_HOC_ID': id+"-base",
+    }
+    base_pipeline = trigger_build(project['name'], project['branch'], vars)
+    print("    Base pipeline running at {}".format(base_pipeline['web_url']))
+    vars = {
+        'IRIS_REPO': iris_repo,
+        'IRIS_REV': test_commit,
+        'TIMING_AD_HOC_ID': id+"-test",
+    }
+    if args.test_branch is None:
+        test_pipeline = trigger_build(project['name'], project['branch'], vars)
+        print("    Test pipeline running at {}".format(test_pipeline['web_url']))
+    else:
+        test_pipeline = trigger_build(project['name'], args.test_branch, vars)
+        print("    Test pipeline (on non-standard branch {}) running at {}".format(args.test_branch, test_pipeline['web_url']))
+    print("    Once done, timing comparison will be available at https://coq-speed.mpi-sws.org/d/1QE_dqjiz/coq-compare?orgId=1&var-project={}&var-branch1=@hoc&var-commit1={}&var-config1={}&var-branch2=@hoc&var-commit2={}&var-config2={}".format(project['name'], base_pipeline['sha'], id+"-base", test_pipeline['sha'], id+"-test"))
+
+# Dispatch
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Iris CI utility')
+    subparsers = parser.add_subparsers(required=True, title='iris-bot command to execute', description='see "$command -h" for help', metavar="$command")
+
+    parser_build = subparsers.add_parser('build', help='Build many reverse dependencies against an Iris branch')
+    parser_build.set_defaults(func=build)
+    parser_build.add_argument('filter', nargs='?', default='', help='(optional) restrict build to projects matching the filter')
+
+    parser_time = subparsers.add_parser('time', help='Time one reverse dependency against an Iris branch')
+    parser_time.add_argument("project", help="the project to measure the time of")
+    parser_time.add_argument("--test-rev", help="use different revision on project for the test build (in case the project requires changes to still build)")
+    parser_time.set_defaults(func=time)
+
+    # Parse, and dispatch to sub-command
+    args = parser.parse_args()
+    args.func(args)
