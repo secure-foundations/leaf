@@ -1,0 +1,57 @@
+# use NO_TEST=1 to skip the tests
+NO_TEST:=
+
+# use MAKE_REF=1 to generate new reference files
+MAKE_REF:=
+
+# Run tests interleaved with main build.  They have to be in the same target for this.
+real-all: style $(if $(NO_TEST),,test)
+
+style: $(VFILES) coq-lint.sh
+# Make sure everything imports the options, and all Instance/Argument/Hint are qualified.
+	$(SHOW)"COQLINT"
+	$(HIDE)for FILE in $(VFILES); do \
+	  if ! fgrep -q 'From iris.prelude Require Import options.' "$$FILE"; then echo "ERROR: $$FILE does not import 'options'."; echo; exit 1; fi ; \
+	  ./coq-lint.sh "$$FILE" || exit 1; \
+	done
+# Make sure main Iris does not import other Iris packages.
+	$(HIDE)if egrep 'iris\.(heap_lang|deprecated|staging)' --include "*.v" -R iris; then echo "ERROR: Iris may not import modules from other Iris packages (see above for violations)."; echo; exit 1; fi
+.PHONY: style
+
+# the test suite
+TESTFILES:=$(shell find tests -name "*.v")
+NORMALIZER:=test-normalizer.sed
+
+test: $(TESTFILES:.v=.vo)
+.PHONY: test
+
+COQ_TEST=$(COQTOP) $(COQDEBUG) -batch -test-mode
+# Need to make this a lazy variable (`=` instead of `:=`) since COQ_VERSION is only set later.
+COQ_MINOR_VERSION=$(shell echo "$(COQ_VERSION)" | egrep '^[0-9]+\.[0-9]+\b' -o)
+
+tests/.coqdeps.d: $(TESTFILES)
+	$(SHOW)'COQDEP TESTFILES'
+	$(HIDE)$(COQDEP) -dyndep var $(COQMF_COQLIBS_NOML) $^ $(redir_if_ok)
+-include tests/.coqdeps.d
+
+# Main test script (comments out-of-line because macOS otherwise barfs?!?)
+# - Determine reference file (`REF`).
+# - Print user-visible status line.
+# - Dump Coq output into a temporary file.
+# - Run `sed -i` on that file in a way that works on macOS.
+# - Either compare the result with the reference file, or move it over the reference file.
+# - Cleanup, and mark as done for make.
+$(TESTFILES:.v=.vo): %.vo: %.v $(if $(MAKE_REF),,%.ref) $(NORMALIZER)
+	$(HIDE)if test -f $*".$(COQ_MINOR_VERSION).ref"; then \
+	    REF=$*".$(COQ_MINOR_VERSION).ref"; \
+	  else \
+	    REF=$*".ref"; \
+	  fi && \
+	  echo "COQTEST$(if $(MAKE_REF), [make ref],) $< (ref: $$REF)" && \
+	  TMPFILE="$$(mktemp)" && \
+	  $(TIMER) $(COQ_TEST) $(COQFLAGS) $(COQLIBS) -load-vernac-source $< > "$$TMPFILE" && \
+	  sed -f $(NORMALIZER) "$$TMPFILE" > "$$TMPFILE".new && \
+	  mv "$$TMPFILE".new "$$TMPFILE" && \
+	  $(if $(MAKE_REF),mv "$$TMPFILE" "$$REF",diff -u "$$REF" "$$TMPFILE") && \
+	  rm -f "$$TMPFILE" && \
+	  touch $@

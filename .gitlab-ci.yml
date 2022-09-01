@@ -1,0 +1,103 @@
+image: ralfjung/opam-ci:opam2
+
+stages:
+  - build
+
+variables:
+  CPU_CORES: "10"
+
+.only_branches: &only_branches
+  only:
+  - /^master/@iris/iris
+  - /^ci/@iris/iris
+
+.only_mr: &only_mr
+  only:
+  - merge_requests
+
+.branches_and_mr: &branches_and_mr
+  only:
+  - /^master/@iris/iris
+  - /^ci/@iris/iris
+  - merge_requests
+
+.template: &template
+  <<: *only_branches
+  stage: build
+  interruptible: true
+  tags:
+  - fp
+  script:
+  - git clone https://gitlab.mpi-sws.org/iris/ci.git ci -b opam2
+  - ci/buildjob
+  cache:
+    key: "$CI_JOB_NAME"
+    paths:
+    - _opam/
+  except:
+  - triggers
+  - schedules
+  - api
+
+## Build jobs
+
+build-coq.dev:
+  <<: *template
+  <<: *branches_and_mr
+  variables:
+    # Pinning a commit to avoid constant re-builds in MR pipelines
+    COQ_REV: "f16b7c75bcc8651e43ec1f0c8ae6744748665213"
+    OPAM_PINS: "coq-core.dev git git+https://github.com/coq/coq#$COQ_REV   coq-stdlib.dev git git+https://github.com/coq/coq#$COQ_REV   coq.dev git git+https://github.com/coq/coq#$COQ_REV"
+    MANGLE_NAMES: "1"
+
+build-coq.8.14.dev:
+  <<: *template
+  variables:
+    OPAM_PINS: "coq version 8.14.dev"
+    MANGLE_NAMES: "1"
+    DENY_WARNINGS: "1"
+
+build-coq.8.13.2:
+  <<: *template
+  interruptible: false
+  variables:
+    OPAM_PINS: "coq version 8.13.2"
+    DENY_WARNINGS: "1"
+    OPAM_PKG: "1"
+    DOC_DIR: "coqdoc@center.mpi-sws.org:iris"
+    DOC_OPTS: "--external https://plv.mpi-sws.org/coqdoc/stdpp/ stdpp"
+  tags:
+  - fp-timing
+
+build-coq.8.12.2:
+  <<: *template
+  <<: *branches_and_mr
+  variables:
+    OPAM_PINS: "coq version 8.12.2"
+    DENY_WARNINGS: "1"
+
+# Nightly job with a known-to-work Coq version
+# (so failures must be caused by std++)
+trigger-stdpp.dev-coq.8.13.1:
+  <<: *template
+  variables:
+    STDPP_REPO: "iris/stdpp"
+    OPAM_PINS: "coq version 8.13.1   git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV"
+  except:
+  only:
+  - triggers
+  - schedules
+  - api
+
+# Nightly job with latest Coq beta branch
+trigger-stdpp.dev-coq.8.14.dev:
+  <<: *template
+  variables:
+    STDPP_REPO: "iris/stdpp"
+    OPAM_PINS: "coq version 8.14.dev   git+https://gitlab.mpi-sws.org/$STDPP_REPO#$STDPP_REV"
+    CI_COQCHK: "1"
+  except:
+  only:
+  - triggers
+  - schedules
+  - api

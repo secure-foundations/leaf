@@ -1,0 +1,44 @@
+"ex1"
+     : string
+     = inl #()
+     : val + Error
+"ex3"
+     : string
+     = inl #2
+     : val + Error
+"ex4"
+     : string
+     = inl #(Loc 2)
+     : val + Error
+"ex5"
+     : string
+     = inl #false
+     : val + Error
+"ex6"
+     : string
+     = inl #2
+     : val + Error
+"fail app non-function"
+     : string
+     = inr (Stuck "attempt to call non-function #2")
+     : val + Error
+"fail loc order"
+     : string
+     = inr
+         (Stuck
+            "bin-op failed: the only supported operation on locations is +ₗ #i, got < #(loc 2)")
+     : val + Error
+"fail compare pairs"
+     : string
+     = inr
+         (Stuck
+            "bin-op failed: one of (#0, #1) and (#0, #1) must be unboxed to compare: (#0, #1): pairs are large and considered boxed, must compare by field, (#0, #1): pairs are large and considered boxed, must compare by field")
+     : val + Error
+"fail free var"
+     : string
+     = inr (Stuck "free var: x")
+     : val + Error
+"fail out of fuel"
+     : string
+     = inl (rec: "foo" <> := "foo" #())%V
+     : val + Error

@@ -1,0 +1,8 @@
+"test1"
+     : string
+True%I
+(⊢ True)
+"test2"
+     : string
+False%I True%I
+(False -∗ True)

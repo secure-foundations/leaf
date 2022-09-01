@@ -1,0 +1,114 @@
+
+\makeatletter%
+\@ifundefined{basedir}{%
+\newcommand\basedir{}%
+}{}%
+\makeatother%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% PACKAGES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+
+\usepackage{mathpartir}
+
+\usepackage{\basedir pftools}
+\usepackage{\basedir iris}
+
+\usepackage{xcolor}  % for print version
+
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{semantic}
+\usepackage{csquotes}
+
+\usepackage{hyperref}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% SETUP
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\SetSymbolFont{stmry}{bold}{U}{stmry}{m}{n} % this fixes warnings when \boldsymbol is used with stmaryrd included
+
+\extrarowheight=\jot	% else, arrays are scrunched compared to, say, aligned
+\newcolumntype{.}{@{}}
+% Array {rMcMl} modifies array {rcl}, putting mathrel-style spacing
+% around the centered column. (We used this, for example, in laying
+% out some of Iris' axioms. Generally, aligned is simpler but aligned
+% does not work in mathpar because \\ inherits mathpar's 2em vskip.)
+% The capital M stands for THICKMuskip. The smaller medmuskip would be
+% right for mathbin-style spacing.
+\newcolumntype{M}{@{\mskip\thickmuskip}}
+
+\definecolor{StringRed}{rgb}{.637,0.082,0.082}
+\definecolor{CommentGreen}{rgb}{0.0,0.55,0.3}
+\definecolor{KeywordBlue}{rgb}{0.0,0.3,0.55}
+\definecolor{LinkColor}{rgb}{0.55,0.0,0.3}
+\definecolor{CiteColor}{rgb}{0.55,0.0,0.3}
+\definecolor{HighlightColor}{rgb}{0.0,0.0,0.0}
+
+\definecolor{grey}{rgb}{0.5,0.5,0.5}
+\definecolor{red}{rgb}{1,0,0}
+
+\hypersetup{%
+  linktocpage=true, pdfstartview=FitV,
+  breaklinks=true, pageanchor=true, pdfpagemode=UseOutlines,
+  plainpages=false, bookmarksnumbered, bookmarksopen=true, bookmarksopenlevel=3,
+  hypertexnames=true, pdfhighlight=/O,
+  colorlinks=true,linkcolor=LinkColor,citecolor=CiteColor,
+  urlcolor=LinkColor
+}
+
+
+%\theoremstyle{definition}
+%\newtheorem{prop}{Prop}
+\newtheorem{defn}{Definition}
+\newtheorem{cor}{Corollary}
+\newtheorem{conj}{Conj}
+\newtheorem{lem}{Lemma}
+\newtheorem{thm}{Theorem}
+
+\newtheorem{exercise}{Exercise}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GENERIC MACROS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand*{\Sref}[1]{\hyperref[#1]{\S\ref*{#1}}}
+\newcommand*{\secref}[1]{\hyperref[#1]{Section~\ref*{#1}}}
+\newcommand*{\lemref}[1]{\hyperref[#1]{Lemma~\ref*{#1}}}
+\newcommand*{\thmref}[1]{\hyperref[#1]{Theorem~\ref*{#1}}}
+\newcommand{\corref}[1]{\hyperref[#1]{Cor.~\ref*{#1}}}
+\newcommand*{\defref}[1]{\hyperref[#1]{Definition~\ref*{#1}}}
+\newcommand*{\egref}[1]{\hyperref[#1]{Example~\ref*{#1}}}
+\newcommand*{\appendixref}[1]{\hyperref[#1]{Appendix~\ref*{#1}}}
+\newcommand*{\figref}[1]{\hyperref[#1]{Figure~\ref*{#1}}}
+\newcommand*{\tabref}[1]{\hyperref[#1]{Table~\ref*{#1}}}
+
+\newcommand{\changes}{{\bf\color{red}{Changes}}}
+\newcommand{\TODO}{\vskip 4pt {\color{red}\bf TODO}}
+
+
+\newcommand{\ie}{\emph{i.e.,} }
+\newcommand{\cf}{\emph{c.f.} }
+\newcommand{\eg}{\emph{e.g.,} }
+\newcommand{\etal}{\emph{et~al.}}
+\newcommand{\wrt}{w.r.t.~}
+
+\newcommand{\aaron}[1]{{\color{red}\textbf{AT: #1}}}
+\newcommand{\derek}[1]{{\color{red}\textbf{DD: #1}}}
+\newcommand{\lars}[1]{{\color{red}\textbf{LB: #1}}}
+\newcommand{\kasper}[1]{{\color{red}\textbf{KS: #1}}}
+\newcommand{\ralf}[1]{{\color{red}\textbf{RJ: #1}}}
+\newcommand{\dave}[1]{{\color{red}\textbf{PDS: #1}}}
+\newcommand{\hush}[1]{}
+\newcommand{\relaxguys}{%
+	\let\aaron\hush%
+	\let\derek\hush%
+	\let\lars\hush%
+	\let\kasper\hush%
+	\let\ralf\hush%
+	\let\dave\hush%
+}
