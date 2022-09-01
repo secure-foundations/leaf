@@ -56,24 +56,24 @@ Ltac solve_inG :=
   split; (assumption || by apply _).
 
 (** * Definition of the connective [own] *)
-Local Definition inG_unfold {Σ A} {i : inG Σ A} :
+Definition inG_unfold {Σ A} {i : inG Σ A} :
     inG_apply i (iPropO Σ) -n> inG_apply i (iPrePropO Σ) :=
   rFunctor_map _ (iProp_fold, iProp_unfold).
-Local Definition inG_fold {Σ A} {i : inG Σ A} :
+Definition inG_fold {Σ A} {i : inG Σ A} :
     inG_apply i (iPrePropO Σ) -n> inG_apply i (iPropO Σ) :=
   rFunctor_map _ (iProp_unfold, iProp_fold).
 
-Local Definition iRes_singleton {Σ A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
+Definition iRes_singleton {Σ A} {i : inG Σ A} (γ : gname) (a : A) : iResUR Σ :=
   discrete_fun_singleton (inG_id i)
     {[ γ := inG_unfold (cmra_transport inG_prf a) ]}.
 Global Instance: Params (@iRes_singleton) 4 := {}.
 
-Local Definition own_def `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
+Definition own_def `{!inG Σ A} (γ : gname) (a : A) : iProp Σ :=
   uPred_ownM (iRes_singleton γ a).
-Local Definition own_aux : seal (@own_def). Proof. by eexists. Qed.
+Definition own_aux : seal (@own_def). Proof. by eexists. Qed.
 Definition own := own_aux.(unseal).
 Global Arguments own {Σ A _} γ a.
-Local Definition own_eq : @own = @own_def := own_aux.(seal_eq).
+Definition own_eq : @own = @own_def := own_aux.(seal_eq).
 Local Instance: Params (@own) 4 := {}.
 
 (** * Properties about ghost ownership *)
@@ -82,19 +82,19 @@ Context `{i : !inG Σ A}.
 Implicit Types a : A.
 
 (** ** Properties of [iRes_singleton] *)
-Local Lemma inG_unfold_fold (x : inG_apply i (iPrePropO Σ)) :
+Lemma inG_unfold_fold (x : inG_apply i (iPrePropO Σ)) :
   inG_unfold (inG_fold x) ≡ x.
 Proof.
   rewrite /inG_unfold /inG_fold -rFunctor_map_compose -{2}[x]rFunctor_map_id.
   apply (ne_proper (rFunctor_map _)); split=> ?; apply iProp_unfold_fold.
 Qed.
-Local Lemma inG_fold_unfold (x : inG_apply i (iPropO Σ)) :
+Lemma inG_fold_unfold (x : inG_apply i (iPropO Σ)) :
   inG_fold (inG_unfold x) ≡ x.
 Proof.
   rewrite /inG_unfold /inG_fold -rFunctor_map_compose -{2}[x]rFunctor_map_id.
   apply (ne_proper (rFunctor_map _)); split=> ?; apply iProp_fold_unfold.
 Qed.
-Local Lemma inG_unfold_validN n (x : inG_apply i (iPropO Σ)) :
+Lemma inG_unfold_validN n (x : inG_apply i (iPropO Σ)) :
   ✓{n} (inG_unfold x) ↔ ✓{n} x.
 Proof.
   split; [|apply (cmra_morphism_validN _)].
