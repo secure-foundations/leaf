@@ -488,7 +488,7 @@ Lemma wp_ht_update_iter γ γrws range (slots locks: lang.val) (k: Key) (v: Valu
 :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝ ∗
-        g ∗ (□ (g &&{F}&&> is_ht_sl γ γrws slots locks)) ∗
+        g ∗ ((g &&{F}&&> is_ht_sl γ γrws slots locks)) ∗
         own γ (m k v0) ∗ own γ range ∗ ⌜ full range k (hash k) i ⌝
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
@@ -742,7 +742,7 @@ Qed.
 Lemma wp_ht_update γ γrws (ht: lang.val) (k: Key) (v: Value) (v0: option Value) g F
   (F_disj: F ## ↑ HT_RW_NAMESPACE)
   :
-      {{{ g ∗ (□ (g &&{F}&&> is_ht γ γrws ht)) ∗ own γ (m k v0) }}}
+      {{{ g ∗ ((g &&{F}&&> is_ht γ γrws ht)) ∗ own γ (m k v0) }}}
       update ht #k #v
       {{{ b , RET (#b); g ∗
           ((⌜ b = 0 ⌝ ∗ own γ (m k v0)) ∨ (⌜ b = 1 ⌝ ∗ own γ (m k (Some v))))
@@ -787,9 +787,9 @@ Lemma wp_ht_query_iter γ γrws range (slots locks: lang.val) (k: Key) (v: optio
   :
       {{{
         ⌜ hash k ≤ i ≤ ht_fixed_size ⌝
-        ∗ g ∗ (□ (g &&{F}&&> is_ht_sl γ γrws slots locks))
-        ∗ gr ∗ (□ (gr &&{↑HT_RW_NAMESPACE}&&> own γ range))
-        ∗ gm ∗ (□ (gm &&{⊤}&&> own γ (m k v)))
+        ∗ g ∗ ((g &&{F}&&> is_ht_sl γ γrws slots locks))
+        ∗ gr ∗ ((gr &&{↑HT_RW_NAMESPACE}&&> own γ range))
+        ∗ gm ∗ ((gm &&{⊤}&&> own γ (m k v)))
         ∗ ⌜ full range k (hash k) i ⌝
         ∗ ⌜has_length slots ht_fixed_size /\ has_length locks ht_fixed_size⌝ 
       }}}
@@ -1045,8 +1045,8 @@ Qed.
 Lemma wp_ht_query γ γrws (ht: lang.val) (k: Key) (v: option Value) g gm F
   (F_disj: F ## ↑ HT_RW_NAMESPACE) :
       {{{
-          g ∗ (□ (g &&{F}&&> is_ht γ γrws ht)) ∗
-          gm ∗ (□ (gm &&{⊤}&&> own γ (m k v)))
+          g ∗ ((g &&{F}&&> is_ht γ γrws ht)) ∗
+          gm ∗ ((gm &&{⊤}&&> own γ (m k v)))
       }}}
       query ht #k
       {{{ RET (opt_as_val v); g ∗ gm }}}.

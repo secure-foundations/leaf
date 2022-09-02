@@ -540,7 +540,7 @@ Proof.
 (**** guards ****)
 
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
-    ∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ fguards P Q m.
+    □ (∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ fguards P Q m).
     
 Notation "P &&{ E }&&> Q" := (guards P Q E)
   (at level 99, E at level 50, Q at level 200).
@@ -553,29 +553,34 @@ Proof.
   setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
 Qed.
 
+Global Instance persistent_guards P Q E :
+    Persistent (P &&{E}&&> Q).
+Proof.
+  unfold guards. apply _.
+Qed.
 
 Lemma guards_refl E P : ⊢ P &&{ E }&&> P.
 Proof.
   unfold guards.
-  iIntros. iExists ∅. iSplit.
+  iIntros. iModIntro. iExists ∅. iSplit.
   { iPureIntro. intro. rewrite elem_of_empty. contradiction. }
   iApply fguards_refl.
 Qed.
-
 
 Lemma guards_transitive E P Q R :
     (P &&{ E }&&> Q) ∗ (Q &&{ E }&&> R) ⊢ (P &&{E}&&> R).
 Proof.
   unfold guards.
-  iIntros "[x y]".
+  iIntros "[#x #y]".
+  iModIntro.
   iDestruct "x" as (mx) "[%condx x]".
   iDestruct "y" as (my) "[%condy y]".
-  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "x") as "x". { set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "y") as "y". { set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "x") as "x1". { set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "y") as "y1". { set_solver. }
   iExists (mx ∪ my).
   iSplit.
   { iPureIntro. set_solver. }
-  iApply (fguards_transitive _ _ Q). iFrame.
+  iApply (fguards_transitive _ _ Q). iFrame "#".
 Qed.
   
 Lemma guards_mask_weaken (P Q: iProp Σ) E E'
@@ -584,13 +589,13 @@ Lemma guards_mask_weaken (P Q: iProp Σ) E E'
 Proof.
   unfold guards.
   iIntros "x".
-  iDestruct "x" as (m) "[%cond x]".
+  iDestruct "x" as (m) "[%cond #x]".
   iExists m. iFrame "x". iPureIntro. set_solver.
 Qed.
 
 Lemma guards_weaken_l E P Q : ⊢ (P ∗ Q) &&{ E }&&> P.
 Proof.
-  unfold guards. iIntros. iExists ∅. iSplit.
+  unfold guards. iIntros. iModIntro. iExists ∅. iSplit.
   { iPureIntro. set_solver. }
   iApply fguards_weaken.
 Qed.
@@ -624,13 +629,13 @@ Lemma guards_apply (P Q X Y : iProp Σ) E F
     : (Q ∗ X ={E}=∗ Q ∗ Y) ∗ (P &&{ F }&&> Q) ⊢ (P ∗ X ={E ∪ F}=∗ P ∗ Y).
 Proof.
   unfold guards.
-  iIntros "[upd g]".
+  iIntros "[upd #g]".
   iDestruct "g" as (m) "[%cond g]".
   iDestruct (fguards_apply P Q X Y (E ∪ F) m E with "[upd g]") as "q".
   { set_solver. }
   { set_solver. }
   { set_solver. }
-  { iFrame. }
+  { iFrame "g". iFrame "upd". }
   iFrame.
 Qed.
 
@@ -639,7 +644,7 @@ Lemma guards_remove_later (P : iProp Σ) E
     : ⊢ (▷ P) &&{E}&&> P.
 Proof.
   unfold guards.
-  iIntros. iExists ∅.
+  iIntros. iModIntro. iExists ∅.
   iSplit.
   { iPureIntro. set_solver. }
   iApply fguards_remove_later.
@@ -660,11 +665,11 @@ Lemma guards_persistent (P Q R : iProp Σ) E F
     : ⊢ (P ∗ (P &&{F}&&> Q) ∗ (Q -∗ R)) ={E}=∗ P ∗ R.
 Proof.
   unfold guards.
-  iIntros "[p [g impl]]".
+  iIntros "[p [#g impl]]".
   iDestruct "g" as (m) "[%cond g]".
   iApply (fguards_persistent P Q R E m).
   { set_solver. }
-  iFrame.
+  iFrame "g". iFrame.
 Qed.
 
 Lemma guards_persistent2 (X P Q R : iProp Σ) E F
@@ -696,17 +701,17 @@ Lemma guards_open (P Q : iProp Σ) (E F : coPset)
         Q ∗ (Q ={E ∖ F, E}=∗ P).
 Proof. 
   unfold guards.
-  iIntros "[p g]".
+  iIntros "[p #g]".
   iDestruct "g" as (m) "[%cond g]".
   iDestruct (fguards_open P Q E (E ∖ F) m) as "x".
   { set_solver. }
   { set_solver. }
-  iApply "x". iFrame.
+  iApply "x". iFrame "g". iFrame "p".
 Qed.
     
 Definition guards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
-  P ∗ □ (X &&{ F }&&> Q) ⊢ □ (X &&{ F }&&> (Q ∗ P)).
+  P ∗ (X &&{ F }&&> Q) ⊢ (X &&{ F }&&> (Q ∗ P)).
 Proof.
   unfold guards.
   iIntros "[p #g]".
@@ -728,16 +733,16 @@ Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
       (P &&{F}&&> own γ x)
     ). 
 Proof.
-  iIntros "[q r]". unfold guards.
+  iIntros "[#q #r]". unfold guards.
   iDestruct "q" as (m1) "[%cond1 q]".
   iDestruct "r" as (m2) "[%cond2 r]".
   iExists (m1 ∪ m2).
-  iSplit.
+  iModIntro. iSplit.
   { iPureIntro. set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "q") as "q". { set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "r") as "r". { set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "q") as "q1". { set_solver. }
+  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "r") as "r1". { set_solver. }
   iApply (fguards_and P Q R γ x (m1 ∪ m2)); trivial.
-  iFrame.
+  iFrame "#".
 Qed.
 
 Definition guards_and_sep_union (P1 P2 Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F1 F2

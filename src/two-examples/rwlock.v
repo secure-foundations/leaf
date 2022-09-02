@@ -176,17 +176,17 @@ Qed.
 
 Lemma acq1 γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn) }}}
+      {{{ g ∗ (g &&{E}&&> IsRwLock γ rwlock storage_fn) }}}
       loop_until (CAS (Fst rwlock) #0 #1)
       {{{ RET #(); exc_pending γ ∗
-          g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn)
+          g ∗ (g &&{E}&&> IsRwLock γ rwlock storage_fn)
       }}}.
 Proof.
   iIntros (phi) "g x".
   wp_apply (loop_w_invariant _
-    (g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
-    (g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
-    (exc_pending γ ∗ g ∗ □ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+    (g ∗ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
+    (g ∗ (g &&{E}&&> IsRwLock γ rwlock storage_fn))%I
+    (exc_pending γ ∗ g ∗ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
     with "g"
   ).
   - iIntros (phi2) "[g #guard] t".
@@ -240,20 +240,20 @@ Qed.
 
 Lemma acq2 γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+      {{{ g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn))
           ∗ exc_pending γ
        }}}
       loop_until (op_eq (!(Snd rwlock)) #0)
       {{{ x, RET #(); 
-          g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn))
+          g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn))
           ∗ exc_guard γ ∗ storage_fn x
       }}}.
 Proof.
   iIntros (phi) "g x".
   wp_apply (loop_w_invariant _
-    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
-    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
-    (g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_guard γ
+    (g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
+    (g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_pending γ)%I
+    (g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗ exc_guard γ
         ∗ (∃ x , storage_fn x))
     with "g"
   ).
@@ -317,7 +317,7 @@ Qed.
 
 Lemma wp_acquire_exc γ (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
+      {{{ g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
       acquire_exc rwlock
       {{{ x, RET #();
           g ∗ exc_guard γ ∗ storage_fn x
@@ -341,7 +341,7 @@ Qed.
 
 Lemma wp_release_exc (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
+      {{{ g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
           exc_guard γ ∗ storage_fn x }}}
       release_exc rwlock
       {{{ RET #(); g }}}.
@@ -384,7 +384,7 @@ Qed.
 
 Lemma wp_release_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E x
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
+      {{{ g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) ∗
           sh_guard γ x }}}
       release_shared rwlock
       {{{ dummy, RET dummy; g }}}.
@@ -428,11 +428,11 @@ Qed.
 
 Lemma wp_acquire_shared (γ: gname) (rwlock: lang.val) (g: iProp Σ) storage_fn E
     (not_in_e: γ ∉ E) :
-      {{{ g ∗ (□ (g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
+      {{{ g ∗ ((g &&{E}&&> IsRwLock γ rwlock storage_fn)) }}}
       acquire_shared rwlock
       {{{ x, RET #();
           g ∗ sh_guard γ x
-          ∗ (□ (sh_guard γ x &&{ {[γ]} }&&> ▷ storage_fn x))
+          ∗ ( (sh_guard γ x &&{ {[γ]} }&&> ▷ storage_fn x))
       }}}.
 Proof.
   iIntros (phi) "[g #guard] P".
@@ -528,7 +528,7 @@ Proof.
     wp_pures.
     
     iModIntro. iApply "P".
-    iFrame "g". iFrame "shg". iModIntro. iFrame "sh_guard_is_g".
+    iFrame "g". iFrame "shg". iFrame "sh_guard_is_g".
 Qed.
 
 End RwlockProof.

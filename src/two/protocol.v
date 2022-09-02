@@ -261,7 +261,7 @@ Section StorageLogic.
     : maps γ f ⊢ (p_own γ p &&{ E }&&> ▷ f b).
   Proof using B H H0 H1 H10 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold guards.
-    iIntros "m".
+    iIntros "#m". iModIntro.
     iExists {[ γ ]}.
     iSplit.
     { iPureIntro. set_solver. }

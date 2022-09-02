@@ -77,8 +77,8 @@ Definition extract_later1 (X T P : iProp Σ) E F
     (pers: Persistent P)
     (tl: Timeless T)
     (su: F ⊆ E)
-    : ⊢ (X ∗ □ (X &&{F}&&> ▷ (T ∗ P))) ={E}=∗
-        (X ∗ ▷ □ (X &&{F}&&> (T ∗ P))).
+    : ⊢ (X ∗ (X &&{F}&&> ▷ (T ∗ P))) ={E}=∗
+        (X ∗ ▷ (X &&{F}&&> (T ∗ P))).
 Proof.
   iIntros "[x #g]".
   iMod (guards_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "[x p]"; trivial.
@@ -98,8 +98,8 @@ Qed.
 Definition extract_later (X S : iProp Σ) E F
     (ex: LaterGuardExtractable S)
     (su: F ⊆ E)
-    : ⊢ (X ∗ □ (X &&{F}&&> ▷ S)) ={E}=∗
-        (X ∗ ▷ □ (X &&{F}&&> S)).
+    : ⊢ (X ∗ (X &&{F}&&> ▷ S)) ={E}=∗
+        (X ∗ ▷ (X &&{F}&&> S)).
 Proof.
   setoid_rewrite (@lg_split Σ S ex).
   apply extract_later1; trivial.
