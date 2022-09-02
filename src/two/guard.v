@@ -118,42 +118,6 @@ Proof.
   setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
 
-  (*
-Lemma except0_2 (Q R: iProp Σ)
-  : (Q -∗ ◇ R) ⊢ ◇ (Q -∗ R).
-Proof.
-  unfold "◇". uPred.unseal.
-  split. intros n x val t.
-  
-  unfold uPred_holds, uPred_or_def.
-  destruct n.
-  {
-    left.
-    unfold uPred_holds, uPred_later_def. trivial.
-  }
-  {
-    right.
-    unfold uPred_holds, uPred_wand_def. intros n' x' lt valxx uh.
-    unfold uPred_holds, uPred_wand_def in t.
-    have t0 := t n' x' lt valxx uh.
-  
-  iIntros "x".
-  Print bi.later_timeless.
-  iRight.
-  : (◇ Q) ∧ (◇ R) ⊢ ◇ (Q ∧ R). Admitted.
-  *)
-  
-  (*   :  :  later_false_em
- *)
- (*
-Lemma except0_2 (Q R: iProp Σ)
-  : Q ∗ (Q -∗ ◇ R) ⊢ ◇ (Q ∗ (Q -∗ R)).
-Proof.
-  iIntros "[q qr]".
-  unfold "◇".
-  *)
-      
-
 Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
     (qrx: (Q ∧ R ⊢ own γ x))
     : (
