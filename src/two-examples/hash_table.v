@@ -399,7 +399,15 @@ Qed.
 
 Lemma seq_iprop_entails (fn1 fn2 : nat -> iProp Σ) (n: nat)
     (cond: ∀ (i: nat) , i < n -> fn1 i ⊢ fn2 i)
-    : seq_iprop fn1 n ⊢ seq_iprop fn2 n. Admitted.
+    : seq_iprop fn1 n ⊢ seq_iprop fn2 n.
+Proof.
+  induction n.
+  - trivial.
+  - cbn [seq_iprop]. iIntros "[f si]".
+    iDestruct (cond with "f") as "f". { lia. }
+    iDestruct (IHn with "si") as "si". { intros. apply cond. lia. }
+    iFrame.
+Qed.
 
 Lemma init_is_ht_sl γ slots locks :
   own γ (sseq ht_fixed_size) -∗

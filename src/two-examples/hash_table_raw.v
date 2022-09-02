@@ -847,6 +847,44 @@ Proof.
   rewrite H. rewrite H0. trivial.
 Qed.
 
+Lemma ht_tpcm_le_rev a a' b b'
+  : ht_le (HTR a b) (HTR a' b') -> gmap_le a a' /\ gmap_le b b'.
+Proof.
+  intros H. unfold ht_le in H. destruct H as [c H]. destruct c.
+  unfold ht_dot in H. inversion H. subst a'. subst b'.
+  split.
+  - unfold gmap_le. exists ms. trivial.
+  - unfold gmap_le. exists slots. trivial.
+Qed.
+
+Lemma conjunct_and_lemma a1 b1 a2 b2
+  (a_disj : ∀ k j1 j2 , a1 !! k = Some j1 -> a2 !! k = Some j2 -> False)
+  (b_disj : ∀ k j1 j2 , b1 !! k = Some j1 -> b2 !! k = Some j2 -> False)
+  : ∀ r , V r -> ht_le (HTR a1 b1) r -> ht_le (HTR a2 b2) r -> ht_le (ht_dot (HTR a1 b1) (HTR a2 b2)) r.
+Proof.
+  intros r Vr le1 le2. destruct r.
+  unfold V in Vr. destruct Vr as [z Pdot].
+  unfold P in Pdot.
+  destruct z. unfold ht_dot in Pdot. destruct Pdot as [gv1 [gv2 _]].
+  have val1 := gmap_valid_left _ _ gv1.
+  have val2 := gmap_valid_left _ _ gv2.
+  have le1' := ht_tpcm_le_rev _ _ _ _ le1. destruct le1' as [la lb].
+  have le2' := ht_tpcm_le_rev _ _ _ _ le2. destruct le2' as [lc ld].
+  apply ht_tpcm_le.
+  - apply conjunct_and_gmap; trivial.
+  - apply conjunct_and_gmap; trivial.
+Qed.
+  
+Lemma range_add_m a k i j k1 v1
+  (fa: full a k i j)
+  : ∀ r , V r -> ht_le a r -> ht_le (m k1 v1) r -> ht_le (ht_dot a (m k1 v1)) r.
+Proof.
+  destruct a. unfold m. apply conjunct_and_lemma.
+  - intros k0 j1 j2 e1 e2. unfold full in fa. destruct fa as [ij [X1 [X2 mse]]].
+    subst ms. rewrite lookup_empty in e1. discriminate.
+  - intros k0 j1 j2 e1 e2. rewrite lookup_empty in e2. discriminate.
+Qed.
+
 Lemma full_add a k i j c
   (fa: full a k i j)
   : ∀ r , V r -> ht_le a r -> ht_le (s j c) r -> ht_le (ht_dot a (s j c)) r.

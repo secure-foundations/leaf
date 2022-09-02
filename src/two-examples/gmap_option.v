@@ -185,4 +185,36 @@ Proof.
     contradiction.
 Qed.
 
+Lemma conjunct_and_gmap
+    a1 a2 c
+  (gv: gmap_valid c)
+  (a_disj : ∀ (k : K) (j1 j2 : option V),
+             a1 !! k = Some j1 → a2 !! k = Some j2 → False)
+  (la1 : gmap_le a1 c)
+  (la2 : gmap_le a2 c)
+  : gmap_le (gmap_dot a1 a2) c.
+Proof.
+  apply le_of_subset. intros k v e1.
+  unfold gmap_dot in e1. rewrite lookup_merge in e1. unfold diag_None in e1.
+  destruct (a1 !! k) eqn:a1k; destruct (a2 !! k) eqn:a2k.
+  - have l := a_disj _ _ _ a1k a2k. contradiction.
+  - unfold gmerge in e1. inversion e1. subst o. unfold gmap_le in la1.
+      destruct la1 as [d la]. subst c.
+      unfold gmap_dot.
+      unfold gmap_valid in gv. unfold gmap_dot in gv.
+      rewrite lookup_merge. rewrite a1k. unfold diag_None.
+      have gvk := gv k.
+      rewrite lookup_merge in gvk. rewrite a1k in gvk. unfold diag_None in gvk.
+      unfold gmerge. unfold gmerge in gvk. destruct (d !! k); trivial. contradiction.
+  - unfold gmerge in e1. inversion e1. subst o. unfold gmap_le in la2.
+      destruct la2 as [d la]. subst c.
+      unfold gmap_dot.
+      unfold gmap_valid in gv. unfold gmap_dot in gv.
+      rewrite lookup_merge. rewrite a2k. unfold diag_None.
+      have gvk := gv k.
+      rewrite lookup_merge in gvk. rewrite a2k in gvk. unfold diag_None in gvk.
+      unfold gmerge. unfold gmerge in gvk. destruct (d !! k); trivial. contradiction.
+  - discriminate.
+Qed.
+
 End GmapOptionDot.

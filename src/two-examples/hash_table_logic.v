@@ -214,7 +214,18 @@ Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
     (g2 &&{F2}&&> own γ (m k1 v1))
     -∗
     (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ r ∗ own γ (m k1 v1))).
-Admitted.
+Proof.
+  iIntros "a b".
+  rewrite <- own_op.
+  iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (m k1 v1))).
+  {
+    apply and_own2_ucmra.
+    intro w.
+    repeat (rewrite le_iff_ht_le).
+    apply (range_add_m r k i j k1 v1); trivial.
+  }
+  iFrame.
+Qed.
 
 Lemma ht_SAddM γ i slot k1 v1 g1 g2 F1 F2 :
     (g1 &&{F1}&&> own γ (s i slot)) -∗
