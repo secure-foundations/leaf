@@ -874,6 +874,14 @@ Proof.
   - apply conjunct_and_gmap; trivial.
   - apply conjunct_and_gmap; trivial.
 Qed.
+
+Lemma s_add_m i slot k1 v1
+  : ∀ r , V r -> ht_le (s i slot) r -> ht_le (m k1 v1) r -> ht_le (ht_dot (s i slot) (m k1 v1)) r.
+Proof.
+  unfold s. unfold m. apply conjunct_and_lemma.
+  - intros k j1 j2 e1 e2. rewrite lookup_empty in e1. discriminate.
+  - intros k j1 j2 e1 e2. rewrite lookup_empty in e2. discriminate.
+Qed.
   
 Lemma range_add_m a k i j k1 v1
   (fa: full a k i j)
@@ -885,61 +893,34 @@ Proof.
   - intros k0 j1 j2 e1 e2. rewrite lookup_empty in e2. discriminate.
 Qed.
 
+Lemma full_add_s_m a k i j c k1 v1
+  (fa: full a k i j)
+  : ∀ r , V r -> ht_le a r -> ht_le (ht_dot (s j c) (m k1 v1)) r -> ht_le (ht_dot a (ht_dot (s j c) (m k1 v1))) r.
+Proof.
+  unfold m. unfold s. cbn [ht_dot]. destruct a.
+  rewrite gmap_dot_empty_left. rewrite gmap_dot_empty.
+  apply conjunct_and_lemma.
+  - intros k0 j1 j2 e1 e2. unfold full in fa. destruct fa as [ij [X1 [X2 mse]]].
+    subst ms. rewrite lookup_empty in e1. discriminate.
+  - intros k0 j1 j2 e1 e2. unfold full in fa. destruct fa as [ij [X1 [X2 X3]]].
+    have x2 := X2 k0 j1 e1.
+    have h : Decision (j = k0) by solve_decision. destruct h.
+    + subst k0. lia.
+    + rewrite lookup_singleton_ne in e2; trivial. discriminate.
+Qed.
+
 Lemma full_add a k i j c
   (fa: full a k i j)
   : ∀ r , V r -> ht_le a r -> ht_le (s j c) r -> ht_le (ht_dot a (s j c)) r.
-intros.
-  unfold ht_le in H0.
-  unfold ht_le in H1. deex. destruct c0, c1, r, a.
-  unfold ht_le in H1. unfold ht_dot in H1. unfold s in *.
-  inversion H0.
-  inversion H1.
-  clear H0. clear H1.
-  rewrite gmap_dot_comm in H5.
-  rewrite gmap_dot_empty in H5.
-  subst ms1.
-  subst slots1. subst ms.
-  unfold ht_dot.
-  unfold full in fa. destruct_ands. subst ms2.
-  rewrite gmap_dot_empty.
-  unfold V in H. deex. destruct z.
-  rewrite gmap_dot_comm in H.
-  rewrite gmap_dot_empty in H. unfold ht_dot in H. unfold P in H.
-  destruct_ands. clear H4. clear H5. clear H7. clear H8.
-  
-  apply ht_tpcm_le.
-  - apply le_of_subset. intros.
-    rewrite lookup_empty in H4. discriminate.
-  - apply le_of_subset. intros.
-    assert (gmap_valid (gmap_dot slots2 slots0)).
-    { eapply gmap_valid_left. apply H. }
-    assert (gmap_valid (gmap_dot {[j := Some c]} slots)).
-    { rewrite H6. trivial. }
+Proof.
+  destruct a. unfold s. apply conjunct_and_lemma.
+  - intros k0 j1 j2 e1 e2. unfold full in fa. destruct fa as [ij [X1 [X2 mse]]].
+    subst ms. rewrite lookup_empty in e1. discriminate.
+  - intros k0 j1 j2 e1 e2. unfold full in fa. destruct fa as [ij [X1 [X2 X3]]].
+    have x2 := X2 k0 j1 e1.
     have h : Decision (j = k0) by solve_decision. destruct h.
-    + subst k0.
-        rewrite <- H6.
-        assert (v = Some c).
-        {
-          unfold gmap_dot in H4. rewrite lookup_merge in H4. unfold diag_None, gmerge in H4.
-          destruct (slots2 !! j) eqn:s2j.
-          + have rr := H2 j o s2j. lia.
-          + rewrite lookup_singleton in H4. inversion H4. trivial.
-        }
-        subst v.
-        rewrite lookup_gmap_dot_left.
-        * apply lookup_singleton.
-        * trivial.
-        * rewrite lookup_singleton; trivial. discriminate.
-    + rewrite lookup_gmap_dot_left.
-      * unfold gmap_dot in H4. rewrite lookup_merge in H4.
-          unfold diag_None, gmerge in H4. destruct (slots2 !! k0).
-          -- rewrite lookup_singleton_ne in H4; trivial.
-          -- rewrite lookup_singleton_ne in H4; trivial.
-      * trivial.
-      * unfold gmap_dot in H4. rewrite lookup_merge in H4.
-          unfold diag_None, gmerge in H4. destruct (slots2 !! k0).
-          -- rewrite lookup_singleton_ne in H4; trivial. discriminate.
-          -- rewrite lookup_singleton_ne in H4; trivial. discriminate.
+    + subst k0. lia.
+    + rewrite lookup_singleton_ne in e2; trivial. discriminate.
 Qed.
 
 Fixpoint gmap_seq {V} `{!EqDecision V} (n: nat) (v: V) : gmap nat V :=

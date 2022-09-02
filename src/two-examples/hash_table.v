@@ -824,7 +824,6 @@ Proof.
     { unfold bool_decide. case_decide; crush. }
     rewrite bd.
     wp_pures.
-    Print ht_QueryReachedEnd_b.
     iMod (ht_QueryReachedEnd_b γ range k v (gr ∗ gm) ⊤ ⊤ with "[gm gr guardrm]") as "[[gr gm] %is_none]". 
     { set_solver. } { trivial. } { iFrame "gm". iFrame "gr". iFrame "guardrm". }
     

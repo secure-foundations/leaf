@@ -232,7 +232,18 @@ Lemma ht_SAddM γ i slot k1 v1 g1 g2 F1 F2 :
     (g2 &&{F2}&&> own γ (m k1 v1))
     -∗
     (g1 ∗ g2 &&{F1 ∪ F2}&&> (own γ (s i slot) ∗ own γ (m k1 v1))).
-Admitted.
+Proof.
+  iIntros "a b".
+  rewrite <- own_op.
+  iApply (guards_and_sep_union g1 g2 (own γ (s i slot)) (own γ (m k1 v1))).
+  {
+    apply and_own2_ucmra.
+    intro w.
+    repeat (rewrite le_iff_ht_le).
+    apply (s_add_m i slot k1 v1); trivial.
+  }
+  iFrame.
+Qed.
 
 Lemma ht_RangeAddSAddM γ r k i j slot k1 v1 g1 g2 g3 F1 F2 F3
     (f: full r k i j) :
@@ -241,7 +252,23 @@ Lemma ht_RangeAddSAddM γ r k i j slot k1 v1 g1 g2 g3 F1 F2 F3
     (g3 &&{F3}&&> own γ (m k1 v1))
     -∗
     (g1 ∗ g2 ∗ g3 &&{F1 ∪ F2 ∪ F3}&&> (own γ r ∗ own γ (s j slot) ∗ own γ (m k1 v1))).
-Admitted.
+Proof.
+  iIntros "a b c".
+  iDestruct (ht_SAddM with "b c") as "d".
+  rewrite <- own_op.
+  rewrite <- own_op.
+  replace (F1 ∪ F2 ∪ F3) with (F1 ∪ (F2 ∪ F3)) by set_solver.
+  iApply (guards_and_sep_union g1 (g2 ∗ g3)%I (own γ r) (own γ (s j slot ⋅ m k1 v1))).
+  {
+    apply and_own2_ucmra.
+    intro w.
+    repeat (rewrite le_iff_ht_le).
+    apply (full_add_s_m r k i j slot k1 v1); trivial.
+    (*replace (s j slot ⋅ m k1 v1) with (ht_dot (s j slot) (m k1 v1)) by trivial.
+    replace (s j slot ⋅ m k1 v1) with (ht_dot (s j slot) (m k1 v1)) by trivial. *)
+  } 
+  iFrame.
+Qed.
 
 Lemma ht_UpdateExisting γ k v v0 v1 j :
   own γ (s j (Some (k, v1))) -∗ own γ (m k v0) ==∗
