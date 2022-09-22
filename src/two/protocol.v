@@ -106,14 +106,39 @@ Section StorageLogic.
   
   Definition maps (γ: gname) (f: B -> iProp Σ) : iProp Σ :=
       ⌜ wf_prop_map f ⌝ ∗
+      own γ (◯ (Inved ε)) ∗
       ownI γ (
         ∃ (state: P) ,
           own γ (● (Inved state))
           ∗ ⌜ pinv state ⌝
           ∗ (f (interp state))
       ). 
-  
+     
   Definition p_own (γ: gname) (p: P) : iProp Σ := own γ (◯ (Inved p)).
+  
+  Lemma pcore_inved_unit
+    : (pcore (Inved (ε : P)) ≡ Some (Inved ε)).
+  Proof using B H H0 H1 H10 H2 H3 H4 H5 H6 H7 H8 H9 P equ inG0 storage_mixin Σ.
+    unfold pcore, inved_protocol_pcore. destruct (pcore ε) eqn:x.
+    { destruct storage_mixin. destruct protocol_mixin0. destruct protocol_ra_mixin.
+      have k := ra_pcore_l (ε: P) p x.
+      generalize k. rewrite ra_comm. rewrite protocol_unit_left_id.
+      intro R. setoid_rewrite R. trivial.
+    }
+    trivial.
+  Qed.
+  
+  Global Instance pers_own_frag_inved_unit γ : Persistent (own γ (◯ (Inved (ε: P)))).
+  Proof using B H H0 H1 H10 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    apply own_core_persistent.
+    apply auth_frag_core_id.
+    unfold CoreId.
+    apply pcore_inved_unit.
+  Qed.
+  
+  Global Instance pers_maps γ f : Persistent (maps γ f).
+  Proof using B H H0 H1 H10 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+  apply _. Qed.
   
   Lemma ownIagree (γ : gname) (X Y : iProp Σ) : ownI γ X ∗ ownI γ Y ⊢ (▷ X ≡ ▷ Y).
   Proof.
@@ -197,7 +222,7 @@ Section StorageLogic.
     : maps γ f ⊢ (p_own γ p &&{ {[ γ ]} }&&$> ▷ f b).
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold fguards, guards_with, maps.
-    iIntros "[%wf #inv]".
+    iIntros "[%wf [ounit #inv]]".
     iIntros (T) "[po b]".
     rewrite storage_bulk_inv_singleton. unfold storage_inv.
     unfold p_own.
@@ -383,7 +408,7 @@ Section StorageLogic.
         p_own γ p1 ∗ ▷ f b1 ={ {[ γ ]} }=∗ p_own γ p2 ∗ ▷ f b2.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
-    iIntros "[%wfm #m] [p f]".
+    iIntros "[%wfm [#ounit #m]] [p f]".
     rewrite uPred_fupd_eq. unfold uPred_fupd_def.
     iIntros "[w oe]".
     iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
@@ -486,37 +511,15 @@ Section StorageLogic.
   Qed.
   
   Lemma p_own_unit γ f
-      : maps γ f ⊢ |={ {[ γ ]} }=> p_own γ ε.
+      : maps γ f ⊢ p_own γ ε.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
-    iIntros "[%wfm #m]".
-    destruct wfm as [wfm inh]. 
-      
-    rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-    iIntros "[w oe]".
-    iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
-    { iFrame "w". iFrame "m". iFrame "oe". }
-    iMod (bi.later_exist_except_0 with "latp") as (state) "lat".
-    iDestruct "lat" as "[ois [ps fi]]".
-    iMod "ois" as "ois".
-    iMod "ps" as "%ps".
+    iIntros "[%wfm [#ounit #m]]".
     unfold p_own.
-    iMod (auth_inved_conjure_unit γ state with "ois") as "[ois u]".
-    iAssert ((▷ ∃ state0 : P,
-          own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp state0))%I)
-          with "[ois fi]"
-          as "inv_to_return".
-    {
-      iModIntro. (* strip later *)
-      iExists state. iFrame "ois". iFrame "fi".
-      iPureIntro. trivial.
-    }
-    iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
-    { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
-    iModIntro. iModIntro. iFrame.
-   Qed.
+    iFrame "ounit".
+  Qed.
     
-   Lemma logic_deposit
+  Lemma logic_deposit
       (p1 p2: P) (b1: B) (γ: gname) (f: B -> iProp Σ)
       (exchng: storage_protocol_deposit p1 p2 b1)
       : maps γ f ⊢
@@ -628,15 +631,20 @@ Section StorageLogic.
           ∗ ⌜ pinv state ⌝
           ∗ (f (interp state)))%I
       )
-      (● (Inved p) ⋅ ◯ (Inved p))
+      (● (Inved p) ⋅ (◯ (Inved ε) ⋅ ◯ (Inved p)))
       (↑ N)
       with "w") as "w".
     { apply nclose_infinite. }
-    { rewrite auth_both_valid_discrete. split; trivial.
-      apply valid_inved_of_pinv. trivial.
+    { 
+      rewrite <- auth_frag_op.
+      rewrite auth_both_valid_discrete. split; trivial.
+      - replace (Inved ε ⋅ Inved p) with (Inved (ε ⋅ p)) by trivial.
+        destruct storage_mixin. destruct protocol_mixin0. rewrite protocol_unit_left_id.
+        trivial.
+      - apply valid_inved_of_pinv. trivial.
     }
     
-    iDestruct "w" as (γ) "[%in_ns [w [oinv [auth frag]]]]".
+    iDestruct "w" as (γ) "[%in_ns [w [oinv [auth [u frag]]]]]".
     
     iDestruct ("w" with "[auth f_init]") as "w".
     {
@@ -648,7 +656,7 @@ Section StorageLogic.
     iExists γ.
     unfold p_own. iFrame "frag".
     unfold maps.
-    iFrame "oinv".
+    iFrame "oinv". iFrame.
     iPureIntro. split; trivial.
   Qed.
   
