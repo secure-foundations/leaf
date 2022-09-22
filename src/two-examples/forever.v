@@ -172,14 +172,14 @@ Proof.
   unfold trivial_interp. intro. unfold "≼". exists ε. trivial.
 Qed.
 
-Lemma make_forever (Q: iProp Σ) 
-  : ⊢ Q ={∅}=∗ (True &&{↑ FOREVER_NAMESPACE : coPset}&&> ▷ Q).
+Lemma make_forever (Q: iProp Σ) (E: coPset)
+  : ⊢ Q ={E}=∗ (True &&{↑ FOREVER_NAMESPACE : coPset}&&> ▷ Q).
 Proof using H invGS0 Σ.
   iIntros "q".
   replace (Q) with (family Q (interp ε)) at 1 by trivial.
   assert (@pinv Trivial trivial_pinv ε) as J.
   { unfold pinv, ε, trivial_unit, trivial_pinv. trivial. }
-  iMod (logic_init_ns (ε : Trivial) (family Q) ∅ (FOREVER_NAMESPACE) J with "q") as "r".
+  iMod (logic_init_ns (ε : Trivial) (family Q) E (FOREVER_NAMESPACE) J with "q") as "r".
   { apply wf_prop_map_family. }
   iDestruct "r" as (γ) "[%inns [#m p]]".
   iDestruct (logic_guard (ε : Trivial) (Yes ()) γ (↑ FOREVER_NAMESPACE) (family Q) with "m")
