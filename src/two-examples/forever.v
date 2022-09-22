@@ -183,7 +183,7 @@ Qed.
 
 Lemma make_forever (Q: iProp Σ) 
   : ⊢ Q ={∅}=∗ (True &&{↑ FOREVER_NAMESPACE : coPset}&&> ▷ Q).
-Proof.
+Proof using H invGS0 Σ.
   iIntros "q".
   replace (Q) with (family Q (interp ε)) at 1 by trivial.
   assert (@pinv Trivial trivial_pinv ε) as J.
@@ -196,20 +196,18 @@ Proof.
   { apply storage_protocol_guards_triv. }
   { trivial. }
   unfold family at 2.
-  
-    { unfold Proper, "==>", family. intros x y. destruct x, y; trivial; intro K;
-        unfold "≡", exc_equiv in K; contradiction. }
-    split.
-    { trivial. }
-    { intros a b is_val. destruct a, b; trivial; unfold "⋅", exc_op, family.
-        
-  
-  Unshelve.
-  15: { apply trivial_storage_mixin. }
-  3: { Set Printing Implicit.
-  { unfold wf_prop_map. split.
-    { unfold Proper, "==>", family. destruct x, y; trivial; intro K; unfold "≡" in K.
-  { unfold wf_prop_map.
-  have Init := logic_init_ns (ε : Trivial) (family Q) ∅ (↑FOREVER_NAMESPACE) _ _.
+  iDestruct (p_own_unit with "m") as "u".
+  iDestruct (guards_refl (↑FOREVER_NAMESPACE) (True)%I) as "tt".
+  iDestruct (guards_include_pers (□ p_own γ ε) (True)%I (True)%I
+      (↑FOREVER_NAMESPACE) with "[u tt]") as "tu".
+      { iFrame "tt". iModIntro. iFrame "u". }
+  assert ((True ∗ □ p_own γ (ε: Trivial))%I ⊣⊢ ((p_own γ ε) ∗ □ p_own γ ε)%I) as Z.
+  { iIntros. iSplit. { iIntros "[t #o]". iFrame "o". } { iIntros "[p #o]". iFrame "o". } }
+  rewrite Z.
+  iDestruct (guards_weaken_rhs_l with "tu") as "tk".
+  iModIntro.
+  iApply guards_transitive.
+  { iFrame "tk". iFrame "g". }
+Qed.
 
 End RwlockProof.
