@@ -132,7 +132,7 @@ Definition forever_logicΣ : gFunctors := #[
         (authUR (inved_protocolUR (protocol_mixin (Trivial) (Exc ()) (trivial_storage_mixin))))
 ].
 
-Section RwlockLogic.
+Section Forever.
 
 Context {Σ: gFunctors}.
 Context `{@forever_logicG Σ}.
@@ -144,15 +144,6 @@ Definition family (Q: iProp Σ) (e: Exc ()) : iProp Σ :=
     | Yes _ => Q
     | Fail => (False)%I
   end. 
-  
-  (*
-Lemma init_forever (Q: iProp Σ) (f: Exc () -> iProp Σ) :
-⊢ f (interp (ε : Trivial)) ={∅}=∗
-    ∃ γ , ⌜ γ ∈ (↑ FOREVER_NAMESPACE : coPset) ⌝ ∗ maps γ f ∗ p_own γ (ε : Trivial).
-Proof.
-  Set Printing Implicit.
-  Unset Printing Notations.
-  *)
   
 Lemma wf_prop_map_family (Q: iProp Σ) : wf_prop_map (family Q).
 Proof.
@@ -210,4 +201,4 @@ Proof using H invGS0 Σ.
   { iFrame "tk". iFrame "g". }
 Qed.
 
-End RwlockProof.
+End Forever.
