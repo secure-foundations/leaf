@@ -132,6 +132,9 @@ Definition forever_logicΣ : gFunctors := #[
         (authUR (inved_protocolUR (protocol_mixin (Trivial) (Exc ()) (trivial_storage_mixin))))
 ].
 
+Global Instance subG_forever_logicΣ {Σ} : subG forever_logicΣ Σ → forever_logicG Σ.
+Proof. solve_inG. Qed.
+
 Section Forever.
 
 Context {Σ: gFunctors}.

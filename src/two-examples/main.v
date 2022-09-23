@@ -103,7 +103,13 @@ End main_proof.
 (*** applying adequacy ***)
 
 Definition mainΣ: gFunctors :=
-  #[simpΣ main𝜇]. 
+  #[
+      simpΣ;
+      (*GFunctor (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))));*)
+      @rwlock_logicΣ (option (Key * Value)) _;
+      GFunctor htUR;
+      forever_logicΣ
+  ]. 
 
 Lemma main_returns_value σ σ' v : 
   rtc erased_step ([ (main #())%E ], σ) ([Val v], σ') →
@@ -113,10 +119,15 @@ Proof.
   cut (adequate NotStuck (main #()) σ (λ v _, 
       v = (#true, #17)%V \/ v = (#false, #())%V)).
   { intros H. eapply adequate_alt in H as [Hval _]; eauto. }
-  apply (@simp_adequacy mainΣ main𝜇 main𝜇_has_tpcm_heap).
-  { typeclasses eauto. }
-  intros. apply wp_main'.
-Qed.
+  apply (simp_adequacy mainΣ).
+  intros.
+  (*Set Printing Implicit.
+  Unset Printing Notations.*)
+  apply (@wp_main' mainΣ).
+  { apply subG_rwlock_logicΣ. apply _. }
+  { apply subG_ht_logicΣ. apply _. }
+  { apply subG_forever_logicΣ. apply _. }
+Qed. 
 
 (* Check that there are not any unproved assumptions.
    Should say 'Closed under global context'. *)

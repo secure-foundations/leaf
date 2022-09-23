@@ -57,6 +57,11 @@ Class ht_logicG Σ :=
       ht_logic_inG :> inG Σ htUR
     }.
 
+Definition ht_logicΣ : gFunctors := #[ GFunctor htUR ].
+
+Global Instance subG_ht_logicΣ {Σ} : subG ht_logicΣ Σ → ht_logicG Σ.
+Proof. solve_inG. Qed.
+
 Section HashTableLogic.
 
 Context {Σ: gFunctors}.

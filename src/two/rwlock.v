@@ -357,6 +357,10 @@ Definition rwlock_logicΣ {S: Type} {eqdec: EqDecision S} : gFunctors := #[
         (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))
 ].
 
+Global Instance subG_rwlock_logicΣ {S: Type} {eqdec: EqDecision S} {Σ} :
+    subG (@rwlock_logicΣ S eqdec) Σ → @rwlock_logicG S eqdec Σ.
+Proof. solve_inG. Qed.
+
 Section RwlockLogic.
 
 Context {S: Type}.
