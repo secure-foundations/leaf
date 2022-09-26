@@ -223,61 +223,65 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold fguards, guards_with, maps.
     iIntros "[%wf [ounit #inv]]".
-    iIntros (T) "[po b]".
-    rewrite storage_bulk_inv_singleton. unfold storage_inv.
-    unfold p_own.
-    iAssert ((own γ (◯ Inved p) ∧
-        (◇ ∃ state : P, T ∗ ▷
-               (own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp state))))%I)
-        with "[po b]" as "x".
-    { iSplit. { iFrame. } 
-      iDestruct ("b" with "po") as "[ex t]".
-      iDestruct "ex" as (P0) "[#own lat]".
-      iDestruct (ownIagree γ P0 _ with "[inv own]") as "eq".
-      { iSplitL. { iFrame "own". } iFrame "inv". }
-      iRewrite "eq" in "lat".
-      iMod (bi.later_exist_except_0 with "lat") as (state) "lat".
-      iExists state. iFrame.
-    }
-    iMod (and_except0_r with "x") as "x".
-    rewrite bi.and_exist_l.
-    iDestruct "x" as (state) "x".
-    iMod (apply_timeless with "x") as "x".
-    iDestruct (stuff1 with "x") as "%pinvs".
-    iDestruct (stuff2 with "x") as "%incll".
-    iDestruct "x" as "[_ [t [o [p latf]]]]".
-    
-    unfold storage_protocol_guards in g.
-    unfold "≼" in incll. destruct incll as [z incll].
-    assert (pinv (p ⋅ z)) as pinv_pz.
-        { destruct storage_mixin. destruct protocol_mixin0. setoid_rewrite <- incll. trivial. }
-    have gz := g z pinv_pz.
-    unfold "≼" in gz. destruct gz as [y gz].
-    assert (interp state ≡ b ⋅ y) as ieqop.
-    { destruct storage_mixin. unfold interp. 
-        setoid_rewrite incll. trivial. }
-    
-    unfold wf_prop_map in wf.
-    destruct wf as [fprop [funit fop]].
-    
-    assert (✓ (b ⋅ y)) as is_val.
-    { destruct storage_mixin. destruct base_ra_mixin0.
-        setoid_rewrite <- ieqop. apply interp_val0. trivial. }
-        
-    setoid_rewrite ieqop.
-    setoid_rewrite fop; trivial.
-    
-    rewrite bi.later_sep. 
-    iDestruct "latf" as "[fb fy]".
-    iModIntro.
-    iFrame "fb".
-    iIntros "fb".
-    iFrame "t".
-    iExists ((∃ state0 : P,
-              own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp state0))%I).
-    iFrame "inv".
-    iNext. iExists state. iFrame.
-    setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
+    iSplit. {
+      iIntros (T) "[po b]".
+      rewrite storage_bulk_inv_singleton. unfold storage_inv.
+      unfold p_own.
+      iAssert ((own γ (◯ Inved p) ∧
+          (◇ ∃ state : P, T ∗ ▷
+                (own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp state))))%I)
+          with "[po b]" as "x".
+      { iSplit. { iFrame. } 
+        iDestruct ("b" with "po") as "[ex t]".
+        iDestruct "ex" as (P0) "[#own lat]".
+        iDestruct (ownIagree γ P0 _ with "[inv own]") as "eq".
+        { iSplitL. { iFrame "own". } iFrame "inv". }
+        iRewrite "eq" in "lat".
+        iMod (bi.later_exist_except_0 with "lat") as (state) "lat".
+        iExists state. iFrame.
+      }
+      iMod (and_except0_r with "x") as "x".
+      rewrite bi.and_exist_l.
+      iDestruct "x" as (state) "x".
+      iMod (apply_timeless with "x") as "x".
+      iDestruct (stuff1 with "x") as "%pinvs".
+      iDestruct (stuff2 with "x") as "%incll".
+      iDestruct "x" as "[_ [t [o [p latf]]]]".
+
+      unfold storage_protocol_guards in g.
+      unfold "≼" in incll. destruct incll as [z incll].
+      assert (pinv (p ⋅ z)) as pinv_pz.
+          { destruct storage_mixin. destruct protocol_mixin0. setoid_rewrite <- incll. trivial. }
+      have gz := g z pinv_pz.
+      unfold "≼" in gz. destruct gz as [y gz].
+      assert (interp state ≡ b ⋅ y) as ieqop.
+      { destruct storage_mixin. unfold interp. 
+          setoid_rewrite incll. trivial. }
+
+      unfold wf_prop_map in wf.
+      destruct wf as [fprop [funit fop]].
+
+      assert (✓ (b ⋅ y)) as is_val.
+      { destruct storage_mixin. destruct base_ra_mixin0.
+          setoid_rewrite <- ieqop. apply interp_val0. trivial. }
+
+      setoid_rewrite ieqop.
+      setoid_rewrite fop; trivial.
+
+      rewrite bi.later_sep. 
+      iDestruct "latf" as "[fb fy]".
+      iModIntro.
+      iFrame "fb".
+      iIntros "fb".
+      iFrame "t".
+      iExists ((∃ state0 : P,
+                own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp state0))%I).
+      iFrame "inv".
+      iNext. iExists state. iFrame.
+      setoid_rewrite ieqop. setoid_rewrite fop; trivial. iFrame.
+    } 
+    rewrite know_bulk_inv_singleton. unfold know_inv.
+    iExists _. iFrame "inv".
   Qed.
   
   Lemma logic_guard (p: P) (b: B) (γ: gname) (E: coPset) (f: B -> iProp Σ)

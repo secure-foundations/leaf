@@ -19,8 +19,22 @@ Context `{!invGS Σ}.
 
 Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ ▷ P.
 
+Definition know_inv (i: positive) : iProp Σ := ∃ P , ownI i P.
+
 Definition storage_bulk_inv (m: gset positive) : iProp Σ :=
     [∗ map] i ↦ unused ∈ gset_to_gmap () m, storage_inv i.
+    
+Definition know_bulk_inv (m: gset positive) : iProp Σ :=
+    [∗ map] i ↦ unused ∈ gset_to_gmap () m, know_inv i.
+    
+Lemma know_bulk_inv_empty :
+  True ⊢ know_bulk_inv ∅.
+Proof.
+  unfold know_bulk_inv.
+  replace (gset_to_gmap () ∅ : gmap positive ()) with (∅ : gmap positive ()).
+  - rewrite big_sepM_empty. trivial.
+  - apply map_eq. intros. rewrite lookup_empty. rewrite lookup_gset_to_gmap. trivial.
+Qed.
     
 Lemma storage_bulk_inv_empty :
   True ⊢ storage_bulk_inv ∅.
@@ -29,6 +43,24 @@ Proof.
   replace (gset_to_gmap () ∅ : gmap positive ()) with (∅ : gmap positive ()).
   - rewrite big_sepM_empty. trivial.
   - apply map_eq. intros. rewrite lookup_empty. rewrite lookup_gset_to_gmap. trivial.
+Qed.
+
+Lemma know_bulk_inv_singleton i
+  : know_bulk_inv ({[i]}) ⊣⊢ know_inv i.
+Proof.
+  unfold know_bulk_inv.
+  replace (gset_to_gmap () {[i]}) with ( {[ i := () ]} : gmap positive () ).
+  - apply big_sepM_singleton.
+  - apply map_eq. intros.
+      have h : Decision (i = i0) by solve_decision. destruct h.
+      + subst i0. rewrite lookup_singleton.
+        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
+            destruct (decide_rel elem_of i {[i]}); trivial.
+            generalize n. rewrite elem_of_singleton. contradiction.
+      + rewrite lookup_singleton_ne; trivial.
+        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
+            destruct (decide_rel elem_of i0 {[i]}); trivial.
+            generalize e. rewrite elem_of_singleton. intros. subst i. contradiction.
 Qed.
 
 Lemma storage_bulk_inv_singleton i
@@ -75,11 +107,27 @@ Proof.
     set_solver.
 Qed.
 
+Lemma know_bulk_inv_union (E F : gset positive) (disj: E ## F) :
+  know_bulk_inv (E ∪ F) ⊣⊢ know_bulk_inv E ∗ know_bulk_inv F.
+Proof.
+  unfold know_bulk_inv. rewrite gset_to_gmap_union.
+  apply big_sepM_union. apply gset_to_gmap_disj. trivial.
+Qed.
+
 Lemma storage_bulk_inv_union (E F : gset positive) (disj: E ## F) :
   storage_bulk_inv (E ∪ F) ⊣⊢ storage_bulk_inv E ∗ storage_bulk_inv F.
 Proof.
   unfold storage_bulk_inv. rewrite gset_to_gmap_union.
   apply big_sepM_union. apply gset_to_gmap_disj. trivial.
+Qed.
+
+Lemma know_bulk_inv_singleton_union i X
+  (not_in : i ∉ X)
+  : know_bulk_inv ({[i]} ∪ X) ⊣⊢ know_inv i ∗ know_bulk_inv X.
+Proof.
+  rewrite know_bulk_inv_union.
+  - rewrite know_bulk_inv_singleton. trivial.
+  - set_solver.
 Qed.
 
 Lemma storage_bulk_inv_singleton_union i X
@@ -95,7 +143,7 @@ Definition guards_with (P Q X : iProp Σ) :=
     (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) -∗ ◇ (Q ∗ (Q -∗ X ∗ T)))) % I.
 
 Definition fguards (P Q : iProp Σ) (m: gset positive) : iProp Σ :=
-    guards_with P Q (storage_bulk_inv m).
+    guards_with P Q (storage_bulk_inv m) ∗ know_bulk_inv m.
     
 Notation "P &&{ E }&&$> Q" := (fguards P Q E)
   (at level 99, E at level 50, Q at level 200).
@@ -126,8 +174,9 @@ Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
       (P &&{F}&&$> own γ x)
     ). 
 Proof.
-  iIntros "[pq pr]".
+  iIntros "[[pq kf] [pr _]]".
   unfold fguards, guards_with.
+  iFrame "kf".
   iIntros (T).
   iDestruct ("pq" $! T) as "pq".
   iDestruct ("pr" $! T) as "pr".
@@ -155,16 +204,18 @@ Proof.
   iFrame "p".
 Qed.
   
-Lemma fguards_refl E P : ⊢ P &&{ E }&&$> P.
+Lemma fguards_refl P : ⊢ P &&{ ∅ }&&$> P.
 Proof.
-  unfold fguards, guards_with. iIntros (T) "x". iFrame.
+  unfold fguards, guards_with. iSplit.
+    { iIntros (T) "x". iFrame. }
+    iApply know_bulk_inv_empty. done.
 Qed.
 
 Lemma fguards_transitive E P Q R :
     (P &&{ E }&&$> Q) ∗ (Q &&{ E }&&$> R) ⊢ (P &&{E}&&$> R).
 Proof.
   unfold fguards, guards_with.
-  iIntros "[a b]". iIntros (T) "p".
+  iIntros "[[a ke] [b _]]". iFrame "ke". iIntros (T) "p".
   iMod ("a" with "p") as "q".
   iDestruct ("b" with "q") as "r".
   iFrame.
@@ -175,6 +226,7 @@ Lemma twoway_assoc (P Q R : iProp Σ)
 Proof. iIntros. iSplit. { iIntros "[[p q] r]". iFrame. }
     { iIntros "[p [q r]]". iFrame. } Qed.
 
+(*
 Lemma fguards_superset E F P Q (disj: E ## F) :
     (P &&{ E }&&$> Q) ⊢ (P &&{ E ∪ F }&&$> Q).
 Proof.
@@ -187,13 +239,18 @@ Proof.
     rewrite asso.
     iApply "a".
 Qed.
+*)
 
-Lemma fguards_weaken E P Q : ⊢ (P ∗ Q) &&{ E }&&$> P.
+Lemma fguards_weaken P Q : ⊢ (P ∗ Q) &&{ ∅ }&&$> P.
 Proof.
-  unfold fguards, guards_with. iIntros (T) "[[p q] x]".
-  iFrame. iModIntro. iIntros "p".
-  iDestruct ("x" with "[p q]") as "m". { iFrame. }
-  iFrame.
+  unfold fguards, guards_with.
+  iSplit. {
+      iIntros (T) "[[p q] x]".
+      iFrame. iModIntro. iIntros "p".
+      iDestruct ("x" with "[p q]") as "m". { iFrame. }
+      iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
 Qed.
 
 Lemma gset_diff_union (E E': gset positive) (su: E ⊆ E') : E' = (E ∪ (E' ∖ E)).
@@ -208,6 +265,19 @@ Proof.
   have h : Decision (x ∈ E) by solve_decision. destruct h; set_solver.
 Qed.
 
+Lemma union_diff_eq_union (E1 E2 : gset positive) : E1 ∪ (E2 ∖ E1) = E1 ∪ E2.
+Proof.
+  apply set_eq. intro x.
+  have h : Decision (x ∈ E1) by solve_decision. destruct h; set_solver.
+Qed.
+
+Lemma intersect_union_diff_eq (E1 E2 : gset positive) : ((E2 ∩ E1) ∪ (E2 ∖ E1)) = E2.
+Proof.
+  apply set_eq. intro x.
+  have h : Decision (x ∈ E1) by solve_decision. destruct h; set_solver.
+Qed.
+
+(*
 Lemma fguards_mask_weaken (P Q: iProp Σ) E E'
     (su: E ⊆ E')
     : (P &&{ E }&&$> Q) ⊢ (P &&{ E' }&&$> Q).
@@ -236,21 +306,26 @@ Proof.
   }
   set_solver.
 Qed.
+*)
 
 Lemma wsat_split_one_union x E 
     (not_in: x ∉ E) :
+   know_inv x 
    ⊢ |={E ∪ {[ x ]}, E}=> (storage_inv x) ∗ (storage_inv x ={E, E ∪ {[ x ]}}=∗ True).
 Proof.
   assert (E ## {[x]}) as disj by set_solver.
   rewrite uPred_fupd_eq. unfold uPred_fupd_def.
-  iIntros "[w e]".
+  iIntros "#kx [w e]".
   iDestruct (ownE_op with "e") as "[ee e]". { trivial. }
-  iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }
+  (*iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }*)
+  unfold know_inv. iDestruct "kx" as (P) "i".
+  iDestruct (ownI_open with "[i w e]") as "[w [p d]]".
+  { iFrame "w". iFrame "i". iFrame "e". }
   unfold storage_inv.
   iMod (ownE_empty) as "oemp".
   iModIntro. iModIntro. iFrame.
   iSplitL "i p".
-  { iExists P. iFrame. }
+  { iExists P. iFrame "p". iFrame "i". }
   iIntros "op [w e]".
   iDestruct "op" as (P0) "op".
   iDestruct (ownI_close x P0 with "[w op d]") as "[w l]".
@@ -269,6 +344,7 @@ Qed.
 
 Lemma wsat_split_one_diff E x
     (eo: x ∈ E) :
+   know_inv x 
    ⊢ |={E, (E ∖ {[ x ]})}=> (storage_inv x) ∗ (storage_inv x ={E ∖ {[ x ]}, E}=∗ True).
 Proof.
   assert ((E ∖ {[ x ]}) ∪ {[ x ]} = E) as ue.
@@ -282,6 +358,7 @@ Qed.
 Lemma wsat_split_main E F E'
     (ss: ∀ x , x ∈ F \/ x ∈ E' <-> x ∈ E)
     (di: ∀ x , x ∈ F /\ x ∈ E' -> False) :
+   know_bulk_inv F
    ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
 Proof.
   generalize ss. clear ss. generalize di. clear di. generalize E. clear E.
@@ -289,7 +366,7 @@ Proof.
     ∀ E : coPset,
     (∀ x : positive, x ∈ F ∧ x ∈ E' → False)
     → (∀ x : positive, x ∈ F ∨ x ∈ E' ↔ x ∈ E)
-      → ⊢ |={E,E'}=> storage_bulk_inv F ∗ (storage_bulk_inv F ={E',E}=∗ True)
+      → know_bulk_inv F ⊢ |={E,E'}=> storage_bulk_inv F ∗ (storage_bulk_inv F ={E',E}=∗ True)
   ).
     - typeclasses eauto.
     - typeclasses eauto.
@@ -298,10 +375,13 @@ Proof.
         { iDestruct storage_bulk_inv_empty as "x". iApply "x". done. }
         { iIntros. iModIntro. done. }
     - intros x X not_in m E di ss.
-      iIntros.
-      iMod (wsat_split_one_diff E x) as "[si back]".
+      iIntros "kbulk".
+      rewrite know_bulk_inv_singleton_union; trivial.
+      iDestruct "kbulk" as "[kx kbulk]".
+      iMod (wsat_split_one_diff E x with "[kx]") as "[si back]".
       { apply ss. left. set_solver. }
-      iMod (m (E ∖ {[x]})) as "[sbi back2]".
+      { iFrame. }
+      iMod (m (E ∖ {[x]}) with "kbulk") as "[sbi back2]".
       { intuition. apply di with (x0 := x0). set_solver. }
       { intro x0. have ss0 := ss x0. set_solver. }
       rewrite storage_bulk_inv_singleton_union; trivial.
@@ -315,15 +395,16 @@ Qed.
 Lemma wsat_split_superset E F E'
     (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
     (di: ∀ x , x ∈ F /\ x ∈ E' -> False) :
+   know_bulk_inv F
    ⊢ |={E,E'}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={E',E}=∗ True).
 Proof.
-  iIntros.
+  iIntros "#ki".
   iMod (fupd_mask_subseteq (gset_to_coPset F ∪ E')) as "back".
   { unfold "⊆". unfold set_subseteq_instance. intro.
       rewrite elem_of_union.
       rewrite elem_of_gset_to_coPset.
       intro. apply ss. trivial. }
-  iMod (wsat_split_main (gset_to_coPset F ∪ E') F E') as "[sbi back2]".
+  iMod (wsat_split_main (gset_to_coPset F ∪ E') F E' with "ki") as "[sbi back2]".
   { intros. have j := ss x. rewrite elem_of_union. rewrite elem_of_gset_to_coPset.
       intuition. }
   { apply di. }
@@ -333,6 +414,7 @@ Qed.
 
 Lemma wsat_split_empty E F
     (ss: ∀ x , x ∈ F -> x ∈ E) :
+   know_bulk_inv F
    ⊢ |={E,∅}=> (storage_bulk_inv F) ∗ (storage_bulk_inv F ={∅,E}=∗ True).
 Proof.
   apply wsat_split_superset.
@@ -344,10 +426,10 @@ Lemma fguards_apply_persistent (P Q: iProp Σ) F E
     (ss: ∀ x , x ∈ F -> x ∈ E)
     : (P &&{ F }&&$> □ Q) ⊢ P ={E}=∗ □ Q.
 Proof.
-  unfold fguards, guards_with. iIntros "g p".
+  unfold fguards, guards_with. iIntros "[g kf] p".
   (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
   iDestruct ("g" $! P) as "g".
-  iMod (wsat_split_empty E F) as "[sb back]"; trivial.
+  iMod (wsat_split_empty E F with "kf") as "[sb back]"; trivial.
   rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
   iDestruct ("g" with "[p sb]") as "t".
   { iFrame. iIntros. iFrame. }
@@ -367,9 +449,9 @@ Lemma fguards_apply (P Q X Y : iProp Σ) E F D
     (di: ∀ x , x ∈ F /\ x ∈ D -> False)
     : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F }&&$> Q) ⊢ (P ∗ X ={E}=∗ P ∗ Y).
 Proof.
-  unfold fguards, guards_with. iIntros "[upd g] [p x]".
+  unfold fguards, guards_with. iIntros "[upd [g kf]] [p x]".
   iDestruct ("g" $! (P)%I) as "g".
-  iMod (wsat_split_superset E F D) as "[sb back]"; trivial.
+  iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
   { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
   rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
   iMod ("g" with "[p sb]") as "[q g]".
@@ -391,16 +473,20 @@ Proof.
   iDestruct "back" as "[w [e t]]". iFrame.
 Qed.
 
-Lemma fguards_remove_later (P : iProp Σ) E
+Lemma fguards_remove_later (P : iProp Σ)
     (tl: Timeless P)
-    : ⊢ (▷ P) &&{E}&&$> P.
+    : ⊢ (▷ P) &&{∅}&&$> P.
 Proof.
   unfold fguards, guards_with.
-  iIntros (T) "[p g]".
-  iMod "p" as "p".
-  iModIntro.
-  iFrame.
-  iIntros "p". iApply "g". iModIntro. iFrame.
+  iIntros. iSplit.
+  {
+    iIntros (T) "[p g]".
+    iMod "p" as "p".
+    iModIntro.
+    iFrame.
+    iIntros "p". iApply "g". iModIntro. iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
 Qed.
 
 Lemma fguards_persistent (P Q R : iProp Σ) E F
@@ -421,21 +507,6 @@ Proof.
   iDestruct ("X" with "[p]") as "X". { iFrame. }
   iMod "X" as "[p r]". iModIntro. iFrame "r". iFrame "p".
 Qed.
-(*
-  iIntros "[p [g qr]]".
-  unfold fguards, guards_with.
-  iMod (wsat_split_superset E F ∅) as "x".
-  { intro. have j := f_subset_e x. rewrite elem_of_empty.
-      intuition. }
-  { intro. rewrite elem_of_empty. intuition. }
-  iDestruct ("g" $! P) as "g".
-  iDestruct "x" as "[se x]".
-  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p se]" as "J".
-  { iFrame "p". iIntros. iFrame. }
-  iMod ("g" with "J") as "[q g]".
-  iDestruct ("qr" with "q") as "#r".
-  iModIntro. iFrame "r". i
-  *)
 
 Lemma fguards_open (P Q : iProp Σ) (E E' : coPset) F
     (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
@@ -443,9 +514,9 @@ Lemma fguards_open (P Q : iProp Σ) (E E' : coPset) F
     : ⊢ P ∗ (P &&{F}&&$> Q) ={E, E'}=∗
         Q ∗ (Q ={E', E}=∗ P).
 Proof.
-  iIntros "[p g]".
   unfold fguards, guards_with.
-  iMod (wsat_split_superset E F E') as "[inv_f back]"; trivial.
+  iIntros "[p [g kf]]".
+  iMod (wsat_split_superset E F E' with "kf") as "[inv_f back]"; trivial.
   iDestruct ("g" $! P) as "g".
   
   iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p inv_f]" as "J".
@@ -469,37 +540,80 @@ Proof.
   iFrame "p".
 Qed.
 
-Definition fguards_include_pers (P X Q : iProp Σ) F
+Lemma fguards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
   P ∗ □ (X &&{ F }&&$> Q) ⊢ □ (X &&{ F }&&$> (Q ∗ P)).
 Proof.
-  iIntros "[#p #g]".
+  iIntros "[#p [#g #kf]]".
   iModIntro.
   unfold fguards, guards_with.
-  iIntros (T) "xk".
-  iMod ("g" $! T with "xk") as "[q m]".
-  iModIntro.
-  iFrame "q". iFrame "p".
-  iIntros "[q _]".
-  iApply "m". iFrame "q".
+  iSplit. {
+    iIntros (T) "xk".
+    iMod ("g" $! T with "xk") as "[q m]".
+    iModIntro.
+    iFrame "q". iFrame "p".
+    iIntros "[q _]".
+    iApply "m". iFrame "q".
+  }
+  iFrame "kf".
 Qed.
 
-(*
-Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
-    (qrx: (Q ∧ R ⊢ own γ x))
-    : (
-      (P &&{F}&&$> Q) ∗ (P &&{F}&&$> R)
-      ⊢
-      (P &&{F}&&$> own γ x)
-    ). 
+Lemma fguards_weaken_mask_1 P1 P2 E1 E2 :
+  (P1 &&{ E1 }&&$> P2) ∗ (know_bulk_inv E2) ⊢
+  (P1 &&{ E1 ∪ E2 }&&$> P2).
 Proof.
-  iIntros "[pq pr]".
   unfold fguards, guards_with.
-  iIntros (T).
-  iDestruct ("pq" $! T) as "pq".
-  iDestruct ("pr" $! T) as "pr".
-  *)
-    
+  iIntros "[[x k1] k2]".
+  iSplit. {
+    iIntros (T) "[p q]".
+    rewrite (gset_diff_union E1 (E1 ∪ E2)).
+    {
+      iDestruct ("x" $! (T ∗ storage_bulk_inv ((E1 ∪ E2) ∖ E1))%I) as "x".
+      rewrite storage_bulk_inv_union.
+      {
+        iDestruct ("x" with "[p q]") as "x".
+        {
+          iFrame "p".
+          iIntros "p".
+          iDestruct ("q" with "p") as "[[e diff] t]".
+          iFrame.
+        }
+        {
+          iMod "x" as "[q k]".
+          iFrame "q".
+          iModIntro. iIntros "q".
+          iDestruct ("k" with "q") as "[e [t diff]]".
+          iFrame.
+        }
+      }
+      set_solver.
+    }
+    set_solver.
+  }
+  replace E2 with ((E2 ∩ E1) ∪ (E2 ∖ E1)) at 1.
+  - rewrite know_bulk_inv_union.
+     + iDestruct "k2" as "[_ k2]".
+        replace (E1 ∪ E2) with (E1 ∪ (E2 ∖ E1)).
+        * rewrite know_bulk_inv_union. { iFrame "k1". iFrame "k2". } 
+          set_solver.
+        * apply union_diff_eq_union.
+     + set_solver.
+  - apply intersect_union_diff_eq.
+Qed.
+
+Lemma fguards_weaken_mask_2 P1 P2 Q1 Q2 E1 E2 :
+  (P1 &&{ E1 }&&$> P2) ∗ (Q1 &&{ E2 }&&$> Q2) ⊢
+  (P1 &&{ E1 ∪ E2 }&&$> P2) ∗ (Q1 &&{ E1 ∪ E2 }&&$> Q2).
+Proof.
+  unfold fguards.
+  iIntros "[[g1 #k1] [g2 #k2]]".
+  iSplitL "g1".
+  { iApply fguards_weaken_mask_1. iFrame "k2". unfold fguards.
+        iFrame "g1". iFrame "k1". }
+  { replace (E1 ∪ E2) with (E2 ∪ E1) by set_solver.
+    iApply fguards_weaken_mask_1. iFrame "k1". unfold fguards.
+        iFrame "g2". iFrame "k2". }
+Qed.
 
 (**** guards ****)
 
@@ -508,7 +622,6 @@ Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
     
 Notation "P &&{ E }&&> Q" := (guards P Q E)
   (at level 99, E at level 50, Q at level 200).
-  
   
 Global Instance guards_proper :
     Proper ((≡) ==> (≡) ==> (≡) ==> (≡)) guards.
@@ -539,8 +652,8 @@ Proof.
   iModIntro.
   iDestruct "x" as (mx) "[%condx x]".
   iDestruct "y" as (my) "[%condy y]".
-  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "x") as "x1". { set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (mx ∪ my) with "y") as "y1". { set_solver. }
+  iDestruct (fguards_weaken_mask_2 P Q Q R mx my with "[x y]") as "[x1 y1]".
+  { iFrame "x". iFrame "y". }
   iExists (mx ∪ my).
   iSplit.
   { iPureIntro. set_solver. }
@@ -703,8 +816,8 @@ Proof.
   iExists (m1 ∪ m2).
   iModIntro. iSplit.
   { iPureIntro. set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "q") as "q1". { set_solver. }
-  iDestruct (fguards_mask_weaken _ _ _ (m1 ∪ m2) with "r") as "r1". { set_solver. }
+  iDestruct (fguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". 
+  { iFrame "q". iFrame "r". }
   iApply (fguards_and P Q R γ x (m1 ∪ m2)); trivial.
   iFrame "#".
 Qed.
