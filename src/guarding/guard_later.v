@@ -10,7 +10,7 @@ From iris.base_logic.lib Require Export wsat invariants.
 From iris.algebra Require Import auth.
 
 From iris.proofmode Require Export tactics.
-Require Import Two.guard.
+Require Import guarding.guard.
 
 Section GuardLater.
 

@@ -1,5 +1,5 @@
 From iris.base_logic.lib Require Import invariants.
-From twolang Require Import lang simp adequacy primitive_laws.
+From lang Require Import lang simp adequacy primitive_laws.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -7,17 +7,17 @@ From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
-From TwoExamples Require Import rwlock.
-From TwoExamples Require Import rwlock_logic.
-From TwoExamples Require Import forever.
-From TwoExamples Require Import hash_table.
-From Two Require Import guard_later.
-Require Import Two.guard.
-From TwoExamples Require Import seqs.
-From TwoExamples Require Import hash_table_logic.
-From TwoExamples Require Import hash_table_raw.
-From twolang Require Import heap_ra.
-From TwoExamples Require Import misc_tactics.
+From examples Require Import rwlock.
+From examples Require Import rwlock_logic.
+From examples Require Import forever.
+From examples Require Import hash_table.
+From guarding Require Import guard_later.
+Require Import guarding.guard.
+From examples Require Import seqs.
+From examples Require Import hash_table_logic.
+From examples Require Import hash_table_raw.
+From lang Require Import heap_ra.
+From examples Require Import misc_tactics.
 
 Require Import coq_tricks.Deex.
 Require Import cpdt.CpdtTactics.

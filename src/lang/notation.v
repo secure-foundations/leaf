@@ -1,5 +1,5 @@
 From stdpp Require Export binders strings.
-From twolang Require Export lang.
+From lang Require Export lang.
 From iris Require Import options.
 
 (*|

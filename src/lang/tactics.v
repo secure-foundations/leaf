@@ -1,5 +1,5 @@
 From stdpp Require Import fin_maps.
-From twolang Require Import lang.
+From lang Require Import lang.
 From iris Require Import options.
 
 (*|

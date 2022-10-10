@@ -12,7 +12,7 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 
-Require Import Two.conjunct_own_rule.
+Require Import guarding.conjunct_own_rule.
 
 Section AuthFragUtil.
 

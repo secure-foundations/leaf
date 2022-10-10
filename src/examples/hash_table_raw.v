@@ -8,8 +8,8 @@ From iris.algebra Require Export gmap.
 Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
 
-Require Import TwoExamples.gmap_option.
-Require Import TwoExamples.misc_tactics.
+Require Import examples.gmap_option.
+Require Import examples.misc_tactics.
 
 Definition ht_fixed_size: nat := 4.
 

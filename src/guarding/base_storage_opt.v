@@ -11,8 +11,8 @@ From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 *)
 
-Require Import Two.inved.
-Require Import Two.protocol.
+Require Import guarding.inved.
+Require Import guarding.protocol.
 
 Inductive BaseOpt (S: Type) :=
   | Empty : BaseOpt S

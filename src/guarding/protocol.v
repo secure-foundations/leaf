@@ -13,9 +13,9 @@ From stdpp Require Export namespaces.
 
 (*From iris.base_logic.lib Require Export wsat.*)
 
-Require Import Two.inved.
-Require Import Two.guard.
-Require Import Two.auth_frag_util.
+Require Import guarding.inved.
+Require Import guarding.guard.
+Require Import guarding.auth_frag_util.
 
 
 (*

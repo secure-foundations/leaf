@@ -1,38 +1,38 @@
--Q src/two Two
+-Q src/guarding guarding
 
-src/two/auth_frag_util.v
-src/two/conjunct_own_rule.v
-src/two/separable_and.v
-src/two/guard.v
-src/two/guard_later.v
-src/two/inved.v
-src/two/protocol.v
-src/two/base_storage_opt.v
+src/guarding/auth_frag_util.v
+src/guarding/conjunct_own_rule.v
+src/guarding/separable_and.v
+src/guarding/guard.v
+src/guarding/guard_later.v
+src/guarding/inved.v
+src/guarding/protocol.v
+src/guarding/base_storage_opt.v
 
--Q src/twolang twolang
+-Q src/lang lang
 
-src/twolang/adequacy.v
-src/twolang/class_instances.v
-src/twolang/heap_ra.v
-src/twolang/lang.v
-src/twolang/notation.v
-src/twolang/primitive_laws.v
-src/twolang/proofmode.v
-src/twolang/simp.v
-src/twolang/tactics.v
+src/lang/adequacy.v
+src/lang/class_instances.v
+src/lang/heap_ra.v
+src/lang/lang.v
+src/lang/notation.v
+src/lang/primitive_laws.v
+src/lang/proofmode.v
+src/lang/simp.v
+src/lang/tactics.v
 
--Q src/two-examples TwoExamples
+-Q src/examples examples
 
-src/two-examples/rwlock_logic.v
-src/two-examples/rwlock.v
-src/two-examples/forever.v
-src/two-examples/gmap_option.v
-src/two-examples/hash_table_raw.v
-src/two-examples/misc_tactics.v
-src/two-examples/hash_table_logic.v
-src/two-examples/hash_table.v
-src/two-examples/seqs.v
-src/two-examples/main.v
+src/examples/rwlock_logic.v
+src/examples/rwlock.v
+src/examples/forever.v
+src/examples/gmap_option.v
+src/examples/hash_table_raw.v
+src/examples/misc_tactics.v
+src/examples/hash_table_logic.v
+src/examples/hash_table.v
+src/examples/seqs.v
+src/examples/main.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality

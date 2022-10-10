@@ -1,14 +1,14 @@
 From iris.base_logic.lib Require Import invariants.
-From twolang Require Import lang simp adequacy primitive_laws.
+From lang Require Import lang simp adequacy primitive_laws.
 Require Import cpdt.CpdtTactics.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
-From twolang Require Import notation tactics class_instances.
-From twolang Require Import heap_ra.
-From twolang Require Import lang.
+From lang Require Import notation tactics class_instances.
+From lang Require Import heap_ra.
+From lang Require Import lang.
 From iris Require Import options.
 
 (* really crummy sequence library *)

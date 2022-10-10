@@ -1,10 +1,10 @@
 From iris.program_logic Require Export weakestpre.
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
-From twolang Require Import notation tactics class_instances.
-From twolang Require Import heap_ra.
+From lang Require Import notation tactics class_instances.
+From lang Require Import heap_ra.
 From iris Require Import options.
-Require Import Two.guard.
+Require Import guarding.guard.
 
 (*|
 This is one of the most interesting parts of the instantiation. Now that we have

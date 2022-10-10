@@ -1,4 +1,4 @@
-From twolang Require Import notation tactics.
+From lang Require Import notation tactics.
 From iris.prelude Require Import options.
 
 (*|

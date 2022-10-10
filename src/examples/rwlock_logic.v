@@ -1,7 +1,7 @@
-Require Import Two.base_storage_opt.
-Require Import Two.protocol.
-Require Import Two.inved.
-Require Import Two.guard.
+Require Import guarding.base_storage_opt.
+Require Import guarding.protocol.
+Require Import guarding.inved.
+Require Import guarding.guard.
 
 Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.

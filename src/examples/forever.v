@@ -1,9 +1,9 @@
 From iris.base_logic.lib Require Import invariants.
-From twolang Require Import lang simp adequacy primitive_laws.
-From TwoExamples Require Import rwlock_logic.
+From lang Require Import lang simp adequacy primitive_laws.
+From examples Require Import rwlock_logic.
 Require Import cpdt.CpdtTactics.
 
-Require Import Two.guard.
+Require Import guarding.guard.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -14,15 +14,15 @@ From iris.proofmode Require Import reduction.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
-From twolang Require Import notation tactics class_instances.
-From twolang Require Import heap_ra.
-From twolang Require Import lang.
+From lang Require Import notation tactics class_instances.
+From lang Require Import heap_ra.
+From lang Require Import lang.
 From iris Require Import options.
 
-Require Import Two.guard_later.
-Require Import TwoExamples.misc_tactics.
-Require Import Two.protocol.
-Require Import Two.inved.
+Require Import guarding.guard_later.
+Require Import examples.misc_tactics.
+Require Import guarding.protocol.
+Require Import guarding.inved.
 From iris.algebra Require Import auth.
 
 Context {Σ: gFunctors}.

@@ -5,10 +5,10 @@ From stdpp Require Import gmap.
 
 From iris.algebra Require Export gmap.
 
-Require Import TwoExamples.hash_table_raw.
+Require Import examples.hash_table_raw.
 Require Import iris.base_logic.lib.own.
-Require Import Two.guard.
-Require Import Two.conjunct_own_rule.
+Require Import guarding.guard.
+Require Import guarding.conjunct_own_rule.
 
 Global Instance ht_unit : Unit HT := ht_unit.
 Global Instance ht_equiv : Equiv HT := λ a b , a = b.

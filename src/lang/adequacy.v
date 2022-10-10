@@ -1,5 +1,5 @@
 From iris.program_logic Require Export adequacy.
-From twolang Require Import simp heap_ra.
+From lang Require Import simp heap_ra.
 From iris.prelude Require Import options.
 
 (*|
