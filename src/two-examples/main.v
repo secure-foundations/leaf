@@ -8,7 +8,7 @@ From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
 From TwoExamples Require Import rwlock.
-From Two Require Import rwlock.
+From TwoExamples Require Import rwlock_logic.
 From TwoExamples Require Import forever.
 From TwoExamples Require Import hash_table.
 From Two Require Import guard_later.

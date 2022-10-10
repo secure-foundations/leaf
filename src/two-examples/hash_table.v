@@ -8,7 +8,7 @@ From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
 From TwoExamples Require Import rwlock.
-From Two Require Import rwlock.
+From TwoExamples Require Import rwlock_logic.
 From Two Require Import guard_later.
 Require Import Two.guard.
 From TwoExamples Require Import seqs.
