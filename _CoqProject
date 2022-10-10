@@ -8,7 +8,6 @@ src/two/guard_later.v
 src/two/inved.v
 src/two/protocol.v
 src/two/base_storage_opt.v
-src/two/rwlock.v
 
 -Q src/twolang twolang
 
@@ -24,6 +23,7 @@ src/twolang/tactics.v
 
 -Q src/two-examples TwoExamples
 
+src/two-examples/rwlock_logic.v
 src/two-examples/rwlock.v
 src/two-examples/forever.v
 src/two-examples/gmap_option.v

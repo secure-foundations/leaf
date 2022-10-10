@@ -1,6 +1,6 @@
 From iris.base_logic.lib Require Import invariants.
 From twolang Require Import lang simp adequacy primitive_laws.
-From Two Require Import rwlock.
+From TwoExamples Require Import rwlock_logic.
 Require Import cpdt.CpdtTactics.
 
 Require Import Two.guard.
