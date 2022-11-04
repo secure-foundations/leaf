@@ -29,6 +29,11 @@ Definition loop_until e : lang.expr :=
 
 Definition new_rwlock : lang.expr :=
   Pair (ref #0) (ref #0).
+  
+Definition free_rwlock : lang.expr :=
+  λ: "rw" ,
+    Free (Fst "rw") ;;
+    Free (Snd "rw").
 
 Definition acquire_exc : lang.val :=
   λ: "rw" ,
@@ -147,6 +152,29 @@ Proof.
   iApply "Q".
   iModIntro. unfold IsRwLock. unfold rw_atomic_inv.
   iFrame. iExists false, 0, x. iFrame.
+Qed.
+
+Lemma wp_free_rwlock γ (rwlock: lang.val) (storage_fn: S -> iProp Σ) :
+  {{{ IsRwLock γ rwlock storage_fn }}} free_rwlock rwlock
+  {{{ RET #() ; True }}}.
+Proof.
+  iIntros (Phi) "H Q".
+  unfold free_rwlock.
+  iDestruct (rwlock_get_struct _ _ _ with "H") as "%rwlock_form".
+  destruct rwlock_form as [exc_loc [rw_loc rwlock_form]]. subst rwlock.
+  unfold IsRwLock, rw_atomic_inv.
+  iDestruct "H" as "[rli e]".
+  iDestruct "e" as (exc rc x) "[c [mem_e mem_rc]]".
+  
+  wp_pures.
+  wp_apply (wp_free with "mem_e").
+  iIntros.
+  
+  wp_pures.
+  wp_apply (wp_free with "mem_rc").
+  iIntros.
+  
+  iApply "Q". done.
 Qed.
 
 Lemma loop_w_invariant e (P Q R : iProp Σ)

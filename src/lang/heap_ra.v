@@ -131,6 +131,17 @@ Section gen_heap.
     { eapply gmap_view_update. }
     iModIntro. iFrame.
   Qed.
+  
+  Lemma gen_heap_free σ l v1 v2 :
+    gen_heap_interp σ -∗ l ↦ v1 ==∗ gen_heap_interp (delete l σ).
+  Proof.
+    iIntros "Hσ Hl".
+    rewrite /gen_heap_interp mapsto_eq /mapsto_def.
+    iDestruct (own_valid_2 with "Hσ Hl") as %[_ Hl]%gmap_view_both_valid_L.
+    iMod (own_update_2 with "Hσ Hl") as "Hσ".
+    { eapply gmap_view_delete. }
+    iModIntro. iFrame.
+  Qed.
 End gen_heap.
 
 Lemma gen_heap_init `{Countable L, !gen_heapGpreS L V Σ} σ :

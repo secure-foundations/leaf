@@ -55,6 +55,7 @@ Inductive un_op :=
 
 Inductive heap_op :=
   | AllocOp
+  | FreeOp 
   | LoadOp
   | StoreOp
   | FaaOp
@@ -191,8 +192,8 @@ Qed.
 Global Instance heap_op_countable : Countable heap_op.
 Proof.
   refine (inj_countable'
-            (λ op, match op with | AllocOp => 0 | LoadOp => 1 | StoreOp => 2 | FaaOp => 3 | CasOp => 4 end)
-            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _ | 4 => _
+            (λ op, match op with | AllocOp => 0 | LoadOp => 1 | StoreOp => 2 | FaaOp => 3 | CasOp => 4 | FreeOp => 5 end)
+            (λ n, match n with | 0 => _ | 1 => _ | 2 => _ | 3 => _ | 4 => _ | 5 => _
                           | _ => ltac:(constructor) end) _).
   destruct x; eauto.
 Qed.
@@ -436,6 +437,12 @@ Inductive head_step : expr → state → list observation → expr → state →
     head_step (HeapOp AllocOp (Val v) (Val $ LitV LitUnit) (Val $ LitV LitUnit)) σ
               []
               (Val $ LitV $ LitInt l) (state_upd_heap <[l := v]> σ)
+              []
+  | FreeS v σ l :
+    σ.(heap) !! l = Some v →
+    head_step (HeapOp FreeOp (Val $ LitV $ LitInt l) (Val $ LitV LitUnit) (Val $ LitV LitUnit)) σ
+              []
+              (Val $ LitV $ LitUnit) (state_upd_heap (delete l) σ)
               []
   | LoadS v σ l :
     σ.(heap) !! l = Some v →

@@ -30,6 +30,7 @@ Notation Pair := (BinOp PairOp).
 Notation Fst := (UnOp FstOp).
 Notation Snd := (UnOp SndOp).
 Notation Alloc e := (HeapOp AllocOp e (Val (LitV LitUnit)) (Val (LitV LitUnit))).
+Notation Free e := (HeapOp FreeOp e (Val (LitV LitUnit)) (Val (LitV LitUnit))).
 Notation Load e := (HeapOp LoadOp e (Val (LitV LitUnit)) (Val (LitV LitUnit))).
 Notation Store e1 e2 := (HeapOp StoreOp e1 e2 (Val (LitV LitUnit))).
 Notation FAA e1 e2 := (HeapOp FaaOp e1 e2 (Val (LitV LitUnit))).

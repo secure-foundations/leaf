@@ -116,6 +116,18 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+Lemma wp_free s E l v :
+  {{{ l ↦ v }}} Free (Val $ LitV $ LitInt l) @ s; E
+  {{{ RET #(); True }}}.
+Proof.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
+  iSplit; first by eauto with head_step.
+  iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
+  iMod (gen_heap_free _ _ _ v with "Hσ Hl") as "Hσ".
+  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+Qed.
+
 Lemma wp_load s E l dq v :
   {{{ l ↦{dq} v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; l ↦{dq} v }}}.
 Proof.
