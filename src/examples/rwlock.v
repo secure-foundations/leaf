@@ -30,7 +30,7 @@ Definition loop_until e : lang.expr :=
 Definition new_rwlock : lang.expr :=
   Pair (ref #0) (ref #0).
   
-Definition free_rwlock : lang.expr :=
+Definition free_rwlock : lang.val :=
   λ: "rw" ,
     Free (Fst "rw") ;;
     Free (Snd "rw").
