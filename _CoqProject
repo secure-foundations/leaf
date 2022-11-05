@@ -33,6 +33,7 @@ src/examples/hash_table_logic.v
 src/examples/hash_table.v
 src/examples/seqs.v
 src/examples/main.v
+src/examples/fractional.v
 
 -arg -w -arg -ssr-search-moved
 -arg -w -arg -deprecated-hint-without-locality
