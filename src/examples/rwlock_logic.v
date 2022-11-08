@@ -19,16 +19,16 @@ From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 From iris.base_logic.lib Require Export invariants.
 
-Inductive Free (S: Type) `{!EqDecision S} :=
-  | Empty : Free S
-  | Have : S -> nat -> Free S
-  | Conflict : Free S
+Inductive AgN (S: Type) `{!EqDecision S} :=
+  | Empty : AgN S
+  | Have : S -> nat -> AgN S
+  | Conflict : AgN S
 .
 Arguments Empty {_}%type_scope {EqDecision0}.
 Arguments Have {_}%type_scope {EqDecision0} _ _%nat_scope.
 Arguments Conflict {_}%type_scope {EqDecision0}.
 
-Instance free_op {S} `{!EqDecision S} : Op (Free S) := λ a b , match a, b with
+Instance free_op {S} `{!EqDecision S} : Op (AgN S) := λ a b , match a, b with
   | Empty, y => y
   | Conflict, y => Conflict
   | Have m x, Empty => Have m x
@@ -79,7 +79,7 @@ Proof. unfold Assoc. intros. unfold exc_op. destruct x, y, z; trivial.
 Qed.
 
 Inductive RwLock (S: Type) `{!EqDecision S} :=
-  | Rwl : (Exc (bool * Z * S)) -> Exc () -> Exc () -> nat -> Free S -> RwLock S
+  | Rwl : (Exc (bool * Z * S)) -> Exc () -> Exc () -> nat -> AgN S -> RwLock S
 .
 Arguments Rwl {_}%type_scope {EqDecision0} _ _ _ _%nat_scope _.
 
@@ -124,7 +124,7 @@ Definition ShPending {S: Type} `{!EqDecision S}: RwLock S :=
 Definition ShGuard {S: Type} `{!EqDecision S} (m: S) : RwLock S :=
   Rwl Unknown Unknown Unknown 0 (Have m 0).
   
-Definition free_count {S} `{!EqDecision S} (m: Free S) : nat :=
+Definition free_count {S} `{!EqDecision S} (m: AgN S) : nat :=
   match m with
   | Empty => 0
   | Have _ n => n + 1
@@ -164,7 +164,7 @@ Proof.
   - destruct e0; trivial.
   - destruct e1; trivial.
   - lia.
-  - destruct f; trivial.
+  - destruct a; trivial.
 Qed.
 
 Lemma rw_unit_dot_left (S: Type) `{!EqDecision S} (a : RwLock S) :
@@ -188,9 +188,9 @@ Proof.
   unfold storage_protocol_update. unfold pinv, rwlock_pinv, interp, rwlock_interp in *. intros p H.
   split.
     + unfold Central, ExcPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
     + unfold Central, ExcPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
 Qed.
 
 Lemma rw_mov_exc_acquire {S} `{!EqDecision S} (exc: bool) (x: S)
@@ -202,13 +202,13 @@ Proof.
   unfold storage_protocol_withdraw. intro p. intro H. split.
   - unfold pinv, rwlock_pinv, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
       unfold "⋅", exc_op, free_op in *.
-      + destruct e, e0, e1, f; unfold pinv, rwlock_pinv in *; intuition; try destruct exc; try destruct u; intuition; unfold free_count in *; try lia; intuition; try discriminate.
+      + destruct e, e0, e1, a; unfold pinv, rwlock_pinv in *; intuition; try destruct exc; try destruct u; intuition; unfold free_count in *; try lia; intuition; try discriminate.
   - unfold pinv, rwlock_pinv, interp, rwlock_interp in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
       destruct p. unfold "⋅", free_op, exc_op in *. destruct e, e1, e0; trivial;
         try (rewrite unit_dot);
         try (rewrite unit_dot_left);
         try (apply reflex);
-        unfold pinv, rwlock_pinv in H; destruct f; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try (inversion H).
+        unfold pinv, rwlock_pinv in H; destruct a; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try (inversion H).
 Qed.
 
 Lemma rw_mov_exc_release {S} `{!EqDecision S} (exc: bool) (rc: Z) (x y: S)
@@ -220,13 +220,13 @@ Proof.
   unfold storage_protocol_deposit. intro p. intro H. split.
   - unfold pinv, rwlock_pinv, interp, rwlock_interp, "⋅", rw_op, Central, ExcGuard, ExcPending in *. destruct p.
       unfold "⋅", exc_op, free_op in *. 
-      destruct e, e0, e1, f; unfold pinv, rwlock_pinv; intuition; try destruct exc; try destruct u; crush.
+      destruct e, e0, e1, a; unfold pinv, rwlock_pinv; intuition; try destruct exc; try destruct u; crush.
   - unfold pinv, rwlock_pinv, interp, rwlock_interp in *. unfold "⋅", Central, ExcPending, ExcGuard, rw_op in *.
       destruct p. unfold "⋅", free_op, exc_op in *. destruct e, e1, e0; trivial;
         try (rewrite unit_dot);
         try (rewrite unit_dot_left);
         try (apply reflex);
-        unfold pinv, rwlock_pinv in H; destruct f; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try discriminate.
+        unfold pinv, rwlock_pinv in H; destruct a; try (destruct u); try (destruct exc); unfold ε, rwlock_unit in *; intuition; try discriminate.
 Qed.
 
 Lemma rw_mov_shared_begin {S} `{!EqDecision S} (exc: bool) (rc: Z) (x: S)
@@ -237,9 +237,9 @@ Proof.
   unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
   split.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f; try contradiction; try destruct exc; intuition; try lia.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, a; try contradiction; try destruct exc; intuition; try lia.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
 Qed.
 
 Lemma rw_mov_shared_acquire {S} `{!EqDecision S} (rc: Z) (x: S)
@@ -250,10 +250,10 @@ Proof.
   unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
   split.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending, ShGuard in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f; try contradiction; intuition; try lia; try discriminate.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, a; try contradiction; intuition; try lia; try discriminate.
         case_decide; intuition; try lia; try discriminate.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending, ShGuard in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
 Qed.
 
 Lemma rw_mov_shared_release {S} `{!EqDecision S} (exc: bool) (rc: Z) (x y: S)
@@ -264,9 +264,9 @@ Proof.
   unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
   split.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShGuard in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f, exc; try contradiction; try case_decide; intuition; try lia; try discriminate; try subst x; trivial.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, a, exc; try contradiction; try case_decide; intuition; try lia; try discriminate; try subst x; trivial.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShGuard in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
 Qed.
 
 Lemma rw_mov_shared_retry {S} `{!EqDecision S} (exc: bool) (rc: Z) (x: S)
@@ -277,9 +277,9 @@ Proof.
   unfold storage_protocol_update. intros p H. unfold pinv, rwlock_pinv, interp, rwlock_interp in *.
   split.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, f, exc; try contradiction; try case_decide; intuition; try lia.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op, free_count in *. destruct e, e0, e1, a, exc; try contradiction; try case_decide; intuition; try lia.
     + unfold pinv, rwlock_pinv in *. unfold Central, ShPending in *. destruct p.
-      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, f; try contradiction; crush.
+      unfold "⋅", rw_op in *. unfold "⋅", exc_op, free_op in *. destruct e, e0, e1, a; try contradiction; crush.
 Qed.
 
 Lemma rw_mov_shared_borrow {S} `{!EqDecision S} (x: S)
@@ -287,7 +287,7 @@ Lemma rw_mov_shared_borrow {S} `{!EqDecision S} (x: S)
 Proof.
   unfold storage_protocol_guards. intros p H. unfold "≼". exists ε. rewrite base_opt_unit_right_id.
   unfold ShGuard, "⋅", rw_op, pinv, rwlock_pinv, interp, rwlock_interp  in *. destruct p.
-  unfold "⋅", exc_op, free_op in *. unfold pinv, rwlock_pinv in H. destruct e, e0, e1, f; try contradiction;
+  unfold "⋅", exc_op, free_op in *. unfold pinv, rwlock_pinv in H. destruct e, e0, e1, a; try contradiction;
       try (case_decide); try contradiction; try (destruct p); try (destruct p);
       try intuition; try (destruct u); try contradiction; unfold free_count in *; try lia;
       intuition; try discriminate; destruct b; intuition; intuition;
@@ -296,7 +296,7 @@ Proof.
       - destruct u0. intuition.
 Qed.
 
-Global Instance free_eqdec {S} `{!EqDecision S} : EqDecision (Free S).
+Global Instance free_eqdec {S} `{!EqDecision S} : EqDecision (AgN S).
 Proof. solve_decision. Qed.
 
 Global Instance exc_eqdec {S} `{!EqDecision S} : EqDecision (Exc S).
