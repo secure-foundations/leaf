@@ -88,16 +88,28 @@ Definition option_ra_mixin {T} `{Equiv T, PCore T, Op T, Valid T} {equ: @Equival
 Proof.
   destruct m. split.
   - intro. unfold Proper, "==>". intros. destruct x, x0, y; trivial.
-      + unfold "⋅", option_op. Admitted. (*inversion H3.
-          apply Some_proper. apply ra_op_proper. trivial.
-      + inversion H3.
-      + inversion H3.
+      + unfold "⋅", option_op. unfold "≡", option_equiv.
+          unfold "≡", option_equiv in H3.
+          apply ra_op_proper. trivial.
+      + unfold "≡", option_equiv in H3. contradiction.
+      + unfold "≡", option_equiv in H3. contradiction.
+      + unfold "≡", "⋅", option_equiv, option_op. trivial.
   - intros x y cx h j. unfold pcore, option_pcore in j. discriminate.
   - unfold Proper, "==>", impl. intros x y J. destruct x, y; trivial.
-      + unfold "✓", option_valid. apply ra_validN_proper. inversion J. trivial.
-      + inversion J.
-      + inversion J.
-  - Admitted.*)
+      + unfold "✓", option_valid. apply ra_validN_proper.
+          unfold "≡", option_equiv in J. trivial.
+      + intro. unfold "✓", option_valid. trivial.
+      + unfold "≡", option_equiv in J. contradiction.
+  - unfold Assoc. intros x y z. destruct x, y, z; unfold "⋅", option_op, "≡", option_equiv;
+      trivial.
+  - unfold Comm. intros x y. destruct x, y; unfold "⋅", option_op, "≡", option_equiv;
+      trivial.
+  - intros x cx X. unfold pcore, option_pcore in X. discriminate.
+  - intros x cx X. unfold pcore, option_pcore in X. discriminate.
+  - intros x y cx r X. unfold pcore, option_pcore in X. discriminate.
+  - unfold "✓", option_valid, "⋅", option_op. intros x y X. destruct x, y; trivial.
+      apply (ra_valid_op_l _ _ X). 
+Qed.
   
 Local Instance frac_valid_instance : Valid Qp := λ x, True.
 Local Instance frac_pcore_instance : PCore Qp := λ _, None.
@@ -105,10 +117,20 @@ Local Instance frac_op_instance : Op Qp := λ x y, (x + y)%Qp.
 Local Instance frac_equiv_instance : Equiv Qp := λ x y, x = y.
 
 Local Instance frac_equivalence_instance : @Equivalence Qp (≡).
-Proof. Admitted.
+Proof. split.
+  - unfold Reflexive, equiv, frac_equiv_instance. intro x. trivial.
+  - unfold Symmetric, equiv, frac_equiv_instance. intros x y a. symmetry. trivial.
+  - unfold Transitive, equiv, frac_equiv_instance. intros x y z a b. subst x. trivial.
+Qed.
 
 Local Instance option_equivalence_instance {T} `{Equiv T} {equ: @Equivalence T (≡)} : @Equivalence (option T) (≡).
-Proof. Admitted.
+Proof. split.
+  - unfold Reflexive, equiv, option_equiv. intro x. destruct x; trivial.
+  - unfold Symmetric, equiv, option_equiv. intros x y a. destruct x, y; trivial.
+  - unfold Transitive, equiv, option_equiv. intros x y z a b. destruct x, y, z; trivial.
+    + setoid_rewrite a. trivial.
+    + contradiction.
+Qed.
   
 Definition frac_ra_mixin : RAMixin Qp.
 Proof.
@@ -132,7 +154,16 @@ Definition frac_protocol_mixin : @ProtocolMixin (option Qp)
       option_equiv option_pcore option_op option_valid _ _ _.
 Proof. split.
   - exact (option_ra_mixin frac_ra_mixin).
-  - Admitted.
+  - unfold LeftId. intros x. unfold ε, option_unit, "⋅", option_op, "≡", option_equiv.
+      destruct x; trivial.
+  - intros p X. unfold "✓", option_valid. destruct p; trivial. unfold "✓", frac_valid_instance.
+      trivial.
+  - unfold Proper, "==>", impl. intros x y X. unfold "≡", option_equiv in X.
+      destruct x, y; trivial.
+      + unfold "≡", frac_equiv_instance in X.  subst q. trivial.
+      + contradiction.
+      + contradiction.
+Qed.
   
 Local Instance frac_interp_instance : Interp (option Qp) nat := λ qopt , 
   match qopt with
@@ -177,10 +208,29 @@ Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
     | S k => (bi_sep P (sep_pow k P))%I
   end. 
 
+Lemma sep_pow_additive (a b : nat) (Q: iProp Σ)
+    : sep_pow (a + b) Q ≡ (sep_pow a Q ∗ sep_pow b Q)%I.
+Proof.
+  induction b.
+  - simpl. replace (a + 0) with a by lia.
+    iIntros. iSplit. { iIntros "a".  iFrame. } iIntros "[a b]". iFrame.
+  - simpl. replace (a + S b) with (S (a + b)) by lia. simpl.
+    rewrite IHb. iIntros. iSplit.
+    { iIntros "[a [b c]]". iFrame. }
+    { iIntros "[a [b c]]". iFrame. }
+Qed.
+
 Definition family (Q: iProp Σ) (n: nat) : iProp Σ := sep_pow n Q.
   
 Lemma wf_prop_map_family (Q: iProp Σ) : wf_prop_map (family Q).
-Proof. Admitted.
+Proof.  split.
+  { unfold Proper, "==>", nat_equiv_instance. intros x y e. unfold "≡" in e.
+    subst x. trivial.
+  }
+  split.
+  { unfold ε, nat_unit_instance. unfold family, sep_pow. trivial. }
+  intros a b x. unfold "⋅", nat_op_instance. unfold family. apply sep_pow_additive.
+Qed.
 
 Definition m (γ: gname) (Q: iProp Σ) := maps γ (family Q).
 
