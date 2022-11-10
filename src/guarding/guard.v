@@ -779,6 +779,8 @@ Proof.
   iFrame.
 Qed.
 
+(* Later-Guard *)
+
 Lemma guards_remove_later (P : iProp Σ) E
     (tl: Timeless P)
     : ⊢ (▷ P) &&{E}&&> P.

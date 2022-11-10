@@ -72,6 +72,8 @@ Qed.
 
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}. 
+
+(* Later-Pers-Guard *)
     
 Definition extract_later1 (X T P : iProp Σ) E F
     (pers: Persistent P)

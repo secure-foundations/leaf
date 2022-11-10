@@ -16,7 +16,7 @@ From stdpp Require Export namespaces.
 Require Import guarding.inved.
 Require Import guarding.guard.
 Require Import guarding.auth_frag_util.
-
+Require Import guarding.separable_and.
 
 (*
 Context {Σ: gFunctors}.
@@ -746,6 +746,24 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     apply (fupd_singleton_mask_frame γ); trivial.
     apply logic_update; trivial.
+  Qed.
+  
+  (* SP-PointProp *)
+  
+  Lemma point_prop_p_own (γ: gname) (p: P) : point_prop (p_own γ p).
+  Proof.
+    unfold p_own. apply point_prop_own.
+  Qed.
+  
+  (* SP-Valid *)
+  
+  Lemma p_own_valid (γ: gname) (p: P)
+      : (p_own γ p) ⊢ ⌜ ∃ q , pinv (p ⋅ q) ⌝.
+  Proof.
+    iIntros "x".  iDestruct (own_valid with "x") as "%x". iPureIntro.
+    generalize x. clear x.
+    rewrite auth_frag_valid.
+    trivial.
   Qed.
  
 End StorageLogic.
