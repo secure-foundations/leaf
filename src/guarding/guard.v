@@ -166,12 +166,49 @@ Proof.
   setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
 
-Definition fguards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
-    (qrx: (Q ∧ R ⊢ own γ x))
+Definition fguards_impl (P Q S : iProp Σ) F
+    (point: point_prop S)
+    (qrx: (Q ⊢ S))
+    : (
+      (P &&{F}&&$> Q)
+      ⊢
+      (P &&{F}&&$> S)
+    ). 
+Proof.
+  iIntros "[pq kf]".
+  unfold fguards, guards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iIntros "k".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ◇ S)%I with "[pq]" as "X".
+  {
+    iIntros "l".
+    iAssert (◇ Q)%I with "[pq l]" as "J". {
+      iMod ("pq" with "l") as "[q j]". iModIntro. iFrame "q".
+    }
+    iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
+  } 
+  iDestruct (own_separates_out_except0_point _ S with "[X k]") as "J".
+  { trivial. }
+  { iFrame "X". iFrame "k". }
+  iDestruct "J" as "[J T]".
+  iMod "J" as "J".
+  iModIntro.
+  iFrame "J".
+  iIntros "o".
+  iDestruct ("T" with "o") as "[p m]".
+  iApply "m".
+  iFrame "p".
+Qed.
+
+Definition fguards_and (P Q R S : iProp Σ) F
+    (point: point_prop S)
+    (qrx: (Q ∧ R ⊢ S))
     : (
       (P &&{F}&&$> Q) ∗ (P &&{F}&&$> R)
       ⊢
-      (P &&{F}&&$> own γ x)
+      (P &&{F}&&$> S)
     ). 
 Proof.
   iIntros "[[pq kf] [pr _]]".
@@ -181,7 +218,7 @@ Proof.
   iDestruct ("pq" $! T) as "pq".
   iDestruct ("pr" $! T) as "pr".
   iIntros "k".
-  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ◇ (own γ x))%I with "[pq pr]" as "X".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ◇ S)%I with "[pq pr]" as "X".
   {
     iIntros "l".
     iAssert (◇ (Q ∧ R))%I with "[pq pr l]" as "J". {
@@ -192,7 +229,8 @@ Proof.
     }
     iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
   } 
-  iDestruct (own_separates_out_except0 γ x _ with "[X k]") as "J".
+  iDestruct (own_separates_out_except0_point _ S with "[X k]") as "J".
+  { trivial. }
   { iFrame "X". iFrame "k". }
   iDestruct "J" as "[J T]".
   iMod "J" as "J".
@@ -822,6 +860,8 @@ Proof.
   { set_solver. }
   iApply "x". iFrame "g". iFrame "p".
 Qed.
+
+(* Guard-Pers *)
     
 Definition guards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
@@ -839,8 +879,6 @@ Proof.
   iFrame "newg".
 Qed.
 
-(* Guard-Pers *)
-
 Lemma guards_include_pers_simple (C : iProp Σ) E
     (per: Persistent C)
     : C ⊢ (True &&{E}&&> C).
@@ -851,13 +889,35 @@ Proof.
   iDestruct (guards_weaken_rhs_r with "g") as "g". iFrame "g".
 Qed.
 
-Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
-    (qrx: (Q ∧ R ⊢ own γ x))
+(* Guard-Implies *)
+
+Definition guards_impl_point (P Q S : iProp Σ) F
+    (point: point_prop S)
+    (qrx: (Q ⊢ S))
+    : (
+      (P &&{F}&&> Q)
+      ⊢
+      (P &&{F}&&> S)
+    ).
+Proof.
+  iIntros "#q". unfold guards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iExists (m1).
+  iModIntro. iSplit.
+  { iPureIntro. set_solver. }
+  iApply (fguards_impl P Q S m1); trivial.
+Qed.
+
+(* Guard-And *)
+
+Definition guards_and_point (P Q R S : iProp Σ) F
+    (point: point_prop S)
+    (qrx: (Q ∧ R ⊢ S))
     : (
       (P &&{F}&&> Q) ∗ (P &&{F}&&> R)
       ⊢
-      (P &&{F}&&> own γ x)
-    ). 
+      (P &&{F}&&> S)
+    ).
 Proof.
   iIntros "[#q #r]". unfold guards.
   iDestruct "q" as (m1) "[%cond1 q]".
@@ -867,8 +927,20 @@ Proof.
   { iPureIntro. set_solver. }
   iDestruct (fguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". 
   { iFrame "q". iFrame "r". }
-  iApply (fguards_and P Q R γ x (m1 ∪ m2)); trivial.
+  iApply (fguards_and P Q R S (m1 ∪ m2)); trivial.
   iFrame "#".
+Qed.
+
+Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
+    (qrx: (Q ∧ R ⊢ own γ x))
+    : (
+      (P &&{F}&&> Q) ∗ (P &&{F}&&> R)
+      ⊢
+      (P &&{F}&&> own γ x)
+    ). 
+Proof.
+  apply guards_and_point; trivial.
+  apply point_prop_own.
 Qed.
 
 Definition guards_and_sep_union (P1 P2 Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F1 F2

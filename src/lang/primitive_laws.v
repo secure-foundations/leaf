@@ -105,6 +105,8 @@ Qed.
 
 (** Heap *)
 
+(* Heap-Ref *)
+
 Lemma wp_alloc s E v :
   {{{ True }}} Alloc (Val v) @ s; E
   {{{ l, RET LitV (LitInt l); l ↦ v }}}.
@@ -115,6 +117,8 @@ Proof.
   iMod (gen_heap_alloc σ1.(heap) l v with "Hσ") as "[Hσ Hl]"; first done.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
+
+(* Heap-Free *)
 
 Lemma wp_free s E l v :
   {{{ l ↦ v }}} Free (Val $ LitV $ LitInt l) @ s; E
@@ -128,6 +132,8 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+(* Heap-Read *)
+
 Lemma wp_load s E l dq v :
   {{{ l ↦{dq} v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; l ↦{dq} v }}}.
 Proof.
@@ -137,6 +143,8 @@ Proof.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
+
+(* Heap-Read-Shared *)
 
 Lemma wp_load_b s E l v F g (su: F ⊆ E) :
   {{{ g ∗ (g &&{F}&&> (l ↦ v)) }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; g }}}.
@@ -159,6 +167,8 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+(* Heap-Write *)
+
 Lemma wp_store s E l v w :
   {{{ l ↦ v }}} Store (Val $ LitV $ LitInt l) (Val $ w) @ s; E {{{ RET #(); l ↦ w }}}.
 Proof.
@@ -169,6 +179,8 @@ Proof.
   iMod (gen_heap_update _ _ _ w with "Hσ Hl") as "[Hσ Hl]".
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
+
+(* Heap-FetchAdd *)
 
 Lemma wp_faa s E l (n1 n2: Z) :
   {{{ l ↦ #n1 }}}
@@ -197,6 +209,8 @@ Proof.
   iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
+(* Heap-CAS-True *)
+
 Lemma wp_cas_eq s E l (v_actual v_new: base_lit) :
   {{{ l ↦ (LitV v_actual) }}}
     CAS (Val $ LitV $ LitInt l) (Val $ LitV $ v_actual) (Val $ LitV $ v_new) @ s; E
@@ -210,6 +224,8 @@ Proof.
      ** rewrite X in j. trivial.
   - contradiction.
 Qed.
+
+(* Heap-CAS-False *)
 
 Lemma wp_cas_ne s E l (v_actual v_old v_new: base_lit)
   (ne: v_actual ≠ v_old) :

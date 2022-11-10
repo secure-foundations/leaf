@@ -283,6 +283,8 @@ Section StorageLogic.
     rewrite know_bulk_inv_singleton. unfold know_inv.
     iExists _. iFrame "inv".
   Qed.
+
+  (* SP-Guard *)
   
   Lemma logic_guard (p: P) (b: B) (γ: gname) (E: coPset) (f: B -> iProp Σ)
     (g: storage_protocol_guards p b)
@@ -404,6 +406,8 @@ Section StorageLogic.
       iPureIntro. symmetry. apply op_inved_inved. trivial.
     }
    Qed.
+
+  (* SP-Exchange *)
   
   Lemma logic_exchange
     (p1 p2: P) (b1 b2: B) (γ: gname) (f: B -> iProp Σ)
@@ -477,6 +481,8 @@ Section StorageLogic.
       Inved (a ⋅ b) ≡ Inved a ⋅ Inved b.
   Proof using H4 H6 H7 P equ. trivial. Qed.
 
+  (* SP-Sep *)
+
   Lemma p_own_op a b γ :
       p_own γ (a ⋅ b) ⊣⊢ p_own γ a ∗ p_own γ b.
   Proof.
@@ -513,6 +519,8 @@ Section StorageLogic.
       setoid_rewrite op_unit.
       trivial.
   Qed.
+
+  (* SP-Unit *)
   
   Lemma p_own_unit γ f
       : maps γ f ⊢ p_own γ ε.
@@ -522,6 +530,8 @@ Section StorageLogic.
     unfold p_own.
     iFrame "ounit".
   Qed.
+
+  (* SP-Deposit *)
     
   Lemma logic_deposit
       (p1 p2: P) (b1: B) (γ: gname) (f: B -> iProp Σ)
@@ -561,6 +571,8 @@ Section StorageLogic.
     destruct storage_mixin.
     apply interp_val0.
   Qed.
+
+  (* SP-Withdraw *)
    
   Lemma logic_withdraw
       (p1 p2: P) (b2: B) (γ: gname) (f: B -> iProp Σ)
@@ -590,6 +602,8 @@ Section StorageLogic.
     { iFrame "pb". iFrame "u". }
     iModIntro. iFrame.
    Qed.
+
+  (* SP-Update *)
    
   Lemma logic_update
       (p1 p2: P) (γ: gname) (f: B -> iProp Σ)
@@ -620,6 +634,8 @@ Section StorageLogic.
     intro pi. unfold "✓", inved_protocol_valid. exists ε. setoid_rewrite op_unit.
     trivial.
   Qed.
+
+  (* SP-Alloc *)
   
   Lemma logic_init_ns (p: P) (f: B -> iProp Σ) E (N: namespace)
       (pi: pinv p) (wf: wf_prop_map f)

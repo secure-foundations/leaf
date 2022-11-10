@@ -30,46 +30,7 @@ Section SeparableAnd.
 
 Context {Σ: gFunctors}.
 
-(*
-Lemma lemma0 x (P : iProp Σ)
-  : (P ⊢ uPred_ownM x) ->
-      P ⊢ (
-          (uPred_ownM x)
-          ∗ 
-          ((uPred_ownM x) -∗ P)
-      ).
-Proof.
-  uPred.unseal.
-  intro H.
-  split.
-  intros n x0 val t.
-  destruct H.
-  unfold uPred_holds. unfold uPred_sep_def. intros.
-  have h := uPred_in_entails n x0 val t.
-  unfold uPred_holds in h. unfold uPred_ownM_def in h.
-  unfold includedN in h. destruct h as [z h].
-  exists x. exists z.
-  split.
-  { trivial. }
-  split.
-  { unfold uPred_holds. unfold uPred_ownM_def. trivial. }
-  { unfold uPred_holds. unfold uPred_wand_def. intros n' x' incl val2 uh.
-      unfold uPred_holds in uh.
-      unfold uPred_ownM_def in uh.
-      unfold includedN in uh. destruct uh as [w j].
-      setoid_rewrite j.
-      apply uPred_mono with (n1 := n) (x1 := x0); trivial.
-      assert (z ⋅ (x ⋅ w) ≡ (z ⋅ x) ⋅ w) as associ. { apply cmra_assoc. }
-      setoid_rewrite associ.
-      assert ((z ⋅ x) ≡ (x ⋅ z)) as commu. { apply cmra_comm. }
-      setoid_rewrite commu.
-      unfold includedN. exists w.
-      apply dist_le with (n0 := n); trivial.
-      setoid_rewrite h.
-      trivial.
-  } 
-Qed.
-*)
+(* Split-Own *)
 
 Lemma uPred_ownM_separates_out x (P : iProp Σ)
   : (P -∗ uPred_ownM x) ∗ P ⊢ (
@@ -125,6 +86,8 @@ Proof.
       trivial.
   } 
 Qed.
+
+(* Split-Own-Except0 *)
 
 Lemma uPred_ownM_separates_out_except0 x (P : iProp Σ)
   : (P -∗ ◇ uPred_ownM x) ∗ P ⊢ (
@@ -211,6 +174,19 @@ Proof.
   } 
 Qed.
 
+(* For the "Point Proposition" formulation from the paper *)
+Definition point_prop (P: iProp Σ) := ∃ x , (P ≡ uPred_ownM x).
+
+(* PointProp-Sep *)
+
+Lemma point_prop_sep (P Q: iProp Σ)
+  (a: point_prop P) (b: point_prop Q)  : point_prop (P ∗ Q).
+Proof.
+  unfold point_prop in *. destruct a as [x a]. destruct b as [y b].
+  exists (x ⋅ y). setoid_rewrite a. setoid_rewrite b.
+  rewrite uPred.ownM_op. trivial.
+Qed.
+
 Context `{i : !inG Σ A}.
 
 Lemma own_separates_out γ (x: A) (P : iProp Σ)
@@ -228,6 +204,34 @@ Lemma own_separates_out_except0 γ (x: A) (P : iProp Σ)
       ).
 Proof.
   rewrite own_eq. unfold own_def.
+  apply uPred_ownM_separates_out_except0.
+Qed.
+
+(* PointProp-Own *)
+
+Lemma point_prop_own γ (x: A) : point_prop (own γ x).
+Proof.
+  rewrite own_eq. unfold own_def. unfold point_prop.
+  exists (iRes_singleton γ x). trivial.
+Qed.
+
+Lemma own_separates_out_point (P : iProp Σ) (Q: iProp Σ)
+  (point: point_prop Q)
+  : (P -∗ Q) ∗ P ⊢ (
+          Q ∗ (Q -∗ P)
+      ).
+Proof.
+  unfold point_prop in point. destruct point as [x point]. setoid_rewrite point.
+  apply uPred_ownM_separates_out.
+Qed.
+
+Lemma own_separates_out_except0_point (P : iProp Σ) (Q: iProp Σ)
+    (point: point_prop Q)
+  : (P -∗ ◇ Q) ∗ P ⊢ (
+          ◇ Q ∗ (Q -∗ P)
+      ).
+Proof.
+  unfold point_prop in point. destruct point as [x point]. setoid_rewrite point.
   apply uPred_ownM_separates_out_except0.
 Qed.
 

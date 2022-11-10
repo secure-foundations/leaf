@@ -382,6 +382,8 @@ Proof.
   - unfold "⋅?". unfold "≼". exists ε. symmetry. apply ucmra_unit_right_id.
 Qed.
 
+(* PCM-And *)
+
 Lemma and_own2_ucmra γ (x y z: A)
   (cond: ∀ w , ✓ w -> x ≼ w -> y ≼ w -> z ≼ w)
   : (own γ x ∧ own γ y) ⊢ (own γ z).
