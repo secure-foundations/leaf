@@ -2,7 +2,7 @@
 
 src/guarding/auth_frag_util.v
 src/guarding/conjunct_own_rule.v
-src/guarding/separable_and.v
+src/guarding/point_props.v
 src/guarding/guard.v
 src/guarding/guard_later.v
 src/guarding/inved.v

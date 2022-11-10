@@ -234,7 +234,6 @@ Qed.
 
 Definition m (γ: gname) (Q: iProp Σ) := maps γ (family Q).
 
-Print p_own.
 Definition own_frac (γ: gname) (qp: Qp) := @p_own
     nat _ _ _ _ _ (option Qp) _ _ _ _ _ _ _ _
     frac_storage_mixin Σ _
@@ -325,7 +324,6 @@ Qed.
 Lemma is_int_1 : is_int (1%Qp).
 Proof.
   unfold is_int.
-  Print Qceiling_Z.
   assert ((Qp_to_Qc 1 : Q) == inject_Z 1) as X.
   - simpl. trivial. apply Qeq_refl.
   - rewrite X.

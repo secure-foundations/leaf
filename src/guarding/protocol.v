@@ -16,7 +16,7 @@ From stdpp Require Export namespaces.
 Require Import guarding.inved.
 Require Import guarding.guard.
 Require Import guarding.auth_frag_util.
-Require Import guarding.separable_and.
+Require Import guarding.point_props.
 
 (*
 Context {Σ: gFunctors}.
