@@ -615,6 +615,21 @@ Proof.
         iFrame "g2". iFrame "k2". }
 Qed.
 
+(* TODO can we find a counterexample to this? *)
+
+(*
+Lemma fguards_sep_disjoint P1 P2 Q1 Q2 E1 E2
+  (disjoint: E1 ## E2) :
+  (P1 &&{ E1 }&&$> P2) ∗ (Q1 &&{ E2 }&&$> Q2) ⊢ (P1 ∗ Q1 &&{ E1 ∪ E2 }&&$> P2 ∗ Q2).
+Proof.
+  unfold fguards.
+  iIntros "[[g1 #k1] [g2 #k2]]".
+  rewrite know_bulk_inv_union; trivial. iFrame "k1". iFrame "k2".
+  unfold guards_with. iIntros (T) "[[p1 q1] j]".
+  *)
+
+
+
 (**** guards ****)
 
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
@@ -636,6 +651,8 @@ Proof.
   unfold guards. apply _.
 Qed.
 
+(* Guard-Refl *)
+
 Lemma guards_refl E P : ⊢ P &&{ E }&&> P.
 Proof.
   unfold guards.
@@ -643,6 +660,8 @@ Proof.
   { iPureIntro. intro. rewrite elem_of_empty. contradiction. }
   iApply fguards_refl.
 Qed.
+
+(* Guard-Trans *)
 
 Lemma guards_transitive E P Q R :
     (P &&{ E }&&> Q) ∗ (Q &&{ E }&&> R) ⊢ (P &&{E}&&> R).
@@ -659,6 +678,8 @@ Proof.
   { iPureIntro. set_solver. }
   iApply (fguards_transitive _ _ Q). iFrame "#".
 Qed.
+
+(* Guard-Weaken-Mask *)
   
 Lemma guards_mask_weaken (P Q: iProp Σ) E E'
     (su: E ⊆ E')
@@ -669,6 +690,8 @@ Proof.
   iDestruct "x" as (m) "[%cond #x]".
   iExists m. iFrame "x". iPureIntro. set_solver.
 Qed.
+
+(* Guard-Split *)
 
 Lemma guards_weaken_l E P Q : ⊢ (P ∗ Q) &&{ E }&&> P.
 Proof.
@@ -700,6 +723,8 @@ Proof.
   iApply guards_transitive.
   iFrame "g". iFrame "g2".
 Qed.
+
+(* Guard-Upd *)
 
 Lemma guards_apply (P Q X Y : iProp Σ) E F
     (disj: E ## F)
@@ -772,6 +797,18 @@ Proof.
   set_solver.
 Qed.
 
+(* Unguard-Pers *)
+
+Lemma unguard_pers (A B C G : iProp Σ) (pers: Persistent C) E
+  (hyp: A ∗ B ⊢ C)
+  : G ∗ (G &&{E}&&> A) ∗ B ={E}=∗ G ∗ (G &&{E}&&> A) ∗ B ∗ C.
+Proof.
+  iIntros "[g [#gu b]]".
+  iMod (guards_persistent2 B G A C E E with "[g b]") as "[b [g c]]".
+  { set_solver. } { iFrame. iFrame "gu". iIntros "[a b]". iApply hyp. iFrame. }
+  iModIntro. iFrame. iFrame "gu".
+Qed.
+
 Lemma guards_open (P Q : iProp Σ) (E F : coPset)
     (su: F ⊆ E)
     : ⊢ P ∗ (P &&{F}&&> Q) ={E, E ∖ F}=∗
@@ -800,6 +837,18 @@ Proof.
   iSplit.
   { iPureIntro. trivial. }
   iFrame "newg".
+Qed.
+
+(* Guard-Pers *)
+
+Lemma guards_include_pers_simple (C : iProp Σ) E
+    (per: Persistent C)
+    : C ⊢ (True &&{E}&&> C).
+Proof.
+  iIntros "r".
+  iDestruct (guards_include_pers C (True)%I (True)%I E with "[r]") as "g".
+  { iFrame "r". iApply guards_refl. }
+  iDestruct (guards_weaken_rhs_r with "g") as "g". iFrame "g".
 Qed.
 
 Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
