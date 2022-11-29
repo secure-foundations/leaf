@@ -653,6 +653,25 @@ Proof.
         iFrame "g2". iFrame "k2". }
 Qed.
 
+Lemma fguards_exists {X} (x0: X) (F: X -> iProp Σ) (P: iProp Σ) E
+  : (∀ x , (F x) &&{E}&&$> P)%I ⊢ (∃ x , F x) &&{E}&&$> P.
+Proof.
+  unfold fguards, guards_with.
+  iIntros "a".
+  iAssert (know_bulk_inv E) as "#kbi".
+  { iDestruct ("a" $! x0) as "[a b]".  iFrame "b". }
+  iSplitL.
+  { iIntros (T) "[j1 j2]".
+    iDestruct "j1" as (x) "j1".
+    iDestruct ("a" $! x) as "[a1 a2]".
+    iDestruct ("a1" $! T) as "a1".
+    iDestruct ("a1" with "[j1 j2]") as "k".
+    { iFrame "j1". iIntros "fx". iApply "j2". iExists x. iFrame "fx". }
+    iFrame "k".
+  }
+  iFrame "kbi".
+Qed.
+
 (* TODO can we find a counterexample to this? *)
 
 (*
@@ -964,6 +983,15 @@ Proof.
   iDestruct (guards_and (P1 ∗ P2) Q R γ x (F1 ∪ F2) with "[a b]") as "t"; trivial.
   iFrame.
 Qed.
+
+(*
+Lemma guards_exists {X} (x0: X) (F: X -> iProp Σ) (P: iProp Σ) E
+  : (∀ x , (F x) &&{E}&&> P)%I ⊢ (∃ x , F x) &&{E}&&> P.
+Proof.
+  unfold guards.
+  iIntros "#g". iModIntro.
+  *)
+
 
 End Guard.
 

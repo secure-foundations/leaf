@@ -174,6 +174,8 @@ Proof.
   } 
 Qed.
 
+
+
 (* For the "Point Proposition" formulation from the paper *)
 Definition point_prop (P: iProp Σ) := ∃ x , (P ≡ uPred_ownM x).
 

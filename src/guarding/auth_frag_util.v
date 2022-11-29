@@ -230,4 +230,51 @@ Proof using C Disc m Σ.
   rewrite auth_both_valid_discrete. intuition.
 Qed.
 
+Lemma auth_frag_disjointness_helper (q r : C) (a b : auth C)
+  (eq1 : ◯ q ⋅ a ≡ ● r ⋅ b) : ◯ q ≼ b.
+Proof.
+  destruct a, b.
+  rename view_frag_proj into f.
+  rename view_auth_proj into g.
+  rename view_frag_proj0 into f0.
+  rename view_auth_proj0 into g0.
+  unfold "◯", "◯V" in eq1.
+  unfold "●", "●V" in eq1.
+  unfold "◯", "◯V".
+  
+  replace (@View C C (@auth_view_rel C) None q ⋅ @View C C (@auth_view_rel C) g f)
+    with (@View C C (@auth_view_rel C) (None ⋅ g) (q ⋅ f)) in eq1 by trivial.
+    
+  replace (@View C C (@auth_view_rel C) (Some (DfracOwn 1, to_agree r)) ε ⋅ @View C C (@auth_view_rel C) g0 f0)
+    with (@View C C (@auth_view_rel C) (Some (DfracOwn 1, to_agree r) ⋅ g0) (ε ⋅ f0)) in eq1 by trivial.
+    
+  inversion eq1.
+  unfold view_frag_proj in H0.
+  generalize H0.
+  rewrite ucmra_unit_left_id.
+  intro X.
+  
+  exists (View g0 f).
+  replace (@View C C (@auth_view_rel C) None q ⋅ View g0 f) with
+          (@View C C (@auth_view_rel C) (None ⋅ g0) (q ⋅ f)) by trivial.
+  
+  f_equiv.
+  { rewrite op_None_left_id. trivial. }
+  symmetry. trivial.
+Qed.
+ 
+Lemma auth_frag_disjointness (q r: C) :
+      ∀ p0 p3 r1 r2 : auth C,
+    ✓ (p0 ⋅ p3)
+    → ◯ q ⋅ r1 ≡ p0 ⋅ p3
+      → ● r ⋅ r2 ≡ p0
+        → ∃ m : auth C, ● r ⋅ m ≡ p0 ∧ ◯ q ≼ m ⋅ p3.
+Proof using C Disc m Σ.
+  intros p0 p3 r1 r2 val eq1 eq2.
+  exists r2. split; trivial.
+  setoid_rewrite <- eq2 in eq1.
+  apply (auth_frag_disjointness_helper q r r1 (r2 ⋅ p3)).
+  rewrite cmra_assoc. trivial.
+Qed.
+
 End AuthFragUtil.
