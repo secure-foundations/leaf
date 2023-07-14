@@ -22,6 +22,7 @@ Context {m: inG Σ (authUR C)}.
 Context `{Disc : CmraDiscrete C}.
 
 Lemma auth_op_rhs_is_frag (p: C) z (val : ✓ (● p ⋅ z)) : ∃ q , z = ◯ q.
+Proof.
   destruct z. exists view_frag_proj. rename view_frag_proj into f.
   unfold "◯", "◯V". f_equal.
   destruct view_auth_proj; trivial.

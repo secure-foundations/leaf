@@ -829,7 +829,6 @@ Proof.
   iDestruct (guards_apply P Q X (X ∗ R) ∅ F with "[m g]") as "newg".
   { set_solver. } { iFrame. }
   iDestruct ("newg" with "[x p]") as "newg". { iFrame. }
-  Print fupd_mask_frame_r.
   iDestruct (fupd_mask_frame_r _ _ (E ∖ F) with "newg") as "l".
   { set_solver. }
   replace (∅ ∪ F ∪ E ∖ F) with E. { iMod "l" as "[p [x r]]". iModIntro. iFrame. }
