@@ -45,7 +45,7 @@ make -j4
 
 ### Manually
 
-Install Coq 8.13.2, then run `make`.
+Install Coq 8.13.2, then run `make -j4`.
 
 # Detailed instructions for evaluation
 
