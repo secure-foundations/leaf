@@ -381,6 +381,8 @@ Definition rw_lock_inst (γ: gname) (f: S -> iProp Σ) : iProp Σ :=
       (BaseOpt S) _ _ _ _ _ (RwLock S) _ _ _ _ _ _ _ _ _ Σ _ _
     γ (base_opt_prop_map f).
 
+(* Rw-Init *)
+
 Lemma rw_new (x: S) (f: S -> iProp Σ) E
   : f x ={E}=∗ ∃ γ , rw_lock_inst γ f ∗ central γ false 0 x.
 Proof. 
@@ -410,6 +412,8 @@ Proof.
   unfold rw_lock_inst, central. iFrame.
 Qed.
 
+(* Rw-Exc-Begin *)
+
 Lemma rw_exc_begin γ f rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
@@ -420,6 +424,8 @@ Proof.
   apply logic_update'; trivial.
   apply rw_mov_exc_begin.
 Qed.
+
+(* Rw-Exc-Acquire *)
 
 Lemma rw_exc_acquire γ f exc (x: S) E
   (in_e: γ ∈ E)
@@ -436,6 +442,8 @@ Proof.
   apply logic_withdraw'; trivial.
   apply rw_mov_exc_acquire.
 Qed.
+
+(* Rw-Exc-Release *)
   
 Lemma rw_exc_release γ f exc rc (x y: S) E
   (in_e: γ ∈ E)
@@ -452,6 +460,8 @@ Proof.
   apply rw_mov_exc_release.
 Qed.
 
+(* Rw-Shared-Begin *)
+
 Lemma rw_shared_begin γ f exc rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
@@ -464,6 +474,8 @@ Proof.
   apply logic_update'; trivial.
   apply rw_mov_shared_begin.
 Qed.
+
+(* Rw-Shared-Acquire *)
   
 Lemma rw_shared_acquire γ f rc (x: S) E
   (in_e: γ ∈ E)
@@ -478,6 +490,8 @@ Proof.
   apply logic_update'; trivial.
   apply rw_mov_shared_acquire.
 Qed.
+
+(* Rw-Shared-Release *)
   
 Lemma rw_shared_release γ f exc rc (x y: S) E
   (in_e: γ ∈ E)
@@ -490,6 +504,8 @@ Proof.
   apply rw_mov_shared_release.
 Qed.
 
+(* Rw-Shared-Retry *)
+
 Lemma rw_shared_retry γ f exc rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
@@ -500,6 +516,8 @@ Proof.
   apply logic_update'; trivial.
   apply rw_mov_shared_retry.
 Qed.
+
+(* Rw-Shared-Guard *)
 
 Lemma rw_borrow_back γ f (x: S)
   : rw_lock_inst γ f ⊢

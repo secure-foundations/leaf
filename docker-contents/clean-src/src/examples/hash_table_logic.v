@@ -77,6 +77,8 @@ Proof.
   iModIntro. iExists γ. iDestruct (own_op with "x") as "[x y]". iFrame.
 Qed.
 
+(* QueryFound *)
+
 Lemma ht_QueryFound γ j k v0 v :
   own γ (s j (Some (k, v0))) ∗ own γ (m k v) ⊢ ⌜ v = Some v0 ⌝.
 Proof.
@@ -104,6 +106,8 @@ Qed.
 Definition Range γ k i j : iProp Σ :=
   ∃ a , ⌜ full a k i j ⌝ ∗ own γ a.
   *)
+
+(* QueryNotFound *)
   
 Lemma ht_QueryReachedEnd γ k v r :
     full r k (hash k) ht_fixed_size ->
@@ -192,6 +196,11 @@ Proof.
   - destruct H as [z H]. exists z. rewrite H. trivial.
 Qed.
 
+(* The rules listed under 'Addendum' in the paper aren't named lemmas here,
+   but they are internal proof goals in the below proofs, proved by `and_own2_ucmra`
+   (which the paper calls PCM-And)
+*)
+
 Lemma ht_BorrowedRangeAppend γ r k i j k0 v0 g1 g2 F1 F2
     (ne: k0 ≠ k) (f: full r k i j) :
     (g1 &&{F1}&&> own γ r) ∗
@@ -275,6 +284,8 @@ Proof.
   iFrame.
 Qed.
 
+(* UpdateExisting *)
+
 Lemma ht_UpdateExisting γ k v v0 v1 j :
   own γ (s j (Some (k, v1))) -∗ own γ (m k v0) ==∗
   own γ (s j (Some (k, v))) ∗ own γ (m k (Some v)).
@@ -288,6 +299,8 @@ Proof.
   unfold ht_mov in X.
   apply X. trivial.
 Qed.
+
+(* UpdateInsert *)
 
 Lemma ht_UpdateNew γ k v j v0 r
   (f: full r k (hash k) j) :

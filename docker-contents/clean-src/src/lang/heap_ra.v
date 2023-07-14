@@ -63,6 +63,15 @@ the state interpretation and are owned by threads. `l ↦ v` will be notation fo
 `mapsto`, with a full 1 fraction.
 |*)
 
+(*
+  What the paper calls \mathcal{H}(\sigma)
+
+  Note about Leaf: This is forked from iris-simp-lang which uses more traditional Iris fractional
+  permissions instead of Leaf's version of fractions. These definitions
+  here still use Iris fractions, but we basically don't use any fractions other than 1
+  for any of our examples.
+*)
+
   Definition gen_heap_interp (σ : gmap L V) : iProp Σ :=
     own (gen_heap_name hG) (gmap_view_auth 1 (σ : gmap L (leibnizO V))).
 
