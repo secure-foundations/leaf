@@ -80,7 +80,7 @@ Proof.
       assert ((z ⋅ x) ≡ (x ⋅ z)) as commu. { apply cmra_comm. }
       setoid_rewrite commu.
       unfold includedN. exists w.
-      apply dist_le with (n0 := n); trivial.
+      apply dist_le with (n := n); trivial.
       setoid_rewrite sum.
       setoid_rewrite h.
       trivial.
@@ -167,7 +167,7 @@ Proof.
       assert ((z ⋅ x) ≡ (x ⋅ z)) as commu. { apply cmra_comm. }
       setoid_rewrite commu.
       unfold includedN. exists w.
-      apply dist_le with (n0 := n); trivial.
+      apply dist_le with (n := n); trivial.
       setoid_rewrite sum.
       setoid_rewrite h.
       trivial.

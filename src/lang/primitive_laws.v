@@ -69,7 +69,7 @@ Class simpGS Σ := SimpGS {
 name for the heap ghost state. We'll see in adequacy.v how to obtain a [simpGS Σ]
 after allocating that ghost state. *)
 Global Instance simpG_irisG `{!simpGS Σ} : irisGS simp_lang Σ := {
-  iris_invG := simp_invG;
+  iris_invGS := simp_invG;
   state_interp σ _ κs _ := (gen_heap_interp σ.(heap))%I;
   fork_post _ := True%I;
   (* These two fields are for a new feature that makes the number of laters per
@@ -100,7 +100,7 @@ Lemma wp_fork s E e Φ :
 Proof.
   iIntros "He HΦ". iApply wp_lift_atomic_head_step; [done|].
   iIntros (σ1 κ κs n nt) "Hσ !>"; iSplit; first by eauto with head_step.
-  iIntros "!>" (v2 σ2 efs Hstep); inv_head_step. by iFrame.
+  iIntros "!>" (v2 σ2 efs Hstep); inv_head_step. iIntros. by iFrame.
 Qed.
 
 (** Heap *)
@@ -115,7 +115,7 @@ Proof.
   iIntros (σ1 κ κs n nt) "Hσ !>"; iSplit; first by auto with head_step.
   iIntros "!>" (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_alloc σ1.(heap) l v with "Hσ") as "[Hσ Hl]"; first done.
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-Free *)
@@ -129,7 +129,7 @@ Proof.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_free _ _ _ v with "Hσ Hl") as "Hσ".
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-Read *)
@@ -141,7 +141,7 @@ Proof.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-Read-Shared *)
@@ -164,7 +164,7 @@ Proof.
   iModIntro.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-Write *)
@@ -177,7 +177,7 @@ Proof.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_update _ _ _ w with "Hσ Hl") as "[Hσ Hl]".
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-FetchAdd *)
@@ -192,7 +192,7 @@ Proof.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_update _ _ _ #(n1 + n2) with "Hσ Hl") as "[Hσ Hl]".
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 Lemma wp_cas s E l (v_actual v_old v_new: base_lit) :
@@ -206,7 +206,7 @@ Proof.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_update _ _ _ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) with "Hσ Hl") as "[Hσ Hl]".
-  iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
+  iIntros. iModIntro; iSplit=> //. iFrame. by iApply "HΦ".
 Qed.
 
 (* Heap-CAS-True *)

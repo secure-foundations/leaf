@@ -53,15 +53,16 @@ external/cpdt/CpdtTactics.v
 -Q external/iris-4.1.0/iris_deprecated iris.deprecated
 # We sometimes want to locally override notation, and there is no good way to do that with scopes.
 -arg -w -arg -notation-overridden
-# Cannot use non-canonical projections as it causes massive unification failures
-# (https://github.com/coq/coq/issues/6294).
 -arg -w -arg -redundant-canonical-projection
-# Disabling warnings about future coercion syntax that requires Coq 8.17
-# (https://github.com/coq/coq/pull/16230)
 -arg -w -arg -future-coercion-class-field
-# Some warnings exist only on some Coq versions
 -arg -w -arg -unknown-warning
 
+-Q external/stdpp-1.9.0/stdpp stdpp
+-Q external/stdpp-1.9.0/stdpp_unstable stdpp.unstable
+-arg -w -arg -future-coercion-class-field
+
+external/iris-4.1.0/iris/prelude/options.v
+external/iris-4.1.0/iris/prelude/prelude.v
 external/iris-4.1.0/iris/algebra/monoid.v
 external/iris-4.1.0/iris/algebra/cmra.v
 external/iris-4.1.0/iris/algebra/big_op.v
@@ -233,3 +234,55 @@ external/iris-4.1.0/iris_deprecated/base_logic/viewshifts.v
 external/iris-4.1.0/iris_deprecated/program_logic/hoare.v
 
 
+external/stdpp-1.9.0/stdpp/options.v
+external/stdpp-1.9.0/stdpp/base.v
+external/stdpp-1.9.0/stdpp/tactics.v
+external/stdpp-1.9.0/stdpp/option.v
+external/stdpp-1.9.0/stdpp/fin_map_dom.v
+external/stdpp-1.9.0/stdpp/boolset.v
+external/stdpp-1.9.0/stdpp/fin_maps.v
+external/stdpp-1.9.0/stdpp/fin.v
+external/stdpp-1.9.0/stdpp/vector.v
+external/stdpp-1.9.0/stdpp/pmap.v
+external/stdpp-1.9.0/stdpp/stringmap.v
+external/stdpp-1.9.0/stdpp/fin_sets.v
+external/stdpp-1.9.0/stdpp/mapset.v
+external/stdpp-1.9.0/stdpp/proof_irrel.v
+external/stdpp-1.9.0/stdpp/hashset.v
+external/stdpp-1.9.0/stdpp/pretty.v
+external/stdpp-1.9.0/stdpp/countable.v
+external/stdpp-1.9.0/stdpp/orders.v
+external/stdpp-1.9.0/stdpp/natmap.v
+external/stdpp-1.9.0/stdpp/strings.v
+external/stdpp-1.9.0/stdpp/well_founded.v
+external/stdpp-1.9.0/stdpp/relations.v
+external/stdpp-1.9.0/stdpp/sets.v
+external/stdpp-1.9.0/stdpp/listset.v
+external/stdpp-1.9.0/stdpp/streams.v
+external/stdpp-1.9.0/stdpp/gmap.v
+external/stdpp-1.9.0/stdpp/gmultiset.v
+external/stdpp-1.9.0/stdpp/prelude.v
+external/stdpp-1.9.0/stdpp/listset_nodup.v
+external/stdpp-1.9.0/stdpp/finite.v
+external/stdpp-1.9.0/stdpp/numbers.v
+external/stdpp-1.9.0/stdpp/nmap.v
+external/stdpp-1.9.0/stdpp/zmap.v
+external/stdpp-1.9.0/stdpp/coPset.v
+external/stdpp-1.9.0/stdpp/coGset.v
+external/stdpp-1.9.0/stdpp/lexico.v
+external/stdpp-1.9.0/stdpp/propset.v
+external/stdpp-1.9.0/stdpp/decidable.v
+external/stdpp-1.9.0/stdpp/list.v
+external/stdpp-1.9.0/stdpp/list_numbers.v
+external/stdpp-1.9.0/stdpp/functions.v
+external/stdpp-1.9.0/stdpp/hlist.v
+external/stdpp-1.9.0/stdpp/sorting.v
+external/stdpp-1.9.0/stdpp/infinite.v
+external/stdpp-1.9.0/stdpp/nat_cancel.v
+external/stdpp-1.9.0/stdpp/namespaces.v
+external/stdpp-1.9.0/stdpp/telescopes.v
+external/stdpp-1.9.0/stdpp/binders.v
+external/stdpp-1.9.0/stdpp/ssreflect.v
+external/stdpp-1.9.0/stdpp_unstable/bitblast.v
+external/stdpp-1.9.0/stdpp_unstable/bitvector.v
+external/stdpp-1.9.0/stdpp_unstable/bitvector_tactics.v

@@ -172,14 +172,14 @@ Proof.
   have ff := f i.
   rewrite lookup_merge. unfold diag_None, gmerge. 
   destruct (a !! i) eqn:ai.
-  - rewrite map_filter_lookup.
+  - rewrite map_lookup_filter.
     unfold "≫=", option_bind. destruct (b!!i) eqn:bi.
     + unfold mguard, option_guard. have fff := ff o. intuition. inversion H.
       destruct (X (i, o)).
       * rewrite ai in e. discriminate.
       * trivial.
     + have fff := ff o. intuition.
-  - rewrite map_filter_lookup.
+  - rewrite map_lookup_filter.
     unfold "≫=", option_bind. destruct (b!!i) eqn:bi; trivial.
     unfold mguard, option_guard. destruct (X (i, o)); trivial.
     contradiction.

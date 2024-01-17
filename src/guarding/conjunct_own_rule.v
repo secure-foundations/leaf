@@ -90,7 +90,7 @@ Lemma discrete_equiv (a b : A) (n: nat)
 Proof using A Disc.
   intros.
   apply discrete. { typeclasses eauto. }
-  apply dist_le with (n0 := n); trivial. lia.
+  apply dist_le with (n := n); trivial. lia.
 Qed.
 
 Lemma discrete_equiv_opt (a b : option A) (n: nat)
@@ -159,8 +159,8 @@ Proof using A Disc i Σ.
   unfold own_def in aoo.
   unfold uPred_holds in aoo. unfold uPred_and_def in aoo.
   destruct aoo as [o1 o2].
-  rewrite uPred_ownM_eq in o1.
-  rewrite uPred_ownM_eq in o2.
+  rewrite uPred_ownM_unseal in o1.
+  rewrite uPred_ownM_unseal in o2.
   unfold uPred_holds in o1. unfold uPred_ownM_def in o1.
   unfold uPred_holds in o2. unfold uPred_ownM_def in o2.
   
@@ -301,12 +301,12 @@ Proof using A Disc i Σ.
   unfold uPred_holds, uPred_and_def in uh. destruct uh as [xh yh].
   
   rewrite own_eq in xh. unfold own_def in xh.
-  rewrite uPred_ownM_eq in xh.
+  rewrite uPred_ownM_unseal in xh.
   unfold uPred_holds, uPred_ownM_def in xh.
   unfold includedN in xh. destruct xh as [a xh].
   
   rewrite own_eq in yh. unfold own_def in yh.
-  rewrite uPred_ownM_eq in yh.
+  rewrite uPred_ownM_unseal in yh.
   unfold uPred_holds, uPred_ownM_def in yh.
   unfold includedN in yh. destruct yh as [b yh].
   
@@ -331,7 +331,7 @@ Proof using A Disc i Σ.
   destruct cond0 as [c cond0].
   
   rewrite own_eq. unfold own_def.
-  rewrite uPred_ownM_eq.
+  rewrite uPred_ownM_unseal.
   unfold uPred_holds, uPred_ownM_def.
   
   assert (iRes_singleton γ (x ⋅? project a γ) ≼{n} w) as incl1.

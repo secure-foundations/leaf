@@ -33,7 +33,7 @@ Proof.
   unfold know_bulk_inv.
   replace (gset_to_gmap () ∅ : gmap positive ()) with (∅ : gmap positive ()).
   - rewrite big_sepM_empty. trivial.
-  - apply map_eq. intros. rewrite lookup_empty. rewrite lookup_gset_to_gmap. trivial.
+  - apply map_eq. intros. rewrite lookup_empty. (*rewrite lookup_gset_to_gmap.*) trivial.
 Qed.
     
 Lemma storage_bulk_inv_empty :
@@ -42,7 +42,7 @@ Proof.
   unfold storage_bulk_inv.
   replace (gset_to_gmap () ∅ : gmap positive ()) with (∅ : gmap positive ()).
   - rewrite big_sepM_empty. trivial.
-  - apply map_eq. intros. rewrite lookup_empty. rewrite lookup_gset_to_gmap. trivial.
+  - apply map_eq. intros. rewrite lookup_empty. (*rewrite lookup_gset_to_gmap.*) trivial.
 Qed.
 
 Lemma know_bulk_inv_singleton i
@@ -352,7 +352,7 @@ Lemma wsat_split_one_union x E
    ⊢ |={E ∪ {[ x ]}, E}=> (storage_inv x) ∗ (storage_inv x ={E, E ∪ {[ x ]}}=∗ True).
 Proof.
   assert (E ## {[x]}) as disj by set_solver.
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def.
+  rewrite uPred_fupd_unseal. unfold uPred_fupd_def.
   iIntros "#kx [w e]".
   iDestruct (ownE_op with "e") as "[ee e]". { trivial. }
   (*iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }*)
@@ -420,7 +420,7 @@ Proof.
       { apply ss. left. set_solver. }
       { iFrame. }
       iMod (m (E ∖ {[x]}) with "kbulk") as "[sbi back2]".
-      { intuition. apply di with (x0 := x0). set_solver. }
+      { intuition. apply di with (x := x0). set_solver. }
       { intro x0. have ss0 := ss x0. set_solver. }
       rewrite storage_bulk_inv_singleton_union; trivial.
       iModIntro. iFrame "si sbi".
@@ -468,7 +468,7 @@ Proof.
   (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
   iDestruct ("g" $! P) as "g".
   iMod (wsat_split_empty E F with "kf") as "[sb back]"; trivial.
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
+  rewrite uPred_fupd_unseal. unfold uPred_fupd_def. iIntros "[w eo]".
   iDestruct ("g" with "[p sb]") as "t".
   { iFrame. iIntros. iFrame. }
   iMod "t" as "[q t]".
@@ -491,7 +491,7 @@ Proof.
   iDestruct ("g" $! (P)%I) as "g".
   iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
   { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
-  rewrite uPred_fupd_eq. unfold uPred_fupd_def. iIntros "[w eo]".
+  rewrite uPred_fupd_unseal. unfold uPred_fupd_def. iIntros "[w eo]".
   iMod ("g" with "[p sb]") as "[q g]".
   { iFrame. iIntros. iFrame. }
   

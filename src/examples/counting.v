@@ -80,8 +80,8 @@ Local Instance nat_unit_instance : Unit nat := 0%nat.
 Definition nat_ra_mixin : RAMixin nat.
 Proof.
   split; try apply _; try done.
-  - unfold Assoc. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
-  - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
+  (*- unfold Assoc. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
+  - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.*)
 Qed.
 
 Definition count_protocol_mixin : @ProtocolMixin Co 
@@ -210,7 +210,7 @@ Proof.
     { unfold interp, co_interp_instance, "⋅", co_op in *.
         destruct q.
         { unfold "⋅", co_op, "≡", nat_equiv_instance, nat_op_instance. lia. }
-        unfold nat_op_instance. f_equiv.
+        unfold nat_op_instance. f_equiv. simpl. trivial.
     }
   }
   { iSplitR. { iDestruct (p_own_unit with "m") as "u". unfold ε, co_unit. iFrame "u". }

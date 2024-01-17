@@ -12,6 +12,8 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 
+From stdpp Require Import numbers.
+
 Require Import guarding.conjunct_own_rule.
 
 Section AuthFragUtil.
@@ -49,7 +51,7 @@ Proof.
   have k := dfrac_valid_own_l _ _ val_frac.
   assert (1 ≤ 1)%Qp as k1. { trivial. }
   generalize k1.
-  rewrite Qp_le_ngt. intro h. apply h. trivial.
+  rewrite Qp.le_ngt. intro h. apply h. trivial.
 Qed.
 
 Lemma view_op_rw (x w : option (dfrac * agree C)) (y z : C)
@@ -109,7 +111,9 @@ Lemma auth_conjure_frag γ (p q: C)
     : own γ (● p) ==∗ own γ (● p) ∗ own γ (◯ q).
 Proof using C Disc m Σ.
   rewrite <- own_op.
-  apply own_update.
+  iIntros "X".
+  iApply (own_update γ (● p) _).
+  {
   rewrite cmra_discrete_update. intros z valpz.
   have isf := auth_op_rhs_is_frag _ _ valpz. destruct isf as [r isf].
   subst z.
@@ -120,6 +124,8 @@ Proof using C Disc m Σ.
     rewrite auth_both_valid_discrete. split; trivial.
     apply incl_lemma1; trivial.
   }
+  }
+  iFrame.
 Qed.
 
 Lemma val_faf (a s b : C)

@@ -146,8 +146,8 @@ Local Instance nat_unit_instance : Unit nat := 0%nat.
 Definition nat_ra_mixin : RAMixin nat.
 Proof.
   split; try apply _; try done.
-  - unfold Assoc. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
-  - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
+  (*- unfold Assoc. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
+  - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.*)
 Qed.
 
 Definition frac_protocol_mixin : @ProtocolMixin (option Qp)
@@ -232,7 +232,9 @@ Proof.  split.
   intros a b x. unfold "⋅", nat_op_instance. unfold family. apply sep_pow_additive.
 Qed.
 
-Definition m (γ: gname) (Q: iProp Σ) := maps γ (family Q).
+Definition m (γ: gname) (Q: iProp Σ) := @maps
+      nat _ _ _ _ _ frac _ _ _ _ _ _ _ _ frac_storage_mixin Σ _ _
+  γ (family Q).
 
 Definition own_frac (γ: gname) (qp: Qp) := @p_own
     nat _ _ _ _ _ (option Qp) _ _ _ _ _ _ _ _
@@ -258,47 +260,7 @@ Proof.
   iExists γ.
   iFrame "a".
 Qed.
-
-Lemma is_int_plus_1 (q: Qp)
-  (q_is_int : is_int q) : is_int (1%Qp + q).
-Proof.
-  unfold is_int in *.
-  assert ((Qp_to_Qc (1 + q) : Q)
-    ==
-    (inject_Z (1 + Qceiling (Qp_to_Qc q)))) as X.
-  { 
-    rewrite inject_Z_plus.
-    rewrite q_is_int.
-    simpl. 
-    destruct q.
-    unfold Qp_add, numbers.Qp_to_Qc. simpl.
-    apply Qreduction.Qred_correct.
-  }
-  rewrite X.
-  rewrite Qceiling_Z. apply Qeq_refl.
-Qed.
-  
-Lemma is_int_minus_1 (q: Qp)
-  (q_p1_is_int : is_int (1 + q)) : is_int q.
-Proof.
-  unfold is_int in *.
-  assert ((Qp_to_Qc (q) : Q)
-    ==
-    (inject_Z ((-1) + Qceiling (Qp_to_Qc (q+1))))) as X.
-  2: {
-    rewrite X.
-    rewrite Qceiling_Z. apply Qeq_refl.
-  }
-  rewrite inject_Z_plus.
-  assert ((q + 1)%Qp = (1 + q)%Qp) as X.
-  { apply Qp_add_comm. }
-  rewrite X. rewrite q_p1_is_int.
-  simpl. destruct q.
-    unfold Qp_add, numbers.Qp_to_Qc. simpl. rewrite Qreduction.Qred_correct.
-  rewrite Qplus_assoc. rewrite <- inject_Z_plus.
-  replace (-1 + 1)%Z with 0%Z by lia.
-  unfold inject_Z. symmetry. apply Qplus_0_l.
-Qed.
+ 
 
 Lemma q_le_add_1 (a b: Q) (is_le: Qle a b) : Qle (a + 1) (b + 1).
   Proof. rewrite Qplus_le_l. trivial. Qed.
@@ -320,13 +282,90 @@ Proof using H invGS0 Σ.
   clear j1. clear j2. intro j1. intro j2.
   lia.
 Qed.
+
+Lemma is_int_plus_1 (q: Qp)
+  (q_is_int : is_int q) : is_int (1%Qp + q).
+Proof using H invGS0 Σ.
+  unfold is_int in *.
+  assert ((Qceiling (Qp_to_Qc (1 + q))) = Z.add 1 (Qceiling (Qp_to_Qc q))) as Y.
+  2: {
+    rewrite Y. 
+    rewrite inject_Z_plus.
+    rewrite q_is_int.
+    destruct q. simpl.
+    symmetry.
+    apply Qreduction.Qred_correct.
+  }
+  replace (1 + q)%Qp with (q + 1)%Qp.
+  - replace (1 + Qceiling (Qp_to_Qc q))%Z with (Qceiling (Qp_to_Qc q) + 1)%Z.
+    + rewrite Qp.to_Qc_inj_add.
+      rewrite <- Qceiling_plus_1.
+      assert ((Qcplus (Qp_to_Qc q) (Qp_to_Qc (pos_to_Qp 1)))
+          == ((Qplus (Qp_to_Qc q) 1))) as X.
+        { simpl. rewrite Qreduction.Qred_correct. destruct q. simpl.
+          assert (inject_Z 1 == 1) as XX.
+          { unfold inject_Z. apply Qeq_refl. }
+          rewrite XX. apply Qeq_refl.
+        }
+        rewrite X.
+        trivial.
+    + apply Z.add_comm.
+  - apply Qp.add_comm.
+Qed.
+ 
+Lemma is_int_minus_1 (q: Qp)
+  (q_p1_is_int : is_int (1 + q)) : is_int q.
+Proof using H invGS0 Σ.
+  unfold is_int in *.
+  assert ((Qceiling (Qp_to_Qc (1 + q))) = Z.add 1 (Qceiling (Qp_to_Qc q))) as Y.
+  2: {
+    rewrite Y in q_p1_is_int. 
+    rewrite inject_Z_plus in q_p1_is_int.
+    assert ((inject_Z 1) == 1) as XX.
+    + unfold inject_Z. apply Qeq_refl.
+    + rewrite XX in q_p1_is_int.
+      assert ((inject_Z (Qceiling (Qp_to_Qc q))) == 
+          (-1) + (1 + inject_Z (Qceiling (Qp_to_Qc q)))) as T1.
+      { rewrite Qplus_assoc. 
+        assert (-1 + 1 == 0) as JJ. { rewrite Qplus_comm. apply Qplus_opp_r. }
+        rewrite JJ. rewrite Qplus_0_l. apply Qeq_refl.
+      }
+      assert ((-1) + Qp_to_Qc (1 + q) == Qp_to_Qc q) as T2.
+      {
+        rewrite Qp.to_Qc_inj_add.
+        simpl. unfold inject_Z. rewrite Qreduction.Qred_correct.
+        rewrite Qplus_assoc.
+        assert (-1 + 1 == 0) as JJ. { rewrite Qplus_comm. apply Qplus_opp_r. }
+        rewrite JJ. rewrite Qplus_0_l. apply Qeq_refl.
+      }
+      rewrite T1.
+      rewrite q_p1_is_int.
+      apply T2.
+   }
+  replace (1 + q)%Qp with (q + 1)%Qp.
+  - replace (1 + Qceiling (Qp_to_Qc q))%Z with (Qceiling (Qp_to_Qc q) + 1)%Z.
+    + rewrite Qp.to_Qc_inj_add.
+      rewrite <- Qceiling_plus_1.
+      assert ((Qcplus (Qp_to_Qc q) (Qp_to_Qc (pos_to_Qp 1)))
+          == ((Qplus (Qp_to_Qc q) 1))) as X.
+        { simpl. rewrite Qreduction.Qred_correct. destruct q. simpl.
+          assert (inject_Z 1 == 1) as XX.
+          { unfold inject_Z. apply Qeq_refl. }
+          rewrite XX. apply Qeq_refl.
+        }
+        rewrite X.
+        trivial.
+    + apply Z.add_comm.
+  - apply Qp.add_comm.
+Qed.
+
   
 Lemma is_int_1 : is_int (1%Qp).
 Proof.
   unfold is_int.
   assert ((Qp_to_Qc 1 : Q) == inject_Z 1) as X.
   - simpl. trivial. apply Qeq_refl.
-  - rewrite X.
+  - (*rewrite X.*)
       rewrite Qceiling_Z. apply Qeq_refl.
 Qed.
 
@@ -351,7 +390,7 @@ Proof using H invGS0 Σ.
   rewrite <- Qceiling_plus_1.
   assert ((Qp_to_Qc q + 1) == (Qp_to_Qc (1 + q)))%Q as X.
   2: { rewrite X. trivial. }
-  rewrite Qp_to_Qc_inj_add.
+  rewrite Qp.to_Qc_inj_add.
   rewrite Qcplus_comm.
   assert (({| Qnum := Zpos xH; Qden := xH |}) == (Qp_to_Qc (pos_to_Qp xH))) as Y.
   { simpl. unfold inject_Z. f_equal. }

@@ -192,10 +192,11 @@ Proof using H invGS0 Σ.
   unfold family at 2.
   iDestruct (p_own_unit with "m") as "u".
   iDestruct (guards_refl (↑FOREVER_NAMESPACE) (True)%I) as "tt".
-  iDestruct (guards_include_pers (□ p_own γ ε) (True)%I (True)%I
-      (↑FOREVER_NAMESPACE) with "[u tt]") as "tu".
+  Set Printing Implicit.
+  iDestruct (guards_include_pers (□ p_own γ (@ε Trivial trivial_unit)) (True)%I (True)%I
+      (↑FOREVER_NAMESPACE) with "[p tt]") as "tu".
       { iFrame "tt". iModIntro. iFrame "u". }
-  assert ((True ∗ □ p_own γ (ε: Trivial))%I ⊣⊢ ((p_own γ ε) ∗ □ p_own γ ε)%I) as Z.
+  assert ((True ∗ □ p_own γ (ε: Trivial))%I ⊣⊢ ((p_own γ (ε: Trivial)) ∗ □ p_own γ (ε: Trivial))%I) as Z.
   { iIntros. iSplit. { iIntros "[t #o]". iFrame "o". } { iIntros "[p #o]". iFrame "o". } }
   rewrite Z.
   iDestruct (guards_weaken_rhs_l with "tu") as "tk".

@@ -35,19 +35,20 @@ Lemma tac_wp_pure `{!simpGS Σ} Δ Δ' s E K e1 e2 φ n Φ :
   envs_entails Δ' (WP (fill K e2) @ s; E {{ Φ }}) →
   envs_entails Δ (WP (fill K e1) @ s; E {{ Φ }}).
 Proof.
-  rewrite envs_entails_eq=> ??? HΔ'. rewrite into_laterN_env_sound /=.
+  rewrite envs_entails_unseal=> ??? HΔ'. rewrite into_laterN_env_sound /=.
   (* We want [pure_exec_fill] to be available to TC search locally. *)
   pose proof @pure_exec_fill.
   rewrite HΔ' -lifting.wp_pure_step_later //.
+  iIntros. iModIntro. iIntros. iFrame.
 Qed.
 
 Lemma tac_wp_value_nofupd `{!simpGS Σ} Δ s E Φ v :
   envs_entails Δ (Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
-Proof. rewrite envs_entails_eq=> ->. by apply wp_value. Qed.
+Proof. rewrite envs_entails_unseal=> ->. by apply wp_value. Qed.
 
 Lemma tac_wp_value `{!simpGS Σ} Δ s E (Φ : val → iPropI Σ) v :
   envs_entails Δ (|={E}=> Φ v) → envs_entails Δ (WP (Val v) @ s; E {{ Φ }}).
-Proof. rewrite envs_entails_eq=> ->. by rewrite wp_value_fupd. Qed.
+Proof. rewrite envs_entails_unseal=> ->. by rewrite wp_value_fupd. Qed.
 
 (** Simplify the goal if it is [WP] of a value.
   If the postcondition already allows a fupd, do not add a second one.
@@ -90,10 +91,10 @@ Tactic Notation "wp_pure" open_constr(efoc) :=
     reshape_expr e ltac:(fun K e' =>
       unify e' efoc;
       eapply (tac_wp_pure _ _ _ _ K e');
-      [iSolveTC                       (* PureExec *)
+      [tc_solve                       (* PureExec *)
       |try solve_vals_compare_safe    (* The pure condition for PureExec --
          handles trivial goals, including [vals_compare_safe] *)
-      |iSolveTC                       (* IntoLaters *)
+      |tc_solve                       (* IntoLaters *)
       |wp_finish                      (* new goal *)
       ])
     || fail "wp_pure: cannot find" efoc "in" e "or" efoc "is not a redex"
@@ -137,7 +138,7 @@ Lemma tac_wp_bind `{!simpGS Σ} K Δ s E Φ e f :
   f = (λ e, fill K e) → (* as an eta expanded hypothesis so that we can `simpl` it *)
   envs_entails Δ (WP e @ s; E {{ v, WP f (Val v) @ s; E {{ Φ }} }})%I →
   envs_entails Δ (WP fill K e @ s; E {{ Φ }}).
-Proof. rewrite envs_entails_eq=> -> ->. by apply: wp_bind. Qed.
+Proof. rewrite envs_entails_unseal=> -> ->. by apply: wp_bind. Qed.
 
 Ltac wp_bind_core K :=
   lazymatch eval hnf in K with
@@ -177,7 +178,7 @@ Lemma tac_wp_load Δ Δ' s E i K b (l: loc) q v Φ :
   envs_entails Δ' (WP fill K (Val v) @ s; E {{ Φ }}) →
   envs_entails Δ (WP fill K (Load (LitV l)) @ s; E {{ Φ }}).
 Proof.
-  rewrite envs_entails_eq=> ?? Hi.
+  rewrite envs_entails_unseal=> ?? Hi.
   rewrite into_laterN_env_sound /=.
   iIntros "Henv".
   iDestruct (envs_lookup_split with "Henv") as "[Hl Henv]"; first by eauto.
@@ -222,7 +223,7 @@ Tactic Notation "wp_load" :=
     first
       [reshape_expr e ltac:(fun K e' => eapply (tac_wp_load _ _ _ _ _ K))
       |fail 1 "wp_load: cannot find 'Load' in" e];
-    [iSolveTC
+    [tc_solve
     |solve_mapsto ()
     |wp_finish]
   | _ => fail "wp_load: not a 'wp'"
