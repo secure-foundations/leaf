@@ -1,0 +1,12 @@
+"wp_lock_client_spin"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  spin_lockG0 : spin_lockG Σ
+  ============================
+  ⊢ WP let: "l" := ref #10 in
+       let: "lock" := newlock #() in
+       acquire "lock";; "l" <- #42;; release "lock"
+    {{ _, True }}

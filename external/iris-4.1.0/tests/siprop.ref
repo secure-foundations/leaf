@@ -1,0 +1,17 @@
+"unseal_test"
+     : string
+1 goal
+  
+  P, Q : siProp
+  Φ : nat → siProp
+  ============================
+  siprop.siProp_and_def P
+    (siprop.siProp_and_def (siprop.siProp_later_def Q)
+       (siprop.siProp_exist_def (λ x : nat, Φ x)))
+  ⊣⊢ siprop.siProp_exist_def
+       (λ x : nat,
+          siprop.siProp_or_def
+            (siprop.siProp_and_def P
+               (siprop.siProp_and_def (siprop.siProp_later_def Q)
+                  (siprop.siProp_pure_def True))) 
+            (Φ x))

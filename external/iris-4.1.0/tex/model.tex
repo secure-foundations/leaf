@@ -1,0 +1,135 @@
+\section{Model and Semantics}
+\label{sec:model}
+
+The semantics closely follows the ideas laid out in~\cite{catlogic}.
+
+\paragraph{Semantic domains.}
+
+The semantic  domains are interpreted as follows:
+\[
+\begin{array}[t]{@{}l@{\ }c@{\ }l@{}}
+\Sem{\Prop} &\eqdef& \UPred(\monoid)  \\
+\Sem{\textlog{M}} &\eqdef& \monoid \\
+\Sem{0} &\eqdef& \Delta \emptyset \\
+\Sem{1} &\eqdef& \Delta \{ () \}
+\end{array}
+\qquad\qquad
+\begin{array}[t]{@{}l@{\ }c@{\ }l@{}}
+\Sem{\type + \type'} &\eqdef& \Sem{\type} + \Sem{\type'} \\
+\Sem{\type \times \type'} &\eqdef& \Sem{\type} \times \Sem{\type'} \\
+\Sem{\type \to \type'} &\eqdef& \Sem{\type} \nfn \Sem{\type'} \\
+\end{array}
+\]
+For the remaining base types $\type$ defined by the signature $\Sig$, we pick an object $X_\type$ in $\OFEs$ and define
+\[
+\Sem{\type} \eqdef X_\type
+\]
+For each function symbol $\sigfn : \type_1, \dots, \type_n \to \type_{n+1} \in \SigFn$, we pick a function $\Sem{\sigfn} : \Sem{\type_1} \times \dots \times \Sem{\type_n} \nfn \Sem{\type_{n+1}}$.
+
+\judgment[Interpretation of propositions.]{\Sem{\vctx \proves \term : \Prop} : \Sem{\vctx} \nfn \UPred(\monoid)}
+
+Remember that $\UPred(\monoid)$ is isomorphic to $\monoid \monra \SProp$.
+We are thus going to define the propositions as mapping camera elements to sets of step-indices.
+
+\begin{align*}
+	\Sem{\vctx \proves t =_\type u : \Prop}_\venv &\eqdef
+	\Lam \any. \setComp{n}{\Sem{\vctx \proves t : \type}_\venv \nequiv{n} \Sem{\vctx \proves u : \type}_\venv} \\
+	\Sem{\vctx \proves \FALSE : \Prop}_\venv &\eqdef \Lam \any. \emptyset \\
+	\Sem{\vctx \proves \TRUE : \Prop}_\venv &\eqdef \Lam \any. \nat \\
+	\Sem{\vctx \proves \prop \land \propB : \Prop}_\venv &\eqdef
+	\Lam \melt. \Sem{\vctx \proves \prop : \Prop}_\venv(\melt) \cap \Sem{\vctx \proves \propB : \Prop}_\venv(\melt) \\
+	\Sem{\vctx \proves \prop \lor \propB : \Prop}_\venv &\eqdef
+	\Lam \melt. \Sem{\vctx \proves \prop : \Prop}_\venv(\melt) \cup \Sem{\vctx \proves \propB : \Prop}_\venv(\melt) \\
+	\Sem{\vctx \proves \prop \Ra \propB : \Prop}_\venv &\eqdef
+	\Lam \melt. \setComp{n}{\begin{aligned}
+            \All m, \meltB.& m \leq n \land \melt \mincl \meltB \land m \in \mval(\meltB) \Ra {} \\
+            & m \in \Sem{\vctx \proves \prop : \Prop}_\venv(\meltB) \Ra {}\\& m \in \Sem{\vctx \proves \propB : \Prop}_\venv(\meltB)\end{aligned}}\\
+	\Sem{\vctx \proves \All \var : \type. \prop : \Prop}_\venv &\eqdef
+	\Lam \melt. \setComp{n}{ \All v \in \Sem{\type}. n \in \Sem{\vctx, \var : \type \proves \prop : \Prop}_{\mapinsert \var v \venv}(\melt) } \\
+	\Sem{\vctx \proves \Exists \var : \type. \prop : \Prop}_\venv &\eqdef
+        \Lam \melt. \setComp{n}{ \Exists v \in \Sem{\type}. n \in \Sem{\vctx, \var : \type \proves \prop : \Prop}_{\mapinsert \var v \venv}(\melt) }
+\end{align*}
+\begin{align*}
+	\Sem{\vctx \proves \prop * \propB : \Prop}_\venv &\eqdef \Lam\melt. \setComp{n}{\begin{aligned}\Exists \meltB_1, \meltB_2. &\melt \nequiv{n} \meltB_1 \mtimes \meltB_2 \land {}\\& n \in \Sem{\vctx \proves \prop : \Prop}_\venv(\meltB_1) \land n \in \Sem{\vctx \proves \propB : \Prop}_\venv(\meltB_2)\end{aligned}}
+\\
+	\Sem{\vctx \proves \prop \wand \propB : \Prop}_\venv &\eqdef
+	\Lam \melt. \setComp{n}{\begin{aligned}
+            \All m, \meltB.& m \leq n \land  m \in \mval(\melt\mtimes\meltB) \Ra {} \\
+            & m \in \Sem{\vctx \proves \prop : \Prop}_\venv(\meltB) \Ra {}\\& m \in \Sem{\vctx \proves \propB : \Prop}_\venv(\melt\mtimes\meltB)\end{aligned}} \\
+        \Sem{\vctx \proves \ownM{\term} : \Prop}_\venv &\eqdef \Lam\meltB. \setComp{n}{\Sem{\vctx \proves \term : \textlog{M}}_\venv \mincl[n] \meltB}  \\
+        \Sem{\vctx \proves \mval(\term) : \Prop}_\venv &\eqdef \Lam\any. \mval(\Sem{\vctx \proves \term : \textlog{M}}_\venv) \\
+	\Sem{\vctx \proves \always{\prop} : \Prop}_\venv &\eqdef \Lam\melt. \Sem{\vctx \proves \prop : \Prop}_\venv(\mcore\melt) \\
+	\Sem{\vctx \proves \plainly{\prop} : \Prop}_\venv &\eqdef \Lam\melt. \Sem{\vctx \proves \prop : \Prop}_\venv(\munit) \\
+	\Sem{\vctx \proves \later{\prop} : \Prop}_\venv &\eqdef \Lam\melt. \setComp{n}{n = 0 \lor n-1 \in \Sem{\vctx \proves \prop : \Prop}_\venv(\melt)}\\
+        \Sem{\vctx \proves \upd\prop : \Prop}_\venv &\eqdef \Lam\melt. \setComp{n}{\begin{aligned}
+            \All m, \melt'. & m \leq n \land m \in \mval(\melt \mtimes \melt') \Ra {}\\& \Exists \meltB. m \in \mval(\meltB \mtimes \melt') \land m \in \Sem{\vctx \proves \prop :\Prop}_\venv(\meltB)
+          \end{aligned}
+}
+\end{align*}
+
+For every definition, we have to show all the side-conditions: The maps have to be non-expansive and monotone.
+
+
+
+\judgment[Interpretation of non-propositional terms]{\Sem{\vctx \proves \term : \type} : \Sem{\vctx} \nfn \Sem{\type}}
+\begin{align*}
+	\Sem{\vctx \proves x : \type}_\venv &\eqdef \venv(x) \\
+	\Sem{\vctx \proves \sigfn(\term_1, \dots, \term_n) : \type_{n+1}}_\venv &\eqdef \Sem{\sigfn}(\Sem{\vctx \proves \term_1 : \type_1}_\venv, \dots, \Sem{\vctx \proves \term_n : \type_n}_\venv) \\
+	\Sem{\vctx \proves \Lam \var:\type. \term : \type \to \type'}_\venv &\eqdef
+	\Lam \termB : \Sem{\type}. \Sem{\vctx, \var : \type \proves \term : \type}_{\mapinsert \var \termB \venv} \\
+	\Sem{\vctx \proves \term(\termB) : \type'}_\venv &\eqdef
+	\Sem{\vctx \proves \term : \type \to \type'}_\venv(\Sem{\vctx \proves \termB : \type}_\venv) \\
+	\Sem{\vctx \proves \MU \var:\type. \term : \type}_\venv &\eqdef
+	\fixp_{\Sem{\type}}(\Lam \termB : \Sem{\type}. \Sem{\vctx, x : \type \proves \term : \type}_{\mapinsert \var \termB \venv}) \\
+  ~\\
+	\Sem{\vctx \proves \textlog{abort}\;\term : \type}_\venv &\eqdef \mathit{abort}_{\Sem\type}(\Sem{\vctx \proves \term:0}_\venv) \\
+	\Sem{\vctx \proves () : 1}_\venv &\eqdef () \\
+	\Sem{\vctx \proves (\term_1, \term_2) : \type_1 \times \type_2}_\venv &\eqdef (\Sem{\vctx \proves \term_1 : \type_1}_\venv, \Sem{\vctx \proves \term_2 : \type_2}_\venv) \\
+	\Sem{\vctx \proves \pi_i\; \term : \type_i}_\venv &\eqdef \pi_i(\Sem{\vctx \proves \term : \type_1 \times \type_2}_\venv) \\
+        \Sem{\vctx \proves \textlog{inj}_i\;\term : \type_1 + \type_2}_\venv &\eqdef \mathit{inj}_i(\Sem{\vctx \proves \term : \type_i}_\venv) \\
+        \Sem{\vctx \proves \textlog{match}\; \term \;\textlog{with}\; \Ret\textlog{inj}_1\; \var_1. \term_1 \mid \Ret\textlog{inj}_2\; \var_2. \term_2 \;\textlog{end} : \type }_\venv &\eqdef 
+    \Sem{\vctx, \var_i:\type_i \proves \term_i : \type}_{\mapinsert{\var_i}\termB \venv} \\
+    &\qquad \text{where $\Sem{\vctx \proves \term : \type_1 + \type_2}_\venv = \mathit{inj}_i(\termB)$}
+    \\
+  ~\\
+        \Sem{ \melt : \textlog{M} }_\venv &\eqdef \melt \\
+	\Sem{\vctx \proves \mcore\term : \textlog{M}}_\venv &\eqdef \mcore{\Sem{\vctx \proves \term : \textlog{M}}_\venv} \\
+	\Sem{\vctx \proves \term \mtimes \termB : \textlog{M}}_\venv &\eqdef
+	\Sem{\vctx \proves \term : \textlog{M}}_\venv \mtimes \Sem{\vctx \proves \termB : \textlog{M}}_\venv
+\end{align*}
+%
+
+An environment $\vctx$ is interpreted as the set of
+finite partial functions $\rho$, with $\dom(\rho) = \dom(\vctx)$ and
+$\rho(x)\in\Sem{\vctx(x)}$.
+Above, $\fixp$ is Banach's fixed-point (see \thmref{thm:banach}), and $\mathit{abort}_T$ is the unique function $\emptyset \to T$.
+
+\paragraph{Logical entailment.}
+We can now define \emph{semantic} logical entailment.
+
+\typedsection{Interpretation of entailment}{\Sem{\vctx \mid \pfctx \proves \prop} : \mProp}
+
+\[
+\Sem{\vctx \mid \prop \proves \propB} \eqdef
+\begin{aligned}[t]
+\MoveEqLeft
+\forall n \in \nat.\;
+\forall \rs \in \monoid.\; 
+\forall \venv \in \Sem{\vctx},\;
+\\&
+n \in \mval(\rs) \land
+n \in \Sem{\vctx \proves \prop : \Prop}_\venv(\rs)
+\Ra n \in \Sem{\vctx \proves \propB : \Prop}_\venv(\rs)
+\end{aligned}
+\]
+
+The following soundness theorem connects syntactic and semantic entailment.
+It is proven by showing that all the syntactic proof rules of \Sref{sec:base-logic} can be validated in the model.
+\[ \vctx \mid \prop \proves \propB \Ra \Sem{\vctx \mid \prop \proves \propB} \]
+
+It now becomes straight-forward to show consistency of the logic.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "iris"
+%%% End:

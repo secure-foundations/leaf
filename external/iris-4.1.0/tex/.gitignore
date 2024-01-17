@@ -1,0 +1,17 @@
+*.pdf
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.txss
+*.thm
+*.toc
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.fdb_latexmk
+*.fls
+_*_.tex
+auto/*.el
+*.rubbercache

@@ -1,0 +1,43 @@
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  one_shotG0 : one_shotG Σ
+  N : namespace
+  l : loc
+  γ : gname
+  Φ : val → iPropI Σ
+  ============================
+  "HN" : inv N (one_shot_inv γ l)
+  --------------------------------------□
+  "Hl" : l ↦ InjLV #()
+  _ : own γ (Pending (1 / 2))
+  --------------------------------------∗
+  one_shot_inv γ l ∗
+  (⌜InjLV #() = InjLV #()⌝
+   ∨ (∃ n : Z, ⌜InjLV #() = InjRV #n⌝ ∗ own γ (Shot n)))
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  one_shotG0 : one_shotG Σ
+  N : namespace
+  l : loc
+  γ : gname
+  Φ : val → iPropI Σ
+  m, m' : Z
+  ============================
+  "HN" : inv N (one_shot_inv γ l)
+  "Hγ'" : own γ (Shot m)
+  --------------------------------------□
+  "HΦ" : True -∗ Φ #()
+  "Hl" : l ↦ InjRV #m'
+  "Hγ" : own γ (Shot m')
+  --------------------------------------∗
+  |={⊤ ∖ ↑N}=> ▷ one_shot_inv γ l ∗
+    WP let: "y'" := InjRV #m' in
+       match: InjRV #m with
+         InjL <> => #()
+       | InjR <> => assert: InjRV #m = "y'"
+       end
+    {{ v, Φ v }}

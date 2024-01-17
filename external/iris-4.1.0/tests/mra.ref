@@ -1,0 +1,8 @@
+"mra_test_eq"
+     : string
+1 goal
+  
+  X, Y : gset nat
+  H : X = Y
+  ============================
+  X = Y

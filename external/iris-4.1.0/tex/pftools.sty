@@ -1,0 +1,146 @@
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{pftools}
+
+\@ifundefined{basedir}{%
+\RequirePackage{locallabel}
+}{%
+\RequirePackage{\basedir locallabel}
+}%
+
+\RequirePackage{Tabbing}	% Avoid the standard tabbing environment. Its \< conflicts with the semantic package.
+\RequirePackage{xparse}
+\RequirePackage{xcolor}
+
+%% COLOR DEFINITIONS
+\definecolor{rescolor}{HTML}{005504}
+\definecolor{prescolor}{HTML}{d16100} % "persistent" resources. also good: b35f00, maybe: c84e00
+\definecolor{codecolor}{HTML}{2767c0}
+
+
+%% Biimplication inference rules
+% \biimp above below
+% The double lines obtained by the simpler
+% "\mprset{fraction={===}}" overlap the conclusion (e.g., the
+% mask E_M in an atomic triple).
+\newcommand*{\biimp}[2]{%
+	\hbox{%
+		\ooalign{%
+			$\genfrac{}{}{1.6pt}1{#1}{#2}$\cr%
+			$\color{white}\genfrac{}{}{0.8pt}1{\phantom{#1}}{\phantom{#2}}$%
+		}%
+	}%
+}
+\newcommand{\BIIMP}{\mprset{myfraction=\biimp}}
+
+
+%% inferH is infer with hyperlinked names.
+% \savelabel lab text: Arrange for \ref{lab} to print text and to link to the current spot.
+\newcommand*{\savelabel}[2]{%
+	% Think @currentlabel : text ref.
+	\edef\@currentlabel{#2}% Save text
+	\phantomsection% Correct hyper reference link
+	\label{#1}% Print text and store name↦text.
+}
+% \textlabel label text: Print and label text.
+\newcommand*{\textlabel}[2]{{#2}\savelabel{#1}{\detokenize{#2}}} % added \detokenize to make "Löb" title work
+% \rulenamestyle visible
+\newcommand*{\rulenamestyle}[1]{{\textsc{#1}}}	% From mathpartir.sty.
+% \ruleref [discharged] lab
+\def\optionaldischarge#1{%
+	\if\relax\detokenize{#1}\relax\else\ensuremath{^{#1}}\fi}
+\newcommand*{\ruleref}[2][]{\textmd{\rulenamestyle{\ref{#2}}}\optionaldischarge{#1}}
+\newcommand*{\fakeruleref}[2][]{\rulenamestyle{#2}\optionaldischarge{#1}}
+% \rulename label
+\newcommand*{\rulename}[1]{\rulenamestyle{\textlabel{#1}{#1}}}
+% \inferhref name lab premise conclusion
+\newcommand*{\inferhref}[4]{%
+	\inferrule*[lab=\textlabel{#2}{#1},vcenter]{#3}{#4}%
+}
+% \infernH name premise conclusion, if name a valid label.
+\newcommand*{\inferH}[3]{\inferhref{#1}{#1}{#2}{#3}}
+\newcommand*{\axiom}[2][]{\infer[#1]{}{#2}}
+\newcommand*{\axiomhref}[3]{\inferhref{#1}{#2}{}{#3}}
+\newcommand*{\axiomH}[2]{\inferH{#1}{}{#2}}
+\newcommand*{\axiomname}[2]{\inferrule*[lab=#1]{}{#2}}
+\newcommand*{\inferhrefB}[4]{{\BIIMP\inferhref{#1}{#2}{#3}{#4}}}
+\newcommand*{\inferB}[3][]{{\BIIMP\infer[#1]{#2}{#3}}}
+\newcommand*{\inferHB}[3]{{\BIIMP\inferH{#1}{#2}{#3}}}
+\newcommand*{\taghref}[2]{\label{#2}\tag{\textsc{#1}}}
+\newcommand*{\tagH}[1]{\taghref{#1}{#1}}
+
+% The sanity checks in \lbind and \llabel
+% don't work properly in amsmath environments
+% which perhaps lay out their contents more
+% than once. Use \lbind in such cases.
+% Sigh.
+
+\newcommand*{\tagL}[1]{\lbind{#1}\tag*{\llabel{#1}}}
+
+\newcommand*\ind[1][\quad\quad]{#1\TAB=\TAB+}
+\newcommand*\unind{\TAB-}
+
+\newcommand\IND[1][\quad\quad]{\\*\ind[#1]}
+\newcommand\UNIND{\unind \\}
+
+% Attribution: http://tex.stackexchange.com/questions/119473/tabbing-and-line-wrapping
+\newlength\pf@width
+\newcommand*{\CMT}[1]{%
+	\setlength\pf@width{\linewidth}%
+	\addtolength\pf@width{\@totalleftmargin}%
+	\addtolength\pf@width{-\dimen\@curtab}%
+	\parbox[t]{\pf@width}{\nobelowdisplayskip{#1}\ifhmode\strut\fi}}
+
+% \res overwrites \langkw to not change the color
+\newcommand*\res[1]{{\makeatletter\@namedef{langkw}##1{\textlang{##1}}\makeatother%
+      \color{rescolor}\ensuremath{#1}}}
+%When \left\{ … \right\} looks ugly, remember Dave says you want \bracket.
+%2020-05-08 RJ: actually this looks much better than \bracket... (switching triples to \left...\right now, too)
+\NewDocumentCommand{\RES}{s m O{}}{%
+	\ensuremath{\displaystyle{\res{{\left\{%
+				\IfBooleanTF{#1}{\begin{inbox}[l]#2\end{inbox}}{#2}%
+			\right\}}_{#3}}}}}
+
+\NewDocumentCommand{\ARES}{m O{}}{%
+	${\displaystyle{\bracket\langle\rangle{\color{rescolor}{#1}}}_{#2}}$}
+\newcommand*{\COMMENT}[1]{\text{#1}}
+
+% \res overwrites \langkw to not change the color
+\newcommand*{\CODE}[1]{%
+	{{\makeatletter\@namedef{langkw}##1{\textlang{##1}}\makeatother%
+          \color{codecolor}\ensuremath{\displaystyle{#1}}}}}
+
+\NewDocumentCommand{\GOAL}{s m}{%
+	\textbf{Goal:} ${\displaystyle{\res{\IfBooleanTF{#1}{\begin{inbox}[t]#2\end{inbox}}{#2}}}}$}
+% \newcommand*{\SUFF}[1]{%
+% 	Suff: ${\displaystyle{#1}}$}
+
+% \newcommand*{\PFHAVE}[1]{%
+% 	Have: ${\displaystyle{#1}}$}
+
+% Persistent resources
+% (extra {...} to contain effect of \color)
+\newcommand\PRES[1]{\ensuremath{{\color{prescolor}#1}}}
+
+% Define abbreviation
+\newcommand{\ABBRV}[2]{\ensuremath{{\llabel{#1}} \spac #2}}
+
+\let\pf@origqedhere\qedhere
+\def\pf@setup{%
+	% A version of \qedhere that accounts for tabbing.
+	\def\qedhere{\TAB`\pf@origqedhere}%
+}
+
+\newcommand*{\TAGL}[1]{\TAB`\llabel{#1}}
+
+% The starred version lacks leading and trailing vertical space.
+\newenvironment{proofoutline*}
+{\partopsep=\z@skip \topsep=\z@skip% avoid initial space
+	\parskip\z@skip% avoid trailing space
+	\pf@setup\par\begingroup\Tabbing\ignorespaces}
+{\endTabbing\endgroup\unskip\ignorespacesafterend}
+
+\newenvironment{proofoutline}
+{\pf@setup\par\begingroup\Tabbing\ignorespaces}
+{\endTabbing\endgroup\ignorespacesafterend}
+
+\endinput

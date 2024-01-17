@@ -1,0 +1,73 @@
+\section{Language}
+\label{sec:language}
+
+A \emph{language} $\Lang$ consists of a set \Expr{} of \emph{expressions} (metavariable $\expr$), a set \Val{} of \emph{values} (metavariable $\val$), a set $\Obs$ of \emph{observations}\footnote{See \url{https://gitlab.mpi-sws.org/iris/iris/merge_requests/173} for how observations are useful to encode prophecy variables.} (or ``observable events'') and a set $\State$ of \emph{states} (metavariable $\state$) such that
+\begin{itemize}[itemsep=0pt]
+\item There exist functions $\ofval : \Val \to \Expr$ and $\toval : \Expr \pfn \Val$ (notice the latter is partial), such that
+\begin{mathpar}
+{\All \expr, \val. \toval(\expr) = \val \Ra \ofval(\val) = \expr} \and
+{\All\val. \toval(\ofval(\val)) = \val} 
+\end{mathpar}
+\item There exists a \emph{primitive reduction relation} \[(-,- \;\step[-]\; -,-,-) \subseteq (\Expr \times \State) \times \List(\Obs) \times (\Expr \times \State \times \List(\Expr))\]
+  A reduction $\expr_1, \state_1 \step[\vec\obs] \expr_2, \state_2, \vec\expr$ indicates that, when $\expr_1$ in state $\state_1$ reduces to $\expr_2$ with new state $\state_2$, the new threads in the list $\vec\expr$ is forked off and the observations $\vec\obs$ are made.
+  We will write $\expr_1, \state_1 \step \expr_2, \state_2$ for $\expr_1, \state_1 \step[()] \expr_2, \state_2, ()$, \ie when no threads are forked off and no observations are made. \\
+\item All values are stuck:
+\[ \expr, \_ \step  \_, \_, \_ \Ra \toval(\expr) = \bot \]
+\end{itemize}
+
+\begin{defn}
+  An expression $\expr$ and state $\state$ are \emph{reducible} (written $\red(\expr, \state)$) if
+  \[ \Exists \vec\obs, \expr_2, \state_2, \vec\expr. \expr,\state \step[\vec\obs] \expr_2,\state_2,\vec\expr \]
+\end{defn}
+
+\begin{defn}
+  An expression $\expr$ is \emph{weakly atomic} if it reduces in one step to something irreducible:
+  \[ \atomic(\expr) \eqdef \All\state_1, \vec\obs, \expr_2, \state_2, \vec\expr. \expr, \state_1 \step[\vec\obs] \expr_2, \state_2, \vec\expr \Ra \lnot \red(\expr_2, \state_2) \]
+  It is \emph{strongly atomic} if it reduces in one step to a value:
+  \[ \stronglyAtomic(\expr) \eqdef \All\state_1, \vec\obs, \expr_2, \state_2, \vec\expr. \expr, \state_1 \step[\vec\obs] \expr_2, \state_2, \vec\expr \Ra \toval(\expr_2) \neq \bot \]
+\end{defn}
+We need two notions of atomicity to accommodate both kinds of weakest preconditions that we will define later:
+If the weakest precondition ensures that the program cannot get stuck, weak atomicity is sufficient.
+Otherwise, we need strong atomicity.
+
+\begin{defn}[Context]
+  A function $\lctx : \Expr \to \Expr$ is a \emph{context} if the following conditions are satisfied:
+  \begin{enumerate}[itemsep=0pt]
+  \item $\lctx$ does not turn non-values into values:\\
+    $$\All\expr. \toval(\expr) = \bot \Ra \toval(\lctx(\expr)) = \bot $$
+  \item One can perform reductions below $\lctx$:\\
+    $$\All \expr_1, \state_1, \vec\obs, \expr_2, \state_2, \vec\expr. \expr_1, \state_1 \step[\vec\obs] \expr_2,\state_2,\vec\expr \Ra \lctx(\expr_1), \state_1 \step[\vec\obs] \lctx(\expr_2),\state_2,\vec\expr $$
+  \item Reductions stay below $\lctx$ until there is a value in the hole:\\
+    \begin{align*}
+      &\All \expr_1', \state_1, \vec\obs, \expr_2, \state_2, \vec\expr. \toval(\expr_1') = \bot \land \lctx(\expr_1'), \state_1 \step[\vec\obs] \expr_2,\state_2,\vec\expr \Ra {}\\
+      &\qquad \Exists\expr_2'. \expr_2 = \lctx(\expr_2') \land \expr_1', \state_1 \step[\vec\obs] \expr_2',\state_2,\vec\expr 
+    \end{align*}
+  \end{enumerate}
+\end{defn}
+
+\subsection{Concurrent Language}
+\label{sec:language:concurrent}
+
+For any language $\Lang$, we define the corresponding thread-pool semantics.
+
+\paragraph{Machine syntax}
+\[
+	\tpool \in \ThreadPool \eqdef \List(\Expr)
+\]
+
+\judgment[Machine reduction]{\cfg{\tpool}{\state} \tpstep[\vec\obs]
+  \cfg{\tpool'}{\state'}}
+\begin{mathpar}
+\infer
+  {\expr_1, \state_1 \step[\vec\obs] \expr_2, \state_2, \vec\expr}
+  {\cfg{\tpool \dplus [\expr_1] \dplus \tpool'}{\state_1} \tpstep[\vec\obs]
+     \cfg{\tpool \dplus [\expr_2] \dplus \tpool' \dplus \vec\expr}{\state_2}}
+\end{mathpar}
+
+We use $\tpsteps[-]$ for the reflexive transitive closure of $\tpstep[-]$, as usual concatenating the lists of observations of the individual steps.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "iris"
+%%% End:

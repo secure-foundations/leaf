@@ -1,0 +1,1090 @@
+"demo_0"
+     : string
+1 goal
+  
+  PROP : bi
+  BiPersistentlyForall0 : BiPersistentlyForall PROP
+  P, Q : PROP
+  ============================
+  "H2" : ∀ x : nat, ⌜x = 0⌝ ∨ ⌜x = 1⌝
+  --------------------------------------□
+  "H" : □ (P ∨ Q)
+  --------------------------------------∗
+  Q ∨ P
+1 goal
+  
+  PROP : bi
+  BiPersistentlyForall0 : BiPersistentlyForall PROP
+  P, Q : PROP
+  ============================
+  "H2" : ∀ x : nat, ⌜x = 0⌝ ∨ ⌜x = 1⌝
+  _ : P
+  --------------------------------------□
+  Q ∨ P
+"test_iStopProof"
+     : string
+1 goal
+  
+  PROP : bi
+  Q : PROP
+  ============================
+  "H1" : emp
+  --------------------------------------□
+  "H2" : Q
+  --------------------------------------∗
+  Q
+1 goal
+  
+  PROP : bi
+  Q : PROP
+  ============================
+  □ emp ∗ Q ⊢ Q
+"test_iDestruct_and_emp"
+     : string
+1 goal
+  
+  PROP : bi
+  P, Q : PROP
+  Persistent0 : Persistent P
+  Persistent1 : Persistent Q
+  ============================
+  _ : P
+  _ : Q
+  --------------------------------------□
+  <affine> (P ∗ Q)
+"test_iDestruct_spatial"
+     : string
+1 goal
+  
+  PROP : bi
+  Q : PROP
+  ============================
+  "HQ" : <affine> Q
+  --------------------------------------∗
+  Q
+"test_iDestruct_spatial_affine"
+     : string
+1 goal
+  
+  PROP : bi
+  Q : PROP
+  Affine0 : Affine Q
+  ============================
+  "HQ" : Q
+  --------------------------------------∗
+  Q
+"test_iDestruct_exists_not_exists"
+     : string
+The command has indeed failed with message:
+Tactic failure: iExistDestruct: cannot destruct P.
+"test_iDestruct_exists_intuitionistic"
+     : string
+1 goal
+  
+  PROP : bi
+  P : PROP
+  Φ : nat → PROP
+  y : nat
+  ============================
+  "H" : Φ y ∧ P
+  --------------------------------------□
+  P
+"test_iDestruct_exists_anonymous"
+     : string
+1 goal
+  
+  PROP : bi
+  P : PROP
+  Φ : nat → PROP
+  H : nat
+  ============================
+  "HΦ" : ∃ x : nat, Φ x
+  --------------------------------------∗
+  ∃ x : nat, Φ x
+"test_iDestruct_nameless_exist"
+     : string
+1 goal
+  
+  PROP : bi
+  Φ : nat → PROP
+  __unknown : nat
+  ============================
+  "H" : Φ __unknown
+  --------------------------------------∗
+  ∃ x : nat, Φ x
+"test_iIntros_nameless_forall"
+     : string
+1 goal
+  
+  PROP : bi
+  Φ : nat → PROP
+  __unknown : nat
+  ============================
+  "H" : ∀ x : nat, Φ x
+  --------------------------------------∗
+  Φ __unknown
+"test_iIntros_nameless_pure_forall"
+     : string
+1 goal
+  
+  PROP : bi
+  BiPureForall0 : BiPureForall PROP
+  φ : nat → Prop
+  __unknown : nat
+  ============================
+  "H" : ∀ x : nat, ⌜φ x⌝
+  --------------------------------------∗
+  ⌜φ __unknown⌝
+"test_iIntros_forall_pure"
+     : string
+1 goal
+  
+  PROP : bi
+  Ψ : nat → PROP
+  x : nat
+  ============================
+  --------------------------------------∗
+  Ψ x → Ψ x
+"test_iIntros_pure_names"
+     : string
+1 goal
+  
+  PROP : bi
+  H : True
+  P : PROP
+  x, y : nat
+  H0 : x = y
+  ============================
+  --------------------------------------∗
+  P -∗ P
+The command has indeed failed with message:
+No applicable tactic.
+The command has indeed failed with message:
+Tactic failure: iElaborateSelPat: "HQ" not found.
+The command has indeed failed with message:
+Tactic failure: iElaborateSelPat: "HQ" not found.
+"test_iSpecialize_pure_error"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: P not pure.
+"test_iSpecialize_pure_error"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: cannot solve φ using done.
+"test_iSpecialize_done_error"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: cannot solve P using done.
+The command has indeed failed with message:
+Tactic failure: iSpecialize: Q not persistent.
+"test_iSpecialize_impl_pure"
+     : string
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  --------------------------------------∗
+  <affine> ⌜φ⌝
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  "H1" : P
+  --------------------------------------□
+  <affine> ⌜φ⌝
+"test_iSpecialize_impl_pure_affine"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  --------------------------------------∗
+  ⌜φ⌝
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  "H1" : P
+  --------------------------------------□
+  ⌜φ⌝
+"test_iSpecialize_impl_pure"
+     : string
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  --------------------------------------∗
+  <affine> ⌜φ⌝
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  "H1" : P
+  --------------------------------------□
+  <affine> ⌜φ⌝
+"test_iSpecialize_impl_pure_affine"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  --------------------------------------∗
+  ⌜φ⌝
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  φ : Prop
+  P, Q : PROP
+  H : φ
+  ============================
+  "H1" : P
+  --------------------------------------□
+  ⌜φ⌝
+"test_iAssert_intuitionistic"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: (|==> P)%I not persistent.
+"test_iFrame_conjunction_3"
+     : string
+1 goal
+  
+  PROP : bi
+  P, Q : PROP
+  Absorbing0 : Absorbing Q
+  ============================
+  "HQ" : Q
+  --------------------------------------∗
+  False
+"test_iFrame_affinely_emp"
+     : string
+1 goal
+  
+  PROP : bi
+  P : PROP
+  ============================
+  "H" : P
+  --------------------------------------□
+  ∃ _ : nat, emp
+"test_iFrame_affinely_True"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P : PROP
+  ============================
+  "H" : P
+  --------------------------------------□
+  ∃ _ : nat, True
+"test_iFrame_or_1"
+     : string
+1 goal
+  
+  PROP : bi
+  P1, P2, P3 : PROP
+  ============================
+  --------------------------------------∗
+  ▷ (∃ _ : nat, emp)
+"test_iFrame_or_2"
+     : string
+1 goal
+  
+  PROP : bi
+  P1, P2, P3 : PROP
+  ============================
+  --------------------------------------∗
+  ▷ (∃ x : nat, emp ∧ ⌜x = 0⌝ ∨ emp)
+"test_iFrame_or_3"
+     : string
+1 goal
+  
+  PROP : bi
+  P1, P2, P3 : PROP
+  ============================
+  --------------------------------------∗
+  ▷ (∃ x : nat, ⌜x = 0⌝)
+"test_iFrame_or_affine_1"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P1, P2, P3 : PROP
+  ============================
+  --------------------------------------∗
+  ▷ (∃ _ : nat, True)
+"test_iFrame_or_affine_2"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P1, P2, P3 : PROP
+  ============================
+  --------------------------------------∗
+  ▷ (∃ _ : nat, True)
+"test_iCombine_nested_no_gives"
+     : string
+The command has indeed failed with message:
+Tactic failure: iCombine: cannot find 'gives' clause for hypotheses
+["HP"; "HQ"].
+The command has indeed failed with message:
+Tactic failure: iCombine: cannot find 'gives' clause for hypotheses
+["HP"; "HQ"].
+"test_iInduction_multiple_IHs"
+     : string
+1 goal
+  
+  PROP : bi
+  l, t1 : tree
+  Φ : tree → PROP
+  ============================
+  "Hleaf" : Φ leaf
+  "Hnode" : ∀ l0 r : tree, Φ l0 -∗ Φ r -∗ Φ (node l0 r)
+  "IH" : Φ l
+  "IH1" : Φ t1
+  --------------------------------------□
+  Φ (node l t1)
+The command has indeed failed with message:
+Tactic failure: iSpecialize: cannot instantiate (∀ _ : φ, P -∗ False)%I with
+P.
+The command has indeed failed with message:
+Tactic failure: iSpecialize: cannot instantiate (⌜φ⌝ → P -∗ False)%I with P.
+"test_iNext_plus_3"
+     : string
+1 goal
+  
+  PROP : bi
+  P, Q : PROP
+  n, m, k : nat
+  ============================
+  --------------------------------------∗
+  ▷^(S n + S m) emp
+"test_specialize_nested_intuitionistic"
+     : string
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P, P2, Q, R1, R2 : PROP
+  H : φ
+  ============================
+  "HP" : P
+  "HQ" : P -∗ Q
+  --------------------------------------□
+  "HR" : R2
+  --------------------------------------∗
+  R2
+"test_iSimpl_in"
+     : string
+1 goal
+  
+  PROP : bi
+  x, y : nat
+  ============================
+  "H" : ⌜S (S (S x)) = y⌝
+  --------------------------------------∗
+  ⌜S (S (S x)) = y⌝
+1 goal
+  
+  PROP : bi
+  x, y, z : nat
+  ============================
+  "H1" : ⌜S (S (S x)) = y⌝
+  "H2" : ⌜S y = z⌝
+  --------------------------------------∗
+  ⌜S (S (S x)) = y⌝
+1 goal
+  
+  PROP : bi
+  x, y, z : nat
+  ============================
+  "H1" : ⌜S (S (S x)) = y⌝
+  --------------------------------------□
+  "H2" : ⌜(1 + y)%nat = z⌝
+  --------------------------------------∗
+  ⌜S (S (S x)) = y⌝
+"test_iSimpl_in4"
+     : string
+The command has indeed failed with message:
+Tactic failure: iEval: %: unsupported selection pattern.
+"test_iRename"
+     : string
+1 goal
+  
+  PROP : bi
+  P : PROP
+  ============================
+  "X" : P
+  --------------------------------------□
+  P
+"test_iFrame_later_1"
+     : string
+1 goal
+  
+  PROP : bi
+  P, Q : PROP
+  ============================
+  --------------------------------------∗
+  ▷ emp
+"test_iFrame_later_2"
+     : string
+1 goal
+  
+  PROP : bi
+  P, Q : PROP
+  ============================
+  --------------------------------------∗
+  ▷ emp
+The command has indeed failed with message:
+Tactic failure: iFrame: cannot frame Q.
+The command has indeed failed with message:
+No applicable tactic.
+The command has indeed failed with message:
+No applicable tactic.
+"test_and_sep_affine_bi"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P, Q : PROP
+  ============================
+  _ : □ P
+  _ : Q
+  --------------------------------------∗
+  □ P
+"test_big_sepL_simpl"
+     : string
+1 goal
+  
+  PROP : bi
+  x : nat
+  l : list nat
+  P : PROP
+  ============================
+  "HP" : P
+  _ : [∗ list] y ∈ l, <affine> ⌜y = y⌝
+  _ : [∗ list] y ∈ (x :: l), <affine> ⌜y = y⌝
+  --------------------------------------∗
+  P
+1 goal
+  
+  PROP : bi
+  x : nat
+  l : list nat
+  P : PROP
+  ============================
+  "HP" : P
+  _ : [∗ list] y ∈ l, <affine> ⌜y = y⌝
+  _ : <affine> ⌜x = x⌝ ∗ ([∗ list] y ∈ l, <affine> ⌜y = y⌝)
+  --------------------------------------∗
+  P
+"test_big_sepL2_simpl"
+     : string
+1 goal
+  
+  PROP : bi
+  x1, x2 : nat
+  l1, l2 : list nat
+  P : PROP
+  ============================
+  "HP" : P
+  _ : [∗ list] y1;y2 ∈ [];l2, <affine> ⌜y1 = y2⌝
+  _ : [∗ list] y1;y2 ∈ (x1 :: l1);((x2 :: l2) ++ l2), <affine> ⌜y1 = y2⌝
+  --------------------------------------∗
+  P ∨ ([∗ list] _;_ ∈ (x1 :: l1);(x2 :: l2), True)
+1 goal
+  
+  PROP : bi
+  x1, x2 : nat
+  l1, l2 : list nat
+  P : PROP
+  ============================
+  "HP" : P
+  _ : [∗ list] y1;y2 ∈ [];l2, <affine> ⌜y1 = y2⌝
+  _ : <affine> ⌜x1 = x2⌝ ∗
+      ([∗ list] y1;y2 ∈ l1;(l2 ++ l2), <affine> ⌜y1 = y2⌝)
+  --------------------------------------∗
+  P ∨ True ∗ ([∗ list] _;_ ∈ l1;l2, True)
+"test_big_sepL2_iDestruct"
+     : string
+1 goal
+  
+  PROP : bi
+  Φ : nat → nat → PROP
+  x1, x2 : nat
+  l1, l2 : list nat
+  ============================
+  _ : Φ x1 x2
+  _ : [∗ list] y1;y2 ∈ l1;l2, Φ y1 y2
+  --------------------------------------∗
+  <absorb> Φ x1 x2
+"test_reducing_after_iDestruct"
+     : string
+1 goal
+  
+  PROP : bi
+  ============================
+  "H" : □ True
+  --------------------------------------∗
+  True
+"test_reducing_after_iApply"
+     : string
+1 goal
+  
+  PROP : bi
+  ============================
+  "H" : emp
+  --------------------------------------□
+  □ emp
+"test_reducing_after_iApply_late_evar"
+     : string
+1 goal
+  
+  PROP : bi
+  ============================
+  "H" : emp
+  --------------------------------------□
+  □ emp
+"test_wandM"
+     : string
+1 goal
+  
+  PROP : bi
+  mP : option PROP
+  Q, R : PROP
+  ============================
+  "HPQ" : mP -∗? Q
+  "HQR" : Q -∗ R
+  "HP" : default emp mP
+  --------------------------------------∗
+  R
+1 goal
+  
+  PROP : bi
+  mP : option PROP
+  Q, R : PROP
+  ============================
+  "HP" : default emp mP
+  --------------------------------------∗
+  default emp mP
+"test_iApply_prettification3"
+     : string
+1 goal
+  
+  PROP : bi
+  Ψ, Φ : nat → PROP
+  HP : ∀ (f : nat → nat) (y : nat),
+         TCEq f (λ x : nat, x + 10) → Ψ (f 1) -∗ Φ y
+  ============================
+  "H" : Ψ 11
+  --------------------------------------∗
+  Ψ (1 + 10)
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P, Q : PROP
+  H : Laterable Q
+  ============================
+  "HP" : ▷ P
+  "HQ" : Q
+  --------------------------------------∗
+  ▷ P ∗ Q
+"test_iRevert_pure"
+     : string
+1 goal
+  
+  PROP : bi
+  φ : Prop
+  P : PROP
+  ============================
+  "H" : <affine> ⌜φ⌝ -∗ P
+  --------------------------------------∗
+  <affine> ⌜φ⌝ -∗ P
+"test_iRevert_order_and_names"
+     : string
+1 goal
+  
+  PROP : bi
+  ============================
+  --------------------------------------∗
+  ∀ P1 P2, P1 -∗ P2 -∗ P1 ∗ P2
+"test_iRevert_pure_affine"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  φ : Prop
+  P : PROP
+  ============================
+  "H" : ⌜φ⌝ -∗ P
+  --------------------------------------∗
+  ⌜φ⌝ -∗ P
+"test_iFrame_not_add_emp_for_intuitionistically"
+     : string
+1 goal
+  
+  PROP : bi
+  BiAffine0 : BiAffine PROP
+  P : PROP
+  ============================
+  "H" : P
+  --------------------------------------□
+  ∃ _ : nat, True
+"test_iIntros_auto_name_used_later"
+     : string
+The command has indeed failed with message:
+x is already used.
+"elim_mod_accessor"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  X : Type
+  E1, E2 : coPset.coPset
+  α, β : X → PROP
+  γ : X → option PROP
+  ============================
+  "Hacc" : ∃ x : X, α x ∗ (β x ={E2,E1}=∗ default emp (γ x))
+  --------------------------------------∗
+  |={E2,E1}=> True
+"print_long_line_1"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P : PROP
+  ============================
+  "HP" : P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P ∗
+         P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P
+  --------------------------------------∗
+  True
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P : PROP
+  ============================
+  _ : P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P ∗
+      P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P
+  --------------------------------------∗
+  True
+"print_long_line_2"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P : PROP
+  ============================
+  "HP" : TESTNOTATION {{ P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P |
+         P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P }}
+  --------------------------------------∗
+  True
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P : PROP
+  ============================
+  _ : TESTNOTATION {{ P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P |
+      P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P_P }}
+  --------------------------------------∗
+  True
+"long_impl"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP → QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗
+  QQQQQQQQQQQQQQQQQQ
+"long_impl_nested"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP
+  → QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+    → QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+"long_wand"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP -∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+"long_wand_nested"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP -∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ -∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+"long_fupd"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  E : coPset.coPset
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP ={E}=∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+"long_fupd_nested"
+     : string
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  E1, E2 : coPset.coPset
+  PPPPPPPPPPPPPPPPP, QQQQQQQQQQQQQQQQQQ : PROP
+  ============================
+  --------------------------------------∗
+  PPPPPPPPPPPPPPPPP ={E1,E2}=∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ ={E1,E2}=∗
+  QQQQQQQQQQQQQQQQQQ ∗ QQQQQQQQQQQQQQQQQQ
+"iStopProof_not_proofmode"
+     : string
+The command has indeed failed with message:
+Tactic failure: iStopProof: proofmode not started.
+"iAlways_spatial_non_empty"
+     : string
+The command has indeed failed with message:
+Tactic failure: iModIntro: spatial context is non-empty.
+"iDestruct_bad_name"
+     : string
+The command has indeed failed with message:
+Tactic failure: iRename: "HQ" not found.
+"iIntros_dup_name"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntro: "HP" not fresh.
+The command has indeed failed with message:
+x is already used.
+"iIntros_pure_not_forall"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntro: cannot turn (P -∗ Q)%I into a universal quantifier.
+"iSplitL_one_of_many"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSplitL: hypotheses ["HPx"] not found.
+The command has indeed failed with message:
+Tactic failure: iSplitL: hypotheses ["HPx"] not found.
+"iSplitR_one_of_many"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSplitR: hypotheses ["HPx"] not found.
+The command has indeed failed with message:
+Tactic failure: iSplitR: hypotheses ["HPx"] not found.
+"iSplitL_non_splittable"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSplitL: P not a separating conjunction.
+"iSplitR_non_splittable"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSplitR: P not a separating conjunction.
+"iCombine_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iCombine: hypotheses ["HP3"] not found.
+"iSpecialize_bad_name1_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: "H" not found.
+"iSpecialize_bad_name2_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: "H" not found.
+"iSpecialize_autoframe_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: premise P cannot be solved by framing.
+The command has indeed failed with message:
+Tactic failure: iSpecialize: premise P cannot be solved by framing.
+"iSpecialize_autoframe_fail2"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: premise Q cannot be solved by framing.
+The command has indeed failed with message:
+Tactic failure: iSpecialize: premise Q cannot be solved by framing.
+"iExact_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iExact: "HQ" not found.
+The command has indeed failed with message:
+Tactic failure: iExact: "HQ" : Q does not match goal.
+The command has indeed failed with message:
+Tactic failure: iExact: remaining hypotheses not affine and the goal not absorbing.
+"iClear_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iElaborateSelPat: "HP" not found.
+The command has indeed failed with message:
+Tactic failure: iClear: "HP" : P not affine and the goal not absorbing.
+"iSpecializeArgs_fail"
+     : string
+The command has indeed failed with message:
+In environment
+PROP : bi
+P : PROP
+The term "true" has type "bool" while it is expected to have type "nat".
+"iStartProof_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iStartProof: not a BI assertion: (0 = 0).
+"iPoseProof_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iPoseProof: (0 = 0) not a BI assertion.
+The command has indeed failed with message:
+Tactic failure: iRename: "H" not fresh.
+"iPoseProof_not_found_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iPoseProof: "Hx" not found.
+"iPoseProof_not_found_fail2"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpecialize: hypotheses ["HQ"] not found.
+"iPoseProofCoreHyp_not_found_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iPoseProof: "Hx" not found.
+"iPoseProofCoreHyp_not_fresh_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iPoseProof: "H1" not fresh.
+"iRevert_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iElaborateSelPat: "H" not found.
+"iDestruct_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iDestruct: "[{HP}]" has just a single conjunct.
+The command has indeed failed with message:
+Tactic failure: iDestruct: "// H" is not supported due to IDone.
+The command has indeed failed with message:
+Tactic failure: iDestruct: "HP //"
+should contain exactly one proper introduction pattern.
+The command has indeed failed with message:
+Tactic failure: iDestruct: "[HP HQ HR]" has too many conjuncts.
+The command has indeed failed with message:
+Tactic failure: iDestruct: "[HP|HQ|HR]" has too many disjuncts.
+The command has indeed failed with message:
+Tactic failure: iDestruct: "[HP]" has just a single conjunct.
+The command has indeed failed with message:
+Tactic failure: iDestruct: in "[HP HQ|HR]" a disjunct has multiple patterns.
+"iOrDestruct_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iOrDestruct: "H'" or "H2" not fresh.
+The command has indeed failed with message:
+Tactic failure: iOrDestruct: "H1" or "H'" not fresh.
+"iApply_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iApply: cannot apply P.
+"iApply_fail_not_affine_1"
+     : string
+The command has indeed failed with message:
+Tactic failure: iApply: remaining hypotheses not affine and the goal not absorbing.
+"iIntros_fail_nonempty_spatial"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntro: introducing non-persistent "HP" : P
+into non-empty spatial context.
+"iIntros_fail_not_fresh"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntro: "HP" not fresh.
+"iIntros_fail_nothing_to_introduce"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntro: could not introduce "HQ"
+, goal is not a wand or implication.
+"iApply_fail_not_affine_2"
+     : string
+The command has indeed failed with message:
+Tactic failure: iApply: remaining hypotheses not affine and the goal not absorbing.
+"iAssumption_fail_not_affine_1"
+     : string
+The command has indeed failed with message:
+Tactic failure: iAssumption: remaining hypotheses not affine and the goal not absorbing.
+"iAssumption_fail_not_affine_2"
+     : string
+The command has indeed failed with message:
+Tactic failure: iAssumption: remaining hypotheses not affine and the goal not absorbing.
+"iRevert_wrong_var"
+     : string
+The command has indeed failed with message:
+Tactic failure: iRevert: k1 not in scope.
+The command has indeed failed with message:
+Tactic failure: iRevert: k1 not in scope.
+"iRevert_dup_var"
+     : string
+The command has indeed failed with message:
+Tactic failure: iRevert: k not in scope.
+"iRevert_dep_var_coq"
+     : string
+The command has indeed failed with message:
+k is used in hypothesis Hk.
+"iRevert_dep_var"
+     : string
+The command has indeed failed with message:
+Tactic failure: iRevert: k is used in hypothesis "Hk".
+"iLöb_no_BiLöb"
+     : string
+The command has indeed failed with message:
+Tactic failure: iLöb: no 'BiLöb' instance found.
+"iMod_mask_mismatch"
+     : string
+The command has indeed failed with message:
+Tactic failure: 
+"Goal and eliminated modality must have the same mask.
+Use [iMod (fupd_mask_subseteq E2)] to adjust the mask of your goal to [E2]".
+The command has indeed failed with message:
+Tactic failure: 
+"Goal and eliminated modality must have the same mask.
+Use [iMod (fupd_mask_subseteq E2)] to adjust the mask of your goal to [E2]".
+"iModIntro_mask_mismatch"
+     : string
+The command has indeed failed with message:
+Tactic failure: 
+"Only non-mask-changing update modalities can be introduced directly.
+Use [iApply fupd_mask_intro] to introduce mask-changing update modalities".
+The command has indeed failed with message:
+Tactic failure: 
+"Only non-mask-changing update modalities can be introduced directly.
+Use [iApply fupd_mask_intro] to introduce mask-changing update modalities".
+"iRevert_wrong_sel_pat"
+     : string
+The command has indeed failed with message:
+Tactic failure: sel_pat.parse: the term n
+is expected to be a selection pattern (usually a string),
+but has unexpected type nat.
+"iInduction_wrong_sel_pat"
+     : string
+The command has indeed failed with message:
+Tactic failure: sel_pat.parse: the term m
+is expected to be a selection pattern (usually a string),
+but has unexpected type nat.
+"test_iIntros_let_entails_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iStartProof: goal is a `let`, use `simpl`,
+`intros x`, `iIntros (x)`, or `iIntros "%x".
+"test_iIntros_let_wand_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iStartProof: goal is a `let`, use `simpl`,
+`intros x`, `iIntros (x)`, or `iIntros "%x".
+"test_pure_name"
+     : string
+1 goal
+  
+  PROP : bi
+  P : PROP
+  φ1, φ2 : Prop
+  Himpl : φ1 → φ2
+  HP2 : φ1
+  ============================
+  "HP" : P
+  --------------------------------------∗
+  P ∗ ⌜φ2⌝
+"test_not_fresh"
+     : string
+The command has indeed failed with message:
+H is already used.
+"test_iRename_select1"
+     : string
+The command has indeed failed with message:
+No matching clauses for match.
+"test_iDestruct_select2"
+     : string
+The command has indeed failed with message:
+Tactic failure: iPure: (φ n) not pure.
+"test_iDestruct_select_no_backtracking"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntuitionistic: Q not persistent.
+"test_iDestruct_intuitionistic_not_fresh"
+     : string
+The command has indeed failed with message:
+Tactic failure: iIntuitionistic: "H" not fresh.
+"test_iDestruct_spatial_not_fresh"
+     : string
+The command has indeed failed with message:
+Tactic failure: iSpatial: "H" not fresh.
+"test_iInduction_Forall"
+     : string
+1 goal
+  
+  PROP : bi
+  P : ntree → PROP
+  l : list ntree
+  ============================
+  "H" : ∀ l0 : list ntree, (∀ x : ntree, ⌜x ∈ l0⌝ → P x) -∗ P (Tree l0)
+  "IH" : [∗ list] x ∈ l, □ P x
+  --------------------------------------□
+  P (Tree l)
+"test_iInduction_Forall_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: iInduction: cannot import IH
+(my_Forall
+   (λ t : ntree,
+      "H" : ∀ l : list ntree, ([∗ list] x ∈ l, P x) -∗ P (Tree l)
+      --------------------------------------□
+      P t) l) into proof mode context (IntoIH instance missing).
