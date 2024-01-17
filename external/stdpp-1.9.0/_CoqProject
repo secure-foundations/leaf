@@ -1,0 +1,60 @@
+# Search paths for all packages. They must all match the regex
+# `-Q $PACKAGE[/ ]` so that we can filter out the right ones for each package.
+-Q stdpp stdpp
+-Q stdpp_unstable stdpp.unstable
+# Fixing this one requires Coq 8.17
+-arg -w -arg -future-coercion-class-field
+
+stdpp/options.v
+stdpp/base.v
+stdpp/tactics.v
+stdpp/option.v
+stdpp/fin_map_dom.v
+stdpp/boolset.v
+stdpp/fin_maps.v
+stdpp/fin.v
+stdpp/vector.v
+stdpp/pmap.v
+stdpp/stringmap.v
+stdpp/fin_sets.v
+stdpp/mapset.v
+stdpp/proof_irrel.v
+stdpp/hashset.v
+stdpp/pretty.v
+stdpp/countable.v
+stdpp/orders.v
+stdpp/natmap.v
+stdpp/strings.v
+stdpp/well_founded.v
+stdpp/relations.v
+stdpp/sets.v
+stdpp/listset.v
+stdpp/streams.v
+stdpp/gmap.v
+stdpp/gmultiset.v
+stdpp/prelude.v
+stdpp/listset_nodup.v
+stdpp/finite.v
+stdpp/numbers.v
+stdpp/nmap.v
+stdpp/zmap.v
+stdpp/coPset.v
+stdpp/coGset.v
+stdpp/lexico.v
+stdpp/propset.v
+stdpp/decidable.v
+stdpp/list.v
+stdpp/list_numbers.v
+stdpp/functions.v
+stdpp/hlist.v
+stdpp/sorting.v
+stdpp/infinite.v
+stdpp/nat_cancel.v
+stdpp/namespaces.v
+stdpp/telescopes.v
+stdpp/binders.v
+stdpp/ssreflect.v
+
+stdpp_unstable/bitblast.v
+stdpp_unstable/bitvector.v
+stdpp_unstable/bitvector_tactics.v

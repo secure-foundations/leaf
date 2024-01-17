@@ -1,0 +1,127 @@
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  {[1; 2; 3]} = ∅
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  elements {[1; 2; 3]} = []
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  {[1; 2; 3]} ∖ {[1]} ∪ {[4]} ∩ {[10]} = ∅ ∖ {[2]}
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  1%positive ∈ dom (<[1%positive:=2]> ∅)
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  1 ∈ dom (<[1:=2]> ∅)
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  bool_decide (∅ = {[1; 2; 3]}) = false
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  bool_decide (∅ ≡ {[1; 2; 3]}) = false
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  bool_decide (1 ∈ {[1; 2; 3]}) = true
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  bool_decide (∅ ## {[1; 2; 3]}) = true
+The command has indeed failed with message:
+Failed to progress.
+The command has indeed failed with message:
+Failed to progress.
+1 goal
+  
+  ============================
+  bool_decide (∅ ⊆ {[1; 2; 3]}) = true
+The command has indeed failed with message:
+Nothing to inject.
+The command has indeed failed with message:
+Nothing to inject.
+The command has indeed failed with message:
+Failed to progress.
+"pmap_insert_positives_test"
+     : string
+     = true
+     : bool
+     = true
+     : bool
+     = true
+     : bool
+"gmap_insert_positives_test"
+     : string
+     = true
+     : bool
+     = true
+     : bool
+     = true
+     : bool
+"pmap_insert_comm"
+     : string
+1 goal
+  
+  ============================
+  {[3%positive := false; 2%positive := true]} =
+  {[2%positive := true; 3%positive := false]}
+"pmap_lookup_concrete"
+     : string
+1 goal
+  
+  ============================
+  {[3%positive := false; 2%positive := true]} !! 2%positive = Some true
+"gmap_insert_comm"
+     : string
+1 goal
+  
+  ============================
+  {[3 := false; 2 := true]} = {[2 := true; 3 := false]}
+"gmap_lookup_concrete"
+     : string
+1 goal
+  
+  ============================
+  {[3 := false; 2 := true]} !! 2 = Some true

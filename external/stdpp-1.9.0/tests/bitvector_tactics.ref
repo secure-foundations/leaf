@@ -1,0 +1,88 @@
+1 goal
+  
+  a : Z
+  ============================
+  bv_wrap 64 (a + 1) = bv_wrap 64 (Z.succ a)
+1 goal
+  
+  l, r, xs : bv 64
+  data : list (bv 64)
+  H : bv_unsigned l < bv_unsigned r
+  H0 : bv_unsigned r ≤ Z.of_nat (length data)
+  H1 : bv_unsigned xs + Z.of_nat (length data) * 8 < 2 ^ 52
+  ============================
+  bv_wrap 64
+    (bv_unsigned xs +
+     (bv_unsigned l + bv_wrap 64 (bv_unsigned r - bv_unsigned l) `div` 2 ^ 1) *
+     8) < 2 ^ 52
+2 goals
+  
+  l, r : bv 64
+  data : list (bv 64)
+  H : bv_unsigned l < bv_unsigned r
+  H0 : bv_unsigned r ≤ Z.of_nat (length data)
+  H1 : ¬ bv_swrap 128 (bv_unsigned l) >=
+         bv_swrap 128
+           (bv_wrap 64
+              (bv_wrap 64 (bv_unsigned r - bv_unsigned l) `div` 2 ^ 1 +
+               bv_unsigned l + 0))
+  ============================
+  bv_unsigned l <
+  bv_wrap 64
+    (bv_wrap 64 (bv_unsigned r - bv_unsigned l) `div` 2 ^ 1 + bv_unsigned l +
+     0)
+
+goal 2 is:
+ bv_wrap 64
+   (bv_wrap 64 (bv_unsigned r - bv_unsigned l) `div` 2 ^ 1 + bv_unsigned l +
+    0) ≤ Z.of_nat (length data)
+1 goal
+  
+  r1 : bv 64
+  H : bv_unsigned r1 ≠ 22%Z
+  ============================
+  bv_wrap 64 (bv_unsigned r1 + 18446744073709551593 + 1) ≠ bv_wrap 64 0
+1 goal
+  
+  i, n : bv 64
+  H : bv_unsigned i < bv_unsigned n
+  H0 : bv_wrap 64
+         (bv_unsigned n + bv_wrap 64 (- bv_wrap 64 (bv_unsigned i + 1) - 1) +
+          1) ≠ 0%Z
+  ============================
+  bv_wrap 64 (bv_unsigned i + 1) < bv_unsigned n
+1 goal
+  
+  b : bv 16
+  v : bv 64
+  ============================
+  bv_wrap 64
+    (Z.lor (Z.land (bv_unsigned v) 18446744069414649855)
+       (bv_wrap 64 (bv_unsigned b ≪ 16))) =
+  bv_wrap 64
+    (Z.lor
+       (bv_wrap (16 * 2) (bv_unsigned v ≫ Z.of_N (16 * 2)) ≪ Z.of_N (16 * 2))
+       (Z.lor (bv_unsigned b ≪ Z.of_N (16 * 1))
+          (bv_wrap (16 * 1) (bv_unsigned v))))
+1 goal
+  
+  b : bv 16
+  ============================
+  bv_wrap 16 (bv_unsigned b) = bv_wrap 16 (bv_unsigned b)
+1 goal
+  
+  b : bv 16
+  ============================
+  bv_wrap 16 (bv_unsigned b) ≠ bv_wrap 16 (bv_unsigned b + 1)
+1 goal
+  
+  b : bv 16
+  H : bv_unsigned b = bv_unsigned b
+  ============================
+  True
+1 goal
+  
+  b : bv 16
+  H : bv_unsigned b ≠ bv_wrap 16 (bv_unsigned b + 1)
+  ============================
+  True
