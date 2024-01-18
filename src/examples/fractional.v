@@ -3,6 +3,8 @@ Require Import Coq.QArith.Qround.
 Require Import Coq.QArith.Qcanon.
 Require Import Coq.ZArith.Int.
 
+Undelimit Scope Int_scope.
+
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 From examples Require Import rwlock_logic.
