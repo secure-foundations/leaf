@@ -1,6 +1,8 @@
 # Intro
 
-This contains the Coq development validating the core technical contributions of the paper _Leaf: Modularity for Temporary Sharing in Separation Logic_.
+This contains the Coq development validating the core technical contributions of the paper _Leaf: Modularity for Temporary Sharing in Separation Logic_
+([OOPSLA paper](https://dl.acm.org/doi/10.1145/3622798))
+([extended version](https://arxiv.org/abs/2309.04851)).
 As documented in the paper (see the last paragraph of Sec. 7) it should contain:
 
  * Definitions of Leaf concepts and proofs of Leaf inference rules
