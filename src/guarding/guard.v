@@ -395,7 +395,7 @@ Lemma wsat_split_one_union x E
    ⊢ |={E ∪ {[ x ]}, E}=> (storage_inv x) ∗ (storage_inv x ={E, E ∪ {[ x ]}}=∗ True).
 Proof.
   assert (E ## {[x]}) as disj by set_solver.
-  rewrite uPred_fupd_unseal. unfold uPred_fupd_def.
+  rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
   iIntros "#kx [w e]".
   iDestruct (ownE_op with "e") as "[ee e]". { trivial. }
   (*iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }*)
@@ -508,10 +508,10 @@ Lemma fguards_apply_persistent (P Q: iProp Σ) F E
     : (P &&{ F }&&$> □ Q) ⊢ P ={E}=∗ □ Q.
 Proof.
   unfold fguards, guards_with. iIntros "[g kf] p".
-  (*rewrite uPred_fupd_eq. unfold uPred_fupd_def.*)
+  (*rewrite uPred_fupd_eq. unfold fancy_updates.uPred_fupd_def.*)
   iDestruct ("g" $! P) as "g".
   iMod (wsat_split_empty E F with "kf") as "[sb back]"; trivial.
-  rewrite uPred_fupd_unseal. unfold uPred_fupd_def. iIntros "[w eo]".
+  rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def. iIntros "[w eo]".
   iDestruct ("g" with "[p sb]") as "t".
   { iFrame. iIntros. iFrame. }
   iMod "t" as "[q t]".
@@ -534,7 +534,7 @@ Proof.
   iDestruct ("g" $! (P)%I) as "g".
   iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
   { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
-  rewrite uPred_fupd_unseal. unfold uPred_fupd_def. iIntros "[w eo]".
+  rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def. iIntros "[w eo]".
   iMod ("g" with "[p sb]") as "[q g]".
   { iFrame. iIntros. iFrame. }
   

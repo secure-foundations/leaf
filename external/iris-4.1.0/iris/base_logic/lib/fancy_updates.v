@@ -46,12 +46,12 @@ Definition invΣ : gFunctors :=
 Global Instance subG_invΣ {Σ} : subG invΣ Σ → invGpreS Σ.
 Proof. solve_inG. Qed.
 
-Definition uPred_fupd_def `{!invGS_gen hlc Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
+Local Definition uPred_fupd_def `{!invGS_gen hlc Σ} (E1 E2 : coPset) (P : iProp Σ) : iProp Σ :=
   wsat ∗ ownE E1 -∗ le_upd_if (if hlc is HasLc then true else false) (◇ (wsat ∗ ownE E2 ∗ P)).
 Local Definition uPred_fupd_aux : seal (@uPred_fupd_def). Proof. by eexists. Qed.
 Definition uPred_fupd := uPred_fupd_aux.(unseal).
 Global Arguments uPred_fupd {hlc Σ _}.
-Lemma uPred_fupd_unseal `{!invGS_gen hlc Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
+Local Lemma uPred_fupd_unseal `{!invGS_gen hlc Σ} : @fupd _ uPred_fupd = uPred_fupd_def.
 Proof. rewrite -uPred_fupd_aux.(seal_eq) //. Qed.
 
 Lemma uPred_fupd_mixin `{!invGS_gen hlc Σ} : BiFUpdMixin (uPredI (iResUR Σ)) uPred_fupd.

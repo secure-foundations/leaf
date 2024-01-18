@@ -439,7 +439,7 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
     iIntros "[%wfm [#ounit #m]] [p f]".
-    rewrite uPred_fupd_unseal. unfold uPred_fupd_def.
+    rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
     iIntros "[w oe]".
     iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
     { iFrame "w". iFrame "m". iFrame "oe". }
@@ -507,7 +507,7 @@ Section StorageLogic.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     unfold maps.
     iIntros "[[%wfm [#ounit #m]] [#gu #kbi]] [g [p f]]".
-    rewrite uPred_fupd_unseal. unfold uPred_fupd_def.
+    rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
     iIntros "[w oe]".
     iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
     { iFrame "w". iFrame "m". iFrame "oe". }
@@ -778,7 +778,7 @@ Section StorageLogic.
   : ⊢ f (interp p) ={E}=∗ ∃ γ , ⌜ γ ∈ (↑ N : coPset) ⌝ ∗ maps γ f ∗ p_own γ p.
   Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
     iIntros "f_init".
-    rewrite uPred_fupd_unseal. unfold uPred_fupd_def.
+    rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
     iIntros "[w oe]".
     iMod (ownI_alloc_and_simultaneous_own_alloc_ns
       (λ γ , 

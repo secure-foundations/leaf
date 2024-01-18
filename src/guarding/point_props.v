@@ -43,19 +43,19 @@ Proof.
   split.
   intros n x0 val t.
   
-  unfold uPred_holds, uPred_sep_def in t.
+  unfold uPred_holds, upred.uPred_sep_def in t.
   destruct t as [x1 [x2 [sum [t1 t2]]]].
   
-  unfold uPred_holds, uPred_wand_def in t1.
+  unfold uPred_holds, upred.uPred_wand_def in t1.
   
   assert (✓{n} (x1 ⋅ x2)) as val_12. { setoid_rewrite <- sum. trivial. }
   assert (n ≤ n) as nle by trivial.
   have t11 := t1 n x2 nle val_12 t2.
   
-  unfold uPred_holds in t11. unfold uPred_ownM_def in t11.
+  unfold uPred_holds in t11. unfold upred.uPred_ownM_def in t11.
   unfold includedN in t11. destruct t11 as [z h].
   
-  unfold uPred_holds. unfold uPred_sep_def.
+  unfold uPred_holds. unfold upred.uPred_sep_def.
   exists x. exists z.
   
   assert (uPred_holds P n x0) as ux0. {
@@ -68,10 +68,10 @@ Proof.
   split.
   { setoid_rewrite sum. trivial. }
   split.
-  { unfold uPred_holds. unfold uPred_ownM_def. trivial. }
-  { unfold uPred_holds. unfold uPred_wand_def. intros n' x' incl val2 uh.
+  { unfold uPred_holds. unfold upred.uPred_ownM_def. trivial. }
+  { unfold uPred_holds. unfold upred.uPred_wand_def. intros n' x' incl val2 uh.
       unfold uPred_holds in uh.
-      unfold uPred_ownM_def in uh.
+      unfold upred.uPred_ownM_def in uh.
       unfold includedN in uh. destruct uh as [w j].
       setoid_rewrite j.
       apply uPred_mono with (n1 := n) (x1 := x0); trivial.
@@ -100,27 +100,27 @@ Proof.
   split.
   intros n x0 val t.
   
-  unfold uPred_holds, uPred_sep_def in t.
+  unfold uPred_holds, upred.uPred_sep_def in t.
   destruct t as [x1 [x2 [sum [t1 t2]]]].
   
-  unfold uPred_holds, uPred_wand_def in t1.
+  unfold uPred_holds, upred.uPred_wand_def in t1.
   
   assert (✓{n} (x1 ⋅ x2)) as val_12. { setoid_rewrite <- sum. trivial. }
   assert (n ≤ n) as nle by trivial.
   have t11 := t1 n x2 nle val_12 t2.
   
-  unfold uPred_holds in t11. unfold uPred_or_def in t11.
+  unfold uPred_holds in t11. unfold upred.uPred_or_def in t11.
   destruct t11 as [tlatfalse|t11].
   {
-    unfold uPred_holds in tlatfalse. unfold uPred_later_def in tlatfalse.
-    unfold uPred_holds in tlatfalse. unfold uPred_pure_def in tlatfalse.
+    unfold uPred_holds in tlatfalse. unfold upred.uPred_later_def in tlatfalse.
+    unfold uPred_holds in tlatfalse. unfold upred.uPred_pure_def in tlatfalse.
     destruct n; try contradiction.
-    unfold uPred_holds, uPred_sep_def. exists ε, x0.
+    unfold uPred_holds, upred.uPred_sep_def. exists ε, x0.
     split.
     { rewrite ucmra_unit_left_id. trivial. }
     split.
-    { unfold uPred_holds, uPred_or_def. left. unfold uPred_holds, uPred_later_def. trivial. }
-    unfold uPred_holds, uPred_wand_def.
+    { unfold uPred_holds, upred.uPred_or_def. left. unfold uPred_holds, upred.uPred_later_def. trivial. }
+    unfold uPred_holds, upred.uPred_wand_def.
     intros n' x' le0 valxx uh.
     assert (n' = 0) by lia. subst n'.
     setoid_rewrite sum.
@@ -135,21 +135,21 @@ Proof.
     lia.
   } 
   
-  unfold uPred_holds in t11. unfold uPred_ownM_def in t11.
+  unfold uPred_holds in t11. unfold upred.uPred_ownM_def in t11.
   unfold includedN in t11. destruct t11 as [z h].
   
-  unfold uPred_holds. unfold uPred_sep_def.
+  unfold uPred_holds. unfold upred.uPred_sep_def.
   exists x. exists z.
   
   split.
   { setoid_rewrite sum. trivial. }
   split.
-  { unfold uPred_holds, uPred_or_def. right.
-      unfold uPred_holds, uPred_ownM_def. trivial. }
-  { unfold uPred_holds, uPred_wand_def.
+  { unfold uPred_holds, upred.uPred_or_def. right.
+      unfold uPred_holds, upred.uPred_ownM_def. trivial. }
+  { unfold uPred_holds, upred.uPred_wand_def.
     intros n' x' incl val2 uh.
       unfold uPred_holds in uh.
-      unfold uPred_ownM_def in uh.
+      unfold upred.uPred_ownM_def in uh.
       unfold includedN in uh. destruct uh as [w j].
       setoid_rewrite j.
       
@@ -196,7 +196,7 @@ Lemma own_separates_out γ (x: A) (P : iProp Σ)
           own γ x ∗ (own γ x -∗ P)
       ).
 Proof.
-  rewrite own_eq. unfold own_def.
+  rewrite own.own_eq. unfold own.own_def.
   apply uPred_ownM_separates_out.
 Qed.
 
@@ -205,7 +205,7 @@ Lemma own_separates_out_except0 γ (x: A) (P : iProp Σ)
           ◇ own γ x ∗ (own γ x -∗ P)
       ).
 Proof.
-  rewrite own_eq. unfold own_def.
+  rewrite own.own_eq. unfold own.own_def.
   apply uPred_ownM_separates_out_except0.
 Qed.
 
@@ -213,8 +213,8 @@ Qed.
 
 Lemma point_prop_own γ (x: A) : point_prop (own γ x).
 Proof.
-  rewrite own_eq. unfold own_def. unfold point_prop.
-  exists (iRes_singleton γ x). trivial.
+  rewrite own.own_eq. unfold own.own_def. unfold point_prop.
+  exists (own.iRes_singleton γ x). trivial.
 Qed.
 
 Lemma own_separates_out_point (P : iProp Σ) (Q: iProp Σ)
