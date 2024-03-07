@@ -142,6 +142,7 @@ Proof using C Disc.
   intros Z. destruct Z. trivial.
 Qed.
 
+
 Lemma own_sep_auth_incll γ (p1 p2 state : C)
     (cond: ∀ z , p1 ⋅ z ≡ state -> ✓ (p2 ⋅ z))
     : own γ (◯ p1) ∗ own γ (● state) ==∗
@@ -180,6 +181,47 @@ Proof using C Disc m Σ.
   iExists z.
   rewrite own_op. iFrame.
   iPureIntro. trivial.
+Qed.
+ 
+Lemma own_sep_auth_incll_nondet γ (p1 state : C) (output_ok: C -> C -> Prop)
+  (cond: ∀ z , p1 ⋅ z ≡ state -> ∃ p2 , output_ok p2 z /\ ✓ (p2 ⋅ z))
+  : own γ (◯ p1) ∗ own γ (● state) ==∗
+      (∃ z p2 , ⌜ output_ok p2 z /\ p1 ⋅ z ≡ state ⌝ ∗ own γ (◯ p2) ∗ own γ (● (p2 ⋅ z)))%I.
+Proof using C Disc m Σ.
+  iIntros "t".
+  rewrite <- own_op.
+  iMod (own_updateP (λ y , ∃ z p2 , output_ok p2 z /\ p1 ⋅ z ≡ state /\ y = ◯ p2 ⋅ ● (p2 ⋅ z)) γ with "t") as "t".
+  {
+    rewrite cmra_discrete_updateP.
+    intros z valpz.
+    have z_is_f := auth_op_rhs2_is_frag _ _ _ valpz.
+    destruct z_is_f as [q z_is_f]. subst z.
+    have incll := val_faf _ _ _ valpz.
+    unfold "≼" in incll. destruct incll as [z0 incll].
+    symmetry in incll.
+    setoid_rewrite <- cmra_assoc in incll.
+    have cond0 := cond (q ⋅ z0) incll.
+    destruct cond0 as [p2 [oo cond0]].
+    exists (◯ p2 ⋅ ● (p2 ⋅ (q ⋅ z0))).
+    split.
+    {
+      exists (q ⋅ z0). exists p2. split; trivial. split; trivial.
+    }
+    assert (◯ p2 ⋅ ● (p2 ⋅ (q ⋅ z0)) ≡ ● (p2 ⋅ (q ⋅ z0)) ⋅ ◯ p2) as co.
+      { apply cmra_comm. }
+    setoid_rewrite co.
+    setoid_rewrite <- cmra_assoc.
+    setoid_rewrite <- auth_frag_op.
+    setoid_rewrite cmra_assoc.
+    rewrite auth_both_valid_discrete. split.
+    { unfold "≼". exists z0. trivial. }
+    { setoid_rewrite <- cmra_assoc. trivial. }
+  }
+  iDestruct "t" as (a') "[%q t]". iModIntro.
+  destruct q as [z [p2 [oo [q j]]]]. subst a'.
+  iExists z.
+  rewrite own_op. iExists p2. iFrame.
+  iPureIntro. split; trivial.
 Qed.
 
 Lemma remove_question_mark (a : auth C) (b : option (auth C))
