@@ -830,6 +830,135 @@ Section StorageLogic.
     { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
     iModIntro. iModIntro. iFrame.
   Qed.
+
+  Lemma logic_exchange_with_extra_guard_nondeterministic
+    (p1 q: P) (b1: B) (output_ok: P -> B -> Prop) (γ: gname) (f: B -> iProp Σ) (G: iProp Σ)
+    (exchng: storage_protocol_exchange_nondeterministic (p1 ⋅ q) b1
+        (λ p2_q b2 , ∃ p2 , p2_q = p2 ⋅ q /\ output_ok p2 b2))
+    : maps γ f ∗ □ (G &&{ {[ γ ]} }&&$> p_own γ q) ⊢
+        G ∗ p_own γ p1 ∗ ▷ f b1 ={ {[ γ ]} }=∗ ∃ p2 b2 ,
+            ⌜ output_ok p2 b2 ⌝ ∗ G ∗ p_own γ p2 ∗ ▷ f b2.
+  Proof using B H H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 P equ equb inG0 invGS0 storage_mixin Σ.
+    unfold maps.
+    iIntros "[[%wfm [#ounit #m]] [#gu #kbi]] [g [p f]]".
+    rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
+    iIntros "[w oe]".
+    iDestruct (ownI_open with "[w m oe]") as "[w [latp od]]".
+    { iFrame "w". iFrame "m". iFrame "oe". }
+    iMod (bi.later_exist_except_0 with "latp") as (state) "lat".
+    unfold fguards, guards_with.
+    iDestruct ("gu" $! G) as "gu2".
+    
+    iDestruct ("gu2" with "[g lat]") as "gu3".
+    { iFrame "g". iIntros "g". iFrame "g".
+        setoid_rewrite storage_bulk_inv_singleton. unfold storage_inv.
+        iExists ((∃ state0 : P, own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp state0))%I).
+        iFrame "m".
+        setoid_rewrite know_bulk_inv_singleton. unfold know_inv.
+        iModIntro. iExists state. iFrame "lat".
+    }
+    
+    iMod "gu3" as "[po b]".
+    
+     iAssert ((own γ (◯ Inved q) ∧
+          (◇ ∃ state : P, G ∗ ▷
+                (own γ (● Inved state) ∗ ⌜pinv state⌝ ∗ f (interp state))))%I)
+          with "[po b]" as "x".
+      { iSplit. { iFrame. } 
+        iDestruct ("b" with "po") as "[ex t]".
+        setoid_rewrite storage_bulk_inv_singleton. unfold storage_inv.
+        iDestruct "ex" as (P0) "[#own lat]".
+        iDestruct (ownIagree γ P0 _ with "[m own]") as "eq".
+        { iSplitL. { iFrame "own". } iFrame "m". }
+        iRewrite "eq" in "lat".
+        iMod (bi.later_exist_except_0 with "lat") as (state0) "lat".
+        iExists state0. iFrame.
+      }
+      iMod (and_except0_r with "x") as "x".
+      rewrite bi.and_exist_l.
+      iDestruct "x" as (state0) "x".
+      iMod (apply_timeless with "x") as "x".
+      iDestruct (stuff1 with "x") as "%pinvs".
+      unfold p_own.
+      (*iDestruct (stuff3 γ p1 q state0 with "[p x]") as "%incll". { iFrame. }*)
+      
+      iAssert (own γ (◯ Inved q) ∧ own γ (● Inved state0) ∗ (G ∗ ⌜pinv state0⌝ ∗ ▷ f (interp state0)))%I with "[x]" as "x".
+      { iSplit. { iDestruct "x" as "[x _]". iFrame. }
+          iDestruct "x" as "[_ [x [y z]]]". iFrame. }
+      iDestruct (andsep_to_sepand_ucmra with "x") as "[x y]".
+      { apply auth_frag_disjointness. }
+      iDestruct (own_separates_out γ (◯ Inved q) (own γ (◯ Inved q) ∧ G ∗ ⌜pinv state0⌝ ∗ ▷ f (interp state0)) with "[y]") as "[y z]".
+      { iFrame "y". iIntros "[k _]". iFrame. }
+      
+      iDestruct (own_inved_op p1 q γ with "[p y]") as "own_p_q". { iFrame. }
+      iMod (own_sep_inv_incll_nondet γ (p1 ⋅ q) state0 (λ p2_q r , ∃ p2 b2 , p2_q = p2 ⋅ q /\ output_ok p2 b2
+          /\ pinv ((p2 ⋅ q) ⋅ r)
+          /\ ✓(interp ((p1 ⋅ q) ⋅ r) ⋅ b1)
+          /\ interp ((p1 ⋅ q) ⋅ r) ⋅ b1 ≡ interp ((p2 ⋅ q) ⋅ r) ⋅ b2) with "[own_p_q x]")
+          as (z p2_q) "[%incll [own_p_q x]]".
+      { unfold storage_protocol_exchange_nondeterministic in exchng.
+        intro r. intro j0. have exq := exchng r j0.
+        destruct exq as [p2_q [b2 exq]].
+        destruct exq as [[p2 [eq oo]] [a b]].
+        exists (p2 ⋅ q). split.
+        { exists p2. exists b2. intuition. { rewrite <- eq. apply a. }
+            rewrite <- eq. trivial. }
+        { rewrite <- eq. apply a. }
+      }
+      { apply pinvs. }
+      { iFrame. }
+      
+      destruct incll as [[p2 [b2 [p2_q_eq bigconj]]] incll].
+      rewrite p2_q_eq.
+      iDestruct (own_inved_op_split with "own_p_q") as "[p q]".
+      iDestruct ("z" with "q") as "[_ z]".
+      
+      destruct bigconj as [oo [pix [iix interp_eq]]].
+       
+    destruct wfm as [f_prop [f_unit f_op]]. (* need f Proper for the next step *)
+    
+    assert (f (interp state0)
+          ≡ f(interp (p1 ⋅ q ⋅ z))) as equiv_interp_state.
+    {
+        setoid_rewrite incll. trivial.
+    }
+    
+    iDestruct "z" as "[g [_ fi]]".
+    setoid_rewrite equiv_interp_state.
+    iDestruct (bi.later_sep with "[fi f]") as "f_op". { iFrame "fi". iFrame "f". }
+    
+    unfold storage_protocol_exchange in exchng.
+    assert (pinv (p1 ⋅ q ⋅ z)) as pinv_p1_z. {
+        destruct storage_mixin. destruct protocol_mixin0.
+        setoid_rewrite <- incll. trivial.
+    }
+
+    assert (✓ (interp (p2 ⋅ q ⋅ z) ⋅ b2)) as val_interp2.
+    {
+      destruct storage_mixin. destruct base_ra_mixin0.
+      setoid_rewrite <- interp_eq. trivial.
+    }
+    
+    setoid_rewrite <- f_op; trivial.
+
+    setoid_rewrite interp_eq.
+    setoid_rewrite f_op; trivial.
+    
+    iDestruct "f_op" as "[fi fb]".
+
+    iAssert ((▷ ∃ state0 : P,
+          own γ (● Inved state0) ∗ ⌜pinv state0⌝ ∗ f (interp state0))%I)
+          with "[x fi]"
+          as "inv_to_return".
+    {
+      iModIntro. (* strip later *)
+      iExists (p2 ⋅ q ⋅ z). iFrame "x". iFrame "fi".
+      iPureIntro. trivial.
+    }
+    iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
+    { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
+    iModIntro. iModIntro. iFrame. iExists p2. iExists b2. iFrame. iPureIntro. trivial.
+  Qed.
   
   Lemma inved_op (a b : P) :
       Inved (a ⋅ b) ≡ Inved a ⋅ Inved b.
