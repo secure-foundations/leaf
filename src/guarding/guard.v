@@ -145,7 +145,16 @@ Definition guards_with (P Q X : iProp Σ) :=
 Definition fguards (P Q : iProp Σ) (m: gset positive) : iProp Σ :=
     guards_with P Q (storage_bulk_inv m) ∗ know_bulk_inv m.
     
+Definition lguards_with (P Q X : iProp Σ) (n: nat) :=
+    (∀ (T: iProp Σ), (P ∗ (P -∗ X ∗ T) -∗ ▷^n ◇ (Q ∗ (Q -∗ X ∗ T)))) % I.
+    
+Definition lfguards (P Q : iProp Σ) (m: gset positive) (n: nat) : iProp Σ :=
+    lguards_with P Q (storage_bulk_inv m) n ∗ know_bulk_inv m.
+    
 Notation "P &&{ E }&&$> Q" := (fguards P Q E)
+  (at level 99, E at level 50, Q at level 200).
+  
+Notation "P &&{ E ; n }&&$> Q" := (lfguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
   
 Global Instance guards_with_proper :
@@ -164,6 +173,24 @@ Proof.
       apply set_eq. intro. setoid_rewrite Q1. trivial.
   }
   setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
+Qed.
+
+Global Instance lguards_with_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (=) ==> (≡)) lguards_with.
+Proof.
+  unfold Proper, "==>", lguards_with. intros x y Q x0 y0 Q0 x1 y1 Q1 x2 y2 x2_eq_y2.
+  subst x2. setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
+Qed.
+
+Global Instance lfguards_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (=) ==> (≡)) lfguards.
+Proof.
+  unfold lfguards. unfold Proper, "==>". intros x y Q x0 y0 Q0 x1 y1 Q1 x2 y2 x2_eq_y2.
+  unfold storage_bulk_inv.
+  assert (x1 = y1) as H. {
+      apply set_eq. intro. setoid_rewrite Q1. trivial.
+  }
+  subst x2. setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
 
 Lemma fguards_impl (P Q S : iProp Σ) F
@@ -202,6 +229,43 @@ Proof.
   iFrame "p".
 Qed.
 
+Lemma lfguards_impl (P Q S : iProp Σ) F (n: nat)
+    (point: point_prop S)
+    (qrx: (Q ⊢ S))
+    : (
+      (P &&{F ; n}&&$> Q)
+      ⊢
+      (P &&{F ; n}&&$> S)
+    ). 
+Proof.
+  iIntros "[pq kf]".
+  unfold lfguards, lguards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iIntros "k".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ▷^n ◇ S)%I with "[pq]" as "X".
+  {
+    iIntros "l".
+    iAssert (▷^n ◇ Q)%I with "[pq l]" as "J". {
+      iDestruct ("pq" with "l") as "r".
+      iNext. iMod "r" as "[r s]". iModIntro.  iFrame.
+    }
+    iNext. iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
+  } 
+  iDestruct (own_separates_out_except0_point_later _ S with "[X k]") as "J".
+  { trivial. }
+  { iFrame "X". iFrame "k". }
+  iDestruct "J" as "[J T]".
+  iNext. iMod "J" as "J".
+  iModIntro.
+  iFrame "J".
+  iIntros "o".
+  iDestruct ("T" with "o") as "[p m]".
+  iApply "m".
+  iFrame "p".
+Qed.
+
 Lemma fguards_and (P Q R S : iProp Σ) F
     (point: point_prop S)
     (qrx: (Q ∧ R ⊢ S))
@@ -226,6 +290,86 @@ Proof.
       iSplit.
       { iMod ("pq" with "l") as "[q j]". iModIntro. iFrame "q". }
       { iMod ("pr" with "l") as "[r j]". iModIntro. iFrame "r". }
+    }
+    iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
+  } 
+  iDestruct (own_separates_out_except0_point _ S with "[X k]") as "J".
+  { trivial. }
+  { iFrame "X". iFrame "k". }
+  iDestruct "J" as "[J T]".
+  iMod "J" as "J".
+  iModIntro.
+  iFrame "J".
+  iIntros "o".
+  iDestruct ("T" with "o") as "[p m]".
+  iApply "m".
+  iFrame "p".
+Qed.
+
+Lemma lfguards_and (P Q R S : iProp Σ) F (n: nat)
+    (point: point_prop S)
+    (qrx: (Q ∧ R ⊢ S))
+    : (
+      (P &&{F ; n}&&$> Q) ∗ (P &&{F ; n}&&$> R)
+      ⊢
+      (P &&{F ; n}&&$> S)
+    ). 
+Proof.
+  iIntros "[[pq kf] [pr _]]".
+  unfold fguards, guards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iDestruct ("pr" $! T) as "pr".
+  iIntros "k".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ▷^n ◇ S)%I with "[pq pr]" as "X".
+  {
+    iIntros "l".
+    iAssert (▷^n ◇ (Q ∧ R))%I with "[pq pr l]" as "J". {
+      rewrite bi.except_0_and.
+      iSplit.
+      { iDestruct ("pq" with "l") as "[q j]". iFrame "q". }
+      { iDestruct ("pr" with "l") as "[r j]". iFrame "r". }
+    }
+    iNext.
+    iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
+  } 
+  iDestruct (own_separates_out_except0_point_later _ S with "[X k]") as "J".
+  { trivial. }
+  { iFrame "X". iFrame "k". }
+  iDestruct "J" as "[J T]".
+  iNext. iMod "J" as "J".
+  iModIntro.
+  iFrame "J".
+  iIntros "o".
+  iDestruct ("T" with "o") as "[p m]".
+  iApply "m".
+  iFrame "p".
+Qed.
+
+Lemma fguards_and_with_lhs (P Q S : iProp Σ) F
+    (point: point_prop S)
+    (qrx: (P ∧ Q ⊢ S))
+    : (
+      (P &&{F}&&$> Q)
+      ⊢
+      (P &&{F}&&$> S)
+    ). 
+Proof.
+  iIntros "[pq kf]".
+  unfold fguards, guards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iIntros "k".
+  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ◇ S)%I with "[pq]" as "X".
+  {
+    iIntros "l".
+    iAssert (◇ (P ∧ Q))%I with "[pq l]" as "J". {
+      rewrite bi.except_0_and.
+      iSplit.
+      { iDestruct "l" as "[l l']". iModIntro. iFrame. }
+      { iMod ("pq" with "l") as "[r j]". iModIntro. iFrame "r". }
     }
     iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
   } 
@@ -284,6 +428,101 @@ Proof.
     iFrame "s". iIntros "s". iApply "t". iRight. iFrame "s".
   }
 Qed.
+
+Lemma lfguards_or_with_lhs (P R S : iProp Σ) F n
+    (qrx: (P ∧ R ⊢ False))
+    : (
+      (P &&{F; n}&&$> (R ∨ S))
+      ⊢
+      (P &&{F; n}&&$> S)
+    ). 
+Proof.
+  iIntros "[prs kf]".
+  unfold lfguards, lguards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("prs" $! T) as "prs".
+  iIntros "k".
+  iAssert (▷^n ((◇ P) ∧ (◇ ((R ∨ S) ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T)))))%I with "[prs k]" as "X".
+  { iSplit.
+     { iModIntro. iDestruct "k" as "[p p2]". iFrame. }
+     { iDestruct ("prs" with "k") as "rs". iFrame "rs". }
+  }
+  rewrite <- bi.except_0_and. iNext. iMod "X" as "X". iModIntro.
+  iAssert
+    (P ∧ (
+      (R ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
+      ∨
+      (S ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
+    ))%I with "[X]" as "X".
+  { iSplit. { iDestruct "X" as "[Q _]". iFrame "Q". }
+    iDestruct "X" as "[_ [[r|s] rest]]".
+    { iLeft. iFrame. } { iRight. iFrame. }
+  }
+  rewrite bi.and_or_l.
+  iDestruct "X" as "[a|a]".
+  { iExFalso. iApply qrx. iSplit.
+      { iDestruct "a" as "[a _]". iFrame. }
+      { iDestruct "a" as "[_ [r _]]". iFrame. }
+  }
+  {
+    iDestruct "a" as "[_ [s t]]".
+    iFrame "s". iIntros "s". iApply "t". iRight. iFrame "s".
+  }
+Qed.
+
+Lemma lfguards_or (P Q R S : iProp Σ) F (n: nat)
+    (qrx: (Q ∧ R ⊢ False))
+    : (
+      (P &&{F; n}&&$> Q) ∗ (P &&{F; n}&&$> (R ∨ S))
+      ⊢
+      (P &&{F; n}&&$> S)
+    ). 
+Proof.
+  iIntros "[[pq kf] [prs _]]".
+  unfold fguards, guards_with.
+  iFrame "kf".
+  iIntros (T).
+  iDestruct ("pq" $! T) as "pq".
+  iDestruct ("prs" $! T) as "prs".
+  iIntros "k".
+  iAssert (▷^n ((◇ Q) ∧ (◇ ((R ∨ S) ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T)))))%I with "[pq prs k]" as "X".
+  { iSplit.
+     { iDestruct ("pq" with "k") as "[dq _]". iFrame "dq". }
+     { iDestruct ("prs" with "k") as "rs". iFrame "rs". }
+  }
+  rewrite <- bi.except_0_and. iNext. iMod "X" as "X". iModIntro.
+  iAssert
+    (Q ∧ (
+      (R ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
+      ∨
+      (S ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
+    ))%I with "[X]" as "X".
+  { iSplit. { iDestruct "X" as "[Q _]". iFrame "Q". }
+    iDestruct "X" as "[_ [[r|s] rest]]".
+    { iLeft. iFrame. } { iRight. iFrame. }
+  }
+  rewrite bi.and_or_l.
+  iDestruct "X" as "[a|a]".
+  { iExFalso. iApply qrx. iSplit.
+      { iDestruct "a" as "[a _]". iFrame. }
+      { iDestruct "a" as "[_ [r _]]". iFrame. }
+  }
+  {
+    iDestruct "a" as "[_ [s t]]".
+    iFrame "s". iIntros "s". iApply "t". iRight. iFrame "s".
+  }
+Qed.
+
+Lemma lfguard_later P : 
+    ⊢ ▷ P &&{ ∅ ; 1 }&&$> P.
+Proof.
+  unfold lfguards, lguards_with. iSplit.
+  { iIntros (T) "x". iDestruct "x" as "[p q]".
+    iNext. iModIntro. iFrame.
+    iIntros "P". iApply "q". iModIntro. iFrame. }
+  iApply know_bulk_inv_empty. done.
+Qed.
   
 Lemma fguards_refl P : ⊢ P &&{ ∅ }&&$> P.
 Proof.
@@ -292,14 +531,37 @@ Proof.
     iApply know_bulk_inv_empty. done.
 Qed.
 
+Lemma lfguards_refl P n : ⊢ P &&{ ∅ ; n }&&$> P.
+Proof.
+  unfold fguards, guards_with. iSplit.
+    { iIntros (T) "x". iNext. iFrame. }
+    iApply know_bulk_inv_empty. done.
+Qed.
+
 Lemma fguards_transitive E P Q R :
-    (P &&{ E }&&$> Q) ∗ (Q &&{ E }&&$> R) ⊢ (P &&{E}&&$> R).
+    (P &&{ E }&&$> Q) ∗ (Q &&{ E }&&$> R) ⊢ (P &&{E}&&$> R). 
 Proof.
   unfold fguards, guards_with.
   iIntros "[[a ke] [b _]]". iFrame "ke". iIntros (T) "p".
   iMod ("a" with "p") as "q".
   iDestruct ("b" with "q") as "r".
   iFrame.
+Qed.
+
+Lemma lfguards_transitive E P Q R n m :
+    (P &&{ E ; n }&&$> Q) ∗ (Q &&{ E ; m }&&$> R) ⊢ (P &&{ E ; n + m }&&$> R).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "[[a ke] [b _]]". iFrame "ke". iIntros (T) "p".
+  iApply bi.laterN_add.
+  iDestruct ("a" with "p") as "q".
+  iNext.
+  destruct m.
+  { rewrite bi.laterN_0. iMod "q" as "q".
+    iDestruct ("b" with "q") as "r". iFrame. }
+  unfold "◇" at 1. iDestruct "q" as "[q|q]".
+  { iNext. iExFalso. iFrame. }
+  iDestruct ("b" with "q") as "r". iFrame.
 Qed.
   
 Lemma twoway_assoc (P Q R : iProp Σ)
@@ -332,6 +594,28 @@ Proof.
       iFrame.
   }
   iApply know_bulk_inv_empty. done.
+Qed.
+
+Lemma lfguards_weaken P Q n : ⊢ (P ∗ Q) &&{ ∅ ; n }&&$> P.
+Proof.
+  unfold fguards, guards_with.
+  iSplit. {
+      iIntros (T) "[[p q] x]".
+      iFrame. iNext. iModIntro. iIntros "p".
+      iDestruct ("x" with "[p q]") as "m". { iFrame. }
+      iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
+Qed.
+
+Lemma lfguards_weaken_later (P Q : iProp Σ) E n m : n ≤ m ->
+    (P &&{ E ; n }&&$> Q) ⊢ (P &&{ E ; m }&&$> Q).
+Proof.
+  unfold lfguards, lguards_with. intro n_le_m.
+  iIntros "[g kbi]". iFrame. iIntros (T) "[p q]".
+  iDestruct ("g" $! T) as "g".
+  replace m with ((m-n) + n) by lia.
+  iApply bi.laterN_add. iModIntro. iApply "g". iFrame.
 Qed.
 
 Lemma gset_diff_union (E E': gset positive) (su: E ⊆ E') : E' = (E ∪ (E' ∖ E)).
@@ -554,6 +838,61 @@ Proof.
   iDestruct "back" as "[w [e t]]". iFrame.
 Qed.
 
+Lemma lfguards_apply (P Q X Y : iProp Σ) E F D n
+    (ss1: ∀ x , x ∈ F -> x ∈ E)
+    (ss2: ∀ x , x ∈ D -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ D -> False)
+    : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F ; n }&&$> Q) ⊢ (P ∗ X ={E,D}=∗ ▷^n (|={D,E}=> P ∗ Y)).
+Proof.
+  unfold fguards, guards_with. iIntros "[upd [g kf]] [p x]".
+  iDestruct ("g" $! (P)%I) as "g".
+  iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
+  { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
+  rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def. iIntros "[w eo]".
+  iDestruct ("g" with "[p sb]") as "[q g]".
+  { iFrame. iIntros. iFrame. }
+  iModIntro. iFrame.
+  iModIntro. iNext. iIntros "[w eo]".
+  iMod "q" as "q".
+  iMod "g" as "g".
+  
+  iMod ("upd" with "[q x] [w eo]") as "[>w [>ed [>q >y]]]". { iFrame. } { iFrame. }
+  iDestruct ("g" with "q") as "[f p]".
+  iDestruct ("back" with "f") as "back".
+  iDestruct ("back" with "[w ed]") as "back". { iFrame. }
+  
+  iMod "back". iModIntro.
+  iMod "back". iModIntro.
+  iDestruct "back" as "[w [e t]]". iFrame.
+Qed.
+
+(*
+Lemma lfguards_apply (P Q X Y : iProp Σ) E F D n
+    (ss1: ∀ x , x ∈ F -> x ∈ E)
+    (ss2: ∀ x , x ∈ D -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ D -> False)
+    : (Q ∗ X ={D}=∗ Q ∗ Y) ∗ (P &&{ F ; n }&&$> Q) ⊢ (P ∗ X ={E}=∗ ▷^n (P ∗ Y)).
+Proof.
+  unfold fguards, guards_with. iIntros "[upd [g kf]] [p x]".
+  iDestruct ("g" $! (P)%I) as "g".
+  iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
+  { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
+  rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def. iIntros "[w eo]".
+  iModIntro.
+  iDestruct ("g" with "[p sb]") as "[q g]".
+  { iFrame. iIntros. iFrame. }
+  
+  iDestruct ("upd" with "[q x] [w eo]") as "[>w [>ed [>q >y]]]". { iFrame. } { iFrame. }
+  iDestruct ("g" with "q") as "[f p]".
+  iDestruct ("back" with "f") as "back".
+  iDestruct ("back" with "[w ed]") as "back". { iFrame. }
+  
+  iMod "back". iModIntro.
+  iMod "back". iModIntro.
+  iDestruct "back" as "[w [e t]]". iFrame.
+Qed.
+*)
+
 Lemma fguards_remove_later (P : iProp Σ)
     (tl: Timeless P)
     : ⊢ (▷ P) &&{∅}&&$> P.
@@ -589,6 +928,25 @@ Proof.
   iMod "X" as "[p r]". iModIntro. iFrame "r". iFrame "p".
 Qed.
 
+Lemma lfguards_persistent (P Q R : iProp Σ) E F n
+    (pers: Persistent R)
+    (f_subset_e : ∀ x , x ∈ F -> x ∈ E)
+    : ⊢ (P ∗ (P &&{F ; n}&&$> Q) ∗ (Q -∗ R)) ={E,∅}=∗ ▷^n (|={∅,E}=> (P ∗ R)).
+Proof.
+  iIntros "[p [g qr]]".
+  iAssert (P ∗ True ={E,∅}=∗ ▷^n (|={∅,E}=> (P ∗ R)))%I with "[g qr]" as "X".
+  { iApply (lfguards_apply _ Q _ _ E F ∅); trivial.
+      { intro. rewrite elem_of_empty. contradiction. }
+      { intro. rewrite elem_of_empty. intuition. }
+    iFrame "g".
+    iIntros "[q _]".
+    iDestruct ("qr" with "q") as "#r".
+    iModIntro. iFrame "q". iFrame "r".
+  }
+  iDestruct ("X" with "[p]") as "X". { iFrame. }
+  iFrame.
+Qed.
+
 Lemma fguards_open (P Q : iProp Σ) (E E' : coPset) F
     (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
     (di: ∀ x , x ∈ F /\ x ∈ E' -> False)
@@ -621,6 +979,109 @@ Proof.
   iFrame "p".
 Qed.
 
+Lemma lfguards_open (P Q : iProp Σ) (E E' : coPset) F n
+    (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False)
+    : ⊢ P ∗ (P &&{F ; n}&&$> Q) ={E, E'}=∗
+        ▷^n (|={E', E'}=> (Q ∗ (Q ={E', E}=∗ P))).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "[p [g kf]]".
+  iMod (wsat_split_superset E F E' with "kf") as "[inv_f back]"; trivial.
+  iDestruct ("g" $! P) as "g".
+  
+  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p inv_f]" as "J".
+  { iFrame "p". iIntros. iFrame. }
+  
+  iDestruct ("g" with "J") as "g".
+  
+  iDestruct (fupd_mask_frame_r ∅ ∅ E' _ with "g") as "g". { set_solver. }
+  replace (∅ ∪ E') with E' by set_solver.
+  iMod "g" as "[q g]".
+  iModIntro. iNext. iIntros.
+  iMod "q" as "q".
+  iMod "g" as "g".
+  iModIntro.
+  
+  iFrame "q".
+  
+  iIntros "q".
+  iDestruct ("g" with "q") as "[inv_f p]".
+  iMod ("back" with "inv_f") as "x".
+  iModIntro.
+  iFrame "p".
+Qed.
+
+Lemma fguards_open_two_simultaneously (P Q R : iProp Σ) (E E' : coPset) F
+    (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False)
+    : ⊢ P ∗ (P &&{F}&&$> Q) ∗ (P &&{F}&&$> R) ={E, E'}=∗
+        ∃ T, T ∗ (T -∗ ◇ (Q ∗ (Q -∗ T))) ∗ (T -∗ ◇ (R ∗ (R -∗ T)))
+                ∗ (T ={E', E}=∗ P).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "[p [[g kf] [g2 _]]]".
+  iMod (wsat_split_superset E F E' with "kf") as "[inv_f back]"; trivial.
+  iDestruct ("g" $! P) as "g".
+  iDestruct ("g2" $! P) as "g2".
+  
+  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p inv_f]" as "J".
+  { iFrame "p". iIntros. iFrame. }
+  
+  iModIntro.
+  iExists (P ∗ (P -∗ storage_bulk_inv F ∗ P))%I.
+  iFrame.
+  
+  iSplitL "g".
+  { iIntros "x". iMod ("g" with "x") as "[a b]". iModIntro. iFrame "a".
+      iIntros "q". iDestruct ("b" with "q") as "[b p]". iFrame "p".
+      iIntros. iFrame. }
+  iSplitL "g2".
+  { iIntros "x". iMod ("g2" with "x") as "[a b]". iModIntro. iFrame "a".
+      iIntros "q". iDestruct ("b" with "q") as "[b p]". iFrame "p".
+      iIntros. iFrame. }
+  iIntros "[p x]". 
+  iDestruct ("x" with "p") as "[x p]".
+  iMod ("back" with "x") as "back".
+  iModIntro. iFrame "p".
+Qed.
+
+Lemma lfguards_open_two_simultaneously (P Q R : iProp Σ) (E E' : coPset) F n
+    (ss: ∀ x , x ∈ F \/ x ∈ E' -> x ∈ E)
+    (di: ∀ x , x ∈ F /\ x ∈ E' -> False)
+    : ⊢ P ∗ (P &&{F;n}&&$> Q) ∗ (P &&{F;n}&&$> R) ={E, E'}=∗
+        ∃ T, T
+            ∗ (T -∗ ▷^n ◇ (Q ∗ (Q -∗ T)))
+            ∗ (T -∗ ▷^n ◇ (R ∗ (R -∗ T)))
+            ∗ (T ={E', E}=∗ P).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "[p [[g kf] [g2 _]]]".
+  iMod (wsat_split_superset E F E' with "kf") as "[inv_f back]"; trivial.
+  iDestruct ("g" $! P) as "g".
+  iDestruct ("g2" $! P) as "g2".
+  
+  iAssert ((P ∗ (P -∗ storage_bulk_inv F ∗ P))%I) with "[p inv_f]" as "J".
+  { iFrame "p". iIntros. iFrame. }
+  
+  iModIntro.
+  iExists (P ∗ (P -∗ storage_bulk_inv F ∗ P))%I.
+  iFrame.
+  
+  iSplitL "g".
+  { iIntros "x". iDestruct ("g" with "x") as "t". iNext. iMod "t" as "[a b]". iModIntro. iFrame "a".
+      iIntros "q". iDestruct ("b" with "q") as "[b p]". iFrame "p".
+      iIntros. iFrame. }
+  iSplitL "g2".
+  { iIntros "x". iDestruct ("g2" with "x") as "t". iNext. iMod "t" as "[a b]". iModIntro. iFrame "a".
+      iIntros "q". iDestruct ("b" with "q") as "[b p]". iFrame "p".
+      iIntros. iFrame. }
+  iIntros "[p x]". 
+  iDestruct ("x" with "p") as "[x p]".
+  iMod ("back" with "x") as "back".
+  iModIntro. iFrame "p".
+Qed.
+
 Lemma fguards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
   P ∗ □ (X &&{ F }&&$> Q) ⊢ □ (X &&{ F }&&$> (Q ∗ P)).
@@ -632,6 +1093,24 @@ Proof.
     iIntros (T) "xk".
     iMod ("g" $! T with "xk") as "[q m]".
     iModIntro.
+    iFrame "q". iFrame "p".
+    iIntros "[q _]".
+    iApply "m". iFrame "q".
+  }
+  iFrame "kf".
+Qed.
+
+Lemma lfguards_include_pers (P X Q : iProp Σ) F n
+    (pers: Persistent P) :
+  P ∗ □ (X &&{ F ; n }&&$> Q) ⊢ □ (X &&{ F; n }&&$> (Q ∗ P)).
+Proof.
+  iIntros "[#p [#g #kf]]".
+  iModIntro.
+  unfold lfguards, lguards_with.
+  iSplit. {
+    iIntros (T) "xk".
+    iDestruct ("g" $! T with "xk") as "[q m]".
+    iNext. iMod "q" as "q". iMod "m" as "m". iModIntro.
     iFrame "q". iFrame "p".
     iIntros "[q _]".
     iApply "m". iFrame "q".
@@ -682,6 +1161,50 @@ Proof.
   - apply intersect_union_diff_eq.
 Qed.
 
+
+Lemma lfguards_weaken_mask_1 P1 P2 E1 E2 n :
+  (P1 &&{ E1 ; n }&&$> P2) ∗ (know_bulk_inv E2) ⊢
+  (P1 &&{ E1 ∪ E2 ; n }&&$> P2).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "[[x k1] k2]".
+  iSplit. {
+    iIntros (T) "[p q]".
+    rewrite (gset_diff_union E1 (E1 ∪ E2)).
+    {
+      iDestruct ("x" $! (T ∗ storage_bulk_inv ((E1 ∪ E2) ∖ E1))%I) as "x".
+      rewrite storage_bulk_inv_union.
+      {
+        iDestruct ("x" with "[p q]") as "x".
+        {
+          iFrame "p".
+          iIntros "p".
+          iDestruct ("q" with "p") as "[[e diff] t]".
+          iFrame.
+        }
+        {
+          iNext. iMod "x" as "[q k]".
+          iFrame "q".
+          iModIntro. iIntros "q".
+          iDestruct ("k" with "q") as "[e [t diff]]".
+          iFrame.
+        }
+      }
+      set_solver.
+    }
+    set_solver.
+  }
+  replace E2 with ((E2 ∩ E1) ∪ (E2 ∖ E1)) at 1.
+  - rewrite know_bulk_inv_union.
+     + iDestruct "k2" as "[_ k2]".
+        replace (E1 ∪ E2) with (E1 ∪ (E2 ∖ E1)).
+        * rewrite know_bulk_inv_union. { iFrame "k1". iFrame "k2". } 
+          set_solver.
+        * apply union_diff_eq_union.
+     + set_solver.
+  - apply intersect_union_diff_eq.
+Qed.
+
 Lemma fguards_weaken_mask_2 P1 P2 Q1 Q2 E1 E2 :
   (P1 &&{ E1 }&&$> P2) ∗ (Q1 &&{ E2 }&&$> Q2) ⊢
   (P1 &&{ E1 ∪ E2 }&&$> P2) ∗ (Q1 &&{ E1 ∪ E2 }&&$> Q2).
@@ -693,6 +1216,20 @@ Proof.
         iFrame "g1". iFrame "k1". }
   { replace (E1 ∪ E2) with (E2 ∪ E1) by set_solver.
     iApply fguards_weaken_mask_1. iFrame "k1". unfold fguards.
+        iFrame "g2". iFrame "k2". }
+Qed.
+
+Lemma lfguards_weaken_mask_2 P1 P2 Q1 Q2 E1 E2 n m :
+  (P1 &&{ E1 ; n }&&$> P2) ∗ (Q1 &&{ E2 ; m }&&$> Q2) ⊢
+  (P1 &&{ E1 ∪ E2 ; n }&&$> P2) ∗ (Q1 &&{ E1 ∪ E2 ; m }&&$> Q2).
+Proof.
+  unfold lfguards.
+  iIntros "[[g1 #k1] [g2 #k2]]".
+  iSplitL "g1".
+  { iApply lfguards_weaken_mask_1. iFrame "k2". unfold fguards.
+        iFrame "g1". iFrame "k1". }
+  { replace (E1 ∪ E2) with (E2 ∪ E1) by set_solver.
+    iApply lfguards_weaken_mask_1. iFrame "k1". unfold fguards.
         iFrame "g2". iFrame "k2". }
 Qed.
 
@@ -715,27 +1252,58 @@ Proof.
   iFrame "kbi".
 Qed.
 
-(* TODO can we find a counterexample to this? *)
+Lemma ownIagree (γ : gname) (X Y : iProp Σ) : ownI γ X ∗ ownI γ Y ⊢ (▷ X ≡ ▷ Y).
+Proof.
+  unfold ownI.
+  rewrite <- own_op.
+  iIntros "x".
+  iDestruct (own_valid with "x") as "v".
+  rewrite gmap_view_frag_op_validI.
+  iDestruct "v" as "[#v iu]".
+  unfold invariant_unfold.
 
-(*
+  iDestruct (later_equivI_1 with "iu") as "iu".
+  iDestruct (f_equivI_contractive (λ x , (▷ x)%I) with "iu") as "iu".
+  iFrame.
+Qed.
+
+Lemma fguards_from_inv (P: iProp Σ) i
+    : ownI i P ⊢ True &&{ {[i]} }&&$> (▷ P).
+Proof.
+  unfold fguards, guards_with.
+  iIntros "#oi". iSplit.
+  { iIntros (T) "[t X]". iDestruct ("X" with "t") as "[X t]".
+    rewrite storage_bulk_inv_singleton.
+    unfold storage_inv. iDestruct "X" as (P0) "[X P]".
+    iDestruct (ownIagree i P0 P with "[X]") as "equ". { iFrame. iFrame "#". }
+    iRewrite "equ" in "P".
+    iModIntro. iFrame.
+    iIntros "latP". iExists P. iFrame. iFrame "#".
+  }
+  rewrite know_bulk_inv_singleton. unfold know_inv. iExists P. iFrame "#".
+Qed.
+
+(* 
+This lemma isn't possible; see the counterexample in the extended Leaf paper:
+https://arxiv.org/abs/2309.04851
+
 Lemma fguards_sep_disjoint P1 P2 Q1 Q2 E1 E2
   (disjoint: E1 ## E2) :
   (P1 &&{ E1 }&&$> P2) ∗ (Q1 &&{ E2 }&&$> Q2) ⊢ (P1 ∗ Q1 &&{ E1 ∪ E2 }&&$> P2 ∗ Q2).
-Proof.
-  unfold fguards.
-  iIntros "[[g1 #k1] [g2 #k2]]".
-  rewrite know_bulk_inv_union; trivial. iFrame "k1". iFrame "k2".
-  unfold guards_with. iIntros (T) "[[p1 q1] j]".
-  *)
-
-
+*)
 
 (**** guards ****)
 
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ :=
     □ (∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ fguards P Q m).
     
+Definition lguards (P Q : iProp Σ) (E: coPset) (n: nat) : iProp Σ :=
+    □ (∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ lfguards P Q m n).
+    
 Notation "P &&{ E }&&> Q" := (guards P Q E)
+  (at level 99, E at level 50, Q at level 200).
+  
+Notation "P &&{ E ; n }&&> Q" := (lguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
   
 Global Instance guards_proper :
@@ -743,6 +1311,13 @@ Global Instance guards_proper :
 Proof.
   unfold Proper, "==>", guards. intros x y Q x0 y0 Q0 x1 y1 Q1.
   setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1.  trivial.
+Qed.
+
+Global Instance lguards_proper :
+    Proper ((≡) ==> (≡) ==> (≡) ==> (=) ==> (≡)) lguards.
+Proof.
+  unfold Proper, "==>", lguards. intros x y Q x0 y0 Q0 x1 y1 Q1 x2 y2 Q2.
+  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1. rewrite Q2.  trivial.
 Qed.
 
 Global Instance persistent_guards P Q E :
@@ -760,6 +1335,14 @@ Proof.
   iIntros. iModIntro. iExists ∅. iSplit.
   { iPureIntro. intro. rewrite elem_of_empty. contradiction. }
   iApply fguards_refl.
+Qed.
+
+Lemma lguards_refl E P n : ⊢ P &&{ E ; n }&&> P.
+Proof.
+  unfold lguards.
+  iIntros. iModIntro. iExists ∅. iSplit.
+  { iPureIntro. intro. rewrite elem_of_empty. contradiction. }
+  iApply lfguards_refl.
 Qed.
 
 (* Guard-Trans *)
@@ -780,11 +1363,37 @@ Proof.
   iApply (fguards_transitive _ _ Q). iFrame "#".
 Qed.
 
+Lemma lguards_transitive E P Q R n m :
+    (P &&{ E ; n }&&> Q) ∗ (Q &&{ E ; m }&&> R) ⊢ (P &&{ E ; n + m }&&> R).
+Proof.
+  unfold lguards.
+  iIntros "[#x #y]".
+  iModIntro.
+  iDestruct "x" as (mx) "[%condx x]".
+  iDestruct "y" as (my) "[%condy y]".
+  iDestruct (lfguards_weaken_mask_2 P Q Q R mx my with "[x y]") as "[x1 y1]".
+  { iFrame "x". iFrame "y". }
+  iExists (mx ∪ my).
+  iSplit.
+  { iPureIntro. set_solver. }
+  iApply (lfguards_transitive _ _ Q). iFrame "#".
+Qed.
+
 (* Guard-Weaken-Mask *)
   
 Lemma guards_mask_weaken (P Q: iProp Σ) E E'
     (su: E ⊆ E')
     : (P &&{ E }&&> Q) ⊢ (P &&{ E' }&&> Q).
+Proof.
+  unfold guards.
+  iIntros "x".
+  iDestruct "x" as (m) "[%cond #x]".
+  iExists m. iFrame "x". iPureIntro. set_solver.
+Qed.
+
+Lemma lguards_mask_weaken (P Q: iProp Σ) E E' n
+    (su: E ⊆ E')
+    : (P &&{ E ; n }&&> Q) ⊢ (P &&{ E' ; n }&&> Q).
 Proof.
   unfold guards.
   iIntros "x".
@@ -801,10 +1410,30 @@ Proof.
   iApply fguards_weaken.
 Qed.
 
+Lemma lguards_weaken_l E P Q n : ⊢ (P ∗ Q) &&{ E ; n }&&> P.
+Proof.
+  unfold guards. iIntros. iModIntro. iExists ∅. iSplit.
+  { iPureIntro. set_solver. }
+  iApply lfguards_weaken.
+Qed.
+
 Lemma guards_weaken_r E P Q : ⊢ (P ∗ Q) &&{ E }&&> Q.
 Proof.
   setoid_rewrite bi.sep_comm.
   apply guards_weaken_l.
+Qed.
+
+Lemma lguards_weaken_r E P Q n : ⊢ (P ∗ Q) &&{ E; n }&&> Q.
+Proof.
+  setoid_rewrite bi.sep_comm.
+  apply lguards_weaken_l.
+Qed.
+
+Lemma guards_true E P : ⊢ P &&{ E }&&> True.
+Proof.
+  setoid_replace P with (P ∗ True)%I.
+  { iApply guards_weaken_r. }
+  iIntros. iSplit. { iIntros. iFrame. } { iIntros "[p _]". iFrame. }
 Qed.
 
 Lemma guards_weaken_rhs_l E P Q R :
@@ -825,6 +1454,16 @@ Proof.
   iFrame "g". iFrame "g2".
 Qed.
 
+Lemma lguards_weaken_rhs_r E P Q R n :
+    (P &&{ E; n }&&> (Q ∗ R))%I ⊢ P &&{ E; n }&&> R.
+Proof.
+  iIntros "g".
+  iDestruct (lguards_weaken_r E Q R) as "g2".
+  replace n with (n + 0) at 2 by lia.
+  iApply lguards_transitive.
+  iFrame "g". iFrame "g2".
+Qed.
+
 (* Guard-Upd *)
 
 Lemma guards_apply (P Q X Y : iProp Σ) E F
@@ -838,6 +1477,19 @@ Proof.
   { set_solver. }
   { set_solver. }
   { set_solver. }
+  { iFrame "g". iFrame "upd". }
+  iFrame.
+Qed.
+
+Lemma lguards_apply (P Q X Y : iProp Σ) E F n
+    (disj: E ## F)
+    : (Q ∗ X ={E}=∗ Q ∗ Y) ∗ (P &&{ F ; n }&&> Q) ⊢ (P ∗ X ={E ∪ F, E}=∗ ▷^n (|={E, E ∪ F}=> P ∗ Y)).
+Proof.
+  unfold guards.
+  iIntros "[upd #g]".
+  iDestruct "g" as (m) "[%cond g]".
+  iDestruct (lfguards_apply P Q X Y (E ∪ F) m E with "[upd g]") as "q".
+  { set_solver. } { set_solver. } { set_solver. }
   { iFrame "g". iFrame "upd". }
   iFrame.
 Qed.
@@ -877,6 +1529,19 @@ Proof.
   iFrame "g". iFrame.
 Qed.
 
+Lemma lguards_persistent (P Q R : iProp Σ) E F n
+    (pers: Persistent R)
+    (su: F ⊆ E)
+    : ⊢ (P ∗ (P &&{F ; n}&&> Q) ∗ (Q -∗ R)) ={E,∅}=∗ ▷^n (|={∅,E}=> P ∗ R).
+Proof.
+  unfold guards.
+  iIntros "[p [#g impl]]".
+  iDestruct "g" as (m) "[%cond g]".
+  iApply (lfguards_persistent P Q R E m).
+  { set_solver. }
+  iFrame "g". iFrame.
+Qed.
+
 Lemma guards_persistent2 (X P Q R : iProp Σ) E F
     (pers: Persistent R)
     (su: F ⊆ E)
@@ -899,6 +1564,34 @@ Proof.
   set_solver.
 Qed.
 
+Lemma lguards_persistent2 (X P Q R : iProp Σ) E F n
+    (pers: Persistent R)
+    (su: F ⊆ E)
+    : ⊢ (X ∗ P ∗ (P &&{F ; n}&&> Q) ∗ (X ∗ Q -∗ R)) ={E, E ∖ F}=∗ ▷^n (|={E ∖ F, E}=> X ∗ P ∗ R).
+Proof.
+  iIntros "[x [p [g impl]]]".
+  iAssert (Q ∗ X ={∅}=∗ Q ∗ (X ∗ R))%I with "[impl]" as "m".
+  {
+    iIntros "[q x]". iModIntro.
+        iDestruct ("impl" with "[x q]") as "#r". { iFrame. } 
+        iFrame. iFrame "#".
+  }
+  iDestruct (lguards_apply P Q X (X ∗ R) ∅ F with "[m g]") as "newg".
+  { set_solver. } { iFrame. }
+  iDestruct ("newg" with "[x p]") as "newg". { iFrame. }
+  iDestruct (fupd_mask_frame_r _ _ (E ∖ F) with "newg") as "l".
+  { set_solver. }
+  replace (∅ ∪ F ∪ E ∖ F) with E.
+  { replace (∅ ∪ E ∖ F) with (E ∖ F) by set_solver.
+    iMod "l". iModIntro. iNext.
+    iDestruct (fupd_mask_frame_r _ _ (E ∖ F) with "l") as "l". { set_solver. }
+    replace (∅ ∪ E ∖ F) with (E ∖ F) by set_solver.
+    replace (∅ ∪ F ∪ E ∖ F) with E.
+    { iMod "l". iDestruct "l" as "[p [x r]]". iModIntro. iFrame. }
+      have j := copset_diff_union F E. set_solver.
+    }
+  have j := copset_diff_union F E. set_solver.
+Qed.
 
 (* Unguard-Pers *)
 
@@ -910,6 +1603,18 @@ Proof.
   iMod (guards_persistent2 B G A C E E with "[g b]") as "[b [g c]]".
   { set_solver. } { iFrame. iFrame "gu". iIntros "[a b]". iApply hyp. iFrame. }
   iModIntro. iFrame. iFrame "gu".
+Qed.
+
+Lemma l_unguard_pers (A B C G : iProp Σ) (pers: Persistent C) E n
+  (hyp: A ∗ B ⊢ C)
+  : G ∗ (G &&{E; n}&&> A) ∗ B ={E,∅}=∗ ▷^n |={∅,E}=> G ∗ (G &&{E; n}&&> A) ∗ B ∗ C.
+Proof.
+  iIntros "[g [#gu b]]".
+  iDestruct (lguards_persistent2 B G A C E E with "[g b]") as "x".
+  { set_solver. } { iFrame. iFrame "gu". iIntros "[a b]". iApply hyp. iFrame. }
+  replace (E ∖ E) with (@empty coPset coPset_empty) by set_solver.
+  iMod "x". iModIntro. iNext. iMod "x". iModIntro.
+  iDestruct "x" as "[b [g c]]". iFrame. iFrame "gu".
 Qed.
 
 Lemma guards_open (P Q : iProp Σ) (E F : coPset)
@@ -924,6 +1629,53 @@ Proof.
   { set_solver. }
   { set_solver. }
   iApply "x". iFrame "g". iFrame "p".
+Qed.
+
+Lemma lguards_open (P Q : iProp Σ) (E F : coPset) n
+    (su: F ⊆ E)
+    : ⊢ P ∗ (P &&{F; n}&&> Q) ={E, E ∖ F}=∗
+      ▷^n |={E ∖ F}=> (Q ∗ (Q ={E ∖ F, E}=∗ P)).
+Proof. 
+  unfold lguards.
+  iIntros "[p #g]".
+  iDestruct "g" as (m) "[%cond g]".
+  iDestruct (lfguards_open P Q E (E ∖ F) m) as "x".
+  { set_solver. } { set_solver. }
+  iApply "x". iFrame "g". iFrame "p".
+Qed.
+
+Lemma guards_open_two_simultaneously (P Q R : iProp Σ) (E F : coPset)
+    (su: F ⊆ E)
+    : ⊢ P ∗ (P &&{F}&&> Q) ∗ (P &&{F}&&> R) ={E, E ∖ F}=∗
+      ∃ T, T ∗ (T -∗ ◇ (Q ∗ (Q -∗ T))) ∗ (T -∗ ◇ (R ∗ (R -∗ T)))
+                ∗ (T ={E ∖ F, E}=∗ P).
+Proof. 
+  iIntros "[p [#q #r]]". unfold guards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iDestruct "r" as (m2) "[%cond2 r]".
+  iDestruct (fguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". { iFrame "#". }
+  iDestruct (fguards_open_two_simultaneously P Q R E (E ∖ F) (m1 ∪ m2) with "[p q1 r1]") as "j".
+  { set_solver. }
+  { set_solver. }
+  { iFrame "p". iFrame "q1". iFrame "r1". }
+  iFrame.
+Qed.
+
+Lemma lguards_open_two_simultaneously (P Q R : iProp Σ) (E F : coPset) (n: nat)
+    (su: F ⊆ E)
+    : ⊢ P ∗ (P &&{F; n}&&> Q) ∗ (P &&{F; n}&&> R) ={E, E ∖ F}=∗ (
+      ∃ T, T ∗ (T -∗ ▷^n ◇ (Q ∗ (Q -∗ T))) ∗ (T -∗ ▷^n ◇ (R ∗ (R -∗ T)))
+                ∗ (T ={E ∖ F, E}=∗ P)).
+Proof. 
+  iIntros "[p [#q #r]]". unfold guards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iDestruct "r" as (m2) "[%cond2 r]".
+  iDestruct (lfguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". { iFrame "#". }
+  iDestruct (lfguards_open_two_simultaneously P Q R E (E ∖ F) (m1 ∪ m2) with "[p q1 r1]") as "j".
+  { set_solver. }
+  { set_solver. }
+  { iFrame "p". iFrame "q1". iFrame "r1". }
+  iMod "j". iModIntro. iFrame.
 Qed.
 
 (* Guard-Pers *)
@@ -944,6 +1696,22 @@ Proof.
   iFrame "newg".
 Qed.
 
+Definition lguards_include_pers (P X Q : iProp Σ) F n
+    (pers: Persistent P) :
+  P ∗ (X &&{ F; n }&&> Q) ⊢ (X &&{ F; n }&&> (Q ∗ P)).
+Proof.
+  unfold guards.
+  iIntros "[p #g]".
+  iDestruct "g" as (m) "[%cond g]".
+  iDestruct (lfguards_include_pers P X Q m with "[p g]") as "#newg".
+  { iFrame "p". iFrame "g". }
+  iModIntro.
+  iExists m.
+  iSplit.
+  { iPureIntro. trivial. }
+  iFrame "newg".
+Qed.
+
 Lemma guards_include_pers_simple (C : iProp Σ) E
     (per: Persistent C)
     : C ⊢ (True &&{E}&&> C).
@@ -952,6 +1720,16 @@ Proof.
   iDestruct (guards_include_pers C (True)%I (True)%I E with "[r]") as "g".
   { iFrame "r". iApply guards_refl. }
   iDestruct (guards_weaken_rhs_r with "g") as "g". iFrame "g".
+Qed.
+
+Lemma lguards_include_pers_simple (C : iProp Σ) E n
+    (per: Persistent C)
+    : C ⊢ (True &&{E; n}&&> C).
+Proof.
+  iIntros "r".
+  iDestruct (lguards_include_pers C (True)%I (True)%I E with "[r]") as "g".
+  { iFrame "r". iApply lguards_refl. }
+  iDestruct (lguards_weaken_rhs_r with "g") as "g". iFrame "g".
 Qed.
 
 (* Guard-Implies *)
@@ -971,6 +1749,23 @@ Proof.
   iModIntro. iSplit.
   { iPureIntro. set_solver. }
   iApply (fguards_impl P Q S m1); trivial.
+Qed.
+
+Definition lguards_impl_point (P Q S : iProp Σ) F n
+    (point: point_prop S)
+    (qrx: (Q ⊢ S))
+    : (
+      (P &&{F; n}&&> Q)
+      ⊢
+      (P &&{F; n}&&> S)
+    ).
+Proof.
+  iIntros "#q". unfold guards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iExists (m1).
+  iModIntro. iSplit.
+  { iPureIntro. set_solver. }
+  iApply (lfguards_impl P Q S m1); trivial.
 Qed.
 
 (* Guard-And *)
@@ -993,6 +1788,27 @@ Proof.
   iDestruct (fguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". 
   { iFrame "q". iFrame "r". }
   iApply (fguards_and P Q R S (m1 ∪ m2)); trivial.
+  iFrame "#".
+Qed.
+
+Definition lguards_and_point (P Q R S : iProp Σ) F n
+    (point: point_prop S)
+    (qrx: (Q ∧ R ⊢ S))
+    : (
+      (P &&{F; n}&&> Q) ∗ (P &&{F; n}&&> R)
+      ⊢
+      (P &&{F; n}&&> S)
+    ).
+Proof.
+  iIntros "[#q #r]". unfold lguards.
+  iDestruct "q" as (m1) "[%cond1 q]".
+  iDestruct "r" as (m2) "[%cond2 r]".
+  iExists (m1 ∪ m2).
+  iModIntro. iSplit.
+  { iPureIntro. set_solver. }
+  iDestruct (lfguards_weaken_mask_2 P Q P R m1 m2 with "[q r]") as "[q1 r1]". 
+  { iFrame "q". iFrame "r". }
+  iApply (lfguards_and P Q R S (m1 ∪ m2)); trivial.
   iFrame "#".
 Qed.
 
@@ -1049,6 +1865,26 @@ Proof.
   iFrame "#".
 Qed.
 
+Lemma lguards_or (P Q R S : iProp Σ) F1 F2 n
+    (qrx: (Q ∧ R ⊢ False))
+    : (
+      (P &&{F1; n}&&> Q) ∗ (P &&{F2; n}&&> (R ∨ S))
+      ⊢
+      (P &&{F1 ∪ F2; n}&&> S)
+    ). 
+Proof. 
+  iIntros "[#a #b]". unfold lguards.
+  iDestruct "a" as (m1) "[%cond1 q]".
+  iDestruct "b" as (m2) "[%cond2 r]".
+  iExists (m1 ∪ m2).
+  iModIntro. iSplit.
+  { iPureIntro. set_solver. }
+  iDestruct (lfguards_weaken_mask_2 P Q P (R ∨ S) m1 m2 with "[q r]") as "[q1 r1]". 
+  { iFrame "q". iFrame "r". }
+  iApply (lfguards_or P Q R S (m1 ∪ m2)); trivial.
+  iFrame "#".
+Qed.
+
 (*
 Lemma guards_exists {X} (x0: X) (F: X -> iProp Σ) (P: iProp Σ) E
   : (∀ x , (F x) &&{E}&&> P)%I ⊢ (∃ x , F x) &&{E}&&> P.
@@ -1058,10 +1894,46 @@ Proof.
   *)
 
 
+Lemma guards_from_inv (P: iProp Σ) i E
+    (i_in_e: i ∈ E)
+    : ownI i P ⊢ True &&{ E }&&> (▷ P).
+Proof.
+  unfold guards. iIntros "#o". iModIntro. iExists {[ i ]}. iSplit.
+  { iPureIntro. set_solver. }
+  { iApply fguards_from_inv. iFrame "o". }
+Qed.
+
+Lemma inv_alloc_with_guard N E P : ▷ P ={E}=∗ inv N P ∗ (True &&{↑N}&&> ▷ P).
+Proof.
+  iIntros "HP".
+  iMod (own_inv_alloc N E P with "HP") as "#HP".
+  iModIntro.
+  iDestruct (own_inv_to_inv with "HP") as "inv".
+  unfold own_inv. iDestruct "HP" as (i) "[%in oi]".
+  iDestruct (guards_from_inv _ _ (↑N) with "oi") as "g". { trivial. }
+  iFrame "#".
+Qed.
+
+Lemma lguards_weaken_later (P Q : iProp Σ) E n m : n ≤ m ->
+    (P &&{ E ; n }&&> Q) ⊢ (P &&{ E ; m }&&> Q).
+Proof.
+  unfold lguards. iIntros "%n_le_m #J". iDestruct "J" as (m0) "[%k J]".
+  iModIntro. iExists m0. iSplit; trivial.
+  iApply (lfguards_weaken_later _ _ _ n m); trivial.
+Qed.
+
+Lemma lguards0_eq_guards (P Q : iProp Σ) E : (P &&{ E ; 0 }&&> Q) ⊣⊢ (P &&{ E }&&> Q).
+Proof.
+  trivial.
+Qed.
+
 End Guard.
 
 Notation "P &&{ E }&&$> Q" := (fguards P Q E)
   (at level 99, E at level 50, Q at level 200).
 
 Notation "P &&{ E }&&> Q" := (guards P Q E)
+  (at level 99, E at level 50, Q at level 200).
+  
+Notation "P &&{ E ; n }&&> Q" := (lguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
