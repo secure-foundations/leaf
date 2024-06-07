@@ -85,14 +85,16 @@ Proof.
   iIntros "[x #g]".
   iMod (guards_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "[x p]"; trivial.
   { iFrame "x". iFrame "g". iIntros "[_ latp]". iFrame "latp". }
-  setoid_rewrite bi.later_sep.
+  
+  iDestruct (guards_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "r"; trivial.
+  { iFrame "x". iFrame "g". iIntros "[_ latp]". iFrame "latp". }
   
   iDestruct (guards_weaken_l F (▷ T) (▷ P)) as "g1".
   iDestruct (guards_remove_later T F) as "g2".
   iDestruct (guards_transitive F X _ (▷ T) with "[g g1]") as "g3".
-    { iFrame "g". iFrame "g1". }
+    { iFrame "g". setoid_rewrite bi.later_sep at 2. iFrame "g1". }
   iDestruct (guards_transitive F X (▷ T) T with "[g3 g2]") as "g4". { iFrame "g2". iFrame "g3". }
-  iModIntro. iFrame "x". iNext. 
+  iMod "r" as "[x p2]". iModIntro. iFrame "x". iNext. 
   iApply guards_include_pers.
   iFrame "p". iFrame "g4".
 Qed.

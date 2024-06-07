@@ -142,7 +142,7 @@ Proof using C Disc.
   intros Z. destruct Z. trivial.
 Qed.
 
-
+(*
 Lemma own_sep_auth_incll γ (p1 p2 state : C)
     (cond: ∀ z , p1 ⋅ z ≡ state -> ✓ (p2 ⋅ z))
     : own γ (◯ p1) ∗ own γ (● state) ==∗
@@ -182,6 +182,7 @@ Proof using C Disc m Σ.
   rewrite own_op. iFrame.
   iPureIntro. trivial.
 Qed.
+*)
  
 Lemma own_sep_auth_incll_nondet γ (p1 state : C) (output_ok: C -> C -> Prop)
   (cond: ∀ z , p1 ⋅ z ≡ state -> ∃ p2 , output_ok p2 z /\ ✓ (p2 ⋅ z))
