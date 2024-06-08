@@ -722,3 +722,4 @@ Proof using A Disc i Σ.
 Qed.
 
 End ConjunctOwnRuleU.
+
