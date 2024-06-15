@@ -1468,7 +1468,7 @@ Section StorageLogic.
       (● (Inved p) ⋅ (◯ (Inved ε) ⋅ ◯ (Inved p)))
       (↑ N)
       with "w") as "w".
-    { apply nclose_infinite. }
+    { rewrite coPset_infinite_finite. apply nclose_infinite. }
     { 
       rewrite <- auth_frag_op.
       rewrite auth_both_valid_discrete. split; trivial.

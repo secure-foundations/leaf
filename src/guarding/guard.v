@@ -490,7 +490,6 @@ Proof.
   rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def.
   iIntros "#kx [w e]".
   iDestruct (ownE_op with "e") as "[ee e]". { trivial. }
-  (*iMod (ownI_alloc_open_or_alloc x with "[w e]") as (P) "[w [d [i p]]]". { iFrame. }*)
   unfold know_inv. iDestruct "kx" as (P) "i".
   iDestruct (ownI_open with "[i w e]") as "[w [p d]]".
   { iFrame "w". iFrame "i". iFrame "e". }
