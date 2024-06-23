@@ -7,6 +7,7 @@ src/guarding/guard.v
 src/guarding/guard_later.v
 src/guarding/inved.v
 src/guarding/protocol.v
+src/guarding/protocol_relational.v
 src/guarding/base_storage_opt.v
 src/guarding/wsat_util.v
 
