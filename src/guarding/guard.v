@@ -429,6 +429,36 @@ Proof.
   { iNext. iExFalso. iFrame. }
   iDestruct ("b" with "q") as "r". iFrame.
 Qed.
+
+Local Lemma lfguards_or_guards_false E P Q S n m :
+    (P &&{ E ; n }&&$> Q ∨ S) ∗ (Q &&{ E ; m }&&$> False) ⊢ (P &&{ E ; n + m }&&$> S).
+Proof.
+  iIntros "[[a ke] [b _]]". iFrame "ke". iIntros (T) "p".
+  iApply bi.laterN_add.
+  iDestruct ("a" with "p") as "q".
+  iNext.
+  destruct m.
+  { rewrite bi.laterN_0.
+      iMod "q" as "[q_or_s q_or_s_back]".
+      iDestruct "q_or_s" as "[q|s]".
+      + unfold lguards_with.
+        iDestruct ("b" $! T with "[q q_or_s_back]") as "j".
+        * iFrame "q". iIntros "q". iApply "q_or_s_back". iLeft. iFrame "q".
+        * iMod "j" as "[f _]". iExFalso. iFrame "f".
+      + iModIntro. iFrame "s". iIntros "s". iApply "q_or_s_back". iRight. iFrame "s".
+  }
+  unfold "◇" at 1. iDestruct "q" as "[q|q]".
+  { iNext. iExFalso. iFrame. }
+  { iDestruct "q" as "[q_or_s q_or_s_back]".
+      iDestruct "q_or_s" as "[q|s]".
+      + unfold lguards_with.
+        iDestruct ("b" $! T with "[q q_or_s_back]") as "j".
+        * iFrame "q". iIntros "q". iApply "q_or_s_back". iLeft. iFrame "q".
+        * iNext. iNext. iMod "j" as "[f _]". iExFalso. iFrame "f".
+      + iFrame "s". iNext. iNext. iModIntro. iIntros "s". iApply "q_or_s_back". iRight. iFrame "s".
+  }
+Qed.
+
   
 Local Lemma twoway_assoc (P Q R : iProp Σ)
   : (P ∗ Q) ∗ R ⊣⊢ P ∗ (Q ∗ R).
@@ -1365,6 +1395,8 @@ Proof.
   iApply lfguards_or_with_lhs; trivial. trivial.
 Qed.
 
+
+
 Lemma lguards_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F n
     (pr_impl_s: (∀ x, P ∧ R x ⊢ S x))
     (pers: ∀ x, Persistent (S x))
@@ -1454,6 +1486,22 @@ Qed.
 Lemma lguards0_eq_guards (P Q : iProp Σ) E : (P &&{ E ; 0 }&&> Q) ⊣⊢ (P &&{ E }&&> Q).
 Proof.
   trivial.
+Qed.
+
+Local Lemma lguards_or_guards_false E P Q S n m :
+    (P &&{ E ; n }&&> Q ∨ S) ∗ (Q &&{ E ; m }&&> False) ⊢ (P &&{ E ; n + m }&&> S).
+Proof.
+  rewrite lguards_unseal. unfold lguards_def.
+  iIntros "[#x #y]". iModIntro.
+  iDestruct "x" as (mx) "[%condx x]".
+  iDestruct "y" as (my) "[%condy y]".
+  iDestruct (lfguards_weaken_mask_2 P (Q ∨ S) Q False mx my with "[x y]") as "[x1 y1]".
+  { iFrame "x". iFrame "y". }
+  iExists (mx ∪ my).
+  iDestruct (lfguards_or_guards_false (mx ∪ my) P Q S n m with "[x y]") as "g2".
+  { iFrame "x1". iFrame "y1". }
+  iFrame "g2".
+  iPureIntro. set_solver.
 Qed.
 
 End Guard.
