@@ -407,6 +407,20 @@ Proof.
     iIntros "P". iApply "q". iModIntro. iFrame. }
   iApply know_bulk_inv_empty. done.
 Qed.
+
+Local Lemma lfguards_equiv_except0 P Q n
+  : □(P -∗ ▷^n ◇ Q) ∗ □(Q -∗ P) ⊢ P &&{ ∅ ; n }&&$> Q.
+Proof.
+  unfold lfguards, lguards_with. iIntros "[#pq #qp]". iSplit.
+  {
+    iIntros (T) "[p g]".
+    iDestruct ("pq" with "p") as "latq".
+    rewrite bi.except_0_sep. iFrame.
+    iModIntro. iModIntro.
+    iIntros "q". iApply "g". iApply "qp". iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
+Qed.
   
 Local Lemma lfguards_refl P n : ⊢ P &&{ ∅ ; n }&&$> P.
 Proof.
@@ -664,26 +678,6 @@ Proof.
     iModIntro.
     iFrame.
     iIntros "p". iApply "g". iModIntro. iFrame.
-  }
-  iApply know_bulk_inv_empty. done.
-Qed.
-
-Local Lemma fguards_remove_later_or_r (P Q : iProp Σ)
-    (tl: Timeless P)
-    : ⊢ (Q ∨ ▷ P) &&{∅; 0}&&$> Q ∨ P.
-Proof.
-  unfold lfguards, lguards_with.
-  iIntros. iSplit.
-  {
-    iIntros (T) "[p g]".
-    iAssert (◇ (Q ∨ P))%I with "[p]" as "p".
-    { iDestruct "p" as "[q|p]". { iModIntro. iLeft. iFrame "q". }
-      iMod "p". iModIntro. iRight. iFrame "p". }
-    iMod "p" as "p".
-    iModIntro.
-    iFrame.
-    iIntros "p". iApply "g". iDestruct "p" as "[q|p]". { iLeft. iFrame "q". }
-    iRight. iModIntro. iFrame.
   }
   iApply know_bulk_inv_empty. done.
 Qed.
@@ -1132,13 +1126,21 @@ Proof.
   iApply guards_transitive. iFrame "a". iFrame "b".
 Qed.
 
+Lemma lguards_equiv_except0 (P Q : iProp Σ) n E
+  : □(P -∗ ▷^n ◇ Q) ∗ □(Q -∗ P) ⊢ P &&{ E ; n }&&> Q.
+Proof.
+  unfold guards. rewrite lguards_unseal. unfold lguards_def.
+  iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
+  iApply lfguards_equiv_except0. iFrame "#".
+Qed.
+
 Lemma guards_remove_later_or_r (P Q : iProp Σ) E
     (tl: Timeless P)
     : ⊢ (Q ∨ ▷ P) &&{E}&&> Q ∨ P.
 Proof.
-  unfold guards. rewrite lguards_unseal. unfold lguards_def.
-  iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
-  iApply fguards_remove_later_or_r.
+  iIntros. iApply lguards_equiv_except0. iSplit.
+  { iModIntro. iIntros "[q|p]". { iLeft. iFrame. } { iRight. iMod "p". iModIntro. iFrame. } }
+  { iModIntro. iIntros "[q|p]". { iLeft. iFrame. } { iRight. iNext. iFrame. } }
 Qed.
 
 Lemma lguards_persistent (P Q R : iProp Σ) E F n
