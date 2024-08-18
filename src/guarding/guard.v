@@ -668,6 +668,26 @@ Proof.
   iApply know_bulk_inv_empty. done.
 Qed.
 
+Local Lemma fguards_remove_later_or_r (P Q : iProp Σ)
+    (tl: Timeless P)
+    : ⊢ (Q ∨ ▷ P) &&{∅; 0}&&$> Q ∨ P.
+Proof.
+  unfold lfguards, lguards_with.
+  iIntros. iSplit.
+  {
+    iIntros (T) "[p g]".
+    iAssert (◇ (Q ∨ P))%I with "[p]" as "p".
+    { iDestruct "p" as "[q|p]". { iModIntro. iLeft. iFrame "q". }
+      iMod "p". iModIntro. iRight. iFrame "p". }
+    iMod "p" as "p".
+    iModIntro.
+    iFrame.
+    iIntros "p". iApply "g". iDestruct "p" as "[q|p]". { iLeft. iFrame "q". }
+    iRight. iModIntro. iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
+Qed.
+
 Local Lemma lfguards_persistent (P Q R : iProp Σ) E F n
     (pers: Persistent R)
     (f_subset_e : ∀ x , x ∈ F -> x ∈ E)
@@ -1112,6 +1132,14 @@ Proof.
   iApply guards_transitive. iFrame "a". iFrame "b".
 Qed.
 
+Lemma guards_remove_later_or_r (P Q : iProp Σ) E
+    (tl: Timeless P)
+    : ⊢ (Q ∨ ▷ P) &&{E}&&> Q ∨ P.
+Proof.
+  unfold guards. rewrite lguards_unseal. unfold lguards_def.
+  iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
+  iApply fguards_remove_later_or_r.
+Qed.
 
 Lemma lguards_persistent (P Q R : iProp Σ) E F n
     (pers: Persistent R)
@@ -1488,7 +1516,7 @@ Proof.
   trivial.
 Qed.
 
-Local Lemma lguards_or_guards_false E P Q S n m :
+Lemma lguards_or_guards_false E P Q S n m :
     (P &&{ E ; n }&&> Q ∨ S) ∗ (Q &&{ E ; m }&&> False) ⊢ (P &&{ E ; n + m }&&> S).
 Proof.
   rewrite lguards_unseal. unfold lguards_def.
@@ -1502,6 +1530,12 @@ Proof.
   { iFrame "x1". iFrame "y1". }
   iFrame "g2".
   iPureIntro. set_solver.
+Qed.
+
+Lemma guards_or_guards_false E P Q S :
+    (P &&{ E }&&> Q ∨ S) ∗ (Q &&{ E }&&> False) ⊢ (P &&{ E }&&> S).
+Proof.
+  apply lguards_or_guards_false.
 Qed.
 
 End Guard.

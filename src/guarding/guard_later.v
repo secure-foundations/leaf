@@ -111,4 +111,5 @@ Proof.
   - apply lg_timeless.
 Qed.
 
+
 End GuardLater.
