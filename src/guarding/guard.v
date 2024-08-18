@@ -421,6 +421,20 @@ Proof.
   }
   iApply know_bulk_inv_empty. done.
 Qed.
+
+Local Lemma lfguards_weaken_except0 P Q n
+  : □(P -∗ ▷^n ◇ (Q ∗ (Q -∗ P))) ⊢ P &&{ ∅ ; n }&&$> Q.
+Proof.
+  unfold lfguards, lguards_with. iIntros "#pq". iSplit.
+  {
+    iIntros (T) "[p g]".
+    iDestruct ("pq" with "p") as "[latq back]".
+    setoid_rewrite (bi.except_0_sep) at 2. iFrame.
+    iModIntro. iMod "back". iModIntro.
+    iIntros "q". iApply "g". iApply "back". iFrame.
+  }
+  iApply know_bulk_inv_empty. done.
+Qed.
   
 Local Lemma lfguards_refl P n : ⊢ P &&{ ∅ ; n }&&$> P.
 Proof.
@@ -1134,6 +1148,28 @@ Proof.
   iApply lfguards_equiv_except0. iFrame "#".
 Qed.
 
+Lemma lguards_weaken_except0 (P Q : iProp Σ) n E
+  : □(P -∗ ▷^n ◇ (Q ∗ (Q -∗ P))) ⊢ P &&{ E ; n }&&> Q.
+Proof.
+  unfold guards. rewrite lguards_unseal. unfold lguards_def.
+  iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
+  iApply lfguards_weaken_except0. iFrame "#".
+Qed.
+
+Lemma lguards_weaken (P Q : iProp Σ) n E
+  : □(P -∗ ▷^n (Q ∗ (Q -∗ P))) ⊢ P &&{ E ; n }&&> Q.
+Proof.
+  iIntros "#T". iApply lguards_weaken_except0.
+  iModIntro. iIntros "P". iDestruct ("T" with "P") as "P". iNext. iModIntro. iFrame.
+Qed.
+
+Lemma guards_weaken (P Q : iProp Σ) E
+  : □(P -∗ (Q ∗ (Q -∗ P))) ⊢ P &&{ E ; 0 }&&> Q.
+Proof.
+  iIntros "#T". iApply lguards_weaken_except0.
+  iModIntro. iIntros "P". iModIntro. iApply "T". iFrame "P".
+Qed.
+
 Lemma guards_remove_later_or_r (P Q : iProp Σ) E
     (tl: Timeless P)
     : ⊢ (Q ∨ ▷ P) &&{E}&&> Q ∨ P.
@@ -1540,6 +1576,7 @@ Proof.
   apply lguards_or_guards_false.
 Qed.
 
+
 End Guard.
 
 Notation "P &&{ E }&&> Q" := (guards P Q E)
@@ -1547,3 +1584,4 @@ Notation "P &&{ E }&&> Q" := (guards P Q E)
   
 Notation "P &&{ E ; n }&&> Q" := (lguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
+   

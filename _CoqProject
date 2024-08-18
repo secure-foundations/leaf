@@ -4,6 +4,7 @@ src/guarding/auth_frag_util.v
 src/guarding/conjunct_own_rule.v
 src/guarding/point_props.v
 src/guarding/guard.v
+src/guarding/tactics.v
 src/guarding/guard_later.v
 src/guarding/inved.v
 src/guarding/protocol.v
@@ -37,6 +38,7 @@ src/examples/seqs.v
 src/examples/main.v
 src/examples/fractional.v
 src/examples/counting.v
+src/examples/lifetime.v
 
 -Q external/coq-tricks coq_tricks
 -Q external/cpdt cpdt

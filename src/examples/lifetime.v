@@ -3,6 +3,7 @@ Require Import guarding.protocol.
 Require Import guarding.inved.
 Require Import guarding.guard.
 Require Import guarding.conjunct_own_rule2.
+Require Import guarding.tactics.
 
 Require Import cpdt.CpdtTactics.
 Require Import coq_tricks.Deex.
@@ -10,7 +11,7 @@ Require Import coq_tricks.Deex.
 Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.
 From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import auth.
+From iris.algebra Require Import excl.
 From iris.prelude Require Import options.
 
 From iris.base_logic.lib Require Export own iprop.
@@ -126,7 +127,7 @@ Qed.
 
 Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
-Class lt_logicG Σ := { lt_logic_inG :> inG Σ ltUR }.
+Class lt_logicG Σ := { lt_logic_inG :> inG Σ ltUR ; exclG :> inG Σ (exclR unitO) }.
 
 Definition lt_logicΣ : gFunctors := #[ GFunctor ltUR ].
 
@@ -225,7 +226,7 @@ Lemma lt_state_incl_lt_ok sa sd sa1 sd1 a d
   : (lt_state sa sd ≼ LtOk (Some (sa1, sd1)) a d) → sa = sa1 ∧ sd = sd1.
 Proof.
   intros lts. destruct lts as [t lts].
-  destruct t as [[o|] a1 d1|t].
+  destruct t as [[o|] a1 d1|].
   - unfold lt_state in lts. unfold "⋅", lt_op in lts. inversion lts.
   - unfold lt_state in lts. unfold "⋅", lt_op in lts. inversion lts. split; trivial.
   - unfold lt_state in lts. unfold "⋅", lt_op in lts. inversion lts.
@@ -235,7 +236,7 @@ Lemma alive_incl_lt_ok k sa1 sd1 a d
   : (alive k ≼ LtOk (Some (sa1, sd1)) a d) → lt_inv (LtOk (Some (sa1, sd1)) a d) → k ∈ sa1.
 Proof.
   intros lts lti. destruct lts as [t lts].
-  destruct t as [[o|] a1 d1|t].
+  destruct t as [[o|] a1 d1|].
   - unfold alive in lts. unfold "⋅", lt_op in lts. inversion lts.
       unfold lt_inv in lti. destruct lti as [_ [_ fm]]. have fmk := fm k.
       have h : Decision (k ∈ sa1) by solve_decision. destruct h as [h|n]; trivial.
@@ -251,7 +252,7 @@ Lemma dead_incl_lt_ok k sa1 sd1 a d
   : (dead k ≼ LtOk (Some (sa1, sd1)) a d) → lt_inv (LtOk (Some (sa1, sd1)) a d) → k ∈ sd1.
 Proof.
   intros lts lti. destruct lts as [t lts].
-  destruct t as [[o|] a1 d1|t].
+  destruct t as [[o|] a1 d1|].
   - unfold dead in lts. unfold "⋅", lt_op in lts. inversion lts.
       unfold lt_inv in lti. destruct lti as [sde _]. subst d. set_solver.
   - inversion lts.
@@ -410,16 +411,22 @@ Proof.
   { iDestruct "AD" as "[_ [_ D]]". iFrame. }
 Qed.
 
-Definition Cancel (γ: gname) : iProp Σ. Admitted.
-Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ. Admitted.
-Lemma cancel_cancel_false (γc : gname) : Cancel γc ∗ Cancel γc ⊢ False. Admitted.
-Local Instance tless_cancel γc : Timeless (Cancel γc). Admitted.
+Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
+Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
+Proof.
+  iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold Cancel. iFrame "H".
+Qed.
+  
+Lemma cancel_cancel_false (γc : gname) : Cancel γc ∗ Cancel γc ⊢ False.
+Proof.
+  iIntros "X". unfold Cancel. rewrite <- own_op.
+  iDestruct (own_valid with "X") as "%J". contradiction.
+Qed.
 
 Lemma llftl_begin :
     llftctx ⊢ |={↑NLLFT}=> ∃ κ, llft_alive κ ∗ (llft_alive κ ={↑NLLFT}=∗ llft_dead κ).
 Proof.
     iIntros "#ctx".  unfold llftctx.
-    Print guards_open.
     iDestruct (guards_open (True)%I _ (↑NLLFT) (↑NLLFT) with "[ctx]") as "J". { set_solver. }
     { iFrame "ctx". }
     iMod "J" as "[J back]". iDestruct "J" as (sa sd) "[State Alive]".
@@ -498,59 +505,76 @@ Proof.
   iDestruct (cancel_cancel_false γc with "[c1 c2]") as "J". { iFrame. } iExFalso. iFrame "J".
 Qed.
 
-Lemma not_subset_eq_get (κ sa : gset nat) : (κ ⊈ sa) → ∃ k , k ∈ κ ∧ k ∉ sa.
-Admitted.
+Lemma not_subset_eq_get (a b : gset nat) : (a ⊈ b) → ∃ k , k ∈ a ∧ k ∉ b.
+Proof.
+  assert (∀ r , list_to_set r ⊈ b → ∃ u: nat , u ∈ ((list_to_set r) : gset nat) ∧ u ∉ b) as X.
+  { induction r.
+    - intros emp. rewrite list_to_set_nil in emp. set_solver.
+    - intros not_in. rewrite list_to_set_cons in not_in.
+      have h : Decision (a0 ∈ b) by solve_decision. destruct h as [h|n]; trivial.
+      + assert (list_to_set r ⊈ b) as K by set_solver.
+        have IHr2 := IHr K. destruct IHr2 as [u IHr2]. exists u. set_solver.
+      + exists a0. intuition. rewrite list_to_set_cons. set_solver.
+  }
+  intro a_not_in_b.
+  have X1 := X (elements (Elements := gset_elements) a).
+  assert (list_to_set (elements a) ⊈ b) as Y. { set_solver. }
+  have Z := X1 Y. destruct Z as [u [Z1 Z2]]. exists u. split; trivial.
+  rewrite list_to_set_elements in Z1. trivial.
+Qed.
 
 Lemma llftl_incl_dead_implies_dead κ κ' :
     ⊢ llftctx ∗ llft_incl κ κ' ∗ llft_dead κ' ={↑NLLFT}=∗ llft_dead κ.
 Proof.
   iIntros "[#ctx [#incl #dead]]".
-  iAssert (llft_alive κ' &&{↑NLLFT}&&> False)%I as "G1".
-  {
-    setoid_replace (False : iProp Σ)%I with (llft_alive κ' ∗ llft_dead κ')%I.
-    { iApply guards_include_pers. iFrame "dead". iApply guards_refl. }
-    { iIntros. iSplit. { iIntros "f". iExFalso. iFrame. } iIntros "[al de]".
-        iApply (llftl_not_own_end κ'). iFrame. }
-  }
+  
   unfold llft_incl.
-  iAssert (llft_alive κ &&{↑NLLFT}&&> False)%I as "G2".
-  { iApply guards_transitive. iFrame "incl". iFrame "G1". }
-  unfold llftctx.
-  setoid_replace (∃ sa sd : gset nat, LtState sa sd ∗ llft_alive sa)%I
-    with (
-      (∃ sa sd : gset nat, ⌜ κ ⊆ sa ⌝ ∗ LtState sa sd ∗ llft_alive sa)
-      ∨ (∃ sa sd : gset nat, ⌜ ¬(κ ⊆ sa) ⌝ ∗ LtState sa sd ∗ llft_alive sa) )%I.
+  
+  leaf_hyp "incl" rhs to (False)%I as "G2".
   {
+    leaf_by_sep. iIntros "a". iExFalso.
+    iApply (llftl_not_own_end κ'). iFrame. iFrame "dead".
+  }
+  unfold llftctx.
+  leaf_hyp "ctx" rhs to ((∃ sa sd : gset nat, ⌜ κ ⊆ sa ⌝ ∗ LtState sa sd ∗ llft_alive sa)
+      ∨ (∃ sa sd : gset nat, ⌜ ¬(κ ⊆ sa) ⌝ ∗ LtState sa sd ∗ llft_alive sa) )%I
+      as "ctx2".
+  {
+    leaf_by_sep. iIntros "T". iSplitL.
+      - iDestruct "T" as (sa sd) "state_alive".
+        have h : Decision (κ ⊆ sa) by solve_decision. destruct h as [h|n]; trivial.
+        + iLeft. iExists sa. iExists sd. iFrame. iPureIntro. trivial.
+        + iRight. iExists sa. iExists sd. iFrame. iPureIntro. trivial.
+      - iIntros "T". iDestruct "T" as "[T|T]".
+        + iDestruct "T" as (sa sd) "[_ T]". iExists sa. iExists sd. iFrame.
+        + iDestruct "T" as (sa sd) "[_ T]". iExists sa. iExists sd. iFrame.
+    }
+  
     iAssert (True &&{ ↑NLLFT}&&> (∃ sa sd : gset nat, ⌜κ ⊈ sa⌝ ∗ LtState sa sd ∗ llft_alive sa)) as "G3".
-      { iApply guards_or_guards_false. iFrame "ctx". 
-        setoid_replace
-          ((∃ sa sd : gset nat, ⌜κ ⊆ sa⌝ ∗ LtState sa sd ∗ llft_alive sa))%I
-          with
-          (llft_alive κ ∗ (∃ sa sd : gset nat, (⌜κ ⊆ sa⌝ ∗ LtState sa sd ∗ llft_alive (sa ∖ κ))))%I at 2.
-          { iApply (guards_transitive (↑NLLFT) _ (llft_alive κ)). iFrame "G2".
-            iApply guards_weaken_l. }
-          { iIntros. iSplit.
-            { iIntros "T". iDestruct "T" as (sa sd) "[%ksa [state alive]]".
+      { iApply guards_or_guards_false. iFrame "ctx2". 
+        leaf_goal rhs to (llft_alive κ). { iFrame "G2". }
+        leaf_by_sep.
+        { iIntros "T". 
+            iDestruct "T" as (sa sd) "[%ksa [state alive]]".
               unfold llft_alive.
               replace sa with (κ ∪ (sa ∖ κ)) at 2.
               { setoid_rewrite big_sepS_union.
                 { iDestruct "alive" as "[alive1 alive2]". iFrame "alive1".
-                  iExists sa. iExists sd. iFrame. iPureIntro. trivial. } set_solver.
-              } rewrite <- union_difference_L; trivial.
-           }
-           { iIntros "[alive e]". iDestruct "e" as (sa sd) "[%ksa [state alive2]]".
-              unfold llft_alive.
-              iExists sa. iExists sd. iFrame.
-              iCombine "alive alive2" as "alive".
-              setoid_rewrite <- big_sepS_union.
-              { replace (κ ∪ sa ∖ κ) with sa. { iFrame. iPureIntro. trivial. }
-                  rewrite <- union_difference_L; trivial. }
-              set_solver.
-           }
-       }
-     }
-     
-     iMod (guards_open (True)%I (∃ sa sd : gset nat, ⌜κ ⊈ sa⌝ ∗ LtState sa sd ∗ llft_alive sa)%I (↑ NLLFT) (↑ NLLFT) with "[G3]") as "[J back]". { set_solver. } { iFrame "G3". }
+                  iIntros "rest".
+                  iExists sa. iExists sd. iFrame.
+                  iCombine "rest alive2" as "alive".
+                  setoid_rewrite <- big_sepS_union.
+                  { replace (κ ∪ sa ∖ κ) with sa. { iFrame. iPureIntro. trivial. }
+                  rewrite <- union_difference_L; trivial.
+               }
+               set_solver.
+            }
+            set_solver.
+        } rewrite <- union_difference_L; trivial.
+      }
+    }            
+    
+    leaf_open "G3" with "[]" as "[J back]". { set_solver. } { done. }
      
      iDestruct "J" as (sa sd) "[%k_sa [State alive]]".
      have the_k := not_subset_eq_get κ sa k_sa. destruct the_k as [k [k_in k_not_in]].
@@ -568,15 +592,6 @@ Proof.
           { iFrame. iPureIntro. trivial. } set_solver.
         }
         iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro; trivial.
-    }
-    {
-      iIntros. iSplit.
-      - iIntros "T". iDestruct "T" as (sa sd) "state_alive".
-        have h : Decision (κ ⊆ sa) by solve_decision. destruct h as [h|n]; trivial.
-        + iLeft. iExists sa. iExists sd. iFrame. iPureIntro. trivial.
-        + iRight. iExists sa. iExists sd. iFrame. iPureIntro. trivial.
-      - iIntros "T". iDestruct "T" as "[T|T]".
-        + iDestruct "T" as (sa sd) "[_ T]". iExists sa. iExists sd. iFrame.
-        + iDestruct "T" as (sa sd) "[_ T]". iExists sa. iExists sd. iFrame.
-    }
 Qed.
+
+End LtResource.
