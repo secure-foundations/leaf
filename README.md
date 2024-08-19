@@ -75,6 +75,14 @@ Using this technology, we have shown that storage protocols are useful for:
 # Getting started
 
 Leaf works with Iris 4.2.0 and is tested with Coq 8.19.1.
+See [the Iris docs](https://gitlab.mpi-sws.org/iris/iris/) for more information about installing Iris.
+
+Make sure you have the right versions:
+
+```
+opam pin coq 8.19.1
+opam pin coq-iris 4.2.0
+```
 
 ## Documentation and further reading
 
