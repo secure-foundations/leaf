@@ -185,9 +185,10 @@ Qed.
 
 Class frac_logicG Σ :=
     {
-      forever_logic_inG :> inG Σ 
+      frac_logic_inG : inG Σ 
         (authUR (inved_protocolUR (protocol_mixin (option Qp) (nat) (frac_storage_mixin))))
     }.
+Local Existing Instance frac_logic_inG.
 
 
 Definition frac_logicΣ : gFunctors := #[

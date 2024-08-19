@@ -62,7 +62,7 @@ them in `adequacy.v`.
 
 Class simpGS Σ := SimpGS {
   simp_invG : invGS Σ;
-  simp_gen_heapG :> gen_heapGS loc val Σ;
+  #[global] simp_gen_heapG :: gen_heapGS loc val Σ;
 }.
 
 (* Observe that this instance assumes [simpGS Σ], which already has a fixed ghost
@@ -98,7 +98,7 @@ Implicit Types l : loc.
 Lemma wp_fork s E e Φ :
   ▷ WP e @ s; ⊤ {{ _, True }} -∗ ▷ Φ (LitV LitUnit) -∗ WP Fork e @ s; E {{ Φ }}.
 Proof.
-  iIntros "He HΦ". iApply wp_lift_atomic_head_step; [done|].
+  iIntros "He HΦ". iApply wp_lift_atomic_base_step; [done|].
   iIntros (σ1 κ κs n nt) "Hσ !>"; iSplit; first by eauto with head_step.
   iIntros "!>" (v2 σ2 efs Hstep); inv_head_step. iIntros. by iFrame.
 Qed.
@@ -111,7 +111,7 @@ Lemma wp_alloc s E v :
   {{{ True }}} Alloc (Val v) @ s; E
   {{{ l, RET LitV (LitInt l); l ↦ v }}}.
 Proof.
-  iIntros (Φ) "_ HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "_ HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>"; iSplit; first by auto with head_step.
   iIntros "!>" (v2 σ2 efs Hstep); inv_head_step.
   iMod (gen_heap_alloc σ1.(heap) l v with "Hσ") as "[Hσ Hl]"; first done.
@@ -124,7 +124,7 @@ Lemma wp_free s E l v :
   {{{ l ↦ v }}} Free (Val $ LitV $ LitInt l) @ s; E
   {{{ RET #(); True }}}.
 Proof.
-  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
@@ -137,7 +137,7 @@ Qed.
 Lemma wp_load s E l dq v :
   {{{ l ↦{dq} v }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; l ↦{dq} v }}}.
 Proof.
-  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
@@ -149,7 +149,7 @@ Qed.
 Lemma wp_load_b s E l v F g (su: F ⊆ E) :
   {{{ g ∗ (g &&{F}&&> (l ↦ v)) }}} Load (Val $ LitV $ LitInt l) @ s; E {{{ RET v; g }}}.
 Proof.
-  iIntros (Φ) "[g Hl] HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "[g Hl] HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ". (*"Hσ !>".*)
   
   iMod (guards_persistent2
@@ -172,7 +172,7 @@ Qed.
 Lemma wp_store s E l v w :
   {{{ l ↦ v }}} Store (Val $ LitV $ LitInt l) (Val $ w) @ s; E {{{ RET #(); l ↦ w }}}.
 Proof.
-  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
@@ -187,7 +187,7 @@ Lemma wp_faa s E l (n1 n2: Z) :
     FAA (Val $ LitV $ LitInt l) (Val $ LitV $ LitInt $ n2) @ s; E
   {{{ RET #n1; l ↦ #(n1+n2) }}}.
 Proof.
-  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.
@@ -201,7 +201,7 @@ Lemma wp_cas s E l (v_actual v_old v_new: base_lit) :
   {{{ RET (LitV $ LitBool (bool_decide (v_actual = v_old))) ;
       l ↦ (LitV (if decide (v_actual = v_old) then v_new else v_actual)) }}}.
 Proof.
-  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_head_step_no_fork; first done.
+  iIntros (Φ) "Hl HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ !>". iDestruct (gen_heap_valid with "Hσ Hl") as %?.
   iSplit; first by eauto with head_step.
   iNext. iIntros (v2 σ2 efs Hstep); inv_head_step.

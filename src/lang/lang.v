@@ -545,7 +545,7 @@ Canonical Structure simp_lang := LanguageOfEctx simp_ectx_lang.
 the entire language semantics and instantiate the general Iris [language]
 interface. The semantics at this level is given as a single transition relation
 between configurations [cfg] (along with observations which we're ignoring): *)
-Check (@step simp_lang).
+(* Check (@step simp_lang). *)
 (*
 step
      : cfg simp_lang → list (language.observation simp_lang) → cfg simp_lang → Prop
@@ -555,7 +555,7 @@ step
 accumulating all the spawned threads, where the first expression is the "main"
 thread whose return value we care about, and the type of state comes from our
 definition above. *)
-Eval compute in cfg simp_lang.
+(* Eval compute in cfg simp_lang. *)
 (*
      = (list expr * state)%type
      : Type

@@ -54,13 +54,13 @@ Proof.
   - apply map_eq. intros.
       have h : Decision (i = i0) by solve_decision. destruct h.
       + subst i0. rewrite lookup_singleton.
-        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
-            destruct (decide_rel elem_of i {[i]}); trivial.
-            generalize n. rewrite elem_of_singleton. contradiction.
+        rewrite lookup_gset_to_gmap. unfold guard.
+            destruct (decide (i ∈ {[i]})) as [e|e]; trivial.
+            rewrite elem_of_singleton in e. contradiction.
       + rewrite lookup_singleton_ne; trivial.
-        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
-            destruct (decide_rel elem_of i0 {[i]}); trivial.
-            generalize e. rewrite elem_of_singleton. intros. subst i. contradiction.
+        rewrite lookup_gset_to_gmap. unfold guard.
+            destruct (decide (i0 ∈ {[i]})) as [e|e]; trivial.
+            exfalso. rewrite elem_of_singleton in e. subst i. contradiction.
 Qed.
 
 Local Lemma storage_bulk_inv_singleton i
@@ -72,13 +72,13 @@ Proof.
   - apply map_eq. intros.
       have h : Decision (i = i0) by solve_decision. destruct h.
       + subst i0. rewrite lookup_singleton.
-        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
-            destruct (decide_rel elem_of i {[i]}); trivial.
-            generalize n. rewrite elem_of_singleton. contradiction.
+      rewrite lookup_gset_to_gmap. unfold guard.
+            destruct (decide (i ∈ {[i]})) as [e|e]; trivial.
+            rewrite elem_of_singleton in e. contradiction.
       + rewrite lookup_singleton_ne; trivial.
-        rewrite lookup_gset_to_gmap. unfold mguard, option_guard.
-            destruct (decide_rel elem_of i0 {[i]}); trivial.
-            generalize e. rewrite elem_of_singleton. intros. subst i. contradiction.
+        rewrite lookup_gset_to_gmap. unfold guard.
+            destruct (decide (i0 ∈ {[i]})) as [e|e]; trivial.
+            exfalso. rewrite elem_of_singleton in e. subst i. contradiction.
 Qed.
 
 Local Lemma gset_to_gmap_union (E F : gset positive)
@@ -88,10 +88,10 @@ Local Lemma gset_to_gmap_union (E F : gset positive)
     rewrite lookup_gset_to_gmap.
     rewrite lookup_gset_to_gmap.
     rewrite lookup_gset_to_gmap.
-    unfold union_with, option_union_with, mguard, option_guard.
-    destruct (decide_rel elem_of i E);
-    destruct (decide_rel elem_of i F);
-    destruct (decide_rel elem_of i (E ∪ F)); trivial; set_solver.
+    unfold union_with, option_union_with, guard.
+    destruct (decide (i ∈ E));
+    destruct (decide (i ∈ F));
+    destruct (decide (i ∈ (E ∪ F))); trivial; set_solver.
 Qed.
   
 Local Lemma gset_to_gmap_disj (E F : gset positive) (disj : E ## F)
@@ -102,8 +102,8 @@ Proof.
     destruct (gset_to_gmap () F !! i) eqn:y; trivial.
     rewrite lookup_gset_to_gmap in x.
     rewrite lookup_gset_to_gmap in y.
-    unfold mguard, option_guard in x, y.
-    destruct (decide_rel elem_of i E); destruct (decide_rel elem_of i F); try discriminate.
+    unfold guard in x, y.
+    destruct (decide (i ∈ E)); destruct (decide (i ∈ F)); try discriminate.
     set_solver.
 Qed.
 
@@ -553,9 +553,7 @@ Proof.
   { iFrame "w". iFrame "i". iFrame "e". }
   unfold storage_inv.
   iMod (ownE_empty) as "oemp".
-  iModIntro. iModIntro. iFrame.
-  iSplitL "i p".
-  { iExists P. iFrame "p". iFrame "i". }
+  iModIntro. iModIntro. iFrame "i". iFrame "w". iFrame "ee". iFrame "p".
   iIntros "op [w e]".
   iDestruct "op" as (P0) "op".
   iDestruct (ownI_close x P0 with "[w op d]") as "[w l]".
@@ -886,11 +884,12 @@ Proof.
   iDestruct (own_valid with "x") as "v".
   rewrite gmap_view_frag_op_validI.
   iDestruct "v" as "[#v iu]".
+  rewrite agree_validI.
+  rewrite agree_equivI.
   unfold invariant_unfold.
-
   iDestruct (later_equivI_1 with "iu") as "iu".
   iDestruct (f_equivI_contractive (λ x , (▷ x)%I) with "iu") as "iu".
-  iFrame.
+  iFrame "iu".
 Qed.
 
 Local Lemma fguards_from_inv (P: iProp Σ) i

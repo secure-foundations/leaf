@@ -54,7 +54,7 @@ Canonical Structure htUR := Ucmra HT ht_ucmra_mixin.
 
 Class ht_logicG Σ :=
     {
-      ht_logic_inG :> inG Σ htUR
+      #[global] ht_logic_inG :: inG Σ htUR
     }.
 
 Definition ht_logicΣ : gFunctors := #[ GFunctor htUR ].
@@ -292,7 +292,7 @@ Lemma ht_UpdateExisting γ k v v0 v1 j :
 Proof.
   rewrite <- own_op.
   apply own_update_2.
-  rewrite cmra_discrete_update.
+  rewrite cmra_discrete_total_update.
   unfold "⋅", cmra_op, htR, ht_op.
   intros.
   have X := ht_update_existing j k v v0 v1.
@@ -310,7 +310,7 @@ Proof.
   rewrite <- own_op.
   rewrite <- own_op.
   apply own_update_3.
-  rewrite cmra_discrete_update.
+  rewrite cmra_discrete_total_update.
   unfold "⋅", cmra_op, htR, ht_op.
   intros.
   have X := ht_update_new j k v v0 r.

@@ -348,7 +348,7 @@ Qed.
 
 Class rwlock_logicG {S: Type} {eqdec: EqDecision S} Σ :=
     {
-      rwlock_logic_inG :> inG Σ 
+      #[global] rwlock_logic_inG :: inG Σ 
         (authUR (inved_protocolUR (protocol_mixin (RwLock S) (BaseOpt S) (rwlock_storage_mixin S))))
     }.
 

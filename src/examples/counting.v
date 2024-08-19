@@ -114,9 +114,10 @@ Qed.
 
 Class co_logicG Σ :=
     {
-      forever_logic_inG :> inG Σ 
+      co_logic_inG : inG Σ 
         (authUR (inved_protocolUR (protocol_mixin Co (nat) (count_storage_mixin))))
     }.
+Local Existing Instance co_logic_inG.
 
 
 Definition co_logicΣ : gFunctors := #[

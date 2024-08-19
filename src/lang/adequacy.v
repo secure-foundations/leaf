@@ -33,9 +33,11 @@ ghost name and associated state.
 (** These assumptions are just functors in Σ, unlike simpGS which also has a
 ghost name. *)
 Class simpGpreS Σ := SimpPreG {
-  simp_preG_iris :> invGpreS Σ;
-  simp_preG_heap :> gen_heapGpreS loc val Σ;
+  simp_preG_iris : invGpreS Σ;
+  simp_preG_heap : gen_heapGpreS loc val Σ;
 }.
+Local Existing Instance simp_preG_iris.
+Local Existing Instance simp_preG_heap.
 
 Definition simpΣ : gFunctors :=
   #[invΣ; gen_heapΣ loc val].

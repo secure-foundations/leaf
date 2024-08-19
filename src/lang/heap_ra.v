@@ -4,6 +4,7 @@ From iris.bi.lib Require Import fractional.
 From iris.proofmode Require Import tactics.
 From iris.base_logic.lib Require Export own.
 From iris.prelude Require Import options.
+From iris.base_logic.lib Require Import ghost_map.
 
 (*|
 ========
@@ -34,18 +35,20 @@ precondition. See primitive_laws.v for where that happens.
 (** The CMRAs we need, and the global ghost names we are using. *)
 
 Class gen_heapGpreS (L V : Type) (Σ : gFunctors) `{Countable L} := {
-  gen_heapGpreS_inG :> inG Σ (gmap_viewR L (leibnizO V));
+  gen_heapGpreS_inG : ghost_mapG Σ L V;
 }.
+Local Existing Instance gen_heapGpreS_inG.
 
 Class gen_heapGS (L V : Type) (Σ : gFunctors) `{Countable L} := GenHeapGS {
-  gen_heap_inG :> gen_heapGpreS L V Σ;
+  gen_heap_inG : gen_heapGpreS L V Σ;
   gen_heap_name : gname;
 }.
 Global Arguments GenHeapGS L V Σ {_ _ _} _ : assert.
 Global Arguments gen_heap_name {L V Σ _ _} _ : assert.
+Local Existing Instance gen_heap_inG.
 
 Definition gen_heapΣ (L V : Type) `{Countable L} : gFunctors := #[
-  GFunctor (gmap_viewR L (leibnizO V))
+  GFunctor (gmap_viewR L (agreeR (leibnizO V)))
 ].
 
 Global Instance subG_gen_heapGpreS {Σ L V} `{Countable L} :
@@ -73,10 +76,10 @@ the state interpretation and are owned by threads. `l ↦ v` will be notation fo
 *)
 
   Definition gen_heap_interp (σ : gmap L V) : iProp Σ :=
-    own (gen_heap_name hG) (gmap_view_auth (DfracOwn 1) (σ : gmap L (leibnizO V))).
+    ghost_map_auth (gen_heap_name hG) (1) σ.
 
   Definition mapsto_def (l : L) (dq : dfrac) (v: V) : iProp Σ :=
-    own (gen_heap_name hG) (gmap_view_frag l dq (v : leibnizO V)).
+    l ↪[gen_heap_name hG]{dq} v.
   Definition mapsto_aux : seal (@mapsto_def). Proof. by eexists. Qed.
   Definition mapsto := mapsto_aux.(unseal).
   Definition mapsto_eq : @mapsto = @mapsto_def := mapsto_aux.(seal_eq).
@@ -99,9 +102,8 @@ Section gen_heap.
 
   Lemma mapsto_valid_2 l dq1 dq2 v1 v2 : l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ ⌜✓ (dq1 ⋅ dq2) ∧ v1 = v2⌝.
   Proof.
-    rewrite mapsto_eq. iIntros "H1 H2".
-    iDestruct (own_valid_2 with "H1 H2") as %[??]%gmap_view_frag_op_valid_L.
-    auto.
+    rewrite mapsto_eq. 
+    apply ghost_map_elem_valid_2.
   Qed.
   (** Almost all the time, this is all you really need. *)
   Lemma mapsto_agree l dq1 dq2 v1 v2 : l ↦{dq1} v1 -∗ l ↦{dq2} v2 -∗ ⌜v1 = v2⌝.
@@ -118,8 +120,7 @@ Section gen_heap.
   Proof.
     iIntros (Hσl). rewrite /gen_heap_interp mapsto_eq /mapsto_def /=.
     iIntros "Hσ".
-    iMod (own_update with "Hσ") as "[Hσ Hl]".
-    { eapply (gmap_view_alloc _ l (DfracOwn 1)); done. }
+    iMod (ghost_map_insert l with "Hσ") as "[Hσ Hl]"; first done.
     iModIntro. iFrame.
   Qed.
 
@@ -127,17 +128,17 @@ Section gen_heap.
   Proof.
     iIntros "Hσ Hl".
     rewrite /gen_heap_interp mapsto_eq.
-    by iDestruct (own_valid_2 with "Hσ Hl") as %[??]%gmap_view_both_valid_L.
+    by iCombine "Hσ Hl" gives %?. 
   Qed.
 
   Lemma gen_heap_update σ l v1 v2 :
     gen_heap_interp σ -∗ l ↦ v1 ==∗ gen_heap_interp (<[l:=v2]>σ) ∗ l ↦ v2.
   Proof.
     iIntros "Hσ Hl".
-    rewrite /gen_heap_interp mapsto_eq /mapsto_def.
-    iDestruct (own_valid_2 with "Hσ Hl") as %[_ Hl]%gmap_view_both_valid_L.
-    iMod (own_update_2 with "Hσ Hl") as "[Hσ Hl]".
-    { eapply gmap_view_update. }
+    rewrite /gen_heap_interp /mapsto_eq.
+    rewrite mapsto_eq.
+    iCombine "Hσ Hl" gives %Hl.
+    iMod (ghost_map_update with "Hσ Hl") as "[Hσ Hl]". 
     iModIntro. iFrame.
   Qed.
   
@@ -146,9 +147,8 @@ Section gen_heap.
   Proof.
     iIntros "Hσ Hl".
     rewrite /gen_heap_interp mapsto_eq /mapsto_def.
-    iDestruct (own_valid_2 with "Hσ Hl") as %[_ Hl]%gmap_view_both_valid_L.
-    iMod (own_update_2 with "Hσ Hl") as "Hσ".
-    { eapply gmap_view_delete. }
+    iCombine "Hσ Hl" gives %Hl.
+    iMod (ghost_map_delete with "Hσ Hl") as "Hσ". 
     iModIntro. iFrame.
   Qed.
 End gen_heap.
@@ -156,8 +156,10 @@ End gen_heap.
 Lemma gen_heap_init `{Countable L, !gen_heapGpreS L V Σ} σ :
   ⊢ |==> ∃ _ : gen_heapGS L V Σ, gen_heap_interp σ.
 Proof.
-  iMod (own_alloc (gmap_view_auth (DfracOwn 1) (σ : gmap L (leibnizO V)))) as (γ) "Hσ".
-  { exact: gmap_view_auth_valid.  }
-  iExists (GenHeapGS _ _ _ γ).
-  done.
+  induction σ as [| l v σ' Hl IH] using map_ind.
+  - iMod (ghost_map_alloc_empty (K:=L) (V:=V)) as (γh) "Hh".
+    iExists (GenHeapGS _ _ _ γh). iModIntro. iFrame.
+  - iIntros. iMod IH as (H0) "T".
+    iMod (gen_heap_alloc _ l v with "T") as "[S T]"; trivial.
+    iModIntro. iExists H0. iFrame.
 Qed.

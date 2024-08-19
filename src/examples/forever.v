@@ -122,9 +122,10 @@ Qed.
 
 Class forever_logicG Σ :=
     {
-      forever_logic_inG :> inG Σ 
+      forever_logic_inG : inG Σ 
         (authUR (inved_protocolUR (protocol_mixin (Trivial) (Exc ()) (trivial_storage_mixin))))
     }.
+Local Existing Instance forever_logic_inG.
 
 
 Definition forever_logicΣ : gFunctors := #[

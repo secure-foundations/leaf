@@ -174,14 +174,14 @@ Proof.
   destruct (a !! i) eqn:ai.
   - rewrite map_lookup_filter.
     unfold "≫=", option_bind. destruct (b!!i) eqn:bi.
-    + unfold mguard, option_guard. have fff := ff o. intuition. inversion H.
-      destruct (X (i, o)).
-      * rewrite ai in e. discriminate.
+    + unfold guard. have fff := ff o. intuition. inversion H.
+      destruct (X (i, o)) as [e|e].
+      * rewrite e in ai. discriminate.
       * trivial.
     + have fff := ff o. intuition.
   - rewrite map_lookup_filter.
     unfold "≫=", option_bind. destruct (b!!i) eqn:bi; trivial.
-    unfold mguard, option_guard. destruct (X (i, o)); trivial.
+    destruct (X (i, o)); trivial.
     contradiction.
 Qed.
 

@@ -679,7 +679,7 @@ Section StorageLogic.
     iDestruct (ownI_close γ _ with "[w m inv_to_return od]") as "[w en]".
     { iFrame "m". iFrame "inv_to_return". iFrame "w". iFrame "od". }
     iModIntro. iModIntro. iFrame.
-    iExists p2. iExists b2. iFrame. iPureIntro. apply oo.
+    iPureIntro. apply oo.
   Qed.
    
   (* SP-Exchange *)
@@ -1206,7 +1206,7 @@ Section StorageLogic.
     }
     iDestruct ("g" with "inv_to_return") as "g".
     iMod ("back" with "g") as "g".
-    iModIntro. iFrame. iExists p2. iExists b2. iFrame. iPureIntro. trivial.
+    iModIntro. iFrame. iPureIntro. trivial.
   Qed.
   
   Lemma logic_exchange_with_extra_guard_nondeterministic

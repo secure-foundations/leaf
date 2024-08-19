@@ -2,6 +2,7 @@
 
 src/guarding/auth_frag_util.v
 src/guarding/conjunct_own_rule.v
+src/guarding/conjunct_own_rule2.v
 src/guarding/point_props.v
 src/guarding/guard.v
 src/guarding/tactics.v
@@ -47,57 +48,69 @@ external/cpdt/CpdtTactics.v
 
 ### From stdpp:
 
--Q external/stdpp-1.10.0/theories stdpp
-# 'Global Hint Rewrite' not supported before Coq 8.14.
--arg -w -arg -deprecated-hint-rewrite-without-locality
+# Search paths for all packages. They must all match the regex
+# `-Q $PACKAGE[/ ]` so that we can filter out the right ones for each package.
+-Q external/stdpp-1.10.0/stdpp stdpp
+-Q external/stdpp-1.10.0/stdpp_bitvector stdpp.bitvector
+-Q external/stdpp-1.10.0/stdpp_unstable stdpp.unstable
+# Fixing this one requires Coq 8.19
+-arg -w -arg -argument-scope-delimiter
 
-external/stdpp-1.10.0/theories/options.v
-external/stdpp-1.10.0/theories/base.v
-external/stdpp-1.10.0/theories/tactics.v
-external/stdpp-1.10.0/theories/option.v
-external/stdpp-1.10.0/theories/fin_map_dom.v
-external/stdpp-1.10.0/theories/boolset.v
-external/stdpp-1.10.0/theories/fin_maps.v
-external/stdpp-1.10.0/theories/fin.v
-external/stdpp-1.10.0/theories/vector.v
-external/stdpp-1.10.0/theories/pmap.v
-external/stdpp-1.10.0/theories/stringmap.v
-external/stdpp-1.10.0/theories/fin_sets.v
-external/stdpp-1.10.0/theories/mapset.v
-external/stdpp-1.10.0/theories/proof_irrel.v
-external/stdpp-1.10.0/theories/hashset.v
-external/stdpp-1.10.0/theories/pretty.v
-external/stdpp-1.10.0/theories/countable.v
-external/stdpp-1.10.0/theories/orders.v
-external/stdpp-1.10.0/theories/natmap.v
-external/stdpp-1.10.0/theories/strings.v
-external/stdpp-1.10.0/theories/relations.v
-external/stdpp-1.10.0/theories/sets.v
-external/stdpp-1.10.0/theories/listset.v
-external/stdpp-1.10.0/theories/streams.v
-external/stdpp-1.10.0/theories/gmap.v
-external/stdpp-1.10.0/theories/gmultiset.v
-external/stdpp-1.10.0/theories/prelude.v
-external/stdpp-1.10.0/theories/listset_nodup.v
-external/stdpp-1.10.0/theories/finite.v
-external/stdpp-1.10.0/theories/numbers.v
-external/stdpp-1.10.0/theories/nmap.v
-external/stdpp-1.10.0/theories/zmap.v
-external/stdpp-1.10.0/theories/coPset.v
-external/stdpp-1.10.0/theories/coGset.v
-external/stdpp-1.10.0/theories/lexico.v
-external/stdpp-1.10.0/theories/propset.v
-external/stdpp-1.10.0/theories/decidable.v
-external/stdpp-1.10.0/theories/list.v
-external/stdpp-1.10.0/theories/list_numbers.v
-external/stdpp-1.10.0/theories/functions.v
-external/stdpp-1.10.0/theories/hlist.v
-external/stdpp-1.10.0/theories/sorting.v
-external/stdpp-1.10.0/theories/infinite.v
-external/stdpp-1.10.0/theories/nat_cancel.v
-external/stdpp-1.10.0/theories/namespaces.v
-external/stdpp-1.10.0/theories/telescopes.v
-external/stdpp-1.10.0/theories/binders.v
+external/stdpp-1.10.0/stdpp/options.v
+external/stdpp-1.10.0/stdpp/base.v
+external/stdpp-1.10.0/stdpp/tactics.v
+external/stdpp-1.10.0/stdpp/option.v
+external/stdpp-1.10.0/stdpp/fin_map_dom.v
+external/stdpp-1.10.0/stdpp/boolset.v
+external/stdpp-1.10.0/stdpp/fin_maps.v
+external/stdpp-1.10.0/stdpp/fin.v
+external/stdpp-1.10.0/stdpp/vector.v
+external/stdpp-1.10.0/stdpp/pmap.v
+external/stdpp-1.10.0/stdpp/stringmap.v
+external/stdpp-1.10.0/stdpp/fin_sets.v
+external/stdpp-1.10.0/stdpp/mapset.v
+external/stdpp-1.10.0/stdpp/proof_irrel.v
+external/stdpp-1.10.0/stdpp/hashset.v
+external/stdpp-1.10.0/stdpp/pretty.v
+external/stdpp-1.10.0/stdpp/countable.v
+external/stdpp-1.10.0/stdpp/orders.v
+external/stdpp-1.10.0/stdpp/natmap.v
+external/stdpp-1.10.0/stdpp/strings.v
+external/stdpp-1.10.0/stdpp/well_founded.v
+external/stdpp-1.10.0/stdpp/relations.v
+external/stdpp-1.10.0/stdpp/sets.v
+external/stdpp-1.10.0/stdpp/listset.v
+external/stdpp-1.10.0/stdpp/streams.v
+external/stdpp-1.10.0/stdpp/gmap.v
+external/stdpp-1.10.0/stdpp/gmultiset.v
+external/stdpp-1.10.0/stdpp/prelude.v
+external/stdpp-1.10.0/stdpp/listset_nodup.v
+external/stdpp-1.10.0/stdpp/finite.v
+external/stdpp-1.10.0/stdpp/numbers.v
+external/stdpp-1.10.0/stdpp/nmap.v
+external/stdpp-1.10.0/stdpp/zmap.v
+external/stdpp-1.10.0/stdpp/coPset.v
+external/stdpp-1.10.0/stdpp/coGset.v
+external/stdpp-1.10.0/stdpp/lexico.v
+external/stdpp-1.10.0/stdpp/propset.v
+external/stdpp-1.10.0/stdpp/decidable.v
+external/stdpp-1.10.0/stdpp/list.v
+external/stdpp-1.10.0/stdpp/list_numbers.v
+external/stdpp-1.10.0/stdpp/functions.v
+external/stdpp-1.10.0/stdpp/hlist.v
+external/stdpp-1.10.0/stdpp/sorting.v
+external/stdpp-1.10.0/stdpp/infinite.v
+external/stdpp-1.10.0/stdpp/nat_cancel.v
+external/stdpp-1.10.0/stdpp/namespaces.v
+external/stdpp-1.10.0/stdpp/telescopes.v
+external/stdpp-1.10.0/stdpp/binders.v
+external/stdpp-1.10.0/stdpp/ssreflect.v
+
+external/stdpp-1.10.0/stdpp_bitvector/definitions.v
+external/stdpp-1.10.0/stdpp_bitvector/tactics.v
+external/stdpp-1.10.0/stdpp_bitvector/bitvector.v
+
+external/stdpp-1.10.0/stdpp_unstable/bitblast.v
 
 ### From iris:
 

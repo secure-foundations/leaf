@@ -48,7 +48,7 @@ Ltac inv_head_step :=
   end.
 
 Create HintDb head_step.
-Global Hint Extern 0 (head_reducible _ _) => eexists _, _, _, _; simpl : head_step.
+Global Hint Extern 0 (base_reducible _ _) => eexists _, _, _, _; simpl : head_step.
 
 (* [simpl apply] is too stupid, so we need extern hints here. *)
 Global Hint Extern 1 (head_step _ _ _ _ _ _) => econstructor : head_step.

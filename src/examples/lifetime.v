@@ -127,14 +127,21 @@ Qed.
 
 Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
-Class lt_logicG Σ := { lt_logic_inG :> inG Σ ltUR ; exclG :> inG Σ (exclR unitO) }.
+Class lt_logicG Σ := { lt_logic_inG : inG Σ ltUR ; exclG : inG Σ (exclR unitO) }.
+Local Existing Instance lt_logic_inG.
+Local Existing Instance exclG.
 
-Definition lt_logicΣ : gFunctors := #[ GFunctor ltUR ].
+Definition lt_logicΣ : gFunctors := #[ GFunctor ltUR ; GFunctor (exclR unitO) ].
+
+Global Instance subG_lt_logicΣ Σ : subG lt_logicΣ Σ → lt_logicG Σ.
+Proof.
+  solve_inG.
+Qed.
 
 Section LtResource.
 
 Context {Σ: gFunctors}.
-Context {htl: lt_logicG Σ}.
+Context `{!lt_logicG Σ}.
 Context `{!invGS Σ}.
 
 Context (γlt : gname).
@@ -152,7 +159,7 @@ Lemma update_helper (a b : LtRa)
   (cond: ∀ z : ltR, lt_inv (a ⋅ z) → lt_inv (b ⋅ z))
   : a ~~> b.
 Proof.
-  rewrite cmra_discrete_update.
+  rewrite cmra_discrete_total_update.
   intros y ay. destruct ay as [t ay]. rewrite <- lt_assoc in ay.
   have co := cond _ ay. exists t. rewrite <- lt_assoc. apply co.
 Qed.

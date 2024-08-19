@@ -89,8 +89,8 @@ Lemma discrete_equiv (a b : A) (n: nat)
   : a ≡{n}≡ b -> a ≡ b.
 Proof using A Disc.
   intros.
-  apply discrete. { typeclasses eauto. }
-  apply dist_le with (n := n); trivial. lia.
+  apply (discrete n). { typeclasses eauto. }
+  apply dist_le with (n := n); trivial.
 Qed.
 
 Lemma discrete_equiv_opt (a b : option A) (n: nat)

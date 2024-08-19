@@ -257,6 +257,7 @@ Proof using H Σ.
       rewrite ownM_op. iFrame.
 Qed.
 
+(*
 Lemma ownI_alloc φ P :
   (∀ E : gset positive, ∃ i, i ∉ E ∧ φ i) →
   wsat ∗ ▷ P ==∗ ∃ i, ⌜φ i⌝ ∗ wsat ∗ ownI i P.
@@ -278,6 +279,7 @@ Proof.
   iApply (big_sepM_insert _ I); first done.
   iFrame "HI". iLeft. by rewrite /ownD; iFrame.
 Qed.
+*)
 
 Lemma ownI_alloc_and_simultaneous_own_alloc_ns (P : positive -> iProp Σ) `{ing : !inG Σ A} (a:A) (from: coPset) (inf: set_infinite from) :
   (✓ a) ->
@@ -334,13 +336,15 @@ Proof.
   iDestruct "HE" as (X i) "[[%Xi [%HIi %gfrom]] [Hi HE]]".
   
   iMod (own_update with "Hw") as "[Hw HiP]".
-  { eapply (gmap_view_alloc _ i DfracDiscarded); last done.
-    by rewrite /= lookup_fmap HIi. }
+  { eapply (gmap_view_alloc _ i DfracDiscarded (to_agree _)). { 
+      unfold "<$>". rewrite lookup_fmap. rewrite lookup_fmap.
+      rewrite HIi. trivial.
+    } { done. } { done. } }
   iModIntro; iExists i;  iSplit; [done|]. rewrite /ownI; iFrame "HiP".
   iFrame.
   iIntros "latP".
   iExists (<[i:=P i]>I); iSplitL "Hw".
-  { by rewrite fmap_insert. }
+  { by rewrite !fmap_insert. }
   iApply (big_sepM_insert _ I); first done.
   iFrame "HI". iLeft. iFrame. rewrite /ownD. rewrite Xi. iFrame.
 Qed.

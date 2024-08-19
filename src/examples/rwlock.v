@@ -151,7 +151,7 @@ Proof.
   iDestruct ("Q" $! (#a_ref, #b_ref)%V γ) as "Q".
   iApply "Q".
   iModIntro. unfold IsRwLock. unfold rw_atomic_inv.
-  iFrame. iExists false, 0, x. iFrame.
+  iFrame.
 Qed.
 
 Lemma wp_free_rwlock γ (rwlock: lang.val) (storage_fn: S -> iProp Σ) :

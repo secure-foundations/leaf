@@ -114,7 +114,7 @@ Proof using C Disc m Σ.
   iIntros "X".
   iApply (own_update γ (● p) _).
   {
-  rewrite cmra_discrete_update. intros z valpz.
+  rewrite cmra_discrete_total_update. intros z valpz.
   have isf := auth_op_rhs_is_frag _ _ valpz. destruct isf as [r isf].
   subst z.
   setoid_rewrite <- cmra_assoc.
@@ -193,7 +193,7 @@ Proof using C Disc m Σ.
   rewrite <- own_op.
   iMod (own_updateP (λ y , ∃ z p2 , output_ok p2 z /\ p1 ⋅ z ≡ state /\ y = ◯ p2 ⋅ ● (p2 ⋅ z)) γ with "t") as "t".
   {
-    rewrite cmra_discrete_updateP.
+    rewrite cmra_discrete_total_updateP.
     intros z valpz.
     have z_is_f := auth_op_rhs2_is_frag _ _ _ valpz.
     destruct z_is_f as [q z_is_f]. subst z.
