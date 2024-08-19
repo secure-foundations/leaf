@@ -1,0 +1,162 @@
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  ============================
+  --------------------------------------∗
+  WP let: "f" := λ: "x", "x" in ref ("f" #10) {{ _, True }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  ============================
+  --------------------------------------∗
+  WP let: "val1" := fun1 #() in
+     let: "val2" := fun2 "val1" in
+     let: "val3" := fun3 "val2" in if: "val1" = "val2" then "val" else "val3"
+  {{ _, True }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  ============================
+  --------------------------------------∗
+  WP fun1 #()
+  {{ v,
+     WP let: "val1" := v in
+        let: "val2" := fun2 "val1" in
+        let: "val3" := fun3 "val2" in
+        if: "val1" = "val2" then "val" else "val3"
+     {{ _, True }} }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  long_post : iPropI Σ
+  ============================
+  --------------------------------------∗
+  WP let: "val1" := fun1 #() in
+     let: "val2" := fun2 "val1" in
+     let: "v" := fun3 "v" in if: "v" = "v" then "v" else "v"
+  {{ _, long_post ∗ long_post ∗ long_post ∗ long_post ∗ long_post ∗
+     long_post ∗ long_post }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  long_post : iPropI Σ
+  ============================
+  --------------------------------------∗
+  WP fun1 #()
+  {{ v,
+     WP let: "val1" := v in
+        let: "val2" := fun2 "val1" in
+        let: "v" := fun3 "v" in if: "v" = "v" then "v" else "v"
+     {{ _, long_post ∗ long_post ∗ long_post ∗ long_post ∗ long_post ∗
+        long_post ∗ long_post }} }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l1 : loc
+  fun2, fun3 : expr
+  long_post : iPropI Σ
+  N : namespace
+  E_long : coPset
+  H : ↑N ⊆ E_long
+  ============================
+  "Hinv" : inv N True
+  --------------------------------------∗
+  WP let: "val1" := ! #l1 in
+     let: "val2" := fun2 "val1" in
+     let: "v" := fun3 "v" in if: "v" = "v" then "v" else "v"
+  @ E_long
+  {{ _, long_post ∗ long_post ∗ long_post ∗ long_post ∗ long_post ∗
+     long_post ∗ long_post }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l1 : loc
+  fun2, fun3 : expr
+  long_post : iPropI Σ
+  N : namespace
+  E_long : coPset
+  H : ↑N ⊆ E_long
+  ============================
+  "Hinv" : inv N True
+  --------------------------------------∗
+  WP ! #l1
+  @ E_long
+  {{ v,
+     WP let: "val1" := v in
+        let: "val2" := fun2 "val1" in
+        let: "v" := fun3 "v" in if: "v" = "v" then "v" else "v"
+     @ E_long
+     {{ _, long_post ∗ long_post ∗ long_post ∗ long_post ∗ long_post ∗
+        long_post ∗ long_post }} }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l1 : loc
+  fun2, fun3 : expr
+  long_post : iPropI Σ
+  N : namespace
+  E_long : coPset
+  H : ↑N ⊆ E_long
+  ============================
+  --------------------------------------∗
+  WP ! #l1
+  @ E_long ∖ ↑N
+  {{ v,
+     |={E_long ∖ ↑N}=> ▷ True ∗
+       WP let: "val1" := v in
+          let: "val2" := fun2 "val1" in
+          let: "v" := fun3 "v" in if: "v" = "v" then "v" else "v"
+       @ E_long
+       {{ _, long_post ∗ long_post ∗ long_post ∗ long_post ∗ long_post ∗
+          long_post ∗ long_post }} }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  ============================
+  {{{ True }}}
+    let: "val1" := fun1 #() in
+    let: "val2" := fun2 "val1" in
+    let: "val3" := fun3 "val2" in if: "val1" = "val2" then "val" else "val3"
+  {{{ (x y : val) (z : Z), RET (x, y, #z); True }}}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  E_mask_is_long_too : coPset
+  ============================
+  {{{ True }}}
+    let: "val1" := fun1 #() in
+    let: "val2" := fun2 "val1" in
+    let: "val3" := fun3 "val2" in if: "val1" = "val2" then "val" else "val3"
+  @ E_mask_is_long_too
+  {{{ (x y : val) (z : Z), RET (x, y, #z); True }}}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  fun1, fun2, fun3 : expr
+  long_post : iPropI Σ
+  E_mask_is_long_too : coPset
+  ============================
+  {{{ True }}}
+    let: "val1" := fun1 #() in
+    let: "val2" := fun2 "val1" in
+    let: "val3" := fun3 "val2" in if: "val1" = "val2" then "val" else "val3"
+  @ E_mask_is_long_too
+  {{{ (x y : val) (z : Z), RET (x, y, #z); long_post ∗ long_post ∗
+      long_post ∗ long_post ∗ long_post }}}

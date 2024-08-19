@@ -1,0 +1,8 @@
+"tc_simpl_test"
+     : string
+1 goal
+  
+  P : nat → Prop
+  y : nat
+  ============================
+  P (S (S (S (S (S (S y))))))

@@ -1,0 +1,117 @@
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  X : tele
+  E1, E2 : coPset
+  α, β, γ1, γ2 : X → PROP
+  x' : X
+  ============================
+  "Hγ12" : ∀.. x : X, γ1 x -∗ γ2 x
+  "Hα" : α x'
+  "Hclose" : β x' ={E2,E1}=∗ γ1 x'
+  --------------------------------------∗
+  |={E2}=> ∃.. x : X, α x ∗ (β x ={E2,E1}=∗ γ2 x)
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  X : tele
+  E1, E2 : coPset
+  α, β, γ1, γ2 : X → PROP
+  ============================
+  accessor E1 E2 α β γ1 -∗ accessor E1 E2 α β (λ.. x : X, γ1 x ∨ γ2 x)
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  X : tele
+  E1, E2 : coPset
+  α, β, γ1, γ2 : X → PROP
+  x : X
+  ============================
+  "Hγ1" : γ1 x
+  --------------------------------------∗
+  (λ.. x0 : X, γ1 x0 ∨ γ2 x0) x
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  X : tele
+  E1, E2 : coPset
+  α, β, γ1, γ2 : X → PROP
+  x : X
+  ============================
+  "Hγ1" : γ1 x
+  --------------------------------------∗
+  γ1 x ∨ γ2 x
+1 goal
+  
+  PROP : bi
+  BiFUpd0 : BiFUpd PROP
+  E1, E2 : coPset
+  ============================
+  "H" : ∃ x x0 : nat, <affine> ⌜x = x0⌝ ∗ (True ={E2,E1}=∗ <affine> ⌜x ≠ x0⌝)
+  --------------------------------------∗
+  |={E2,E1}=> False
+"test1_test"
+     : string
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  ▷ False
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  ▷ False
+"test2_test"
+     : string
+1 goal
+  
+  PROP : bi
+  ============================
+  "H" : ∃ x x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  False
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  False
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ▷ ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  ▷ False
+"test3_test"
+     : string
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  ▷ False
+1 goal
+  
+  PROP : bi
+  x : nat
+  ============================
+  "H" : ◇ ∃ x0 : nat, <affine> ⌜x = x0⌝
+  --------------------------------------∗
+  ▷ False

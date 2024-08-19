@@ -1,0 +1,105 @@
+\documentclass[10pt]{article}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\input{setup}
+
+
+\title{The Iris TeX Test Document}
+\begin{document}
+\maketitle
+
+Here we put a bunch of uses of the macros in \texttt{iris.sty} that we can visually test to ensure they still work when those macros are changed.
+
+\section{Logic notation, Hoare triples}
+
+\begin{mathpar}
+{  \hoare{P}{\expr}{Q} }
+
+{  \ahoare{P}{\expr}{Q} }
+\end{mathpar}
+
+{
+\newcommand{\mapstoDisk}{\mapsto_d}
+\newcommand{\mapstoOp}{\mapsto_{\mathit{op}}}
+\newcommand{\mapstoLftd}{\mapsto_d^{\mathrm{lftd}}}
+
+\begin{align*}
+  \hoareV{ \begin{aligned}
+              &\dom(m) = \dom(m') * {} \\
+  &\left( \Sep_{(a,o) \in m} a \mapstoLftd o \right) * %
+  \left( \Sep_{(a,o') \in m'} a \mapstoOp o' \right)
+            \end{aligned}} %
+  {\mathit{op}.\texttt{Commit}()}%
+  {\left( \Sep_{(a,o) \in m} a \mapstoDisk o \right) \lor
+    \left( \Sep_{(a,o') \in m'} a \mapstoDisk o' \right) }
+\end{align*}
+\begin{align*}
+  \ahoareV{ \begin{aligned}
+              &\dom(m) = \dom(m') * {} \\
+  &\left( \Sep_{(a,o) \in m} a \mapstoLftd o \right) * %
+  \left( \Sep_{(a,o') \in m'} a \mapstoOp o' \right)
+            \end{aligned}} %
+  {\mathit{op}.\texttt{Commit}()}%
+  {\left( \Sep_{(a,o) \in m} a \mapstoDisk o \right) \lor
+    \left( \Sep_{(a,o') \in m'} a \mapstoDisk o' \right) }
+\end{align*}
+}
+
+\section{Proof outlines}
+
+\newcommand\oneshotm{\ensuremath{\textdom{OneShot}}}
+\newcommand\ospending{\textlog{pending}}
+\newcommand\osshot{\textlog{shot}}
+
+\newcommand\newoneshot{\textlang{mk\_oneshot}}
+\newcommand\OSset{\textlang{set}}
+\newcommand\OScheck{\textlang{check}}
+
+    \begin{proofoutline*}
+       \CODE{\Let \lvar = \Alloc(\Inl(0)) in } \\
+       \RES{\lvar \mapsto \Inl(0) * \ownGhost\gname{\ospending(1)}}[\top] \quad\COMMENT{(\textsc{hoare-alloc}, \textsc{ghost-alloc})} \\
+       \RES{\lvar \mapsto \Inl(0) * \ownGhost\gname{\ospending(1/2)} * \ownGhost\gname{\ospending(1/2)}}[\top] \quad\COMMENT{(\textsc{ghost-op})} \\
+       \RES{\knowInv\namesp{I} * \ownGhost\gname{\ospending(1/2)}}[\top] \quad\COMMENT{(\textsc{inv-alloc1})} \\
+       \qquad\COMMENT{where $I\eqdef (\lvar \mapsto \Inl(0) * \ownGhost\gname{\ospending(1/2)}) \lor (\Exists n. \lvar \mapsto \Inr(n) * \ownGhost\gname{\osshot(n)})$} \\
+       \COMMENT{Pick $T \eqdef \ownGhost\gname{\ospending(1/2)}$. We have to prove $T$ (easy) and two Hoare triples. (\textsc{hoare-ctx})} \\
+       \\
+       \CODE{\{~~ \OSset ={}\Lam \lvar n. }
+         \IND
+         \RES{\knowInv\namesp{I} * T}[\top] \IND
+           \RES{I * T}[\top\setminus\namesp] \quad\COMMENT{(\textsc{hoare-inv-timeless})} \\
+           \RES{\lvar \mapsto \Inl(0) * \ownGhost\gname{\ospending(1/2)} * \ownGhost\gname{\ospending(1/2)}}[\top\setminus\namesp] \quad\COMMENT{(\textsc{ghost-op}, \textsc{ghost-valid})} \\
+           \CODE{\Let (\_, b) = \CmpXchg(\lvar, \Inl(0), \Inr(\lvar n)) in} \\
+           \RES{\lvar \mapsto \Inr(n) * \ownGhost\gname{\osshot(n)} * b = \True}[\top\setminus\namesp] \quad\COMMENT{(\textsc{hoare-cmpx-suc}, \textsc{ghost-op}, \textsc{ghost-update})} \\
+           \RES{I * b = \True}[\top\setminus\namesp] \UNIND
+         \RES{\knowInv\namesp{I} * b = \True}[\top] \\
+         \CODE{\Assert(b)} \quad\COMMENT{(\textsc{hoare-assert})} \\
+         \RES{\TRUE}[\top]
+         \UNIND
+         \\
+       \CODE{~~~ \OScheck ={} \Lam\any. }
+         \IND
+         \RES{\knowInv\namesp{I}}[\top] \IND
+           \RES{I}[\top\setminus\namesp]
+           \CODE{\Let \lvarB = \deref \lvar in}
+           \RES{I * \prop}[\top\setminus\namesp] \quad\COMMENT{(\textsc{hoare-inv-timeless}, \textsc{hoare-load}, \textsc{ghost-op})} \\
+           \qquad\COMMENT{where $\prop \eqdef y = \Inl(0) \lor (\Exists n. y = \Inr(n) * \ownGhost\gname{\osshot(n)})$} \UNIND
+         \RES{\knowInv\namesp{I} * \prop}[\top]
+           \IND
+           \CODE{\Lam\any.} \\
+           \RES{\knowInv\namesp{I} * \prop}[\top] \IND
+             \RES{I * \prop}[\top\setminus\namesp] \quad\COMMENT{(\textsc{hoare-inv-timeless})} \\
+             \CODE{\Let \lvarB' = \deref\lvar in} \quad\COMMENT{~~(\textsc{hoare-load})} \\
+             \RES{I * \bigl( y = \Inl(0) \lor (\Exists n. \lvarB = \lvarB' = \Inr(n)) \bigr) }[\top\setminus\namesp] \quad\COMMENT{(\textsc{ghost-op}, \textsc{ghost-valid})} \UNIND
+           \RES{\knowInv\namesp{I} * \bigl( y = \Inl(0) \lor (\Exists n. \lvarB = \lvarB' = \Inr(n)) \bigr)}[\top] \\
+           \CODE{\MatchML \lvarB with
+             \Inl(\any) => ()
+           | \Inr(\any) => \Assert(\lvarB = \lvarB')  \quad\COMMENT{~~~~(\textsc{hoare-assert})} end {} }\\
+           \RES{\TRUE}[\top]
+         \UNIND
+       \CODE{\}}
+    \end{proofoutline*}
+
+
+\end{document}

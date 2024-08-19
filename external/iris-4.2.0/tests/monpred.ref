@@ -1,0 +1,21 @@
+"monPred_unseal_test_1"
+     : string
+1 goal
+  
+  I : biIndex
+  M : ucmra
+  P, Q : uPredI M
+  R : monPred
+  i : I
+  ============================
+  (P ∗ Q) ∗ R i ⊣⊢ False
+"monPred_unseal_test_2"
+     : string
+1 goal
+  
+  I : biIndex
+  M : ucmra
+  P, Q : uPredI M
+  R : monPred
+  ============================
+  ⎡ upred.uPred_sep_def P Q ⎤ ∗ R ⊣⊢ False

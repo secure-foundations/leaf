@@ -1,0 +1,18 @@
+"notation_test"
+     : string
+3%bv = 5%bv
+     : Prop
+The command has indeed failed with message:
+The term "5%bv" has type "bv 10" while it is expected to have type "bv 2".
+3%bv = 5%bv
+     : Prop
+4%bv = 4%bv
+     : Prop
+Z_to_bv 7 (-1) = Z_to_bv 7 (-1)
+     : Prop
+"bvn_to_bv_test"
+     : string
+1 goal
+  
+  ============================
+  Some 3%bv = Some 3%bv

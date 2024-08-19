@@ -1,0 +1,41 @@
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  one_shotG0 : one_shotG Σ
+  Φ : val → iProp Σ
+  N : namespace
+  l : loc
+  γ : gname
+  ============================
+  "HN" : inv N (one_shot_inv γ l)
+  --------------------------------------□
+  "Hl" : l ↦ InjLV #()
+  _ : own γ Pending
+  --------------------------------------∗
+  one_shot_inv γ l ∗
+  (⌜InjLV #() = InjLV #()⌝ ∨ ∃ n : Z, ⌜InjLV #() = InjRV #n⌝ ∗ own γ (Shot n))
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  one_shotG0 : one_shotG Σ
+  Φ : val → iProp Σ
+  N : namespace
+  l : loc
+  γ : gname
+  m, m' : Z
+  ============================
+  "HN" : inv N (one_shot_inv γ l)
+  "Hγ'" : own γ (Shot m)
+  --------------------------------------□
+  "Hl" : l ↦ InjRV #m'
+  "Hγ" : own γ (Shot m')
+  --------------------------------------∗
+  |={⊤ ∖ ↑N}=> ▷ one_shot_inv γ l ∗
+    WP match: InjRV #m' with
+         InjL <> => assert: #false
+       | InjR "m" => assert: #m = "m"
+       end
+    {{ _, True }}
+Closed under the global context

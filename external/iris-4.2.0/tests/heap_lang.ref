@@ -1,0 +1,306 @@
+"heap_e_spec"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  E : coPset
+  ============================
+  ⊢ WP let: "x" := ref #1 in "x" <- ! "x" + #1;; ! "x" @ E {{ v, ⌜v = #2⌝ }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  E : coPset
+  l : loc
+  ============================
+  _ : l ↦ #1
+  --------------------------------------∗
+  WP #l <- #1 + #1;; ! #l @ E {{ v, ⌜v = #2⌝ }}
+"heap_e2_spec"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  E : coPset
+  l : loc
+  ============================
+  "Hl" : l ↦ #1
+  --------------------------------------∗
+  WP let: "x" := #l in let: "y" := ref #1 in "x" <- ! "x" + #1;; ! "x"
+  @ E
+  [{ v, ⌜v = #2⌝ }]
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  E : coPset
+  l, l' : loc
+  ============================
+  "Hl" : l ↦ #1
+  _ : l' ↦ #1
+  --------------------------------------∗
+  WP #l <- #1 + #1;; ! #l @ E [{ v, ⌜v = #2⌝ }]
+"heap_e7_spec"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  ============================
+  _ : ▷ l ↦ #0
+  --------------------------------------∗
+  WP CmpXchg #l #0 #1 {{ _, l ↦ #1 }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  ============================
+  _ : l ↦ #1
+  --------------------------------------∗
+  |={⊤}=> l ↦ #1
+"wp_load_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_load: cannot find 'Load' in (Fork #()).
+The command has indeed failed with message:
+Tactic failure: wp_load: cannot find 'Load' in (Fork #()).
+"wp_load_no_ptsto"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_load: cannot find l ↦ ?.
+"wp_store_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_store: cannot find 'Store' in (Fork #()).
+The command has indeed failed with message:
+Tactic failure: wp_store: cannot find 'Store' in (Fork #()).
+"wp_store_no_ptsto"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_store: cannot find l ↦ ?.
+"(t)wp_bind_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_bind: cannot find (! ?e)%E in (Val #()).
+The command has indeed failed with message:
+Tactic failure: wp_bind: cannot find (! ?e)%E in (Val #()).
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  ============================
+  "Hl1" : l ↦{#1 / 2} #0
+  "Hl2" : l ↦{#1 / 2} #0
+  --------------------------------------∗
+  |={⊤}=> True
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  ============================
+  --------------------------------------∗
+  |={⊤}=> True
+"wp_nonclosed_value"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_pure: cannot find ?y in (Var "x") or 
+?y is not a redex.
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  ============================
+  --------------------------------------∗
+  WP "x" {{ _, True }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  n : Z
+  H : (0 < n)%Z
+  Φ : val → iPropI Σ
+  l : loc
+  ============================
+  "HΦ" : ∀ l0 : loc, l0 ↦∗ replicate (Z.to_nat n) #0 -∗ Φ #l0
+  _ : l ↦∗ replicate (Z.to_nat n) #0
+  --------------------------------------∗
+  |={⊤}=> Φ #l
+"test_array_fraction_destruct"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  vs : list val
+  ============================
+  "Hl1" : l ↦∗{#1 / 2} vs
+  "Hl2" : l ↦∗{#1 / 2} vs
+  --------------------------------------∗
+  l ↦∗{#1 / 2} vs ∗ l ↦∗{#1 / 2} vs
+"test_wp_finish_fupd"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  v : val
+  ============================
+  --------------------------------------∗
+  |={⊤}=> True
+"test_twp_finish_fupd"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  v : val
+  ============================
+  --------------------------------------∗
+  |={⊤}=> True
+"test_heaplang_not_unfolded"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS_gen HasLc Σ
+  ============================
+  @bi_emp_valid (uPredI (iResUR Σ))
+    (@fupd (bi_car (uPredI (iResUR Σ)))
+       (@bi_fupd_fupd _
+          (@uPred_bi_fupd HasLc Σ
+             (@iris_invGS HasLc heap_lang Σ (@heapGS_irisGS HasLc Σ heapGS0))))
+       (@top coPset coPset_top) (@top coPset coPset_top)
+       (@bi_pure (uPredI (iResUR Σ)) True))
+"test_wp_pure_credit_succeed"
+     : string
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  P : iProp Σ
+  ============================
+  "Hcred" : £ 1
+  --------------------------------------∗
+  |={⊤}=> ▷ P ={∅}=∗ P
+"test_wp_pure_credit_fail"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_pure: "Hcred" is not fresh.
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  v : val
+  Φ : val → iPropI Σ
+  ============================
+  "Hl" : l ↦□ v
+  --------------------------------------□
+  "HΦ" : ▷ (True -∗ Φ v)
+  --------------------------------------∗
+  WP ! #l {{ v, Φ v }}
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  dq : dfrac
+  l : loc
+  v : val
+  Φ : val → iPropI Σ
+  ============================
+  "Hl" : l ↦{dq} v
+  "HΦ" : True -∗ Φ v
+  --------------------------------------∗
+  WP ! #l [{ v, Φ v }]
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  v1 : val
+  q1 : Qp
+  v2 : val
+  q2 : Qp
+  v3 : val
+  q3 : Qp
+  v4 : val
+  q4 : Qp
+  H : ((✓ (DfracOwn q3 ⋅ DfracOwn q4) ∧ v3 = v4)
+       ∧ ✓ (DfracOwn q2 ⋅ (DfracOwn q3 ⋅ DfracOwn q4)) ∧ v2 = v3)
+      ∧ ✓ (DfracOwn q1 ⋅ (DfracOwn q2 ⋅ (DfracOwn q3 ⋅ DfracOwn q4)))
+        ∧ v1 = v2
+  ============================
+  --------------------------------------∗
+  ⌜(q1 + (q2 + (q3 + q4)) ≤ 1)%Qp⌝ ∗ ⌜v1 = v2⌝ ∗ ⌜
+  v2 = v3⌝ ∗ ⌜v3 = v4⌝
+1 goal
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  l : loc
+  I : val → Prop
+  Heq : ∀ v : val, I v ↔ I #true
+  ============================
+  ⊢ l ↦_(λ _ : val, I #true) □
+"wp_iMod_fupd_atomic"
+     : string
+2 goals
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  E1, E2 : coPset
+  P : iProp Σ
+  ============================
+  Atomic (stuckness_to_atomicity NotStuck) (#() #())
+
+goal 2 is:
+ "H" : P
+ --------------------------------------∗
+ WP #() #() @ E2 {{ _, |={E2,E1}=> True }}
+"wp_iInv_atomic"
+     : string
+2 goals
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  N : namespace
+  E : coPset
+  P : iProp Σ
+  H : ↑N ⊆ E
+  ============================
+  Atomic (stuckness_to_atomicity NotStuck) (#() #())
+
+goal 2 is:
+ "H" : ▷ P
+ "Hclose" : ▷ P ={E ∖ ↑N,E}=∗ emp
+ --------------------------------------∗
+ WP #() #() @ E ∖ ↑N {{ _, |={E ∖ ↑N,E}=> True }}
+"wp_iInv_atomic_acc"
+     : string
+2 goals
+  
+  Σ : gFunctors
+  heapGS0 : heapGS Σ
+  N : namespace
+  E : coPset
+  P : iProp Σ
+  H : ↑N ⊆ E
+  ============================
+  Atomic (stuckness_to_atomicity NotStuck) (#() #())
+
+goal 2 is:
+ "H" : ▷ P
+ --------------------------------------∗
+ WP #() #() @ E ∖ ↑N {{ _, |={E ∖ ↑N}=> ▷ P ∗ True }}
+"not_cmpxchg"
+     : string
+The command has indeed failed with message:
+Tactic failure: wp_cmpxchg_suc: cannot find 'CmpXchg' in 
+(#() #()).

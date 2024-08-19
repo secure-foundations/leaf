@@ -1,0 +1,524 @@
+snippet \forall "" i
+∀
+endsnippet
+snippet \exists "" i
+∃
+endsnippet
+snippet \lam "" i
+λ
+endsnippet
+snippet \not "" i
+¬
+endsnippet
+snippet \lor "" i
+∨
+endsnippet
+snippet \land "" i
+∧
+endsnippet
+snippet \/ "" i
+∨
+endsnippet
+snippet /\ "" i
+∧
+endsnippet
+snippet \rightarrow "" i
+→
+endsnippet
+snippet \implies "" i
+→
+endsnippet
+snippet -> "" i
+→
+endsnippet
+snippet \iff "" i
+↔
+endsnippet
+snippet <-> "" i
+↔
+endsnippet
+snippet \<- "" i
+←
+endsnippet
+snippet \cong "" i
+≡
+endsnippet
+snippet \== "" i
+≡
+endsnippet
+snippet \/== "" i
+≢
+endsnippet
+snippet \neq "" i
+≠
+endsnippet
+snippet /= "" i
+≠
+endsnippet
+snippet \less "" i
+≤
+endsnippet
+snippet \le "" i
+≤
+endsnippet
+snippet <= "" i
+≤
+endsnippet
+snippet \in "" i
+∈
+endsnippet
+snippet \notin "" i
+∉
+endsnippet
+snippet \cup "" i
+∪
+endsnippet
+snippet \cap "" i
+∩
+endsnippet
+snippet \setminus "" i
+∖
+endsnippet
+snippet \subset "" i
+⊂
+endsnippet
+snippet \subseteq "" i
+⊆
+endsnippet
+snippet \sqsubseteq "" i
+⊑
+endsnippet
+snippet \sqsubseteq "" i
+⊑
+endsnippet
+snippet \notsubseteq "" i
+⊈
+endsnippet
+snippet \meet "" i
+⊓
+endsnippet
+snippet \join "" i
+⊔
+endsnippet
+snippet \true "" i
+⊤
+endsnippet
+snippet \top "" i
+⊤
+endsnippet
+snippet \false "" i
+⊥
+endsnippet
+snippet \bottom "" i
+⊥
+endsnippet
+snippet \vdash "" i
+⊢
+endsnippet
+snippet \dashv "" i
+⊣
+endsnippet
+snippet \vDash "" i
+⊨
+endsnippet
+snippet \Vdash
+⊩
+endsnippet
+snippet \infty "" i
+∞
+endsnippet
+snippet \comp "" i
+∘
+endsnippet
+snippet \prf "" i
+↾
+endsnippet
+snippet \bind "" i
+≫=
+endsnippet
+snippet \mapsto "" i
+↦
+endsnippet
+snippet \hookrightarrow "" i
+↪
+endsnippet
+snippet \up "" i
+↑
+endsnippet
+snippet \uparrow "" i
+↑
+endsnippet
+
+snippet \fun "" i
+λ
+endsnippet
+snippet \mult "" i
+⋅
+endsnippet
+snippet \ent "" i
+⊢
+endsnippet
+snippet \valid "" i
+✓
+endsnippet
+snippet \diamond "" i
+◇
+endsnippet
+snippet \box "" i
+□
+endsnippet
+snippet \bbox "" i
+■
+endsnippet
+snippet \eval "" i
+▷
+endsnippet
+snippet \rhd "" i
+▷
+endsnippet
+snippet \later "" i
+▷
+endsnippet
+snippet \pred "" i
+φ
+endsnippet
+snippet \and "" i
+∧
+endsnippet
+snippet \or "" i
+∨
+endsnippet
+snippet \circ "" i
+∘
+endsnippet
+snippet \comp "" i
+∘
+endsnippet
+snippet \ccomp "" i
+◎
+endsnippet
+snippet \pound "" i
+£
+endsnippet
+snippet \all "" i
+∀
+endsnippet
+snippet \ex "" i
+∃
+endsnippet
+snippet \to "" i
+→
+endsnippet
+snippet \ast "" i
+∗
+endsnippet
+snippet \sep "" i
+∗
+endsnippet
+snippet \ulc "" i
+⌜
+endsnippet
+snippet \urc "" i
+⌝
+endsnippet
+snippet \lc "" i
+⌜
+endsnippet
+snippet \rc "" i
+⌝
+endsnippet
+snippet \Lc "" i
+⎡
+endsnippet
+snippet \Rc "" i
+⎤
+endsnippet
+snippet \varnothing "" i
+∅
+endsnippet
+snippet \empty "" i
+∅
+endsnippet
+snippet \Lam "" i
+Λ
+endsnippet
+snippet \Sig "" i
+Σ
+endsnippet
+snippet \- "" i
+∖
+endsnippet
+snippet \aa "" i
+●
+endsnippet
+snippet \af "" i
+◯
+endsnippet
+snippet \auth "" i
+●
+endsnippet
+snippet \frag "" i
+◯
+endsnippet
+snippet \iff "" i
+↔
+endsnippet
+snippet \gname "" i
+γ
+endsnippet
+snippet \incl "" i
+≼
+endsnippet
+snippet \latert "" i
+▶
+endsnippet
+snippet \update "" i
+⇝
+endsnippet
+snippet \bind "" i
+≫=
+endsnippet
+
+
+snippet ^^+ "" i
+⁺
+endsnippet
+snippet __+ "" i
+₊
+endsnippet
+snippet ^^- "" i
+⁻
+endsnippet
+snippet __0 "" i
+₀
+endsnippet
+snippet __1 "" i
+₁
+endsnippet
+snippet __2 "" i
+₂
+endsnippet
+snippet __3 "" i
+₃
+endsnippet
+snippet __4 "" i
+₄
+endsnippet
+snippet __5 "" i
+₅
+endsnippet
+snippet __6 "" i
+₆
+endsnippet
+snippet __7 "" i
+₇
+endsnippet
+snippet __8 "" i
+₈
+endsnippet
+snippet __9 "" i
+₉
+endsnippet
+
+snippet __a "" i
+ₐ
+endsnippet
+snippet __e "" i
+ₑ
+endsnippet
+snippet __h "" i
+ₕ
+endsnippet
+snippet __i "" i
+ᵢ
+endsnippet
+snippet __k "" i
+ₖ
+endsnippet
+snippet __l "" i
+ₗ
+endsnippet
+snippet __m "" i
+ₘ
+endsnippet
+snippet __n "" i
+ₙ
+endsnippet
+snippet __o "" i
+ₒ
+endsnippet
+snippet __p "" i
+ₚ
+endsnippet
+snippet __r "" i
+ᵣ
+endsnippet
+snippet __s "" i
+ₛ
+endsnippet
+snippet __t "" i
+ₜ
+endsnippet
+snippet __u "" i
+ᵤ
+endsnippet
+snippet __v "" i
+ᵥ
+endsnippet
+snippet __x "" i
+ₓ
+endsnippet
+
+snippet \Alpha "" i
+Α
+endsnippet
+snippet \alpha "" i
+α
+endsnippet
+snippet \Beta "" i
+Β
+endsnippet
+snippet \beta "" i
+β
+endsnippet
+snippet \Gamma "" i
+Γ
+endsnippet
+snippet \gamma "" i
+γ
+endsnippet
+snippet \Delta "" i
+Δ
+endsnippet
+snippet \delta "" i
+δ
+endsnippet
+snippet \Epsilon "" i
+Ε
+endsnippet
+snippet \epsilon "" i
+ε
+endsnippet
+snippet \Zeta "" i
+Ζ
+endsnippet
+snippet \zeta "" i
+ζ
+endsnippet
+snippet \Eta "" i
+Η
+endsnippet
+snippet \eta "" i
+η
+endsnippet
+snippet \Theta "" i
+Θ
+endsnippet
+snippet \theta "" i
+θ
+endsnippet
+snippet \Iota "" i
+Ι
+endsnippet
+snippet \iota "" i
+ι
+endsnippet
+snippet \Kappa "" i
+Κ
+endsnippet
+snippet \kappa "" i
+κ
+endsnippet
+snippet \Lamda "" i
+Λ
+endsnippet
+snippet \lamda "" i
+λ
+endsnippet
+snippet \Lambda "" i
+Λ
+endsnippet
+snippet \lambda "" i
+λ
+endsnippet
+snippet \Mu "" i
+Μ
+endsnippet
+snippet \mu "" i
+μ
+endsnippet
+snippet \Nu "" i
+Ν
+endsnippet
+snippet \nu "" i
+ν
+endsnippet
+snippet \Xi "" i
+Ξ
+endsnippet
+snippet \xi "" i
+ξ
+endsnippet
+snippet \Omicron "" i
+Ο
+endsnippet
+snippet \omicron "" i
+ο
+endsnippet
+snippet \Pi "" i
+Π
+endsnippet
+snippet \pi "" i
+π
+endsnippet
+snippet \Rho "" i
+Ρ
+endsnippet
+snippet \rho "" i
+ρ
+endsnippet
+snippet \Sigma "" i
+Σ
+endsnippet
+snippet \sigma "" i
+σ
+endsnippet
+snippet \Tau "" i
+Τ
+endsnippet
+snippet \tau "" i
+τ
+endsnippet
+snippet \Upsilon "" i
+Υ
+endsnippet
+snippet \upsilon "" i
+υ
+endsnippet
+snippet \Phi "" i
+Φ
+endsnippet
+snippet \phi "" i
+ϕ
+endsnippet
+snippet \varphi "" i
+φ
+endsnippet
+snippet \Chi "" i
+Χ
+endsnippet
+snippet \chi "" i
+χ
+endsnippet
+snippet \Psi "" i
+Ψ
+endsnippet
+snippet \psi "" i
+ψ
+endsnippet
+snippet \Omega "" i
+Ω
+endsnippet
+snippet \omega "" i
+ω
+endsnippet

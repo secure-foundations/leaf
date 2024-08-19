@@ -1,0 +1,16 @@
+"is_closed_term_test"
+     : string
+The command has indeed failed with message:
+Tactic failure: The term x is not closed.
+The command has indeed failed with message:
+Tactic failure: The term (x + 1) is not closed.
+The command has indeed failed with message:
+Tactic failure: The term (x + y) is not closed.
+The command has indeed failed with message:
+Tactic failure: The term section_variable is not closed.
+The command has indeed failed with message:
+Tactic failure: The term (section_variable + 1) is not closed.
+The command has indeed failed with message:
+Tactic failure: The term P is not closed.
+The command has indeed failed with message:
+Tactic failure: The term (P ∧ True) is not closed.
