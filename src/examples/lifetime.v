@@ -735,4 +735,63 @@ Proof.
    - unfold llft_alive. apply alive_and_bigSepS.
 Qed.
 
+Lemma llftl_tok_inter_l κ κ' :
+    llft_alive (llft_intersect κ κ') ⊢ llft_alive κ.
+Proof.
+  unfold llft_intersect, llft_alive.
+  iIntros "Alive".
+  replace (κ ∪ κ') with (κ ∪ ((κ ∪ κ') ∖ κ)).
+  - rewrite big_sepS_union.
+    + iDestruct "Alive" as "[A1 A2]". iFrame "A1".
+    + set_solver.
+  - symmetry. apply union_difference_L. set_solver.
+Qed.
+
+Lemma llftl_tok_inter_r κ κ' :
+    llft_alive (llft_intersect κ κ') ⊢ llft_alive κ'.
+Proof.
+  unfold llft_intersect. replace (κ ∪ κ') with (κ' ∪ κ).
+  - apply llftl_tok_inter_l. - set_solver.
+Qed.
+
+Lemma llftl_tok_inter_and κ κ' :
+    llft_alive (llft_intersect κ κ') ⊣⊢ llft_alive κ ∧ llft_alive κ'.
+Proof.
+  iIntros. iSplit.
+  - iIntros "t". iSplit.
+    + iApply llftl_tok_inter_l. iFrame "t".
+    + iApply llftl_tok_inter_r. iFrame "t".
+ - unfold llft_alive. iIntros. iApply alive_and_bigSepS. iFrame.
+Qed.
+
+Lemma llftl_end_inter κ κ' :
+    llft_dead (llft_intersect κ κ') ⊣⊢ llft_dead κ ∨ llft_dead κ'.
+Proof.
+  unfold llft_dead.
+  iIntros. iSplit.
+  - iIntros "t".  iDestruct "t" as (k) "[%kin t]".
+    unfold llft_intersect in kin. rewrite elem_of_union in kin. destruct kin as [h|h].
+    + iLeft. iExists k. iFrame "t". iPureIntro. trivial.
+    + iRight. iExists k. iFrame "t". iPureIntro. trivial.
+  - iIntros "t". iDestruct "t" as "[h|h]".
+    + iDestruct "h" as (k) "[%kin t]".
+      iExists k. iFrame "t". iPureIntro. unfold llft_intersect. set_solver.
+    + iDestruct "h" as (k) "[%kin t]".
+      iExists k. iFrame "t". iPureIntro. unfold llft_intersect. set_solver.
+Qed.
+
+Lemma llftl_tok_unit :
+    ⊢ llft_alive llft_empty.
+Proof.
+  unfold llft_alive, llft_empty. rewrite big_sepS_empty. iIntros. done.
+Qed.
+
+Lemma llftl_end_unit :
+    llft_dead llft_empty ⊢ False.
+Proof.
+  unfold llft_dead, llft_empty. iIntros "t". iDestruct "t" as (k) "[%p t]".
+  rewrite elem_of_empty in p. contradiction.
+Qed.
+
+
 End LtResource.
