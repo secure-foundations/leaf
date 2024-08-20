@@ -16,7 +16,7 @@ From stdpp Require Export namespaces.
 Require Import guarding.inved.
 Require Import guarding.guard.
 Require Import guarding.internal.auth_frag_util.
-Require Import guarding.point_props.
+Require Import guarding.factoring_props.
 Require Import guarding.conjunct_own_rule.
 Require Import guarding.internal.wsat_util.
 

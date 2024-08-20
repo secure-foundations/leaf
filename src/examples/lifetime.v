@@ -730,8 +730,8 @@ Lemma llftl_incl_glb κ κ' κ'' :
     llft_incl κ κ' ∗ llft_incl κ κ'' ⊢ llft_incl κ (llft_intersect κ' κ'').
 Proof.
   apply guards_and_point.
-   - unfold llft_alive. apply point_props.point_prop_big_sepS.
-      intros x xi. apply point_props.point_prop_own.
+   - unfold llft_alive. apply factoring_props.point_prop_big_sepS.
+      intros x xi. apply factoring_props.point_prop_own.
    - unfold llft_alive. apply alive_and_bigSepS.
 Qed.
 

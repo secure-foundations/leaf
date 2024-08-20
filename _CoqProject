@@ -2,10 +2,11 @@
 
 src/guarding/internal/auth_frag_util.v
 src/guarding/internal/wsat_util.v
+src/guarding/internal/factoring_upred.v
 
 src/guarding/conjunct_own_rule.v
 src/guarding/conjunct_own_rule2.v
-src/guarding/point_props.v
+src/guarding/factoring_props.v
 src/guarding/guard.v
 src/guarding/tactics.v
 src/guarding/guard_later.v
