@@ -30,11 +30,59 @@ From iris.bi Require Import derived_laws.
 
 Require Import guarding.internal.factoring_upred.
 
+(**
+In general, it does *not* hold that:
+
+    (P ⊢ Q) → (P &&{_}&&> Q)
+    
+(See Appendix 1.4; https://arxiv.org/pdf/2309.04851 for a counter-example.)
+
+This does hold if we can "factor" P as Q ∗ R.
+
+    (Q ∗ R) &&{_}&&> Q.
+    
+For this reason, it is useful to identify propositions that Q that are _always_
+factor-out-able in this sense. This is true for propositions like `own γ x`.
+That is, we have:
+
+    If `P ⊢ own γ x` then there is `Q` such that `P ⊣⊢ own γ x ∗ Q`
+    
+(Specifically, we can take `Q` to be `own γ x -∗ P`.)
+
+This lets us prove:
+
+    (P ⊢ own γ x) → P &&{_}&&> own γ x
+
+Now, I don't know if this particular rule is very useful, but this factorizability property
+*is* crucial for stating and proving Leaf's (∧)-related rules.
+
+Unfortunately, I don't have a clean description of the class of propositions Q that
+meet this factorizability property, let alone one that also handles all the fiddly
+details with ◇ and ▷ that we need. I do know that all propositions of the form
+`uPred_ownM x` work for everything we need (thus any proposition of the form
+`own γ x` and ∗-conjunctions thereof). So that's what we classify here.
+
+This definitely isn't the complete set -- we should probably extend it to include
+persistent propositions at the very least.
+It would be nice to have a clean definition like:
+
+    Definition can_always_factor_out Q := ∀ P , (P -∗ Q) ∗ P ⊢ Q ∗ (Q -∗ P).
+
+But from a definition like this, I haven't been able to answer basic questions, like
+whether this is true:
+
+    can_always_factor_out P →
+    can_always_factor_out Q →
+    can_always_factor_out (P ∗ Q)
+    
+If you know a proof or counterexample to this, do let me know!
+*)
+
 Section Factoring.
 
 Context {Σ: gFunctors}.
 
-(* For the "Point Proposition" formulation from the paper *)
+(* A "point prop" is anything of the form `uPred_ownM x` *)
 Definition point_prop (P: iProp Σ) := ∃ x , (P ≡ uPred_ownM x).
 
 Global Instance point_prop_proper :
@@ -50,7 +98,6 @@ Proof.
   iIntros. iSplit. { iIntros "T". iDestruct (uPred.ownM_unit with "T") as "T". iFrame. }
   iIntros "T". done.
 Qed.
-
 
 (* PointProp-Sep *)
 
@@ -77,6 +124,14 @@ Qed.
 
 Context `{i : !inG Σ A}.
 
+(* PointProp-Own *)
+
+Lemma point_prop_own γ (x: A) : point_prop (own γ x).
+Proof.
+  rewrite own.own_eq. unfold own.own_def. unfold point_prop.
+  exists (own.iRes_singleton γ x). trivial.
+Qed.
+
 Lemma own_separates_out γ (x: A) (P : iProp Σ)
   : (P -∗ own γ x) ∗ P ⊢ (
           own γ x ∗ (own γ x -∗ P)
@@ -95,13 +150,6 @@ Proof.
   apply uPred_ownM_separates_out_except0.
 Qed.
 
-(* PointProp-Own *)
-
-Lemma point_prop_own γ (x: A) : point_prop (own γ x).
-Proof.
-  rewrite own.own_eq. unfold own.own_def. unfold point_prop.
-  exists (own.iRes_singleton γ x). trivial.
-Qed.
 
 Lemma own_separates_out_point (P : iProp Σ) (Q: iProp Σ)
   (point: point_prop Q)
@@ -116,7 +164,7 @@ Qed.
 Lemma own_separates_out_except0_point (P : iProp Σ) (Q: iProp Σ)
     (point: point_prop Q)
   : (P -∗ ◇ Q) ∗ P ⊢ (
-          ◇ Q ∗ (Q -∗ P)
+          (◇ Q) ∗ (Q -∗ P)
       ).
 Proof.
   unfold point_prop in point. destruct point as [x point]. setoid_rewrite point.
@@ -126,7 +174,7 @@ Qed.
 Lemma own_separates_out_except0_point_later (P : iProp Σ) (Q: iProp Σ) (n: nat)
     (point: point_prop Q)
   : (P -∗ ▷^n ◇ Q) ∗ P ⊢ (
-          ▷^n (◇ Q ∗ (Q -∗ P))
+          ▷^n ((◇ Q) ∗ (Q -∗ P))
       ).
 Proof.
   unfold point_prop in point. destruct point as [x point]. setoid_rewrite point.
