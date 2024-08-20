@@ -353,7 +353,120 @@ Proof.
           rewrite multiplicity_disj_union in fmm2i.
           rewrite multiplicity_disj_union in fmm2i. lia.
 Qed.
-    
+
+Lemma bigSepS_alive_equiv_own a
+  (ne_emp: a ≠ ∅)
+    : ([∗ set] k ∈ a, Alive k) ⊣⊢ own γlt (LtOk None (list_to_set_disj (elements a)) ∅).
+Proof.
+  induction a as [|x T ? IH] using set_ind_L. 
+  - contradiction.
+  - have h : Decision (T = ∅) by solve_decision. destruct h as [h|n]; trivial.
+    + subst T. rewrite big_sepS_union; last by set_solver.
+      rewrite big_sepS_empty. rewrite big_sepS_singleton. unfold Alive, alive.
+      rewrite union_empty_r. rewrite elements_singleton. unfold list_to_set_disj.
+      rewrite bi.sep_emp. rewrite gmultiset_disj_union_right_id. trivial.
+    + rewrite big_sepS_union; last by set_solver.
+      rewrite (IH n). rewrite big_sepS_singleton. unfold Alive, alive.
+        rewrite <- own_op.
+        f_equiv.
+        unfold "⋅", cmra_op, ltR, lt_op. f_equiv; last by set_solver.
+        rewrite elements_union_singleton; trivial.
+Qed.
+
+Lemma lt_ok_none_left o a1 d1 a2 d2
+    : LtOk None a1 d1 ⋅ LtOk o a2 d2 = LtOk o (a1 ⊎ a2) (d1 ∪ d2).
+Proof.
+  destruct o as [o|]; trivial.
+Qed.
+
+Lemma mult_list_to_set_disj_not_in (a: gset nat) (x: nat)
+  (not_in: x ∉ a) : multiplicity x (list_to_set_disj (elements a)) = 0.
+Proof.
+ induction a as [|y b ? IH] using set_ind_L. 
+ - trivial.
+ - rewrite elements_union_singleton; trivial. rewrite list_to_set_disj_cons.
+    rewrite multiplicity_disj_union. rewrite IH; last by set_solver.
+    assert (x ≠ y) by set_solver. rewrite multiplicity_singleton_ne; trivial.
+Qed.
+
+Lemma mult_list_to_set_disj_in (a: gset nat) (x: nat)
+  (is_in: x ∈ a) : multiplicity x (list_to_set_disj (elements a)) = 1.
+Proof.
+ induction a as [|y b ? IH] using set_ind_L. 
+ - rewrite elem_of_empty in is_in. contradiction.
+ - rewrite elements_union_singleton; trivial. rewrite list_to_set_disj_cons.
+    rewrite multiplicity_disj_union.
+    rewrite elem_of_union in is_in. destruct is_in as [ix|ib].
+    + rewrite elem_of_singleton in ix. subst x. rewrite mult_list_to_set_disj_not_in; trivial.
+        rewrite multiplicity_singleton. trivial.
+    + rewrite (IH ib). rewrite multiplicity_singleton_ne; trivial. intro x_eq_y.
+        subst x. contradiction.
+Qed.
+
+Lemma multiplicity_le o1 a1 d1 o2 a2 d2 x
+  : LtOk o1 a1 d1 ≼ LtOk o2 a2 d2 → multiplicity x a1 ≤ multiplicity x a2.
+Proof.
+  intro incl. destruct incl as [t incl]. destruct t as [o3 a3 d3|].
+  - assert (a2 = a1 ⊎ a3) as X.
+      + unfold "⋅", lt_op in incl. destruct o1; destruct o3.
+        * inversion incl. * inversion incl; trivial. * inversion incl; trivial.
+        * inversion incl; trivial.
+      + subst a2. rewrite multiplicity_disj_union. lia.
+  - unfold "⋅", lt_op in incl. destruct o1; inversion incl.
+Qed.
+
+Lemma own_and_alive (a1 a2 : gset nat)
+  : own γlt (LtOk None (list_to_set_disj (elements a1)) ∅)
+    ∧ own γlt (LtOk None (list_to_set_disj (elements a2)) ∅)
+    ⊢ own γlt (LtOk None (list_to_set_disj (elements (a1 ∪ a2))) ∅).
+Proof.
+  iIntros "x".
+  iDestruct (conjunct_own_rule.and_own2_ucmra with "x") as "y"; last by iFrame "y".
+  intros w valw incl1 incl2.
+  destruct w as [o a d|].
+  - exists (LtOk o (a ∖ (list_to_set_disj (elements (a1 ∪ a2)))) d).
+    rewrite lt_ok_none_left. f_equiv.
+    + rewrite gmultiset_eq. intros x.
+        rewrite multiplicity_disj_union.
+        rewrite multiplicity_difference.
+        enough ((multiplicity x a ≥ multiplicity x (list_to_set_disj (elements (a1 ∪ a2))))).
+        { lia. }
+        have t1 := multiplicity_le _ _ _ _ _ _ x incl1.
+        have t2 := multiplicity_le _ _ _ _ _ _ x incl2.
+        have h : Decision (x ∈ a1) by solve_decision. destruct h as [h1|n1]; trivial.
+          *  rewrite mult_list_to_set_disj_in in t1; trivial.
+             rewrite mult_list_to_set_disj_in; last by set_solver.
+             lia.
+        * have q : Decision (x ∈ a2) by solve_decision. destruct q as [h2|n2]; trivial.
+          -- rewrite mult_list_to_set_disj_in in t2; trivial.
+             rewrite mult_list_to_set_disj_in; last by set_solver.
+             lia.
+          -- rewrite mult_list_to_set_disj_not_in; last by set_solver.
+             lia.
+    + set_solver.
+  - unfold "✓", cmra_valid, ucmra_cmraR, ucmra_valid, ltUR, lt_valid in valw.
+    destruct valw as [b valw].
+    replace (LtFail ⋅ b) with LtFail in valw. { contradiction. }
+    destruct b; trivial.
+Qed.
+
+Lemma alive_and_bigSepS (a1 a2 : gset nat)
+  : ([∗ set] k ∈ a1, Alive k) ∧ ([∗ set] k ∈ a2, Alive k)
+    ⊢ [∗ set] k ∈ a1 ∪ a2, Alive k.
+Proof.
+  have h: Decision (a1 = ∅) by solve_decision. destruct h as [h1|n1].
+  { subst a1. rewrite big_sepS_empty. rewrite bi.emp_and.
+      rewrite big_sepS_union; last by set_solver.
+      rewrite big_sepS_empty. rewrite bi.emp_sep. trivial. }
+  have h: Decision (a2 = ∅) by solve_decision. destruct h as [h2|n2].
+  { subst a2. rewrite big_sepS_empty. rewrite bi.and_emp.
+      rewrite big_sepS_union; last by set_solver.
+      rewrite big_sepS_empty. rewrite bi.sep_emp. trivial. }
+  rewrite bigSepS_alive_equiv_own; trivial.
+  rewrite bigSepS_alive_equiv_own; trivial.
+  rewrite bigSepS_alive_equiv_own; last by set_solver.
+  apply own_and_alive.
+Qed.
         
 Local Instance pers_dead k : Persistent (Dead k).
 Proof.
@@ -378,6 +491,37 @@ Proof.
   - simpl in lts. intuition.
   - inversion lts.
 Qed.
+
+Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
+Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
+Proof.
+  iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold Cancel. iFrame "H".
+Qed.
+Local Lemma cancel_cancel_false (γc : gname) : Cancel γc ∗ Cancel γc ⊢ False.
+Proof.
+  iIntros "X". unfold Cancel. rewrite <- own_op.
+  iDestruct (own_valid with "X") as "%J". contradiction.
+Qed.
+
+Local Lemma not_subset_eq_get (a b : gset nat) : (a ⊈ b) → ∃ k , k ∈ a ∧ k ∉ b.
+Proof.
+  assert (∀ r , list_to_set r ⊈ b → ∃ u: nat , u ∈ ((list_to_set r) : gset nat) ∧ u ∉ b) as X.
+  { induction r.
+    - intros emp. rewrite list_to_set_nil in emp. set_solver.
+    - intros not_in. rewrite list_to_set_cons in not_in.
+      have h : Decision (a0 ∈ b) by solve_decision. destruct h as [h|n]; trivial.
+      + assert (list_to_set r ⊈ b) as K by set_solver.
+        have IHr2 := IHr K. destruct IHr2 as [u IHr2]. exists u. set_solver.
+      + exists a0. intuition. rewrite list_to_set_cons. set_solver.
+  }
+  intro a_not_in_b.
+  have X1 := X (elements (Elements := gset_elements) a).
+  assert (list_to_set (elements a) ⊈ b) as Y. { set_solver. }
+  have Z := X1 Y. destruct Z as [u [Z1 Z2]]. exists u. split; trivial.
+  rewrite list_to_set_elements in Z1. trivial.
+Qed.
+
+(*** Lifetime logic ***)
 
 Definition NLLFT := nroot .@ "leaf-lifetime".
 
@@ -416,18 +560,6 @@ Proof.
   { iDestruct "AD" as "[A _]".
     iDestruct ((big_sepS_delete _ _ k) with "A") as "[A _]". { trivial. } iFrame. }
   { iDestruct "AD" as "[_ [_ D]]". iFrame. }
-Qed.
-
-Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
-Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
-Proof.
-  iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold Cancel. iFrame "H".
-Qed.
-  
-Lemma cancel_cancel_false (γc : gname) : Cancel γc ∗ Cancel γc ⊢ False.
-Proof.
-  iIntros "X". unfold Cancel. rewrite <- own_op.
-  iDestruct (own_valid with "X") as "%J". contradiction.
 Qed.
 
 Lemma llftl_begin :
@@ -512,24 +644,6 @@ Proof.
   iDestruct (cancel_cancel_false γc with "[c1 c2]") as "J". { iFrame. } iExFalso. iFrame "J".
 Qed.
 
-Lemma not_subset_eq_get (a b : gset nat) : (a ⊈ b) → ∃ k , k ∈ a ∧ k ∉ b.
-Proof.
-  assert (∀ r , list_to_set r ⊈ b → ∃ u: nat , u ∈ ((list_to_set r) : gset nat) ∧ u ∉ b) as X.
-  { induction r.
-    - intros emp. rewrite list_to_set_nil in emp. set_solver.
-    - intros not_in. rewrite list_to_set_cons in not_in.
-      have h : Decision (a0 ∈ b) by solve_decision. destruct h as [h|n]; trivial.
-      + assert (list_to_set r ⊈ b) as K by set_solver.
-        have IHr2 := IHr K. destruct IHr2 as [u IHr2]. exists u. set_solver.
-      + exists a0. intuition. rewrite list_to_set_cons. set_solver.
-  }
-  intro a_not_in_b.
-  have X1 := X (elements (Elements := gset_elements) a).
-  assert (list_to_set (elements a) ⊈ b) as Y. { set_solver. }
-  have Z := X1 Y. destruct Z as [u [Z1 Z2]]. exists u. split; trivial.
-  rewrite list_to_set_elements in Z1. trivial.
-Qed.
-
 Lemma llftl_incl_dead_implies_dead κ κ' :
     ⊢ llftctx ∗ llft_incl κ κ' ∗ llft_dead κ' ={↑NLLFT}=∗ llft_dead κ.
 Proof.
@@ -599,6 +713,26 @@ Proof.
           { iFrame. iPureIntro. trivial. } set_solver.
         }
         iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro; trivial.
+Qed.
+
+Lemma llftl_incl_intersect κ κ' : ⊢ llft_incl (llft_intersect κ κ') κ.
+Proof.
+  unfold llft_incl, llft_intersect, llft_alive.
+  leaf_by_sep. iIntros "Alive".
+  replace (κ ∪ κ') with (κ ∪ ((κ ∪ κ') ∖ κ)).
+  - rewrite big_sepS_union.
+    + iDestruct "Alive" as "[A1 A2]". iFrame "A1". iIntros "A3". iFrame.
+    + set_solver.
+  - symmetry. apply union_difference_L. set_solver.
+Qed.
+
+Lemma llftl_incl_glb κ κ' κ'' :
+    llft_incl κ κ' ∗ llft_incl κ κ'' ⊢ llft_incl κ (llft_intersect κ' κ'').
+Proof.
+  apply guards_and_point.
+   - unfold llft_alive. apply point_props.point_prop_big_sepS.
+      intros x xi. apply point_props.point_prop_own.
+   - unfold llft_alive. apply alive_and_bigSepS.
 Qed.
 
 End LtResource.

@@ -365,6 +365,21 @@ Qed.
 (* For the "Point Proposition" formulation from the paper *)
 Definition point_prop (P: iProp Σ) := ∃ x , (P ≡ uPred_ownM x).
 
+Global Instance point_prop_proper :
+    Proper ((≡) ==> (↔)) point_prop.
+Proof.
+  solve_proper.
+Qed.
+
+Lemma point_prop_True : point_prop True.
+Proof.
+  unfold point_prop in *.
+  exists (ε). 
+  iIntros. iSplit. { iIntros "T". iDestruct (uPred.ownM_unit with "T") as "T". iFrame. }
+  iIntros "T". done.
+Qed.
+
+
 (* PointProp-Sep *)
 
 Lemma point_prop_sep (P Q: iProp Σ)
@@ -373,6 +388,19 @@ Proof.
   unfold point_prop in *. destruct a as [x a]. destruct b as [y b].
   exists (x ⋅ y). setoid_rewrite a. setoid_rewrite b.
   rewrite uPred.ownM_op. trivial.
+Qed.
+
+Lemma point_prop_big_sepS `{!EqDecision X, !Countable X} (S : gset X) (P : X → iProp Σ)
+    (x_point : ∀ (x: X) , x ∈ S → point_prop (P x))
+    : point_prop ([∗ set] x ∈ S , P x).
+Proof.
+  induction S as [|x T ? IH] using set_ind_L. 
+  - rewrite big_sepS_empty. apply point_prop_True.
+  - rewrite big_sepS_union.
+    + apply point_prop_sep.
+      * rewrite big_sepS_singleton. apply x_point. set_solver.
+      * apply IH. intros y yT. apply x_point. set_solver.
+    + set_solver.
 Qed.
 
 Context `{i : !inG Σ A}.
