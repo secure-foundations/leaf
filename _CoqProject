@@ -1,6 +1,8 @@
 -Q src/guarding guarding
 
-src/guarding/auth_frag_util.v
+src/guarding/internal/auth_frag_util.v
+src/guarding/internal/wsat_util.v
+
 src/guarding/conjunct_own_rule.v
 src/guarding/conjunct_own_rule2.v
 src/guarding/point_props.v
@@ -11,7 +13,6 @@ src/guarding/inved.v
 src/guarding/protocol.v
 src/guarding/protocol_relational.v
 src/guarding/base_storage_opt.v
-src/guarding/wsat_util.v
 
 -Q src/lang lang
 
