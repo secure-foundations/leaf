@@ -78,13 +78,6 @@ Proof.
   trivial.
 Qed.
 
-Lemma some_op_equiv2 (a b : A) (c: option A) (n: nat)
-  : Some a ≡{n}≡ Some b ⋅ c -> a ≡{n}≡ b ⋅? c.
-Proof. intros. unfold "⋅?". destruct c.
-  - inversion H. trivial.
-  - inversion H. trivial.
-Qed.
-
 Lemma discrete_equiv (a b : A) (n: nat)
   : a ≡{n}≡ b -> a ≡ b.
 Proof using A Disc.
@@ -134,83 +127,6 @@ Proof.
   apply: singletonM_proper.
   setoid_rewrite H.
   trivial.
-Qed.
-
-Lemma None_Some_contra (x: A) (y: option A) (n: nat)
-  (k: None ≡{n}≡ Some x ⋅ y) : False.
-Proof.
-  (*have k := discrete_equiv2 _ _ _ t.*)
-  destruct y.
-  - unfold "⋅" in k. unfold optionR in k. unfold cmra_op in k. unfold option_op_instance in k.
-      unfold union_with in k. unfold option_union_with in k. inversion k.
-  - unfold "⋅" in k. unfold optionR in k. unfold cmra_op in k. unfold option_op_instance in k.
-      unfold union_with in k. unfold option_union_with in k. inversion k.
-Qed.
-
-Lemma and_own γ (x y: A)
-  : (own γ x ∧ own γ y) ⊢ 
-  ((⌜ ∃ z , ✓ z ∧ (∃ t , z ≡ x ⋅? t) ∧ (∃ t , z ≡ y ⋅? t) ⌝) : iProp Σ).
-Proof using A Disc i Σ.
-  uPred.unseal.
-  split.
-  intros n x0 val aoo.
-  unfold upred.uPred_pure_def. unfold uPred_holds.
-  rewrite own.own_eq in aoo.
-  unfold own.own_def in aoo.
-  unfold uPred_holds in aoo. unfold upred.uPred_and_def in aoo.
-  destruct aoo as [o1 o2].
-  rewrite upred.uPred_ownM_unseal in o1.
-  rewrite upred.uPred_ownM_unseal in o2.
-  unfold uPred_holds in o1. unfold upred.uPred_ownM_def in o1.
-  unfold uPred_holds in o2. unfold upred.uPred_ownM_def in o2.
-  
-  destruct (project x0 γ) eqn:p.
-  - exists c. split.
-    { rewrite (cmra_discrete_valid_iff n).
-        enough (✓{n} Some c) by trivial. rewrite <- p. apply valid_project. trivial.
-    }
-    split.
-    {
-      unfold includedN in o1.
-      destruct o1 as [t o1]. exists (project t γ).
-      unfold included.
-      apply (discrete_equiv _ _ n).
-      apply some_op_equiv2. rewrite <- p.
-      setoid_rewrite <- (project_iRes_singleton x γ).
-      setoid_rewrite <- project_op.
-      apply proper_project_equiv_n; trivial.
-    }
-    {
-      unfold includedN in o2.
-      destruct o2 as [t o2]. exists (project t γ).
-      unfold included.
-      apply (discrete_equiv _ _ n).
-      apply some_op_equiv2. rewrite <- p.
-      setoid_rewrite <- (project_iRes_singleton y γ).
-      setoid_rewrite <- project_op.
-      apply proper_project_equiv_n; trivial.
-    }
-  - unfold includedN in o1.
-      destruct o1 as [t o1].
-      assert (project x0 γ ≡{n}≡ project (own.iRes_singleton γ x) γ ⋅ project t γ) as R.
-      { setoid_rewrite <- project_op. apply proper_project_equiv_n; trivial. }
-      setoid_rewrite project_iRes_singleton in R.
-      rewrite p in R.
-      have j := None_Some_contra _ _ _ R.
-      contradiction.
-Qed.
-
-Lemma proj_op γ x (w a : iResUR Σ) n
-  (eq: w ≡{n}≡ own.iRes_singleton γ x ⋅ a)
-  : project w γ ≡{n}≡ Some (x ⋅? project a γ).
-Proof.
-  assert (project w γ ≡{n}≡ project (own.iRes_singleton γ x ⋅ a) γ) as X. {
-    apply proper_project_equiv_n; trivial.
-  }
-  setoid_rewrite X.
-  setoid_rewrite project_op.
-  setoid_rewrite project_iRes_singleton.
-  destruct (project a γ); trivial.
 Qed.
 
 (* copied from iris basic_logic/lib/own.v *)
@@ -270,97 +186,6 @@ Proof.
       symmetry.
       apply ucmra_unit_left_id.
   - inversion p.
-Qed.
-
-Lemma iRes_singleton_incl (a b : A) γ n :
-  a ≼ b ->
-  own.iRes_singleton γ a ≼{n} own.iRes_singleton γ b.
-Proof.
-  intro x.
-  unfold "≼" in x. destruct x as [z x].
-  assert (own.iRes_singleton γ b ≡{n}≡ own.iRes_singleton γ (a ⋅ z)) as X.
-  {
-    apply proper_iRes_singleton_equiv_equiv_n; trivial.
-  }
-  setoid_rewrite X.
-  setoid_rewrite iRes_singleton_op.
-  unfold includedN.
-  exists (own.iRes_singleton γ z).
-  trivial.
-Qed.
-
-Lemma and_own2 γ (x y z: A)
-  (cond: ∀ (a b : option A) , x ⋅? a ≡ y ⋅? b -> ✓(x ⋅? a) -> ∃ (c: option A) , x ⋅? a ≡ z ⋅? c)
-  : (own γ x ∧ own γ y) ⊢ own γ z.
-Proof using A Disc i Σ.
-  uPred.unseal.
-  
-  split.
-  intros n w valx uh.
-  
-  unfold uPred_holds, upred.uPred_and_def in uh. destruct uh as [xh yh].
-  
-  rewrite own.own_eq in xh. unfold own.own_def in xh.
-  rewrite upred.uPred_ownM_unseal in xh.
-  unfold uPred_holds, upred.uPred_ownM_def in xh.
-  unfold includedN in xh. destruct xh as [a xh].
-  
-  rewrite own.own_eq in yh. unfold own.own_def in yh.
-  rewrite upred.uPred_ownM_unseal in yh.
-  unfold uPred_holds, upred.uPred_ownM_def in yh.
-  unfold includedN in yh. destruct yh as [b yh].
-  
-  have eq1 := proj_op γ x w a n xh.
-  have eq2 := proj_op γ y w b n yh.
-  assert (x ⋅? project a γ ≡ y ⋅? project b γ) as xa_yb. {
-      apply (discrete_equiv _ _ n).
-      setoid_rewrite eq1 in eq2.
-      inversion eq2. trivial.
-  }
-  
-  assert (✓ (x ⋅? project a γ)) as val.
-  {
-    rewrite (cmra_discrete_valid_iff n).
-    enough (✓{n} Some ((x ⋅? project a γ))) by trivial.
-    setoid_rewrite <- eq1.
-    apply valid_project.
-    trivial.
-  }
-  
-  have cond0 := cond (project a γ) (project b γ) xa_yb val.
-  destruct cond0 as [c cond0].
-  
-  rewrite own.own_eq. unfold own.own_def.
-  rewrite upred.uPred_ownM_unseal.
-  unfold uPred_holds, upred.uPred_ownM_def.
-  
-  assert (own.iRes_singleton γ (x ⋅? project a γ) ≼{n} w) as incl1.
-  { apply iRes_incl_from_proj. apply (discrete_equiv_opt _ _ n). trivial. }
-  
-  destruct c.
-  + assert (
-      own.iRes_singleton γ z
-      ≼{n}
-      own.iRes_singleton γ (x ⋅? project a γ)
-    ) as incl2.
-    {
-      apply iRes_singleton_incl.
-      unfold "⋅?" in cond0 at 2.
-      unfold "≼".
-      exists c.
-      trivial.
-    }
-    eapply cmra_includedN_trans. { apply incl2. } apply incl1.
-  + unfold "⋅?" in cond0 at 2.
-    assert (
-      own.iRes_singleton γ (x ⋅? project a γ)
-      ≡{n}≡
-      own.iRes_singleton γ z
-    ) as X. { 
-      apply proper_iRes_singleton_equiv_equiv_n; trivial.
-    }
-    setoid_rewrite <- X.
-    trivial.
 Qed.
 
 Lemma uPred_ownM_andsep_to_sepand (x y: iResUR Σ) (P : iProp Σ)
@@ -661,26 +486,6 @@ Proof.
   destruct a.
   - unfold "⋅?". unfold "≼". exists u. trivial.
   - unfold "⋅?". unfold "≼". exists ε. symmetry. apply ucmra_unit_right_id.
-Qed.
-
-(* PCM-And *)
-
-Lemma and_own2_ucmra γ (x y z: A)
-  (cond: ∀ w , ✓ w -> x ≼ w -> y ≼ w -> z ≼ w)
-  : (own γ x ∧ own γ y) ⊢ (own γ z).
-Proof using A Disc i Σ.
-  iIntros "t".
-  iDestruct (and_own2 γ x y z with "t") as "t".
-  {
-    intros a b H val.
-    assert (x ≼ x ⋅? a) as xxz. { apply incl_opq. }
-    assert (y ≼ x ⋅? a) as yxz. { setoid_rewrite H. apply incl_opq. }
-    have c := cond (x ⋅? a) val xxz yxz.
-    unfold "≼" in c. destruct c as [r c].
-    exists (Some r).
-    unfold "⋅?" at 2. trivial.
-  }
-  iFrame.
 Qed.
 
 Definition opt_to_unital (x: option A) := match x with Some x' => x' | None => ε end.

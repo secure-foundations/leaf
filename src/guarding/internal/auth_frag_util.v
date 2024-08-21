@@ -14,7 +14,7 @@ From iris.proofmode Require Import coq_tactics.
 
 From stdpp Require Import numbers.
 
-Require Import guarding.conjunct_own_rule.
+Require Import guarding.conjunct_own_rule2.
 
 Section AuthFragUtil.
 
@@ -225,34 +225,16 @@ Proof using C Disc m Σ.
   iPureIntro. split; trivial.
 Qed.
 
-Lemma remove_question_mark (a : auth C) (b : option (auth C))
-    : ∃ b' , a ⋅? b ≡ a ⋅ b'.
-Proof.
-  destruct b.
-  - exists v. trivial.
-  - exists ε. rewrite right_id. trivial.
-Qed.
-
 Lemma auth_frag_conjunct (x y : C) (γ : gname)
     : own γ (● x) ∧ own γ (◯ y) ⊢ ⌜ y ≼ x ⌝.
 Proof using C Disc m Σ.
   iIntros "x".
-  iDestruct (and_own with "x") as "%e".
-  destruct e as [z [val [[t1 l1] [t2 l2]]]].
+  iDestruct (@and_own_discrete_ucmra Σ with "x") as (z) "[o %e]".
+  iDestruct (own_valid with "o") as "%val". iPureIntro.
+  destruct e as [[t1 l1] [t2 l2]].
   setoid_rewrite l1 in l2.
-  iPureIntro.
   
-  have rqm1 := remove_question_mark (● x) t1.
-  have rqm2 := remove_question_mark (◯ y) t2.
-  destruct rqm1 as [q1 rqm1].
-  destruct rqm2 as [q2 rqm2].
-  
-  setoid_rewrite rqm1 in l1.
-  setoid_rewrite rqm1 in l2.
-  setoid_rewrite rqm2 in l2.
-  clear rqm1. clear rqm2. clear t1. clear t2.
-  
-  assert (✓ (● x ⋅ q1)) as D.
+  assert (✓ (● x ⋅ t1)) as D.
   { setoid_rewrite <- l1. trivial. }
   
   have jj := rhs_has_auth _ _ _ _ D l2. destruct jj as [r jj].

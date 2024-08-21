@@ -8,7 +8,7 @@ From iris.algebra Require Export gmap.
 Require Import examples.hash_table_raw.
 Require Import iris.base_logic.lib.own.
 Require Import guarding.guard.
-Require Import guarding.conjunct_own_rule.
+Require Import guarding.conjunct_own_rule2.
 
 Global Instance ht_unit : Unit HT := ht_unit.
 Global Instance ht_equiv : Equiv HT := λ a b , a = b.
@@ -214,7 +214,7 @@ Proof.
   { iPureIntro. apply full_dot; trivial. }
   iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
   {
-    apply (@and_own2_ucmra Σ). { apply ht_cmra_discrete. }
+    apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
     repeat (rewrite le_iff_ht_le).
     apply (full_add r k i j (Some (k0, v0))); trivial.
@@ -233,7 +233,7 @@ Proof.
   rewrite <- own_op.
   iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (m k1 v1))).
   {
-    apply (@and_own2_ucmra Σ). { apply ht_cmra_discrete. }
+    apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
     repeat (rewrite le_iff_ht_le).
     apply (range_add_m r k i j k1 v1); trivial.
@@ -251,7 +251,7 @@ Proof.
   rewrite <- own_op.
   iApply (guards_and_sep_union g1 g2 (own γ (s i slot)) (own γ (m k1 v1))).
   {
-    apply (@and_own2_ucmra Σ). { apply ht_cmra_discrete. }
+    apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
     repeat (rewrite le_iff_ht_le).
     apply (s_add_m i slot k1 v1); trivial.
@@ -274,7 +274,7 @@ Proof.
   replace (F1 ∪ F2 ∪ F3) with (F1 ∪ (F2 ∪ F3)) by set_solver.
   iApply (guards_and_sep_union g1 (g2 ∗ g3)%I (own γ r) (own γ (s j slot ⋅ m k1 v1))).
   {
-    apply (@and_own2_ucmra Σ). { apply ht_cmra_discrete. }
+    apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
     repeat (rewrite le_iff_ht_le).
     apply (full_add_s_m r k i j slot k1 v1); trivial.
