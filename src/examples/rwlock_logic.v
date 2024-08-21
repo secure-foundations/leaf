@@ -4,7 +4,6 @@ Require Import guarding.inved.
 Require Import guarding.guard.
 
 Require Import cpdt.CpdtTactics.
-Require Import coq_tricks.Deex.
 
 Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.

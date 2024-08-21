@@ -6,7 +6,6 @@ From stdpp Require Import gmap.
 From iris.algebra Require Export gmap.
 
 Require Import cpdt.CpdtTactics.
-Require Import coq_tricks.Deex.
 
 Require Import examples.gmap_option.
 Require Import examples.misc_tactics.
@@ -87,15 +86,15 @@ Definition s (i: nat) (kv: option (Key * Value)) :=
   
 Definition m (k: Key) (v: option Value) :=
   HTR {[ k := Some v ]} ∅.
-
+  
 Lemma ht_valid_QueryFound j k v v0
   : V (ht_dot (s j (Some (k, v0))) (m k v)) -> v = Some v0.
 Proof.
-  unfold V, s, m. intro. deex. destruct z. unfold ht_dot in *. unfold P in *.
+  unfold V, s, m. intros [z H]. destruct z. unfold ht_dot in *. unfold P in *.
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
-  destruct_ands.
-  have h := H4 j k v0. destruct_ands.
+  destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
+  have h := H4 j k v0.
   assert (gmap_dot {[j := Some (Some (k, v0))]} slots !! j = Some (Some (Some (k, v0))))
     as t.
   {
@@ -104,7 +103,7 @@ Proof.
     - trivial.
     - rewrite lookup_singleton. discriminate.
   }
-  have hr := h t. destruct_ands.
+  have hr := h t. destruct hr as [H5 H6].
   rewrite lookup_gmap_dot_left in H5.
    - rewrite lookup_singleton in H5.
       inversion H5. trivial.
@@ -125,8 +124,11 @@ Lemma ht_valid_QueryReachedEnd k a v
   (is_full: full a k (hash k) ht_fixed_size)
   : V (ht_dot a (m k v)) -> v = None.
 Proof.
-  unfold V, s, m. intro. deex. destruct z, a. unfold ht_dot in *. unfold P in *.
-  unfold full in is_full. destruct_ands. subst ms0.
+  unfold V, s, m. intros [z H]. destruct z, a. unfold ht_dot in *. unfold P in *.
+  unfold full in is_full.
+  destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
+  destruct is_full as [H5 [H6 [H7 H8]]].
+  subst ms0.
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
   repeat (rewrite gmap_dot_empty in H0).
@@ -148,27 +150,30 @@ Proof.
     - trivial.
     - rewrite lookup_singleton. discriminate.
   }
-  have hq := h Q. deex.
+  have hq := h Q. destruct hq as [i hq].
   
-  have hx := H4 i k v hq. destruct_ands.
+  have hx := H4 i k v hq. destruct hx as [H8 [H9 H10]].
   have hy := H6 i H9.
   assert (i < ht_fixed_size) as ihfs.
   {
     apply H1 with (e := (Some (Some (k, v)))). trivial.
   }
-  have hz := hy ihfs. deex.
+  have hz := hy ihfs. destruct hz as [k1 [v1 hz]].
   rewrite lookup_gmap_dot_left in hq.
-  - destruct_ands. rewrite H11 in hq.  inversion hq. contradiction.
+  - destruct hz as [H11 H12]. rewrite H11 in hq.  inversion hq. contradiction.
   - trivial.
-  - destruct_ands. rewrite H11. discriminate.
+  - destruct hz as [H11 H12]. rewrite H11. discriminate.
 Qed.
   
 Lemma ht_valid_QueryNotFound k a v j
   (is_full: full a k (hash k) j)
   : V (ht_dot (ht_dot a (m k v)) (s j None)) -> v = None.
 Proof.
-  unfold V, s, m. intro. deex. destruct z, a. unfold ht_dot in *. unfold P in *.
-  unfold full in is_full. destruct_ands. subst ms0.
+  unfold V, s, m. intros [z H]. destruct z, a. unfold ht_dot in *. unfold P in *.
+  unfold full in is_full.
+  destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
+  destruct is_full as [H5 [H6 [H7 H8]]].
+  subst ms0.
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
   repeat (rewrite gmap_dot_empty in H0).
@@ -190,25 +195,25 @@ Proof.
     - trivial.
     - rewrite lookup_singleton. discriminate.
   }
-  have hq := h Q. deex.
+  have hq := h Q. destruct hq as [i hq].
   
-  have hx := H4 i k v hq. destruct_ands.
+  have hx := H4 i k v hq. destruct hx as [H8 [H9 H10]].
   have hy := H6 i H9.
   assert (i < j) as ihfs.
   {
     have hij : Decision (i < j) by solve_decision. destruct hij; trivial.
     assert (j ≤ i) by lia.
-    have mm := H10 j H5 H11. deex.
+    have mm := H10 j H5 H11. destruct mm as [k1 [v1 mm]].
     rewrite lookup_gmap_dot_3mid in mm.
     - rewrite lookup_singleton in mm. inversion mm.
     - trivial.
     - rewrite lookup_singleton. discriminate.
   }
-  have hz := hy ihfs. deex. destruct_ands.
+  have hz := hy ihfs. destruct hz as [k1 [v1 hz]]. destruct hz as [hz1 hz2].
   rewrite lookup_gmap_dot_3left in hq.
-  - rewrite H11 in hq.  inversion hq. contradiction.
+  - rewrite hz1 in hq.  inversion hq. contradiction.
   - trivial.
-  - rewrite H11. discriminate.
+  - rewrite hz1. discriminate.
 Qed.
 
 Lemma preserves_lt_fixed_size j a b slots
@@ -294,12 +299,12 @@ Lemma preserves_unique_keys j k v v1 slots
     → i1 = i2.
 Proof.
   intros.
-  destruct_ands.
+  destruct H as [H H0].
   have ed : Decision (i1 = j) by solve_decision. destruct ed.
     - have ed : Decision (i2 = j) by solve_decision. destruct ed.
       + subst. trivial.
       + subst j. have tk := uk i1 i2 k v1 v3.
-        have t1 := key_vals_eq_of_gmap_dot _ _ _ _ _ _ H. destruct_ands. subst k0. subst v2.
+        have t1 := key_vals_eq_of_gmap_dot _ _ _ _ _ _ H. destruct t1 as [H1 H2]. subst k0. subst v2.
         assert (i1 ≠ i2) as ne by crush.
         have t2 := lookup_gmap_dot_singleton_ne i1 i2
             (Some (Some (k, v))) (Some (Some (k, v1))) slots ne.
@@ -308,7 +313,7 @@ Proof.
         eapply gmap_dot_singleton_change. apply H.
     - have ed : Decision (i2 = j) by solve_decision. destruct ed.
       + subst j. have tk := uk i1 i2 k v2 v1.
-        have t1 := key_vals_eq_of_gmap_dot _ _ _ _ _ _ H0. destruct_ands. subst k0. subst v3.
+        have t1 := key_vals_eq_of_gmap_dot _ _ _ _ _ _ H0. destruct t1 as [H1 H2]. subst k0. subst v3.
         assert (i2 ≠ i1) as ne by crush.
         have t2 := lookup_gmap_dot_singleton_ne i2 i1
             (Some (Some (k, v))) (Some (Some (k, v1))) slots ne.
@@ -364,22 +369,22 @@ Lemma pukn_helper j k0 k v v1 slots v0 ms ms0 slots0 i2 v2
        Some (Some (Some (k0, v2))))
   : j = i2.
 Proof.
-  have t1 := key_vals_eq_of_gmap_dot j k k0 v v1 _ ab. destruct_ands. subst k0. subst v1.
+  have t1 := key_vals_eq_of_gmap_dot j k k0 v v1 _ ab. destruct t1 as [H1 H2]. subst k0. subst v1.
   have h : Decision (j = i2) by solve_decision. destruct h; trivial. exfalso.
   rewrite (lookup_gmap_dot_singleton_ne _ _ _ (Some None)) in ac; trivial.
-  have ctg := cntg i2 k v2 ac. destruct_ands.
-  unfold full in is_full. destruct_ands.
+  have ctg := cntg i2 k v2 ac. destruct ctg as [H [H0 H1]].
+  unfold full in is_full. destruct is_full as [H2 [H3 [H4 H5]]].
   have ch := H1 j H2.
   have hle : Decision (j ≤ i2) by solve_decision. destruct hle.
-  - have ch2 := ch l. deex.
+  - have ch2 := ch l. destruct ch2 as [k1 [v1 ch2]].
     have gkv := gmap_key_vals_eq_of_gmap_dot _ _ _ _ ch2.
     assert (EqDecision (option (Key * Value))) by (typeclasses eauto).
     intuition. discriminate.
   - have yz := H3 i2.
     assert (hash k ≤ i2) as la1 by lia.
     assert (i2 < j) as la2 by lia.
-    have zz := yz la1 la2. deex.
-    destruct_ands.
+    have zz := yz la1 la2. destruct zz as [k1 [v1 zz]].
+    destruct zz as [zz1 zz2].
     apply (pukn_helper2 j slots slots0 i2 k k1 v1 v2); trivial.
 Qed. 
 
@@ -409,7 +414,7 @@ Lemma preserves_unique_keys_newslot j k v slots v0 ms ms0 slots0
       Some (Some (Some (k0, v2))) → i1 = i2.
 Proof.
   intros.
-  destruct_ands.
+  destruct H as [H H0].
   have ed : Decision (i1 = j) by solve_decision. destruct ed.
     - have ed : Decision (i2 = j) by solve_decision. destruct ed.
       + subst. trivial.
@@ -457,7 +462,7 @@ Proof.
     + rewrite lookup_singleton. discriminate.
   - have r := mts k2 v2.
       rewrite (lookup_gmap_dot_singleton_ne k k2 (Some (Some v)) (Some v0)) in H; trivial.
-      intuition. deex. exists i.
+      intuition. destruct H0 as [i H0]. exists i.
       assert (i ≠ j).
       {
         intro. subst i.
@@ -521,26 +526,26 @@ Proof.
     + destruct p. subst k0. have sx := stm i k v1.
       assert (gmap_dot {[i := Some (Some (k, v1))]} slots !! i = Some (Some (Some (k, v1)))).
       { eapply gmap_dot_singleton_change. apply H. }
-      have qq := key_vals_eq_of_gmap_dot i k k2 v v2 slots H. destruct_ands.
+      have qq := key_vals_eq_of_gmap_dot i k k2 v v2 slots H. destruct qq as [qq1 qq2].
       subst k2. subst v2.
       intuition.
       * eapply gmap_dot_singleton_change. apply H2.
       * have ho := H4 j0. intuition.
         have h : Decision (i = j0) by solve_decision. destruct h.
         -- exists k, v. subst j0. trivial.
-        -- deex. exists k3, v3.
+        -- destruct H7 as [k3 [v3 H7]]. exists k3, v3.
             rewrite (lookup_gmap_dot_singleton_ne i j0 _ (Some (Some (k, v1)))); trivial.
-    + have kv := key_vals_eq_of_gmap_dot i k k2 v v2 slots H. destruct_ands.
+    + have kv := key_vals_eq_of_gmap_dot i k k2 v v2 slots H. destruct kv as [keq veq].
       subst k2. subst v2.
       assert (gmap_dot {[k := Some (Some v)]} ms !! k = Some (Some (Some v))).
       {
         rewrite lookup_gmap_dot_left.
         - rewrite lookup_singleton. trivial.
-        - trivial.
+        - intuition.
         - rewrite lookup_singleton. discriminate.
       }
       split; trivial.
-      split; trivial.
+      split; intuition.
   - have sx := stm i k2 v2.
     assert (gmap_dot {[j := Some e]} slots !! i = Some (Some (Some (k2, v2)))) as gd.
     {
@@ -566,7 +571,7 @@ Proof.
     + rewrite (lookup_gmap_dot_singleton_ne _ _ _ (Some v0)); trivial.
     + have h : Decision (j = j0) by solve_decision. destruct h.
       * subst j0. exists k, v. trivial.
-      * have gr := H8 j0 H7 H9. deex. exists k3, v3.
+      * have gr := H8 j0 H7 H9. destruct gr as [k3 [v3 gr]]. exists k3, v3.
           rewrite (lookup_gmap_dot_singleton_ne _ _ _ (Some e)); trivial.
 Qed.
 
@@ -587,17 +592,17 @@ Proof.
       + rewrite lookup_singleton. trivial.
       + trivial.
       + rewrite lookup_singleton. discriminate.
-  - unfold full in is_full. destruct_ands.
+  - unfold full in is_full. destruct is_full as [H [H0 [H1 H2]]].
     intros.
     assert (j0 < j) as la by lia.
     have h := H0 j0. intuition.
-    deex.
+    destruct H6 as [k1 [v1 H6]].
     exists k1, v1.
     rewrite gmap_dot_assoc.
       rewrite lookup_gmap_dot_right.
       + intuition.
       + rewrite <- gmap_dot_assoc. trivial.
-      + destruct_ands. rewrite H5. discriminate.
+      + destruct H6 as [H7 H8]. rewrite H7. discriminate.
 Qed.
 
 Lemma ht_helper_update_existing j k v v0 v1 z :
@@ -609,7 +614,7 @@ Proof.
   repeat (rewrite gmap_dot_empty_left).
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
-  destruct_ands.
+  destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
   split.
   { eapply gmap_valid_update_singleton. apply H. }
   split.
@@ -643,7 +648,7 @@ Proof.
   repeat (rewrite gmap_dot_empty_left).
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
-  destruct_ands.
+  destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
   split.
   { eapply gmap_valid_update_singleton. apply H. }
   split.
@@ -691,7 +696,7 @@ Lemma ht_update_existing j k v v0 v1 :
     (ht_dot (s j (Some (k, v))) (m k (Some v))).
 Proof.
   unfold ht_mov.
-  unfold V. intros. deex. exists z0.
+  unfold V. intros z [z0 H]. exists z0.
   rewrite <- ht_dot_assoc.
   rewrite <- ht_dot_assoc in H.
   eapply ht_helper_update_existing.
@@ -705,7 +710,7 @@ Lemma ht_update_new j k v v0 a
     (ht_dot (ht_dot (s j (Some (k, v))) (m k (Some v))) (a)).
 Proof.
   unfold ht_mov.
-  unfold V. intros. deex. exists z0.
+  unfold V. intros z [z0 H]. exists z0.
   rewrite <- ht_dot_assoc.
   rewrite <- ht_dot_assoc in H.
   full_generalize (ht_dot z z0) as y.
@@ -734,7 +739,7 @@ Lemma full_dot a k i j k0 v0
   (ne: k0 ≠ k)
   : full (ht_dot a (s j (Some (k0, v0)))) k i (j+1).
 Proof.
-  unfold full, ht_dot, s in *. destruct a. destruct_ands. repeat split.
+  unfold full, ht_dot, s in *. destruct a. destruct fa as [H [H0 [H1 H2]]]. repeat split.
   - lia.
   - intros. have x := H0 l H3.
     have h : Decision (l = j) by solve_decision. destruct h.
@@ -743,12 +748,10 @@ Proof.
         rewrite lookup_singleton. destruct (slots !! j) eqn:sj; trivial.
         have t := H1 j o sj. lia.
     + assert (l < j) as la by lia. intuition.
-        deex. exists k1, v1. split.
+        destruct H5 as [k1 [v1 H5]]. exists k1, v1. split.
       * unfold gmap_dot. rewrite lookup_merge. unfold diag_None, gmerge.
         assert (j ≠ l) as la2 by lia.
-        rewrite lookup_singleton_ne; trivial. destruct (slots !! l).
-        -- destruct_ands. trivial.
-        -- destruct_ands. trivial.
+        rewrite lookup_singleton_ne; trivial. destruct (slots !! l); intuition.
       * intuition.
   - have h : Decision (j = l) by solve_decision. destruct h.
     + lia.
@@ -774,7 +777,7 @@ Proof. solve_decision. Qed.
 
 Lemma ht_valid_monotonic : forall x y , V (ht_dot x y) -> V x.
 Proof.
-  intros. unfold V in *. deex. exists (ht_dot y z).
+  intros x y H. unfold V in *. destruct H as [z H]. exists (ht_dot y z).
   rewrite ht_dot_assoc. trivial.
 Qed.
 
@@ -782,7 +785,7 @@ Lemma P_ht_unit : P ht_unit.
 Proof.
   unfold P, ht_unit. repeat split; intros.
   - rewrite lookup_empty in H. discriminate.
-  - rewrite lookup_empty in H. destruct_ands. discriminate.
+  - rewrite lookup_empty in H. intuition. discriminate.
   - rewrite lookup_empty in H. discriminate.
   - rewrite lookup_empty in H. discriminate.
   - rewrite lookup_empty in H. discriminate.
@@ -841,8 +844,8 @@ Definition ht_le a b :=
 Lemma ht_tpcm_le a a' b b'
   : gmap_le a a' -> gmap_le b b' -> ht_le (HTR a b) (HTR a' b').
 Proof.
-  intros. unfold gmap_le in *. deex.
-  exists (HTR c0 c).
+  intros [c H] [c0 H0]. unfold gmap_le in *.
+  exists (HTR c c0).
   unfold ht_dot. 
   rewrite H. rewrite H0. trivial.
 Qed.
@@ -998,7 +1001,7 @@ Proof.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.
   } 
   split.
-  { intros. destruct_ands.
+  { intros. destruct H as [H H0].
     have h : Decision (i1 < ht_fixed_size) by solve_decision. destruct h.
     + rewrite lookup_gmap_seq in H; trivial. discriminate.
     + rewrite lookup_gmap_seq_out in H; trivial. discriminate.

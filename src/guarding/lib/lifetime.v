@@ -1,12 +1,6 @@
-Require Import guarding.base_storage_opt.
-Require Import guarding.protocol.
-Require Import guarding.inved.
 Require Import guarding.guard.
 Require Import guarding.conjunct_own_rule2.
 Require Import guarding.tactics.
-
-Require Import cpdt.CpdtTactics.
-Require Import coq_tricks.Deex.
 
 Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.
@@ -421,7 +415,7 @@ Lemma own_and_alive (a1 a2 : gset nat)
     ⊢ own γlt (LtOk None (list_to_set_disj (elements (a1 ∪ a2))) ∅).
 Proof.
   iIntros "x".
-  iDestruct (conjunct_own_rule.and_own2_ucmra with "x") as "y"; last by iFrame "y".
+  iDestruct (and_own_discrete_ucmra_specific with "x") as "y"; last by iFrame "y".
   intros w valw incl1 incl2.
   destruct w as [o a d|].
   - exists (LtOk o (a ∖ (list_to_set_disj (elements (a1 ∪ a2)))) d).

@@ -19,7 +19,6 @@ From examples Require Import hash_table_raw.
 From lang Require Import heap_ra.
 From examples Require Import misc_tactics.
 
-Require Import coq_tricks.Deex.
 Require Import cpdt.CpdtTactics.
 
 Definition main: lang.val :=

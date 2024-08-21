@@ -15,6 +15,8 @@ src/guarding/protocol.v
 src/guarding/protocol_relational.v
 src/guarding/base_storage_opt.v
 
+src/guarding/lib/lifetime.v
+
 -Q src/lang lang
 
 src/lang/adequacy.v
@@ -41,11 +43,8 @@ src/examples/seqs.v
 src/examples/main.v
 src/examples/fractional.v
 src/examples/counting.v
-src/examples/lifetime.v
 
--Q external/coq-tricks coq_tricks
 -Q external/cpdt cpdt
-external/coq-tricks/Deex.v
 external/cpdt/CpdtTactics.v
 
 -arg -w -arg -argument-scope-delimiter

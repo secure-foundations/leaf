@@ -32,7 +32,6 @@ From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
 From lang Require Import notation.
 
-Require Import coq_tricks.Deex.
 Require Import cpdt.CpdtTactics.
 
 Definition compute_hash: lang.val :=
