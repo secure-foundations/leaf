@@ -1,12 +1,6 @@
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 
-From iris.base_logic Require Export base_logic.
-From iris.program_logic Require Export weakestpre.
-From iris.proofmode Require Import tactics.
-From iris.program_logic Require Import ectx_lifting.
-From iris Require Import options.
-
 From examples Require Import rwlock.
 From examples Require Import rwlock_logic.
 From guarding Require Import guard_later.
@@ -17,9 +11,6 @@ From examples Require Import hash_table_raw.
 From lang Require Import heap_ra.
 From examples Require Import misc_tactics.
 From examples Require Import rwlock_logic.
-Require Import cpdt.CpdtTactics.
-
-Require Import guarding.guard.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -31,8 +22,6 @@ From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
 From lang Require Import notation.
-
-Require Import cpdt.CpdtTactics.
 
 Definition compute_hash: lang.val :=
   λ: "x" ,
@@ -779,7 +768,7 @@ Proof.
   
   - subst i. 
     assert (bool_decide (#ht_fixed_size = #ht_fixed_size) = true) as bd.
-    { unfold bool_decide. case_decide; crush. }
+    { unfold bool_decide. case_decide; trivial. contradiction. }
     rewrite bd.
     wp_pures.
     iModIntro.
@@ -888,7 +877,7 @@ Proof.
         wp_pures.
         
         assert (bool_decide (#k = #k0) = false) as bd0.
-        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
+        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. inversion e. subst k. contradiction. }
         rewrite bd0.
         
         wp_pure _.
@@ -918,7 +907,7 @@ Proof.
           rewrite own_op. iFrame.
           iPureIntro. split. { lia. }
           split.
-          { apply full_dot; trivial. crush. }
+          { apply full_dot; trivial. symmetry. trivial. }
           intuition.
        }
        
@@ -1079,7 +1068,7 @@ Proof.
   
   - subst i. 
     assert (bool_decide (#ht_fixed_size = #ht_fixed_size) = true) as bd.
-    { unfold bool_decide. case_decide; crush. }
+    { unfold bool_decide. case_decide; trivial. contradiction. }
     rewrite bd.
     wp_pures.
     iMod (ht_QueryReachedEnd_b γ range k v (gr ∗ gm) ⊤ ⊤ with "[gm gr guardrm]") as "[[gr gm] %is_none]". 
@@ -1202,14 +1191,14 @@ Proof.
         wp_pures.
         
         assert (bool_decide (#k = #k0) = false) as bd0.
-        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. crush. }
+        { rewrite bool_decide_decide. destruct (decide (#k = #k0)); trivial. inversion e. subst k. contradiction. }
         rewrite bd0.
 
         iDestruct (ht_BorrowedRangeAppend γ range k (hash k) i k0 v0
             gr (sh_guard (γrws i) (Some (k0, v0)))
             (↑HT_RW_NAMESPACE) ({[γrws i]})
             with "[guardr guard_own_slot]") as (r') "[%f' guardr2]".
-        { crush. }
+        { symmetry. trivial. }
         { trivial. }
         { iFrame "guardr". iFrame "guard_own_slot". }
         replace (↑HT_RW_NAMESPACE ∪ {[γrws i]})

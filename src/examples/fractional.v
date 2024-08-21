@@ -8,7 +8,6 @@ Undelimit Scope Int_scope.
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 From examples Require Import rwlock_logic.
-Require Import cpdt.CpdtTactics.
 
 Require Import guarding.guard.
 

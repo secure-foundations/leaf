@@ -19,8 +19,6 @@ From examples Require Import hash_table_raw.
 From lang Require Import heap_ra.
 From examples Require Import misc_tactics.
 
-Require Import cpdt.CpdtTactics.
-
 Definition main: lang.val :=
   λ: "unit" ,
     let: "ht" := new_hash_table #() in

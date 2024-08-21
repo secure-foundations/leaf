@@ -44,9 +44,6 @@ src/examples/main.v
 src/examples/fractional.v
 src/examples/counting.v
 
--Q external/cpdt cpdt
-external/cpdt/CpdtTactics.v
-
 -arg -w -arg -argument-scope-delimiter
 -arg -w -arg -notation-overridden
 -arg -w -arg -redundant-canonical-projection

@@ -1,9 +1,6 @@
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 From examples Require Import rwlock_logic.
-Require Import cpdt.CpdtTactics.
-
-Require Import guarding.guard.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -19,6 +16,7 @@ From lang Require Import heap_ra.
 From lang Require Import lang.
 From iris Require Import options.
 
+Require Import guarding.guard.
 Require Import guarding.guard_later.
 Require Import examples.misc_tactics.
 
@@ -236,7 +234,7 @@ Proof.
       
       destruct exc.
        -- (* exc=true case, CAS fail *)
-            wp_apply (wp_cas_ne with "mem_exc"). { crush. }
+            wp_apply (wp_cas_ne with "mem_exc"). { auto. }
             iIntros "mem_exc".
             iMod ("irl_back" with "[c mem_rc mem_exc]") as "g".
             { iFrame "maps". iExists true, rc, x. iFrame. }
@@ -245,7 +243,7 @@ Proof.
             iSplitL "g".
             { iIntros "%". iFrame "g". iFrame "guard". }
             iSplitL.
-            { iIntros "%". exfalso. crush. }
+            { iIntros "%". exfalso. lia. }
             { iPureIntro. lia. }
        -- (* exc=false case, CAS success *)
             wp_apply (wp_cas_eq with "mem_exc").
@@ -257,7 +255,7 @@ Proof.
             iDestruct ("t" $! 1) as "t".
             iModIntro. iApply "t".
             iSplitL "".
-            { iIntros "%". exfalso. crush. }
+            { iIntros "%". exfalso. lia. }
             iSplitL.
             { iIntros "%". iFrame "pend". iFrame "guard". iFrame "g". }
             { iPureIntro. lia. }
@@ -316,7 +314,7 @@ Proof.
         iDestruct ("t" $! 1) as "t".
         iModIntro. iApply "t".
         iSplitL "".
-        { iIntros "%". exfalso. crush. }
+        { iIntros "%". exfalso. lia. }
         iSplitL.
         { iIntros "%". iFrame "handle". iFrame "guard". iFrame "g". iExists x. iFrame "fx". }
         { iPureIntro. lia. }
@@ -332,7 +330,7 @@ Proof.
         iSplitL "g pend".
         { iIntros "%". iFrame "g". iFrame "guard". iFrame "pend". }
         iSplitL.
-        { iIntros "%". exfalso. crush. }
+        { iIntros "%". exfalso. lia. }
         { iPureIntro. lia. }
   - intros. trivial.
   - iIntros. iFrame.

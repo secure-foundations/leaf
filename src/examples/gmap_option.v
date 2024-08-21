@@ -4,8 +4,6 @@ From iris.algebra Require Export cmra.
 From iris.algebra Require Import proofmode_classes.
 From iris.prelude Require Import options.
 
-Require Import cpdt.CpdtTactics.
-
 Section GmapOptionDot.
 
 Context {K} `{!EqDecision K} `{!Countable K}.
