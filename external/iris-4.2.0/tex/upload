@@ -1,7 +1,0 @@
-#!/bin/sh
-set -e
-cd "$(dirname "$(readlink -e "$0")")"
-
-latexmk -pdf iris
-scp iris.pdf mpi-contact:plv.mpi-sws.org/iris/appendix-4.2.pdf
-
