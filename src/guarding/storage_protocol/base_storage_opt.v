@@ -1,18 +1,5 @@
-(*
-From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import auth.
-From iris.prelude Require Import options.
-
-From iris.base_logic.lib Require Export own iprop.
-From iris.proofmode Require Import base.
-From iris.proofmode Require Import ltac_tactics.
-From iris.proofmode Require Import tactics.
-From iris.proofmode Require Import coq_tactics.
-*)
-
-Require Import guarding.inved.
-Require Import guarding.protocol.
+Require Import guarding.storage_protocol.inved.
+Require Import guarding.storage_protocol.protocol.
 
 Inductive BaseOpt (S: Type) :=
   | Empty : BaseOpt S
@@ -121,5 +108,3 @@ Section BaseOptMap.
   Qed.
 
 End BaseOptMap.
-
-

@@ -2,8 +2,6 @@ From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 From examples Require Import rwlock_logic.
 
-Require Import guarding.guard.
-
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
 From iris.program_logic Require Export atomic.
@@ -17,12 +15,15 @@ From lang Require Import notation tactics class_instances.
 From lang Require Import heap_ra.
 From lang Require Import lang.
 From iris Require Import options.
-
-Require Import guarding.guard_later.
-Require Import examples.misc_tactics.
-Require Import guarding.protocol.
-Require Import guarding.inved.
 From iris.algebra Require Import auth.
+
+Require Import guarding.guard.
+Require Import guarding.guard_later.
+
+Require Import guarding.storage_protocol.protocol.
+Require Import guarding.storage_protocol.inved.
+
+Require Import examples.misc_tactics.
 
 
 Context {Σ: gFunctors}.

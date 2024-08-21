@@ -20,8 +20,8 @@ From iris Require Import options.
 
 Require Import guarding.guard_later.
 Require Import examples.misc_tactics.
-Require Import guarding.protocol.
-Require Import guarding.inved.
+Require Import guarding.storage_protocol.protocol.
+Require Import guarding.storage_protocol.inved.
 From iris.algebra Require Import auth.
 
 Context {Σ: gFunctors}.

@@ -1,7 +1,7 @@
-Require Import guarding.base_storage_opt.
-Require Import guarding.protocol.
-Require Import guarding.inved.
 Require Import guarding.guard.
+Require Import guarding.storage_protocol.base_storage_opt.
+Require Import guarding.storage_protocol.protocol.
+Require Import guarding.storage_protocol.inved.
 
 Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.
