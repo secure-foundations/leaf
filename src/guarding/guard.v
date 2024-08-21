@@ -17,6 +17,7 @@ Section Guard.
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}. 
 
+(* begin hide *)
 Local Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ ▷ P.
 
 Local Definition know_inv (i: positive) : iProp Σ := ∃ P , ownI i P.
@@ -919,12 +920,22 @@ Lemma fguards_sep_disjoint P1 P2 Q1 Q2 E1 E2
 
 (**** guards ****)
 
+
 Local Definition lguards_def (P Q : iProp Σ) (E: coPset) (n: nat) : iProp Σ :=
     □ (∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ lfguards P Q m n).
 
 Local Definition lguards_aux : seal (@lguards_def). Proof. by eexists. Qed.
+(* end hide *)
+
+(** Definition of [lguards] and [guards] and the notation.
+[P &&{ E }&&> Q] is the guards arrow; [E] is the "mask".
+The "later count" can be provided with a semicolon as in [P &&{ E ; n }&&> Q].
+*)
+
 Definition lguards := lguards_aux.(unseal). 
+(* begin hide *)
 Local Definition lguards_unseal : @lguards = @lguards_def := lguards_aux.(seal_eq).
+(* end hide *)
     
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ := lguards P Q E 0.
     
@@ -934,6 +945,11 @@ Notation "P &&{ E }&&> Q" := (guards P Q E)
 Notation "P &&{ E ; n }&&> Q" := (lguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
   
+(** Global instances for guards.
+[P &&{ E; n }&&> Q] is persisent. It is proper in both its arguments,
+and it is nonexpansive in both its arguments.
+Also, when [n ≥ 0], it is contractive in the right-hand side.
+*)
 
 Global Instance lguards_proper :
     Proper ((≡) ==> (≡) ==> (≡) ==> (=) ==> (≡)) lguards.
@@ -981,6 +997,8 @@ Proof.
     rewrite lguards_unseal. unfold lguards_def. unfold lfguards. unfold lguards_with.
     replace n with (S (n-1)) by lia. unfold bi_laterN. solve_contractive.
 Qed.
+
+(** Elementary laws. **)
 
 Lemma lguards_refl E P n : ⊢ P &&{ E ; n }&&> P.
 Proof.
