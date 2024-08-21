@@ -14,7 +14,7 @@ From iris.proofmode Require Import coq_tactics.
 
 From stdpp Require Import numbers.
 
-Require Import guarding.conjunct_own_rule2.
+Require Import guarding.own_and.
 
 Section AuthFragUtil.
 

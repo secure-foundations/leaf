@@ -7,8 +7,6 @@ From iris.prelude Require Import options.
 Import uPred.
 From iris.algebra Require Import functions.
 
-Require Import guarding.conjunct_own_rule.
-
 Section wsat_util.
 
 Context `{!wsatGS.wsatGS Σ}.

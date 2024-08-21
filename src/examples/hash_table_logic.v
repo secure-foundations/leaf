@@ -8,7 +8,7 @@ From iris.algebra Require Export gmap.
 Require Import examples.hash_table_raw.
 Require Import iris.base_logic.lib.own.
 Require Import guarding.guard.
-Require Import guarding.conjunct_own_rule2.
+Require Import guarding.own_and.
 
 Global Instance ht_unit : Unit HT := ht_unit.
 Global Instance ht_equiv : Equiv HT := λ a b , a = b.

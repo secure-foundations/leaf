@@ -1,5 +1,5 @@
 Require Import guarding.guard.
-Require Import guarding.conjunct_own_rule2.
+Require Import guarding.own_and.
 Require Import guarding.tactics.
 
 Require Import stdpp.base.

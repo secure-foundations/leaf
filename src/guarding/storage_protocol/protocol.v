@@ -17,7 +17,7 @@ Require Import guarding.storage_protocol.inved.
 Require Import guarding.guard.
 Require Import guarding.internal.auth_frag_util.
 Require Import guarding.factoring_props.
-Require Import guarding.conjunct_own_rule.
+Require Import guarding.own_and_own_sep.
 Require Import guarding.internal.wsat_util.
 
 (*
