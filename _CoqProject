@@ -17,6 +17,7 @@ src/guarding/storage_protocol/protocol_relational.v
 src/guarding/storage_protocol/base_storage_opt.v
 
 src/guarding/lib/lifetime.v
+src/guarding/lib/cancellable.v
 
 -Q src/lang lang
 
