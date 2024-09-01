@@ -52,7 +52,7 @@ Proof.
   unfold know_bulk_inv.
   replace (gset_to_gmap () {[i]}) with ( {[ i := () ]} : gmap positive () ).
   - apply big_sepM_singleton.
-  - apply map_eq. intros.
+  - apply map_eq. intros i0.
       have h : Decision (i = i0) by solve_decision. destruct h.
       + subst i0. rewrite lookup_singleton.
         rewrite lookup_gset_to_gmap. unfold guard.
@@ -70,7 +70,7 @@ Proof.
   unfold storage_bulk_inv.
   replace (gset_to_gmap () {[i]}) with ( {[ i := () ]} : gmap positive () ).
   - apply big_sepM_singleton.
-  - apply map_eq. intros.
+  - apply map_eq. intros i0.
       have h : Decision (i = i0) by solve_decision. destruct h.
       + subst i0. rewrite lookup_singleton.
       rewrite lookup_gset_to_gmap. unfold guard.
@@ -85,7 +85,7 @@ Qed.
 Local Lemma gset_to_gmap_union (E F : gset positive)
   : gset_to_gmap () (E ∪ F) = gset_to_gmap () E ∪ gset_to_gmap () F.
   Proof.
-  apply map_eq. intros. rewrite lookup_union.
+  apply map_eq. intros i. rewrite lookup_union.
     rewrite lookup_gset_to_gmap.
     rewrite lookup_gset_to_gmap.
     rewrite lookup_gset_to_gmap.
@@ -98,7 +98,7 @@ Qed.
 Local Lemma gset_to_gmap_disj (E F : gset positive) (disj : E ## F)
   : gset_to_gmap () E ##ₘ gset_to_gmap () F.
 Proof.
-  unfold "##ₘ", map_relation. intros.  unfold option_relation.
+  unfold "##ₘ", map_relation. intros i.  unfold option_relation.
     destruct (gset_to_gmap () E !! i) eqn:x;
     destruct (gset_to_gmap () F !! i) eqn:y; trivial.
     rewrite lookup_gset_to_gmap in x.
@@ -565,7 +565,7 @@ Qed.
 Local Lemma elem_diff_union_singleton (x: positive) (E: coPset)
   (eo: x ∈ E) : ((E ∖ {[ x ]}) ∪ {[ x ]} = E).
 Proof.
-  apply set_eq. intros.  rewrite elem_of_union.
+  apply set_eq. intros x0.  rewrite elem_of_union.
           rewrite elem_of_difference. rewrite elem_of_singleton.
           intuition. { subst x. trivial. }
           have h : Decision (x0 = x) by solve_decision. destruct h; intuition.
@@ -599,7 +599,7 @@ Proof.
   ).
     - typeclasses eauto.
     - typeclasses eauto.
-    - intros. assert (E = E') by set_solver. subst E'.
+    - intros E H1 H2. assert (E = E') by set_solver. subst E'.
         iIntros. iModIntro. iSplitL.
         { iDestruct storage_bulk_inv_empty as "x". iApply "x". done. }
         { iIntros. iModIntro. done. }
@@ -611,7 +611,7 @@ Proof.
       { apply ss. left. set_solver. }
       { iFrame. }
       iMod (m (E ∖ {[x]}) with "kbulk") as "[sbi back2]".
-      { intuition. apply di with (x := x0). set_solver. }
+      { intros x0. intuition. apply di with (x := x0). set_solver. }
       { intro x0. have ss0 := ss x0. set_solver. }
       rewrite storage_bulk_inv_singleton_union; trivial.
       iModIntro. iFrame "si sbi".
@@ -634,7 +634,7 @@ Proof.
       rewrite elem_of_gset_to_coPset.
       intro. apply ss. trivial. }
   iMod (wsat_split_main (gset_to_coPset F ∪ E') F E' with "ki") as "[sbi back2]".
-  { intros. have j := ss x. rewrite elem_of_union. rewrite elem_of_gset_to_coPset.
+  { intros x. have j := ss x. rewrite elem_of_union. rewrite elem_of_gset_to_coPset.
       intuition. }
   { apply di. }
   iModIntro. iFrame "sbi". iIntros "sbi". iMod ("back2" with "sbi") as "_".
@@ -660,7 +660,7 @@ Proof.
   unfold lfguards, lguards_with. iIntros "[upd [g kf]] [p x]".
   iDestruct ("g" $! (P)%I) as "g".
   iMod (wsat_split_superset E F D with "kf") as "[sb back]"; trivial.
-  { intro. have j1 := ss1 x. have j2 := ss2 x. intuition. }
+  { intro x. have j1 := ss1 x. have j2 := ss2 x. intuition. }
   rewrite fancy_updates.uPred_fupd_unseal. unfold fancy_updates.uPred_fupd_def. iIntros "[w eo]".
   iDestruct ("g" with "[p sb]") as "[q g]".
   { iFrame. iIntros. iFrame. }

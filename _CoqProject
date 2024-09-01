@@ -18,6 +18,7 @@ src/guarding/storage_protocol/base_storage_opt.v
 
 src/guarding/lib/lifetime.v
 src/guarding/lib/cancellable.v
+src/guarding/lib/non_atomic_map.v
 
 -Q src/lang lang
 
