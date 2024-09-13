@@ -74,7 +74,7 @@ Context `{!simpGS Σ}.
 
 Definition rw_atomic_inv (γ: gname) (loc_exc loc_rc: loc) : iProp Σ :=
   (∃ exc rc (x: S) ,
-          central γ exc rc x
+          fields γ exc rc x
           ∗ (loc_exc ↦ (LitV (LitInt (match exc with false => 0 | true => 1 end))))
           ∗ (loc_rc ↦ (LitV (LitInt rc)))
   ). 

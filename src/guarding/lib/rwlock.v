@@ -367,7 +367,7 @@ Context {Σ: gFunctors}.
 Context `{@rwlock_logicG S _ Σ}.
 Context `{!invGS Σ}.
 
-Definition central γ (e: bool) (r: Z) (x: S) : iProp Σ := p_own γ (Central e r x).
+Definition fields γ (e: bool) (r: Z) (x: S) : iProp Σ := p_own γ (Central e r x).
 Definition exc_pending γ : iProp Σ := p_own γ ExcPending.
 Definition exc_guard γ : iProp Σ := p_own γ ExcGuard.
 Definition sh_pending γ : iProp Σ := p_own γ ShPending.
@@ -381,7 +381,7 @@ Definition rw_lock_inst (γ: gname) (f: S -> iProp Σ) : iProp Σ :=
 (* Rw-Init *)
 
 Lemma rw_new (x: S) (f: S -> iProp Σ) E
-  : f x ={E}=∗ ∃ γ , rw_lock_inst γ f ∗ central γ false 0 x.
+  : f x ={E}=∗ ∃ γ , rw_lock_inst γ f ∗ fields γ false 0 x.
 Proof. 
   iIntros "fx".
   iMod (logic_init (Central false 0 x) (base_opt_prop_map f) E with "[fx]") as "x".
@@ -391,11 +391,11 @@ Proof.
     unfold interp, rwlock_interp, Central, base_opt_prop_map. iFrame.
   }
   iDestruct "x" as (γ) "x". iModIntro. iExists γ.
-  unfold rw_lock_inst, central. iFrame.
+  unfold rw_lock_inst, fields. iFrame.
 Qed.
 
 Lemma rw_new_ns (x: S) (f: S -> iProp Σ) E (N: namespace)
-  : f x ={E}=∗ ∃ γ , ⌜ γ ∈ (↑N : coPset) ⌝ ∗ rw_lock_inst γ f ∗ central γ false 0 x.
+  : f x ={E}=∗ ∃ γ , ⌜ γ ∈ (↑N : coPset) ⌝ ∗ rw_lock_inst γ f ∗ fields γ false 0 x.
 Proof. 
   iIntros "fx".
   iMod (logic_init_ns (Central false 0 x) (base_opt_prop_map f) E N with "[fx]") as "x".
@@ -406,7 +406,7 @@ Proof.
   }
   iDestruct "x" as (γ) "[%gn x]". iModIntro. iExists γ.
   iSplitL "". { iPureIntro. trivial. }
-  unfold rw_lock_inst, central. iFrame.
+  unfold rw_lock_inst, fields. iFrame.
 Qed.
 
 (* Rw-Exc-Begin *)
@@ -414,9 +414,9 @@ Qed.
 Lemma rw_exc_begin γ f rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ false rc x ={ E }=∗ central γ true rc x ∗ exc_pending γ.
+    fields γ false rc x ={ E }=∗ fields γ true rc x ∗ exc_pending γ.
 Proof.
-  unfold central, exc_pending.
+  unfold fields, exc_pending.
   rewrite <- p_own_op.
   apply logic_update'; trivial.
   apply rw_mov_exc_begin.
@@ -427,11 +427,11 @@ Qed.
 Lemma rw_exc_acquire γ f exc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ exc 0 x ∗ exc_pending γ
+    fields γ exc 0 x ∗ exc_pending γ
       ={ E }=∗ 
-    central γ exc 0 x ∗ exc_guard γ ∗ ▷ f x.
+    fields γ exc 0 x ∗ exc_guard γ ∗ ▷ f x.
 Proof.
-  unfold central, exc_pending, exc_guard, rw_lock_inst.
+  unfold fields, exc_pending, exc_guard, rw_lock_inst.
   rewrite <- p_own_op.
   rewrite <- bi.sep_assoc'.
   rewrite <- p_own_op.
@@ -445,11 +445,11 @@ Qed.
 Lemma rw_exc_release γ f exc rc (x y: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    (central γ exc rc y ∗ exc_guard γ ∗ (▷ f x))
+    (fields γ exc rc y ∗ exc_guard γ ∗ (▷ f x))
       ={ E }=∗
-    central γ false rc x.
+    fields γ false rc x.
 Proof.
-  unfold central, exc_pending, exc_guard, rw_lock_inst.
+  unfold fields, exc_pending, exc_guard, rw_lock_inst.
   rewrite bi.sep_assoc.
   rewrite <- p_own_op.
   replace (f x) with (base_opt_prop_map f (Full x)) by trivial.
@@ -462,11 +462,11 @@ Qed.
 Lemma rw_shared_begin γ f exc rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-      central γ exc rc x
+      fields γ exc rc x
       ={ E }=∗
-      central γ exc (rc+1) x ∗ sh_pending γ.
+      fields γ exc (rc+1) x ∗ sh_pending γ.
 Proof.
-  unfold central, sh_pending.
+  unfold fields, sh_pending.
   rewrite <- p_own_op.
   apply logic_update'; trivial.
   apply rw_mov_shared_begin.
@@ -477,11 +477,11 @@ Qed.
 Lemma rw_shared_acquire γ f rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-      central γ false rc x ∗ sh_pending γ
+      fields γ false rc x ∗ sh_pending γ
       ={ E }=∗
-      central γ false rc x ∗ sh_guard γ x.
+      fields γ false rc x ∗ sh_guard γ x.
 Proof.
-  unfold central, sh_guard, sh_pending.
+  unfold fields, sh_guard, sh_pending.
   rewrite <- p_own_op.
   rewrite <- p_own_op.
   apply logic_update'; trivial.
@@ -493,9 +493,9 @@ Qed.
 Lemma rw_shared_release γ f exc rc (x y: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ exc rc x ∗ sh_guard γ y ={ E }=∗ central γ exc (rc-1) x.
+    fields γ exc rc x ∗ sh_guard γ y ={ E }=∗ fields γ exc (rc-1) x.
 Proof.
-  unfold central, sh_guard, sh_pending.
+  unfold fields, sh_guard, sh_pending.
   rewrite <- p_own_op.
   apply logic_update'; trivial.
   apply rw_mov_shared_release.
@@ -506,9 +506,9 @@ Qed.
 Lemma rw_shared_retry γ f exc rc (x: S) E
   (in_e: γ ∈ E)
   : rw_lock_inst γ f ⊢
-    central γ exc rc x ∗ sh_pending γ ={ E }=∗ central γ exc (rc-1) x.
+    fields γ exc rc x ∗ sh_pending γ ={ E }=∗ fields γ exc (rc-1) x.
 Proof.
-  unfold central, sh_guard, sh_pending.
+  unfold fields, sh_guard, sh_pending.
   rewrite <- p_own_op.
   apply logic_update'; trivial.
   apply rw_mov_shared_retry.
