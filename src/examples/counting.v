@@ -1,6 +1,5 @@
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
-From examples Require Import rwlock_logic.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.

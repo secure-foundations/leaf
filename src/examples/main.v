@@ -1,22 +1,22 @@
 From iris.base_logic.lib Require Import invariants.
-From lang Require Import lang simp adequacy primitive_laws.
-
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
 From iris.proofmode Require Import tactics.
 From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
-From examples Require Import rwlock.
-From examples Require Import rwlock_logic.
+Require Import guarding.guard.
+Require Import guarding.lib.rwlock.
+
+From lang Require Import lang simp adequacy primitive_laws.
+From lang Require Import heap_ra.
+
 From examples Require Import forever.
 From examples Require Import hash_table.
 From guarding Require Import guard_later.
-Require Import guarding.guard.
 From examples Require Import seqs.
 From examples Require Import hash_table_logic.
 From examples Require Import hash_table_raw.
-From lang Require Import heap_ra.
 From examples Require Import misc_tactics.
 
 Definition main: lang.val :=

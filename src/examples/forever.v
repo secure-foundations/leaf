@@ -1,8 +1,5 @@
 From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
-From examples Require Import rwlock_logic.
-
-Require Import guarding.guard.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -18,11 +15,22 @@ From lang Require Import heap_ra.
 From lang Require Import lang.
 From iris Require Import options.
 
+Require Import guarding.guard.
 Require Import guarding.guard_later.
 Require Import examples.misc_tactics.
 Require Import guarding.storage_protocol.protocol.
 Require Import guarding.storage_protocol.inved.
 From iris.algebra Require Import auth.
+
+(** This file shows how to derive the rule
+
+```
+Q ={E}=∗ (True &&{↑ N}&&> ▷ Q)
+```
+
+using a storage protocol. However, this rule is now part of the Leaf core logic, so it's
+only useful academically for an understanding of how storage protocols work.
+*)
 
 Context {Σ: gFunctors}.
 Context `{!simpGS Σ}.
@@ -30,6 +38,23 @@ Context `{!simpGS Σ}.
 Definition FOREVER_NAMESPACE := nroot .@ "forever".
 
 Inductive Trivial := Triv.
+
+Inductive Exc (S: Type) :=
+  | Unknown : Exc S
+  | Yes : S -> Exc S
+  | Fail : Exc S
+.
+Arguments Unknown {_}%type_scope.
+Arguments Yes {_}%type_scope _.
+Arguments Fail {_}%type_scope.
+
+Instance exc_op {S} : Op (Exc S) := λ a b , match a, b with
+  | Unknown, y => y
+  | Fail, y => Fail
+  | Yes m, Unknown => Yes m
+  | Yes _, _ => Fail
+  end
+.
 
 Global Instance exc_valid {A} : Valid (Exc A) := λ t ,
     match t with

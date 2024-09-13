@@ -19,6 +19,7 @@ src/guarding/storage_protocol/base_storage_opt.v
 src/guarding/lib/lifetime.v
 src/guarding/lib/cancellable.v
 src/guarding/lib/non_atomic_map.v
+src/guarding/lib/rwlock.v
 
 -Q src/lang lang
 
@@ -34,7 +35,6 @@ src/lang/tactics.v
 
 -Q src/examples examples
 
-src/examples/rwlock_logic.v
 src/examples/rwlock.v
 src/examples/forever.v
 src/examples/gmap_option.v
