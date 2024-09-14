@@ -3,13 +3,8 @@ From iris.algebra Require Export cmra updates proofmode_classes.
 From iris.base_logic.lib Require Export own iprop.
 From iris.proofmode Require Import base ltac_tactics tactics coq_tactics reduction.
 
-(*
-Context {Σ: gFunctors}.
-Context `{!invGS Σ}.
-*)
-
-Class PInv (A : Type) := pinv : A → Prop.
-Global Hint Mode PInv ! : typeclass_instances.
+Class InternalPInv (A : Type) := pinv : A → Prop.
+Global Hint Mode InternalPInv ! : typeclass_instances.
 Global Instance: Params (@pinv) 2 := {}.
 
 Inductive InvedProtocol (P: Type) :=
@@ -40,13 +35,13 @@ Global Instance inved_protocol_pcore P `{PCore P} `{Unit P} : PCore (InvedProtoc
       | Nah => Some Nah
     end.
 
-Global Instance inved_protocol_valid P `{PInv P} `{Op P} : Valid (InvedProtocol P) | 0 :=
+Global Instance inved_protocol_valid P `{InternalPInv P} `{Op P} : Valid (InvedProtocol P) | 0 :=
    λ x , match x with
     | Inved a => ∃ b , pinv (a ⋅ b)
     | Nah => True
    end.
    
-Global Instance inved_protocol_op P `{PInv P} `{Op P} : Op (InvedProtocol P) | 0 :=
+Global Instance inved_protocol_op P `{InternalPInv P} `{Op P} : Op (InvedProtocol P) | 0 :=
    λ x y , 
     match x with
       | Inved a =>
@@ -66,7 +61,7 @@ Qed.
 *)
 
 Lemma inved_incl_to_incl {P} 
-    `{Equiv P, Op P, PInv P}
+    `{Equiv P, Op P, InternalPInv P}
     (a b : P) (mle : Inved a ≼ Inved b) : a ≼ b \/ b ≡ a.
 Proof.
   unfold "≼".
@@ -79,7 +74,7 @@ Proof.
 Qed.
 
 Lemma incl_to_inved_incl {P} 
-    `{Equiv P, Op P, PInv P}
+    `{Equiv P, Op P, InternalPInv P}
     (a b : P) (mle : a ≼ b) : Inved a ≼ Inved b.
 Proof.
   unfold "≼".
@@ -104,28 +99,24 @@ Proof.
       + intros a1 a2. setoid_rewrite a1. trivial.
 Qed.
 
-Record ProtocolMixin P
-    `{Equiv P, PCore P, Op P, Valid P, PInv P, Unit P}
+Record InternalProtocolMixin P
+    `{Equiv P, PCore P, Op P, Valid P, InternalPInv P, Unit P}
     {equ: @Equivalence P (≡)}
 := {
     protocol_ra_mixin: RAMixin P;
-    
     (*protocol_unit_valid : ✓ (ε : P);
     protocol_pcore_unit : pcore (ε : P) ≡ Some (ε : P);*)
-    
     protocol_unit_left_id : LeftId equiv (ε : P) op;
-    
-    inv_implies_valid: ∀ (p: P) , pinv p -> ✓ p;
-    inv_proper: Proper ((≡) ==> impl) (@pinv P _);
+    internal_inv_proper: Proper ((≡) ==> impl) (@pinv P _);
 }.
 
 Definition inved_protocol_ra_mixin {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, InternalPInv P, Valid P, Unit P}
     {equ: @Equivalence P (≡)}
-    (protocol_mixin: ProtocolMixin P) : RAMixin (InvedProtocol P).
+    (internal_protocol_mixin: InternalProtocolMixin P) : RAMixin (InvedProtocol P).
 Proof.
-  destruct protocol_mixin as [protocol_ra_mixin0
-    protocol_unit_left_id0 inv_implies_valid0 inv_proper0].
+  destruct internal_protocol_mixin as [protocol_ra_mixin0
+    protocol_unit_left_id0 internal_inv_proper0].
   have protocol_ra_mixin1 := protocol_ra_mixin0.
   destruct protocol_ra_mixin0 as [ra_op_proper ra_core_proper ra_validN_proper ra_assoc ra_comm ra_pcore_l ra_pcore_idemp ra_pcore_mono ra_valid_op_l].
   split.
@@ -181,7 +172,7 @@ Proof.
     + inversion ipe.
     + intro h. destruct h as [b ipb]. exists b.
       unfold inved_protocol_equiv in ipe.
-      eapply inv_proper0. 2: { apply ipb. }
+      eapply internal_inv_proper0. 2: { apply ipb. }
       assert (p ⋅ b ≡ b ⋅ p) as X. { eapply ra_comm. }
       assert (p0 ⋅ b ≡ b ⋅ p0) as Y. { eapply ra_comm. }
       setoid_rewrite X. setoid_rewrite Y.
@@ -292,7 +283,7 @@ Proof.
       destruct eb as [b eb].
       exists (p0 ⋅ b).
 
-      eapply inv_proper0. 2: { apply eb. }
+      eapply internal_inv_proper0. 2: { apply eb. }
 
       symmetry. apply ra_assoc.
 Qed.
@@ -304,28 +295,28 @@ Canonical Structure inved_protocolO
     := discreteO (InvedProtocol P).
     
 Canonical Structure inved_protocolR {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, InternalPInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
-    (protocol_mixin: ProtocolMixin P)
+    (internal_protocol_mixin: InternalProtocolMixin P)
     :=
-   discreteR (InvedProtocol P) (inved_protocol_ra_mixin protocol_mixin). 
+   discreteR (InvedProtocol P) (inved_protocol_ra_mixin internal_protocol_mixin). 
 
 Global Instance inved_protocol_unit P : Unit (InvedProtocol P) := Nah.
 
 
 Definition inved_protocol_ucmra_mixin {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, InternalPInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
-    (protocol_mixin: ProtocolMixin P) :
+    (internal_protocol_mixin: InternalProtocolMixin P) :
       @UcmraMixin (InvedProtocol P)
-       (cmra_dist (inved_protocolR protocol_mixin))
+       (cmra_dist (inved_protocolR internal_protocol_mixin))
        (inved_protocol_equiv P)
        (inved_protocol_pcore P)
        (inved_protocol_op P)
        (inved_protocol_valid P)
        (inved_protocol_unit P).
 Proof.
-  destruct protocol_mixin.
+  destruct internal_protocol_mixin.
   split.
   - unfold ε, "✓", cmra_valid, inved_protocol_unit, inved_protocol_valid. trivial.
   - unfold LeftId, ε. intros. unfold inved_protocol_unit.
@@ -334,35 +325,19 @@ Proof.
 Qed.
 
 Canonical Structure inved_protocolUR {P}
-    `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}
+    `{Equiv P, PCore P, Op P, InternalPInv P, Valid P, Unit P}
     {equ: Equivalence (≡@{P})}
-    (protocol_mixin: ProtocolMixin P) : ucmra
+    (internal_protocol_mixin: InternalProtocolMixin P) : ucmra
     :=
     @Ucmra'
       (InvedProtocol P)
        (inved_protocol_equiv P)
-       (cmra_dist (inved_protocolR protocol_mixin))
+       (cmra_dist (inved_protocolR internal_protocol_mixin))
        (inved_protocol_pcore P)
        (inved_protocol_op P)
        (inved_protocol_valid P)
-       (cmra_validN (inved_protocolR protocol_mixin))
+       (cmra_validN (inved_protocolR internal_protocol_mixin))
        (inved_protocol_unit P)
-       (cmra_ofe_mixin (inved_protocolR protocol_mixin))
-       (cmra_mixin (inved_protocolR protocol_mixin))
-      (inved_protocol_ucmra_mixin protocol_mixin).
-
-(*
-Section Inved.
-
-
-  Context `{Equiv P, PCore P, Op P, PInv P, Valid P, Unit P}.
-  Context {equ: Equivalence (≡@{P})}.
-  Context {protocol_mixin: ProtocolMixin P}.
-
-  Context {Σ: gFunctors}.
-  Context `{!inG Σ (authUR (inved_protocolUR protocol_mixin))}.
-  
-
-End Inved.
-
-*)
+       (cmra_ofe_mixin (inved_protocolR internal_protocol_mixin))
+       (cmra_mixin (inved_protocolR internal_protocol_mixin))
+      (inved_protocol_ucmra_mixin internal_protocol_mixin).

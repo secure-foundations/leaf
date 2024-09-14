@@ -1,5 +1,4 @@
 From iris.base_logic.lib Require Import invariants.
-From lang Require Import lang simp adequacy primitive_laws.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -10,22 +9,15 @@ From iris.proofmode Require Import reduction.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
-From lang Require Import notation tactics class_instances.
-From lang Require Import heap_ra.
-From lang Require Import lang.
-From iris Require Import options.
 From iris.algebra Require Import auth.
 
 Require Import guarding.guard.
-
 Require Import guarding.storage_protocol.protocol.
-Require Import guarding.storage_protocol.inved.
 
 Require Import examples.misc_tactics.
 
-
 Context {Σ: gFunctors}.
-Context `{!simpGS Σ}.
+Context `{!invGS Σ}.
 
 Definition COUNT_NAMESPACE := nroot .@ "count".
 
@@ -57,7 +49,7 @@ Proof. split.
   - unfold Transitive, equiv, co_equiv. intros x y z a b. subst x. trivial.
 Qed.
 
-Global Instance co_inv : PInv Co := λ t , match t with
+Global Instance co_inv : SPInv Co := λ t , match t with
   | Refs n => n = 0
   | Counters count counters => count = 0
 end.
@@ -82,45 +74,33 @@ Proof.
   - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.*)
 Qed.
 
-Definition count_protocol_mixin : @ProtocolMixin Co 
-      co_equiv co_pcore co_op co_valid _ _ _.
-Proof. split.
-  - exact count_ra_mixin.
-  - unfold LeftId. intros x. unfold ε, co_unit, "⋅", co_op, "≡", co_equiv. destruct x; trivial.
-      f_equal. lia.
-  - intros p X. unfold "✓", co_valid. destruct p; trivial.
-  - unfold Proper, "==>", impl. intros x y X. unfold "≡", co_equiv in X.
-      subst x. trivial.
-Qed.
-  
-Local Instance co_interp_instance : Interp Co nat := λ co , 
+Local Instance co_interp_instance : SPInterp Co nat := λ co , 
   match co with
   | Refs _ => 0%nat
   | Counters _ c => c + 1
   end.
 
-Definition count_storage_mixin : @StorageMixin Co nat
-    co_equiv co_pcore co_op co_valid _ _ _ _ _ _ _ _ _.
+Local Instance count_storage_mixin_ii : StorageMixinII Co nat.
 Proof. split.
-  - exact count_protocol_mixin.
-  - apply nat_ra_mixin.
+  - exact count_ra_mixin.
+  - exact nat_ra_mixin.
+  - unfold LeftId. intros x. unfold ε, co_unit, "⋅", co_op, "≡", co_equiv. destruct x; trivial.
+      f_equal. lia.
   - unfold LeftId. intros x. unfold ε, nat_unit_instance, "⋅", nat_op_instance. trivial.
-  - unfold Proper, "==>". intros. unfold "≡", co_equiv in H. destruct x, y; trivial; try contradiction; try discriminate.
-    inversion H. trivial.
+  - unfold Proper, "==>". intros x y Heq. unfold sp_inv, co_inv. destruct x, y; trivial;
+      try contradiction; try discriminate; inversion Heq; trivial.
+  - unfold Proper, "==>". intros x y Heq. unfold "≡", co_equiv in Heq. destruct x, y; trivial; try contradiction; try discriminate; inversion Heq; trivial.
   - intros. unfold "✓", nat_valid_instance. trivial.
 Qed.
 
 Class co_logicG Σ :=
     {
-      co_logic_inG : inG Σ 
-        (authUR (inved_protocolUR (protocol_mixin Co (nat) (count_storage_mixin))))
+      #[local] count_sp_inG ::
+        sp_logicG (storage_mixin_from_ii count_storage_mixin_ii) Σ
     }.
-Local Existing Instance co_logic_inG.
-
 
 Definition co_logicΣ : gFunctors := #[
-  GFunctor
-        (authUR (inved_protocolUR (protocol_mixin Co (nat) (count_storage_mixin))))
+  sp_logicΣ (storage_mixin_from_ii count_storage_mixin_ii)
 ].
 
 Global Instance subG_co_logicΣ {Σ} : subG co_logicΣ Σ → co_logicG Σ.
@@ -129,7 +109,7 @@ Proof. solve_inG. Qed.
 Section Counting.
 
 Context {Σ: gFunctors}.
-Context `{@co_logicG Σ}.
+Context `{co_in_Σ: !@co_logicG Σ}.
 Context `{!invGS Σ}.
 
 Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
@@ -141,7 +121,7 @@ Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
 Lemma sep_pow_additive (a b : nat) (Q: iProp Σ)
     : sep_pow (a + b) Q ≡ (sep_pow a Q ∗ sep_pow b Q)%I.
 Proof.
-  induction b.
+  induction b as [|b IHb].
   - simpl. replace (a + 0) with a by lia.
     iIntros. iSplit. { iIntros "a".  iFrame. } iIntros "[a b]". iFrame.
   - simpl. replace (a + S b) with (S (a + b)) by lia. simpl.
@@ -162,32 +142,24 @@ Proof.  split.
   intros a b x. unfold "⋅", nat_op_instance. unfold family. apply sep_pow_additive.
 Qed.
 
-Definition m (γ: gname) (Q: iProp Σ) := maps γ (family Q).
+Definition m (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := count_sp_inG) γ (family Q).
 
-Definition own_counter (γ: gname) (z: Z) := @p_own
-    nat _ _ _ _ _ Co _ _ _ _ _ _ _ _
-    count_storage_mixin Σ _
-    γ (Counters z 0).
+Definition own_counter (γ: gname) (z: Z) := sp_own (sp_i := count_sp_inG) γ (Counters z 0).
     
-Definition own_ref (γ: gname) := @p_own
-    nat _ _ _ _ _ Co _ _ _ _ _ _ _ _
-    count_storage_mixin Σ _
-    γ (Refs 1).
+Definition own_ref (γ: gname) := sp_own (sp_i := count_sp_inG) γ (Refs 1).
 
 Lemma count_init E (Q: iProp Σ)
   : ⊢ True ={E}=∗ ∃ (γ: gname) , m γ Q.
 Proof.
   iIntros "t".
-  iDestruct (@logic_init_ns nat _ _ _ _ _ Co _ _ _ _ _ _ _ _ _
-      count_storage_mixin Σ _ _
-      (Refs 0)
+  iDestruct (sp_alloc_ns (sp_i := count_sp_inG) (Refs 0) ε
       (family Q)
       E
       COUNT_NAMESPACE
       with "[t]") as "x".
-  { unfold pinv, co_inv. trivial. }
+  { unfold sp_inv, co_inv. split; trivial. unfold sp_inv. trivial. }
   { apply wf_prop_map_family. }
-  { unfold family. unfold interp, co_interp_instance. unfold sep_pow. iFrame. }
+  { unfold family. unfold sp_interp, co_interp_instance. unfold sep_pow. iFrame. }
   iMod "x". iModIntro.
   iDestruct "x" as (γ) "[%inn [a b]]".
   iExists γ.
@@ -198,21 +170,21 @@ Lemma co_deposit (R: iProp Σ) γ
   : m γ R ⊢ R ={{[γ]}}=∗ own_counter γ 0.
 Proof.
   iIntros "#m q".
-  iDestruct (logic_deposit (Refs 0) (Counters 0 0) 1 _ _ with "m [q]") as "x".
-  { unfold storage_protocol_deposit. intros q Y. split.
-    { unfold pinv, co_inv in *. destruct q.
+  iDestruct (sp_deposit (Refs 0) (Counters 0 0) 1 _ _ with "m [q]") as "x".
+  { rewrite eq_storage_protocol_deposit_ii. intros q Y. split.
+    { unfold sp_inv, co_inv in *. destruct q.
       { unfold "⋅", co_op, "⋅", co_op in *. lia. }
       { unfold "⋅", co_op, "⋅", co_op in *. lia. }
     }
     split.
     { unfold "✓", nat_valid_instance. trivial. }
-    { unfold interp, co_interp_instance, "⋅", co_op in *.
+    { unfold sp_interp, co_interp_instance, "⋅", co_op in *.
         destruct q.
         { unfold "⋅", co_op, "≡", nat_equiv_instance, nat_op_instance. lia. }
         unfold nat_op_instance. f_equiv. simpl. trivial.
     }
   }
-  { iSplitR. { iDestruct (p_own_unit with "m") as "u". unfold ε, co_unit. iFrame "u". }
+  { iSplitR. { iDestruct (sp_own_unit with "m") as "u". unfold ε, co_unit. iFrame "u". }
       { iModIntro. unfold family, sep_pow, sep_pow. iFrame "q". }
   }
   iMod "x". iModIntro. iFrame "x".
@@ -221,7 +193,7 @@ Qed.
 Lemma co_join z γ :
   (own_counter γ z) ∗ (own_ref γ) ⊣⊢ own_counter γ (z - 1).
 Proof.
-  setoid_rewrite <- p_own_op.
+  setoid_rewrite <- sp_own_op.
   unfold own_counter.
   trivial.
 Qed.
@@ -230,13 +202,13 @@ Lemma co_withdraw (R: iProp Σ) γ :
   m γ R ⊢ own_counter γ 0 ={{[γ]}}=∗ ▷ R.
 Proof.
   iIntros "#m q".
-  iDestruct (logic_withdraw (Counters 0 0) (Refs 0) 1 _ _ with "m [q]") as "x".
-  { unfold storage_protocol_withdraw. intros q Y. split.
-    { unfold pinv, co_inv in *. destruct q.
+  iDestruct (sp_withdraw (Counters 0 0) (Refs 0) 1 _ _ with "m [q]") as "x".
+  { rewrite eq_storage_protocol_withdraw_ii. intros q Y. split.
+    { unfold sp_inv, co_inv in *. destruct q.
       { unfold "⋅", co_op in *. lia. }
       { unfold "⋅", co_op in *. lia. }
     }
-    unfold interp, co_interp_instance, "⋅", co_op, nat_op_instance. destruct q.
+    unfold sp_interp, co_interp_instance, "⋅", co_op, nat_op_instance. destruct q.
       - f_equal.
       - f_equal.
   } 
@@ -258,14 +230,14 @@ Proof.
     unfold family, sep_pow. iIntros. iSplit. { iIntros. iFrame. } iIntros "[x y]". iFrame.
   }
   setoid_rewrite X at 2.
-  apply logic_guard.
+  apply sp_guard.
   2: { set_solver. }
-  unfold storage_protocol_guards. intro co. unfold "≼", pinv, co_inv.
+  rewrite eq_storage_protocol_guards_ii. intro co. unfold "≼", sp_inv, co_inv.
   intro Y. apply nat_ge_to_exists.
   unfold "⋅" in *.
   unfold co_op in *. destruct co.
   - lia.
-  - unfold interp, co_interp_instance. lia.
+  - unfold sp_interp, co_interp_instance. lia.
 Qed.
 
 End Counting.

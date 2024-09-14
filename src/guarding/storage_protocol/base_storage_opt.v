@@ -1,4 +1,3 @@
-Require Import guarding.storage_protocol.inved.
 Require Import guarding.storage_protocol.protocol.
 From iris.proofmode Require Import base ltac_tactics tactics coq_tactics reduction.
 

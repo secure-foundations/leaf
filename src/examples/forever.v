@@ -1,5 +1,4 @@
 From iris.base_logic.lib Require Import invariants.
-From lang Require Import lang simp adequacy primitive_laws.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -10,15 +9,12 @@ From iris.proofmode Require Import reduction.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
-From lang Require Import notation tactics class_instances.
-From lang Require Import heap_ra.
-From lang Require Import lang.
 From iris Require Import options.
 
 Require Import guarding.guard.
+Require Import guarding.tactics.
 Require Import examples.misc_tactics.
 Require Import guarding.storage_protocol.protocol.
-Require Import guarding.storage_protocol.inved.
 From iris.algebra Require Import auth.
 
 (** This file shows how to derive the rule
@@ -30,9 +26,6 @@ Q ={E}=∗ (True &&{↑ N}&&> ▷ Q)
 using a storage protocol. However, this rule is now part of the Leaf core logic, so it's
 only useful academically for an understanding of how storage protocols work.
 *)
-
-Context {Σ: gFunctors}.
-Context `{!simpGS Σ}.
 
 Definition FOREVER_NAMESPACE := nroot .@ "forever".
 
@@ -77,20 +70,20 @@ Global Instance exc_pcore A : PCore (Exc A) := λ a , None.
 Global Instance equ_exc : @Equivalence (Exc ()) (≡).
 Proof. split.
   - unfold Reflexive. intro x. destruct x; trivial.
-  - unfold Symmetric. intro x. destruct x, y; trivial.
-  - unfold Transitive. intro x. destruct x, y, z; trivial.
+  - unfold Symmetric. intros x y. destruct x, y; trivial.
+  - unfold Transitive. intros x y z. destruct x, y, z; trivial.
 Qed.
 
 Definition exc_ra_mixin {A} `{Equiv A} `{@Equivalence A (≡)} : RAMixin (Exc A).
 Proof. split.
- - intros. unfold Proper, "==>".  intros x0 y. destruct x0, x, y; trivial.
+ - intros x. unfold Proper, "==>".  intros x0 y. destruct x0, x, y; trivial.
     unfold "⋅", exc_op. intro. unfold "≡", exc_equiv. trivial.
  - unfold pcore, exc_pcore. intros. discriminate.
  - unfold Proper, equiv, "==>", valid, exc_equiv, exc_valid, impl. intros x y.
       destruct x; destruct y; trivial.
- - unfold Assoc. intros. unfold "⋅", exc_op. destruct x, y, z; trivial;
+ - unfold Assoc. intros x y z. unfold "⋅", exc_op. destruct x, y, z; trivial;
     unfold "≡", exc_equiv; trivial.
- - unfold Comm. intros. unfold "⋅", exc_op. destruct x, y; trivial;
+ - unfold Comm. intros x y. unfold "⋅", exc_op. destruct x, y; trivial;
     unfold "≡", exc_equiv; trivial.
  - unfold pcore, exc_pcore. intros. discriminate.
  - unfold pcore, exc_pcore. intros. discriminate.
@@ -104,14 +97,14 @@ Global Instance trivial_equiv : Equiv Trivial := λ a b , a = b.
 Global Instance trivial_pcore : PCore Trivial := λ a , None.
 Global Instance trivial_valid : Valid Trivial := λ a , True.
 Global Instance trivial_op : Op Trivial := λ a b , Triv.
-Global Instance trivial_pinv : PInv Trivial := λ a , True.
+Global Instance trivial_pinv : SPInv Trivial := λ a , True.
 
 Instance trivial_unit : Unit Trivial := Triv.
 
-Global Instance trivial_interp : Interp Trivial (Exc ()) := λ t , Yes ().
+Global Instance trivial_interp : SPInterp Trivial (Exc ()) := λ t , Yes ().
 
-Lemma trivial_valid_interp (p: Trivial) : ✓ (interp p : Exc ()).
-Proof. unfold "✓", exc_valid, interp, trivial_interp. trivial. Qed.
+Lemma trivial_valid_interp (p: Trivial) : ✓ (sp_interp p : Exc ()).
+Proof. unfold "✓", exc_valid, sp_interp, trivial_interp. trivial. Qed.
 
 Definition trivial_ra_mixin : RAMixin Trivial.
 Proof. split.
@@ -126,34 +119,25 @@ Proof. split.
   - trivial.
 Qed.
 
-Definition trivial_protocol_mixin : ProtocolMixin Trivial.
+Definition trivial_storage_mixin_ii : StorageMixinII Trivial (Exc ()).
 Proof. split.
   - apply trivial_ra_mixin.
-  - unfold LeftId. intro. destruct x; trivial.
-  - intro p. destruct p. intro. trivial.
-  - unfold Proper, "==>", impl. intros x y. destruct y. trivial.
-Qed.
-
-Definition trivial_storage_mixin : StorageMixin Trivial (Exc ()).
-Proof. split.
-  - apply trivial_protocol_mixin.
   - apply exc_ra_mixin.
   - unfold LeftId. intro x. destruct x; trivial.
-  - unfold Proper, "==>". intros x y. destruct x, y. trivial.
-  - intros. destruct p. trivial.
+  - unfold LeftId. intro x. destruct x; trivial.
+  - intro p. destruct p. intro. trivial.
+  - unfold Proper, "==>", impl. intros x y. destruct y. trivial.
+  - intros p. destruct p. trivial.
 Qed.
 
 Class forever_logicG Σ :=
     {
-      forever_logic_inG : inG Σ 
-        (authUR (inved_protocolUR (protocol_mixin (Trivial) (Exc ()) (trivial_storage_mixin))))
+      #[local] forever_sp_inG ::
+        sp_logicG (storage_mixin_from_ii trivial_storage_mixin_ii) Σ
     }.
-Local Existing Instance forever_logic_inG.
-
 
 Definition forever_logicΣ : gFunctors := #[
-  GFunctor
-        (authUR (inved_protocolUR (protocol_mixin (Trivial) (Exc ()) (trivial_storage_mixin))))
+  sp_logicΣ (storage_mixin_from_ii trivial_storage_mixin_ii)
 ].
 
 Global Instance subG_forever_logicΣ {Σ} : subG forever_logicΣ Σ → forever_logicG Σ.
@@ -162,7 +146,7 @@ Proof. solve_inG. Qed.
 Section Forever.
 
 Context {Σ: gFunctors}.
-Context `{@forever_logicG Σ}.
+Context `{f_in_Σ: @forever_logicG Σ}.
 Context `{!invGS Σ}.
 
 Definition family (Q: iProp Σ) (e: Exc ()) : iProp Σ :=
@@ -195,38 +179,29 @@ Qed.
 Lemma storage_protocol_guards_triv
   : storage_protocol_guards (ε: Trivial) (Yes ()).
 Proof.
-  unfold storage_protocol_guards. intro q. destruct q. unfold "⋅", trivial_op. unfold interp.
-  unfold trivial_interp. intro. unfold "≼". exists ε. trivial.
+  unfold storage_protocol_guards. intro q. destruct q. unfold "⋅", trivial_op.
+  intros t [spr speq]. exists (ε). setoid_rewrite <- speq. trivial.
 Qed.
 
 Lemma make_forever (Q: iProp Σ) (E: coPset)
   : ⊢ Q ={E}=∗ (True &&{↑ FOREVER_NAMESPACE : coPset}&&> ▷ Q).
-Proof using H invGS0 Σ.
+Proof using f_in_Σ.
   iIntros "q".
-  replace (Q) with (family Q (interp ε)) at 1 by trivial.
-  assert (@pinv Trivial trivial_pinv ε) as J.
-  { unfold pinv, ε, trivial_unit, trivial_pinv. trivial. }
-  iMod (logic_init_ns (ε : Trivial) (family Q) E (FOREVER_NAMESPACE) J with "q") as "r".
+  replace (Q) with (family Q (sp_interp ε)) at 1 by trivial.
+  assert (@sp_inv Trivial trivial_pinv ε) as J.
+  { unfold sp_inv, ε, trivial_unit, trivial_pinv. trivial. }
+  iMod (sp_alloc_ns (ε : Trivial) (Yes ()) (family Q) E (FOREVER_NAMESPACE) with "q") as "r". { split; trivial. }
   { apply wf_prop_map_family. }
   iDestruct "r" as (γ) "[%inns [#m p]]".
-  iDestruct (logic_guard (ε : Trivial) (Yes ()) γ (↑ FOREVER_NAMESPACE) (family Q) with "m")
+  iDestruct (sp_guard (ε : Trivial) (Yes ()) γ (↑ FOREVER_NAMESPACE) (family Q) with "m")
       as "g".
   { apply storage_protocol_guards_triv. }
   { trivial. }
   unfold family at 2.
-  iDestruct (p_own_unit with "m") as "u".
-  iDestruct (guards_refl (↑FOREVER_NAMESPACE) (True)%I) as "tt".
-  Set Printing Implicit.
-  iDestruct (guards_include_pers (□ p_own γ (@ε Trivial trivial_unit)) (True)%I (True)%I
-      (↑FOREVER_NAMESPACE) with "[p tt]") as "tu".
-      { iFrame "tt". iModIntro. iFrame "u". }
-  assert ((True ∗ □ p_own γ (ε: Trivial))%I ⊣⊢ ((p_own γ (ε: Trivial)) ∗ □ p_own γ (ε: Trivial))%I) as Z.
-  { iIntros. iSplit. { iIntros "[t #o]". iFrame "o". } { iIntros "[p #o]". iFrame "o". } }
-  rewrite Z.
-  iDestruct (guards_weaken_rhs_l with "tu") as "tk".
-  iModIntro.
-  iApply guards_transitive.
-  { iFrame "tk". iFrame "g". }
+  iDestruct (sp_own_unit with "m") as "u".
+  leaf_hyp "g" lhs to (True)%I as "g1".
+  - leaf_by_sep. iIntros. iFrame "#". iIntros. done.
+  - iFrame "g1". iModIntro. done.
 Qed.
 
 End Forever.

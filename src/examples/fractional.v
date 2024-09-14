@@ -6,7 +6,6 @@ Require Import Coq.ZArith.Int.
 Undelimit Scope Int_scope.
 
 From iris.base_logic.lib Require Import invariants.
-From lang Require Import lang simp adequacy primitive_laws.
 
 From iris.base_logic Require Export base_logic.
 From iris.program_logic Require Export weakestpre.
@@ -17,21 +16,16 @@ From iris.proofmode Require Import reduction.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import class_instances.
 From iris.program_logic Require Import ectx_lifting.
-From lang Require Import notation tactics class_instances.
-From lang Require Import heap_ra.
-From lang Require Import lang.
 From iris Require Import options.
 
 Require Import guarding.guard.
 Require Import guarding.storage_protocol.protocol.
-Require Import guarding.storage_protocol.inved.
 From iris.algebra Require Import auth.
 
 Require Import examples.misc_tactics.
 
-
 Context {Σ: gFunctors}.
-Context `{!simpGS Σ}.
+Context `{!invGS Σ}.
 
 Definition FRAC_NAMESPACE := nroot .@ "fractional".
 
@@ -40,7 +34,7 @@ Definition frac := option Qp.
 Definition is_int (q: Qp) :=
     inject_Z (Qceiling (Qp_to_Qc q)) == Qp_to_Qc q.
 
-Global Instance frac_inv : PInv frac := λ t , match t with
+Global Instance frac_inv : SPInv frac := λ t , match t with
   | None => True
   | Some q => is_int q
 end.
@@ -85,29 +79,27 @@ Instance option_equiv {T} `{p: Equiv T} : Equiv (option T) := λ a b ,
 Definition option_ra_mixin {T} `{Equiv T, PCore T, Op T, Valid T} {equ: @Equivalence T (≡)} (m: RAMixin T)
     : RAMixin (option T).
 Proof.
-  destruct m. split.
-  - intro. unfold Proper, "==>". intros. destruct x, x0, y; trivial.
+  split.
+  - intro x. unfold Proper, "==>". intros x0 y Heq. destruct x, x0, y; trivial.
       + unfold "⋅", option_op. unfold "≡", option_equiv.
-          unfold "≡", option_equiv in H3.
-          apply ra_op_proper. trivial.
-      + unfold "≡", option_equiv in H3. contradiction.
-      + unfold "≡", option_equiv in H3. contradiction.
+          unfold "≡", option_equiv in Heq.
+          apply (ra_op_proper _ m). trivial.
+      + unfold "≡", option_equiv in Heq. contradiction.
+      + unfold "≡", option_equiv in Heq. contradiction.
       + unfold "≡", "⋅", option_equiv, option_op. trivial.
   - intros x y cx h j. unfold pcore, option_pcore in j. discriminate.
   - unfold Proper, "==>", impl. intros x y J. destruct x, y; trivial.
-      + unfold "✓", option_valid. apply ra_validN_proper.
+      + unfold "✓", option_valid. apply (ra_validN_proper _ m).
           unfold "≡", option_equiv in J. trivial.
       + intro. unfold "✓", option_valid. trivial.
       + unfold "≡", option_equiv in J. contradiction.
-  - unfold Assoc. intros x y z. destruct x, y, z; unfold "⋅", option_op, "≡", option_equiv;
-      trivial.
-  - unfold Comm. intros x y. destruct x, y; unfold "⋅", option_op, "≡", option_equiv;
-      trivial.
+  - destruct m. unfold Assoc. intros x y z. destruct x, y, z; unfold "⋅", option_op, "≡", option_equiv; trivial.
+  - destruct m. unfold Comm. intros x y. destruct x, y; unfold "⋅", option_op, "≡", option_equiv; trivial.
   - intros x cx X. unfold pcore, option_pcore in X. discriminate.
   - intros x cx X. unfold pcore, option_pcore in X. discriminate.
   - intros x y cx r X. unfold pcore, option_pcore in X. discriminate.
   - unfold "✓", option_valid, "⋅", option_op. intros x y X. destruct x, y; trivial.
-      apply (ra_valid_op_l _ _ X). 
+      apply (ra_valid_op_l _ m _ _ X). 
 Qed.
   
 Local Instance frac_valid_instance : Valid Qp := λ x, True.
@@ -148,49 +140,38 @@ Proof.
   (*- unfold Assoc. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.
   - unfold Comm. intros; unfold "⋅", nat_op_instance, "≡", nat_equiv_instance. lia.*)
 Qed.
-
-Definition frac_protocol_mixin : @ProtocolMixin (option Qp)
-      option_equiv option_pcore option_op option_valid _ _ _.
-Proof. split.
-  - exact (option_ra_mixin frac_ra_mixin).
-  - unfold LeftId. intros x. unfold ε, option_unit, "⋅", option_op, "≡", option_equiv.
-      destruct x; trivial.
-  - intros p X. unfold "✓", option_valid. destruct p; trivial. unfold "✓", frac_valid_instance.
-      trivial.
-  - unfold Proper, "==>", impl. intros x y X. unfold "≡", option_equiv in X.
-      destruct x, y; trivial.
-      + unfold "≡", frac_equiv_instance in X.  subst q. trivial.
-      + contradiction.
-      + contradiction.
-Qed.
   
-Local Instance frac_interp_instance : Interp (option Qp) nat := λ qopt , 
+Local Instance frac_interp_instance : SPInterp (option Qp) nat := λ qopt , 
   match qopt with
   | None => 0%nat
   | Some q => Z.to_nat (Qceiling (Qp_to_Qc q))
   end.
 
-Definition frac_storage_mixin : @StorageMixin (option Qp) nat
-    option_equiv option_pcore option_op option_valid _ _ _ _ _ _ _ _ _.
+Global Instance frac_storage_mixin_ii : @StorageMixinII (option Qp) nat
+    option_equiv option_pcore option_op option_valid _ _ _ _ _ _ _ _ _ _.
 Proof. split.
-  - exact frac_protocol_mixin.
-  - apply nat_ra_mixin.
+  - exact (option_ra_mixin frac_ra_mixin).
+  - exact nat_ra_mixin.
+  - unfold LeftId. intros x. unfold ε, option_unit, "⋅", option_op, "≡", option_equiv.
+      destruct x; trivial.
   - unfold LeftId. intros x. unfold ε, nat_unit_instance, "⋅", nat_op_instance. trivial.
-  - unfold Proper, "==>". intros. unfold "≡", option_equiv in H. destruct x, y; trivial; try contradiction. unfold "≡", frac_equiv_instance in H. subst q. trivial.
+  - intros p X eq. destruct p; trivial.
+      + unfold sp_inv, frac_inv. destruct X as [X|].
+        * inversion eq. trivial.
+        * inversion eq.
+      + destruct X. * inversion eq. * trivial.
+  - unfold Proper, "==>". intros x y Heq. unfold "≡", option_equiv in Heq. destruct x, y; trivial; try contradiction. unfold "≡", frac_equiv_instance in Heq. rewrite Heq. trivial.
   - intros. unfold "✓", nat_valid_instance. trivial.
 Qed.
 
 Class frac_logicG Σ :=
     {
-      frac_logic_inG : inG Σ 
-        (authUR (inved_protocolUR (protocol_mixin (option Qp) (nat) (frac_storage_mixin))))
+      #[local] frac_sp_inG ::
+        sp_logicG (storage_mixin_from_ii frac_storage_mixin_ii) Σ
     }.
-Local Existing Instance frac_logic_inG.
-
 
 Definition frac_logicΣ : gFunctors := #[
-  GFunctor
-        (authUR (inved_protocolUR (protocol_mixin (option Qp) (nat) (frac_storage_mixin))))
+  sp_logicΣ (storage_mixin_from_ii frac_storage_mixin_ii)
 ].
 
 Global Instance subG_frac_logicΣ {Σ} : subG frac_logicΣ Σ → frac_logicG Σ.
@@ -211,7 +192,7 @@ Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
 Lemma sep_pow_additive (a b : nat) (Q: iProp Σ)
     : sep_pow (a + b) Q ≡ (sep_pow a Q ∗ sep_pow b Q)%I.
 Proof.
-  induction b.
+  induction b as [|b IHb].
   - simpl. replace (a + 0) with a by lia.
     iIntros. iSplit. { iIntros "a".  iFrame. } iIntros "[a b]". iFrame.
   - simpl. replace (a + S b) with (S (a + b)) by lia. simpl.
@@ -232,35 +213,29 @@ Proof.  split.
   intros a b x. unfold "⋅", nat_op_instance. unfold family. apply sep_pow_additive.
 Qed.
 
-Definition m (γ: gname) (Q: iProp Σ) := @maps
-      nat _ _ _ _ _ frac _ _ _ _ _ _ _ _ frac_storage_mixin Σ _ _
-  γ (family Q).
+Definition m (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := frac_sp_inG) γ (family Q).
 
-Definition own_frac (γ: gname) (qp: Qp) := @p_own
-    nat _ _ _ _ _ (option Qp) _ _ _ _ _ _ _ _
-    frac_storage_mixin Σ _
-    γ (Some qp).
+Definition own_frac (γ: gname) (qp: Qp) := sp_own (sp_i := frac_sp_inG) γ (Some qp).
 
 Lemma frac_init E (Q: iProp Σ)
   : ⊢ True ={E}=∗ ∃ (γ: gname) , m γ Q.
 Proof.
   iIntros "t".
-  iDestruct (@logic_init_ns nat _ _ _ _ _ (option Qp) _ _ _ _ _ _ _ _ _
-      frac_storage_mixin Σ _ _
+  iDestruct (sp_alloc_ns (sp_i := frac_sp_inG)
       (None : option Qp)
+      ε
       (family Q)
       E
       FRAC_NAMESPACE
       with "[t]") as "x".
-  { unfold pinv, frac_inv. trivial. }
+  { unfold sp_inv, frac_inv. split; trivial. unfold sp_inv. trivial. }
   { apply wf_prop_map_family. }
-  { unfold family. unfold interp, frac_interp_instance. unfold sep_pow. iFrame. }
+  { unfold family. unfold sp_interp, frac_interp_instance. unfold sep_pow. iFrame. }
   iMod "x". iModIntro.
   iDestruct "x" as (γ) "[%inn [a b]]".
   iExists γ.
   iFrame "a".
 Qed.
- 
 
 Lemma q_le_add_1 (a b: Q) (is_le: Qle a b) : Qle (a + 1) (b + 1).
   Proof. rewrite Qplus_le_l. trivial. Qed.
@@ -271,7 +246,7 @@ Lemma injz_p1 (z: Z) : inject_Z z + 1 == inject_Z (z + 1). Proof.
   replace (inject_Z 1) with (1%Q). - apply Qeq_refl. - simpl. trivial. Qed.
   
 Lemma Qceiling_plus_1 q : (Qceiling (q + 1))%Z = (Qceiling q + 1)%Z. 
-Proof using H invGS0 Σ.
+Proof.
   have h1 := Qle_ceiling q. have h2 := Qle_ceiling (q + 1).
   have h3 := Qceiling_lt q. have h4 := Qceiling_lt (q + 1).
   have h1' := q_le_add_1 _ _ h1. have h3' := q_lt_add_1 _ _ h3.
@@ -285,7 +260,7 @@ Qed.
 
 Lemma is_int_plus_1 (q: Qp)
   (q_is_int : is_int q) : is_int (1%Qp + q).
-Proof using H invGS0 Σ.
+Proof.
   unfold is_int in *.
   assert ((Qceiling (Qp_to_Qc (1 + q))) = Z.add 1 (Qceiling (Qp_to_Qc q))) as Y.
   2: {
@@ -315,7 +290,7 @@ Qed.
  
 Lemma is_int_minus_1 (q: Qp)
   (q_p1_is_int : is_int (1 + q)) : is_int q.
-Proof using H invGS0 Σ.
+Proof.
   unfold is_int in *.
   assert ((Qceiling (Qp_to_Qc (1 + q))) = Z.add 1 (Qceiling (Qp_to_Qc q))) as Y.
   2: {
@@ -384,7 +359,7 @@ Proof. have h := ceil_ge_1 q. lia. Qed.
 
 Lemma to_nat_add_1 (q: Qp) :
   Z.to_nat (Qceiling (Qp_to_Qc q)) + 1 = Z.to_nat (Qceiling (Qp_to_Qc (1 + q))).
-Proof using H invGS0 Σ.
+Proof.
   rewrite <- Z_to_nat_plus_1 by apply Qceiling_qp_ge_0.
   f_equal.
   rewrite <- Qceiling_plus_1.
@@ -406,21 +381,21 @@ Lemma frac_deposit (R: iProp Σ) γ
   : m γ R ⊢ R ={{[γ]}}=∗ own_frac γ 1.
 Proof.
   iIntros "#m q".
-  iDestruct (logic_deposit None (Some (1%Qp)) 1 _ _ with "m [q]") as "x".
-  { unfold storage_protocol_deposit. intros q Y. split.
-    { unfold pinv, frac_inv in *. destruct q.
+  iDestruct (sp_deposit None (Some (1%Qp)) 1 _ _ with "m [q]") as "x".
+  { rewrite eq_storage_protocol_deposit_ii. intros q Y. split.
+    { unfold sp_inv, frac_inv in *. destruct q.
       { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_plus_1. trivial. }
       { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_1. }
     }
     split.
     { unfold "✓", nat_valid_instance. trivial. }
-    { unfold interp, frac_interp_instance, "⋅", option_op, nat_op_instance in *.
+    { unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance in *.
         destruct q.
         { unfold "⋅", frac_op_instance, "≡", nat_equiv_instance.
             apply to_nat_add_1. }
         simpl. trivial. } 
   }
-  { iSplitR. { iDestruct (p_own_unit with "m") as "u". unfold ε, option_unit. iFrame "u". }
+  { iSplitR. { iDestruct (sp_own_unit with "m") as "u". unfold ε, option_unit. iFrame "u". }
       { iModIntro. unfold family, sep_pow, sep_pow. iFrame "q". }
   }
   iMod "x". iModIntro. iFrame "x".
@@ -429,7 +404,7 @@ Qed.
 Lemma frac_join q1 q2 γ :
   (own_frac γ q1) ∗ (own_frac γ q2) ⊣⊢ own_frac γ (q1 + q2).
 Proof.
-  setoid_rewrite <- p_own_op.
+  setoid_rewrite <- sp_own_op.
   unfold own_frac.
   trivial.
 Qed.
@@ -438,13 +413,13 @@ Lemma frac_withdraw (R: iProp Σ) γ :
   m γ R ⊢ own_frac γ 1 ={{[γ]}}=∗ ▷ R.
 Proof.
   iIntros "#m q".
-  iDestruct (logic_withdraw (Some (1%Qp)) None 1 _ _ with "m [q]") as "x".
-  { unfold storage_protocol_withdraw. intros q Y. split.
-    { unfold pinv, frac_inv in *. destruct q.
+  iDestruct (sp_withdraw (Some (1%Qp)) None 1 _ _ with "m [q]") as "x".
+  { rewrite eq_storage_protocol_withdraw_ii. intros q Y. split.
+    { unfold sp_inv, frac_inv in *. destruct q.
       { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_minus_1. trivial. }
       { unfold "⋅", option_op, "⋅", frac_op_instance in *. trivial. }
     }
-    unfold interp, frac_interp_instance, "⋅", option_op, nat_op_instance. destruct q.
+    unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance. destruct q.
     - symmetry. apply to_nat_add_1.
     - simpl. trivial. }
   { iFrame "q". }
@@ -462,11 +437,11 @@ Proof.
     unfold family, sep_pow. iIntros. iSplit. { iIntros. iFrame. } iIntros "[x y]". iFrame.
   }
   setoid_rewrite X at 2.
-  apply logic_guard.
+  apply sp_guard.
   2: { set_solver. }
-  unfold storage_protocol_guards. intro q0. unfold "≼", pinv, frac_inv.
+  rewrite eq_storage_protocol_guards_ii. intro q0. unfold "≼", sp_inv, frac_inv.
   intro.
-  apply nat_ge_to_exists. unfold interp, frac_interp_instance, "⋅", option_op.
+  apply nat_ge_to_exists. unfold sp_interp, frac_interp_instance, "⋅", option_op.
   destruct q0.
   - apply nat_ceil_ge_1.
   - apply nat_ceil_ge_1.

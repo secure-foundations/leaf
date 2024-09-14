@@ -3,6 +3,7 @@
 src/guarding/internal/auth_frag_util.v
 src/guarding/internal/wsat_util.v
 src/guarding/internal/factoring_upred.v
+src/guarding/internal/inved.v
 
 src/guarding/own_and.v
 src/guarding/own_and_own_sep.v
@@ -11,9 +12,7 @@ src/guarding/guard.v
 src/guarding/tactics.v
 src/guarding/guard_later_pers.v
 
-src/guarding/storage_protocol/inved.v
 src/guarding/storage_protocol/protocol.v
-src/guarding/storage_protocol/protocol_relational.v
 src/guarding/storage_protocol/base_storage_opt.v
 
 src/guarding/lib/lifetime.v
