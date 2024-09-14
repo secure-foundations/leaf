@@ -1,0 +1,29 @@
+name: Build CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install opam
+        opam init
+        opam repo add coq-released https://coq.inria.fr/opam/released
+        opam update
+        opam pin coq 8.19.1 --confirm-level=yes
+        opam pin coq-iris 4.2.0 --confirm-level=yes
+
+    - name: Run check
+      run: |
+        eval $(opam env)
+        make -j4
