@@ -15,6 +15,8 @@ From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 From iris.base_logic.lib Require Export invariants.
 
+(* begin hide *)
+
 Inductive LtRa :=
   | LtOk : (option (gset nat * gset nat)) → gmultiset nat → gset nat → LtRa
   | LtFail.
@@ -121,6 +123,8 @@ Qed.
 
 Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
+(* end hide *)
+
 Class lt_logicG Σ := { lt_logic_inG : inG Σ ltUR ; exclG : inG Σ (exclR unitO) }.
 Local Existing Instance lt_logic_inG.
 Local Existing Instance exclG.
@@ -139,6 +143,8 @@ Context `{!lt_logicG Σ}.
 Context `{!invGS Σ}.
 
 Context (γlt : gname).
+
+(* begin hide *)
 
 Definition lt_state (sa sd : gset nat) := LtOk (Some (sa, sd)) ∅ sd.
 Definition LtState (sa sd : gset nat) : iProp Σ := own γlt (lt_state sa sd).
@@ -515,37 +521,50 @@ Proof.
   rewrite list_to_set_elements in Z1. trivial.
 Qed.
 
+(* end hide *)
+
 (*** Lifetime logic ***)
 
 Definition NLLFT := nroot .@ "leaf-lifetime".
 
 Definition Lifetime := gset nat.
 
-Definition llft_intersect (κ1 κ2 : Lifetime) : Lifetime := κ1 ∪ κ2.
+Global Instance llft_intersect : Meet Lifetime := λ κ1 κ2, κ1 ∪ κ2.
 Definition llft_empty : Lifetime := ∅.
 
 Definition llft_alive (κ : Lifetime) : iProp Σ := [∗ set] k ∈ κ , Alive k.
 Definition llft_dead (κ : Lifetime) : iProp Σ := ∃ k , ⌜ k ∈ κ ⌝ ∗ Dead k.
 
+Definition llft_ctx :=
+  (True &&{↑NLLFT}&&> ∃ sa sd , LtState sa sd ∗ llft_alive sa).
+
 Definition llft_incl (κ1 κ2 : Lifetime) : iProp Σ :=
     llft_alive κ1 &&{↑NLLFT}&&> llft_alive κ2.
+    
+Notation "@[ κ ]" := (llft_alive κ) (format "@[ κ ]") : bi_scope.
+Notation "@[† κ ]" := (llft_dead κ) (format "@[† κ ]") : bi_scope.
+Infix "⊑" := llft_incl (at level 70) : bi_scope.
 
-Definition llftctx :=
-  (True &&{↑NLLFT}&&> ∃ sa sd , LtState sa sd ∗ llft_alive sa).
+Global Instance pers_llft_ctx : Persistent llft_ctx.
+Proof. typeclasses eauto. Qed.
   
-Global Instance pers_llft_dead κ : Persistent (llft_dead κ).
-Proof.
-  typeclasses eauto.
-Qed.
+Global Instance pers_llft_dead κ : Persistent (@[† κ ]).
+Proof. typeclasses eauto. Qed.
+
+Global Instance timeless_llft_alive κ : Timeless (@[ κ ]).
+Proof. typeclasses eauto. Qed.
+
+Global Instance timeless_llft_dead κ : Timeless (@[† κ ]).
+Proof. typeclasses eauto. Qed.
   
-Lemma llftl_not_own_end κ : llft_alive κ ∗ llft_dead κ ⊢ False.
+Lemma llftl_not_own_end κ : @[ κ ] ∗ @[† κ ] ⊢ False.
 Proof.
   iIntros "[A D]". iDestruct "D" as (k) "[%kk D]".
   iDestruct ((big_sepS_delete _ _ k) with "A") as "[A _]". { trivial. }
   iApply (lt_alive_dead_false k). iSplit; iFrame.
 Qed.
 
-Lemma llftl_not_own_end_and κ : llft_alive κ ∧ llft_dead κ ⊢ False.
+Lemma llftl_not_own_end_and κ : @[ κ ] ∧ @[† κ ] ⊢ False.
 Proof.
   iIntros "AD". unfold llft_dead. rewrite bi.and_exist_l. iDestruct "AD" as (k) "AD".
   iApply (lt_alive_dead_false k).
@@ -557,9 +576,9 @@ Proof.
 Qed.
 
 Lemma llftl_begin :
-    llftctx ⊢ |={↑NLLFT}=> ∃ κ, llft_alive κ ∗ (llft_alive κ ={↑NLLFT}=∗ llft_dead κ).
+    llft_ctx ⊢ |={↑NLLFT}=> ∃ κ, @[ κ ] ∗ (@[ κ ] ={↑NLLFT}=∗ @[† κ ]).
 Proof.
-    iIntros "#ctx".  unfold llftctx.
+    iIntros "#ctx".  unfold llft_ctx.
     iDestruct (guards_open (True)%I _ (↑NLLFT) (↑NLLFT) with "[ctx]") as "J". { set_solver. }
     { iFrame "ctx". }
     iMod "J" as "[J back]". iDestruct "J" as (sa sd) "[State Alive]".
@@ -595,7 +614,7 @@ Proof.
 Qed.
   
 Lemma llftl_borrow_shared κ (P : iProp Σ) :
-    ▷ P ={↑NLLFT}=∗ (llft_alive κ &&{↑NLLFT}&&> ▷ P) ∗ (llft_dead κ ={↑NLLFT}=∗ ▷ P).
+    ▷ P ={↑NLLFT}=∗ (@[ κ ] &&{↑NLLFT}&&> ▷ P) ∗ (@[† κ ] ={↑NLLFT}=∗ ▷ P).
 Proof.
   iIntros "P".
   iMod new_cancel as (γc) "c1".
@@ -639,7 +658,7 @@ Proof.
 Qed.
 
 Lemma llftl_incl_dead_implies_dead κ κ' :
-    ⊢ llftctx ∗ llft_incl κ κ' ∗ llft_dead κ' ={↑NLLFT}=∗ llft_dead κ.
+    ⊢ llft_ctx ∗ κ ⊑ κ' ∗ @[† κ' ] ={↑NLLFT}=∗ @[† κ ].
 Proof.
   iIntros "[#ctx [#incl #dead]]".
   
@@ -650,7 +669,7 @@ Proof.
     leaf_by_sep. iIntros "a". iExFalso.
     iApply (llftl_not_own_end κ'). iFrame. iFrame "dead".
   }
-  unfold llftctx.
+  unfold llft_ctx.
   leaf_hyp "ctx" rhs to ((∃ sa sd : gset nat, ⌜ κ ⊆ sa ⌝ ∗ LtState sa sd ∗ llft_alive sa)
       ∨ (∃ sa sd : gset nat, ⌜ ¬(κ ⊆ sa) ⌝ ∗ LtState sa sd ∗ llft_alive sa) )%I
       as "ctx2".
@@ -709,7 +728,7 @@ Proof.
         iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro; trivial.
 Qed.
 
-Lemma llftl_incl_intersect κ κ' : ⊢ llft_incl (llft_intersect κ κ') κ.
+Lemma llftl_incl_intersect κ κ' : ⊢ (κ ⊓ κ') ⊑ κ.
 Proof.
   unfold llft_incl, llft_intersect, llft_alive.
   leaf_by_sep. iIntros "Alive".
@@ -721,7 +740,7 @@ Proof.
 Qed.
 
 Lemma llftl_incl_glb κ κ' κ'' :
-    llft_incl κ κ' ∗ llft_incl κ κ'' ⊢ llft_incl κ (llft_intersect κ' κ'').
+    κ ⊑ κ' ∗ κ ⊑ κ'' ⊢ κ ⊑ (κ' ⊓ κ'').
 Proof.
   apply guards_and_point.
    - unfold llft_alive. apply factoring_props.point_prop_big_sepS.
@@ -730,7 +749,7 @@ Proof.
 Qed.
 
 Lemma llftl_tok_inter_l κ κ' :
-    llft_alive (llft_intersect κ κ') ⊢ llft_alive κ.
+    @[ κ ⊓ κ' ] ⊢ @[ κ ].
 Proof.
   unfold llft_intersect, llft_alive.
   iIntros "Alive".
@@ -742,14 +761,15 @@ Proof.
 Qed.
 
 Lemma llftl_tok_inter_r κ κ' :
-    llft_alive (llft_intersect κ κ') ⊢ llft_alive κ'.
+    @[ κ ⊓ κ' ] ⊢ @[ κ' ].
 Proof.
-  unfold llft_intersect. replace (κ ∪ κ') with (κ' ∪ κ).
-  - apply llftl_tok_inter_l. - set_solver.
+  replace (κ ⊓ κ') with (κ' ⊓ κ).
+  - apply llftl_tok_inter_l. 
+  - unfold meet, llft_intersect. set_solver.
 Qed.
 
 Lemma llftl_tok_inter_and κ κ' :
-    llft_alive (llft_intersect κ κ') ⊣⊢ llft_alive κ ∧ llft_alive κ'.
+    @[ κ ⊓ κ' ] ⊣⊢ @[ κ ] ∧ @[ κ' ].
 Proof.
   iIntros. iSplit.
   - iIntros "t". iSplit.
@@ -759,7 +779,7 @@ Proof.
 Qed.
 
 Lemma llftl_end_inter κ κ' :
-    llft_dead (llft_intersect κ κ') ⊣⊢ llft_dead κ ∨ llft_dead κ'.
+    @[† κ ⊓ κ'] ⊣⊢ @[† κ ] ∨ @[† κ' ].
 Proof.
   unfold llft_dead.
   iIntros. iSplit.
@@ -775,17 +795,16 @@ Proof.
 Qed.
 
 Lemma llftl_tok_unit :
-    ⊢ llft_alive llft_empty.
+    ⊢ @[ llft_empty ].
 Proof.
   unfold llft_alive, llft_empty. rewrite big_sepS_empty. iIntros. done.
 Qed.
 
 Lemma llftl_end_unit :
-    llft_dead llft_empty ⊢ False.
+    @[† llft_empty ] ⊢ False.
 Proof.
   unfold llft_dead, llft_empty. iIntros "t". iDestruct "t" as (k) "[%p t]".
   rewrite elem_of_empty in p. contradiction.
 Qed.
-
 
 End LtResource.
