@@ -66,13 +66,13 @@ Section ConjunctOwnRule2.
     (project (x ⋅ y) γ : option A) ≡{n}≡ (project x γ ⋅ project y γ).
   Proof.
     unfold project. rewrite lookup_op.
-    destruct (x (inG_id i) !! γ) eqn:p1; destruct (y (inG_id i) !! γ) eqn:p2.
+    destruct (x (inG_id i) !! γ) as [o|] eqn:p1; destruct (y (inG_id i) !! γ) as [o0|] eqn:p2.
     - rewrite p1. rewrite p2.
         replace (Some o ⋅ Some o0) with (Some (o ⋅ o0)) by trivial.
         enough (cmra_transport (eq_sym inG_prf) (own.inG_fold (o ⋅ o0)) ≡{n}≡ 
                 cmra_transport (eq_sym inG_prf) (own.inG_fold o)
-                ⋅ cmra_transport (eq_sym inG_prf) (own.inG_fold o0)).
-        { intros. setoid_rewrite H. trivial. }
+                ⋅ cmra_transport (eq_sym inG_prf) (own.inG_fold o0)) as Hcmeq.
+        { intros. setoid_rewrite Hcmeq. trivial. }
         setoid_rewrite <- cmra_transport_op.
         f_equiv.
         unfold own.inG_fold. apply equiv_dist.
@@ -88,8 +88,8 @@ Section ConjunctOwnRule2.
     unfold Proper, "==>". intros x y H γ γ0 s0. unfold project. subst γ0.
     assert (x (inG_id i) !! γ ≡{n}≡ y (inG_id i) !! γ) as M.
     { enough (x (inG_id i) ≡{n}≡ y (inG_id i)). { trivial. } trivial. }
-    destruct (x (inG_id i) !! γ);
-    destruct (y (inG_id i) !! γ).
+    destruct (x (inG_id i) !! γ) as [o|];
+    destruct (y (inG_id i) !! γ) as [o0|].
     - assert (o ≡{n}≡ o0) as Q.
       + unfold "≡" in M. unfold ofe_equiv, optionO, option_equiv in M.
             inversion M. trivial.
@@ -122,7 +122,7 @@ Section ConjunctOwnRule2.
   Proof.
     intro p.
     unfold project in p.
-    destruct (z (inG_id i) !! γ) eqn:e.
+    destruct (z (inG_id i) !! γ) as [o|] eqn:e.
     - assert ((cmra_transport (eq_sym inG_prf) (own.inG_fold o)) ≡ z') as X.
       { unfold "≡", ofe_equiv, optionO, option_equiv in p. inversion p. trivial. }
       unfold includedN.
@@ -264,7 +264,7 @@ Section ConjunctOwnRule2Ucmra.
     @uPred_cmra_incl Σ (option A) (Some x) (Some y)  ⊢ ⌜ x ≼ y ⌝.
   Proof.
     unfold uPred_cmra_incl. iIntros "eq". iDestruct "eq" as (c) "eq".
-    iDestruct (discrete_eq_1 with "eq") as "%eq". unfold "≼". iPureIntro. destruct c.
+    iDestruct (discrete_eq_1 with "eq") as "%eq". unfold "≼". iPureIntro. destruct c as [c|].
     - exists c. setoid_rewrite <- Some_op in eq. inversion eq. trivial.
     - exists ε. rewrite right_id. inversion eq. trivial.
   Qed.

@@ -88,7 +88,7 @@ Definition m (k: Key) (v: option Value) :=
 Lemma ht_valid_QueryFound j k v v0
   : V (ht_dot (s j (Some (k, v0))) (m k v)) -> v = Some v0.
 Proof.
-  unfold V, s, m. intros [z H]. destruct z. unfold ht_dot in *. unfold P in *.
+  unfold V, s, m. intros [z H]. destruct z as [ms slots]. unfold ht_dot in *. unfold P in *.
   repeat (rewrite gmap_dot_empty in H).
   repeat (rewrite gmap_dot_empty_left in H).
   destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
@@ -122,7 +122,7 @@ Lemma ht_valid_QueryReachedEnd k a v
   (is_full: full a k (hash k) ht_fixed_size)
   : V (ht_dot a (m k v)) -> v = None.
 Proof.
-  unfold V, s, m. intros [z H]. destruct z, a. unfold ht_dot in *. unfold P in *.
+  unfold V, s, m. intros [z H]. destruct z as [ms slots], a as [ms0 slots0]. unfold ht_dot in *. unfold P in *.
   unfold full in is_full.
   destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
   destruct is_full as [H5 [H6 [H7 H8]]].
@@ -139,7 +139,7 @@ Proof.
   repeat (rewrite gmap_dot_empty_left in H3).
   repeat (rewrite gmap_dot_empty in H4).
   repeat (rewrite gmap_dot_empty_left in H4).
-  destruct v; trivial. exfalso.
+  destruct v as [v|]; trivial. exfalso.
   have h := H3 k v.
   assert (gmap_dot {[k := Some (Some v)]} ms !! k = Some (Some (Some v))) as Q.
   {
@@ -167,7 +167,7 @@ Lemma ht_valid_QueryNotFound k a v j
   (is_full: full a k (hash k) j)
   : V (ht_dot (ht_dot a (m k v)) (s j None)) -> v = None.
 Proof.
-  unfold V, s, m. intros [z H]. destruct z, a. unfold ht_dot in *. unfold P in *.
+  unfold V, s, m. intros [z H]. destruct z as [ms slots], a as [ms0 slots0]. unfold ht_dot in *. unfold P in *.
   unfold full in is_full.
   destruct H as [H [H0 [H1 [H2 [H3 H4]]]]].
   destruct is_full as [H5 [H6 [H7 H8]]].
@@ -184,7 +184,7 @@ Proof.
   repeat (rewrite gmap_dot_empty_left in H3).
   repeat (rewrite gmap_dot_empty in H4).
   repeat (rewrite gmap_dot_empty_left in H4).
-  destruct v; trivial. exfalso.
+  destruct v as [v|]; trivial. exfalso.
   have h := H3 k v.
   assert (gmap_dot {[k := Some (Some v)]} ms !! k = Some (Some (Some v))) as Q.
   {
@@ -200,8 +200,8 @@ Proof.
   assert (i < j) as ihfs.
   {
     have hij : Decision (i < j) by solve_decision. destruct hij; trivial.
-    assert (j ≤ i) by lia.
-    have mm := H10 j H5 H11. destruct mm as [k1 [v1 mm]].
+    assert (j ≤ i) as Hle by lia.
+    have mm := H10 j H5 Hle. destruct mm as [k1 [v1 mm]].
     rewrite lookup_gmap_dot_3mid in mm.
     - rewrite lookup_singleton in mm. inversion mm.
     - trivial.
@@ -220,19 +220,19 @@ Lemma preserves_lt_fixed_size j a b slots
   : ∀ (i : nat) (e : option (option (Key * Value))),
     gmap_dot {[j := Some b]} slots !! i = Some e → i < ht_fixed_size.
 Proof.
-  intros.
+  intros i e Heq.
   (*have h : Decision (i = j) by solve_decision. destruct h.*)
-  destruct (gmap_dot {[j := Some a]} slots !! i) eqn:gd.
+  destruct (gmap_dot {[j := Some a]} slots !! i) as [o|] eqn:gd.
   - exact (ltfs i o gd).
-  - exfalso. unfold gmap_dot in H, gd.
-      rewrite lookup_merge in H.
+  - exfalso. unfold gmap_dot in Heq, gd.
+      rewrite lookup_merge in Heq.
       rewrite lookup_merge in gd.
       unfold diag_None, gmerge in *.
       have h : Decision (j = i) by solve_decision. destruct h.
       + subst j.
-        rewrite lookup_singleton in H.
+        rewrite lookup_singleton in Heq.
         rewrite lookup_singleton in gd. destruct (slots !! i); discriminate.
-      + rewrite lookup_singleton_ne in H; trivial.
+      + rewrite lookup_singleton_ne in Heq; trivial.
         rewrite lookup_singleton_ne in gd; trivial.
         destruct (slots !! i); discriminate.
 Qed.
@@ -296,8 +296,7 @@ Lemma preserves_unique_keys j k v v1 slots
     ∧ gmap_dot {[j := Some (Some (k, v))]} slots !! i2 = Some (Some (Some (k0, v3)))
     → i1 = i2.
 Proof.
-  intros.
-  destruct H as [H H0].
+  intros i1 i2 k0 v2 v3 [H H0].
   have ed : Decision (i1 = j) by solve_decision. destruct ed.
     - have ed : Decision (i2 = j) by solve_decision. destruct ed.
       + subst. trivial.
@@ -344,8 +343,8 @@ Proof.
     rewrite lookup_singleton in ac.
     destruct (slots !! j), (slots0 !! j); discriminate.
   - rewrite lookup_singleton_ne in ac; trivial.
-    destruct (slots !! i2), (slots0 !! i2); try inversion ac; try discriminate.
-    + subst o. inversion zz. inversion zz. subst k. contradiction.
+    destruct (slots !! i2) as [a1|], (slots0 !! i2) as [b1|]; try inversion ac; try discriminate.
+    + subst b1. inversion zz. inversion zz. subst k. contradiction.
 Qed.
 
 Lemma pukn_helper j k0 k v v1 slots v0 ms ms0 slots0 i2 v2

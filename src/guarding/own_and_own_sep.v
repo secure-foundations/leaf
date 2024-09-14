@@ -29,7 +29,7 @@ Lemma valid_project (x: iResUR Σ) (γ: gname) (n: nat) :
 Proof.
   intros.
   unfold project.
-  destruct (x (inG_id i) !! γ) eqn:p.
+  destruct (x (inG_id i) !! γ) as [o|] eqn:p.
   - apply cmra_transport_validN.
     rewrite <- own.inG_unfold_validN.
     setoid_rewrite own.inG_unfold_fold.
@@ -43,14 +43,14 @@ Qed.
 
 Lemma some_op_equiv (a b c : A)
   : a ≡ b ⋅ c -> Some a ≡ Some b ⋅ Some c.
-Proof. intros. setoid_rewrite H. trivial. Qed.
+Proof. intros Heq. setoid_rewrite Heq. trivial. Qed.
 
 Lemma project_op (x y: iResUR Σ) γ :
     project (x ⋅ y) γ ≡ project x γ ⋅ project y γ.
 Proof.
   unfold project.
   rewrite lookup_op.
-  destruct (x (inG_id i) !! γ) eqn:p1; destruct (y (inG_id i) !! γ) eqn:p2.
+  destruct (x (inG_id i) !! γ) as [o|] eqn:p1; destruct (y (inG_id i) !! γ) as [o0|] eqn:p2.
   - rewrite p1. rewrite p2.
       replace (Some o ⋅ Some o0) with (Some (o ⋅ o0)) by trivial.
       apply some_op_equiv.
@@ -90,7 +90,7 @@ Lemma discrete_equiv_opt (a b : option A) (n: nat)
   : a ≡{n}≡ b -> a ≡ b.
 Proof using A Disc.
   intro H.
-  destruct a, b.
+  destruct a as [c|], b as [c0|].
   - setoid_replace c with c0; trivial. apply (discrete_equiv _ _ n).
     inversion H. trivial.
   - inversion H.
@@ -107,8 +107,8 @@ Proof.
       { trivial. }
       trivial.
   }
-  destruct (x (inG_id i) !! γ);
-  destruct (y (inG_id i) !! γ).
+  destruct (x (inG_id i) !! γ) as [o|];
+  destruct (y (inG_id i) !! γ) as [o0|].
   - assert (o ≡{n}≡ o0) as Q.
     + unfold "≡" in M. unfold ofe_equiv, optionO, option_equiv in M.
           inversion M. trivial.
@@ -150,7 +150,7 @@ Lemma iRes_incl_from_proj γ x w n :
 Proof.
   intro p.
   unfold project in p.
-  destruct (w (inG_id i) !! γ) eqn:e.
+  destruct (w (inG_id i) !! γ) as [o|] eqn:e.
   - assert ((cmra_transport (eq_sym inG_prf) (own.inG_fold o)) ≡ x) as X.
     { unfold "≡", ofe_equiv, optionO, option_equiv in p. inversion p. trivial. }
     unfold includedN.
@@ -340,11 +340,11 @@ Lemma Some_incl_Some_Some_to_iRes_singleton_incl (a b c : A) n γ
             (sincl: Some a ≼{n} Some b ⋅ Some c) :
             (own.iRes_singleton γ a ≼{n} own.iRes_singleton γ b ⋅ own.iRes_singleton γ c).
 Proof.
-  rewrite <- iRes_singleton_op. destruct sincl as [z sincl]. destruct z.
-  + rewrite some_dot_some in sincl. rewrite some_dot_some in sincl. inversion sincl.
+  rewrite <- iRes_singleton_op. destruct sincl as [z sincl]. destruct z as [c0|].
+  + rewrite some_dot_some in sincl. rewrite some_dot_some in sincl. inversion sincl as [x y Hequ|].
     exists (own.iRes_singleton γ c0). rewrite <- iRes_singleton_op.
-    unfold own.iRes_singleton. f_equiv. apply: singletonM_proper. setoid_rewrite H1. trivial.
-  + rewrite some_dot_some in sincl. rewrite dot_none in sincl. inversion sincl.
+    unfold own.iRes_singleton. f_equiv. apply: singletonM_proper. setoid_rewrite Hequ. trivial.
+  + rewrite some_dot_some in sincl. rewrite dot_none in sincl. inversion sincl as [x y H1|].
     exists ε. rewrite ucmra_unit_right_id.
     unfold own.iRes_singleton. f_equiv. apply: singletonM_proper. setoid_rewrite H1. trivial.
 Qed.
@@ -353,11 +353,11 @@ Lemma Some_incl_Some_None_to_iRes_singleton_incl (a b : A) n γ
             (sincl: Some a ≼{n} Some b ⋅ None) :
             (own.iRes_singleton γ a ≼{n} own.iRes_singleton γ b).
 Proof.
-  destruct sincl as [z sincl]. rewrite dot_none in sincl. destruct z.
-  + rewrite some_dot_some in sincl. inversion sincl. exists (own.iRes_singleton γ c).
+  destruct sincl as [z sincl]. rewrite dot_none in sincl. destruct z as [c|].
+  + rewrite some_dot_some in sincl. inversion sincl as [x y H1|]. exists (own.iRes_singleton γ c).
     rewrite <- iRes_singleton_op. unfold own.iRes_singleton. f_equiv. apply: singletonM_proper.
     setoid_rewrite H1. trivial.
-  + rewrite dot_none in sincl. inversion sincl. exists ε. rewrite ucmra_unit_right_id.
+  + rewrite dot_none in sincl. inversion sincl as [x y H1|]. exists ε. rewrite ucmra_unit_right_id.
     unfold own.iRes_singleton. f_equiv. apply: singletonM_proper. setoid_rewrite H1. trivial.
 Qed.
 
@@ -392,13 +392,13 @@ Proof using A Disc i Σ.
   replace (Some y ⋅ project z2 γ) with (Some (y ⋅? project z2 γ)) in Y.
   2: { unfold "⋅?". destruct (project z2 γ); trivial. }
   
-  destruct (project p1 γ) eqn:p1eqn. 2: { inversion Y. }
+  destruct (project p1 γ) as [c|] eqn:p1eqn. 2: { inversion Y. }
   
-  inversion Y.
+  inversion Y as [x0 y0 R1 R2 R3|].
   
   replace (Some c ⋅ project p2 γ) with (Some (c ⋅? project p2 γ)) in X.
   2: { unfold "⋅?". destruct (project p2 γ); trivial. }
-  inversion X.
+  inversion X as [x1 y1 Q1 Q2 Q3|].
   
   assert (✓ (c ⋅? project p2 γ)) as val2. {
     have vp := valid_project _ γ _ val.
@@ -409,15 +409,15 @@ Proof using A Disc i Σ.
     - destruct (project p2 γ); trivial.
   }
   
-  symmetry in H4. have eq1 := discrete_equiv _ _ _ H4.
-  symmetry in H1. have eq2 := discrete_equiv _ _ _ H1.
+  symmetry in Q1. have eq1 := discrete_equiv _ _ _ Q1.
+  symmetry in R1. have eq2 := discrete_equiv _ _ _ R1.
   have cond0 := cond n c (project p2 γ) (project z1 γ) (project z2 γ) val2 eq1 eq2.
   destruct cond0 as [m [req_eq res_incl]].
   destruct m as [m|].
   2: {
     exists z2. split.
       + symmetry. apply incl2.
-      + unfold includedN in res_incl. destruct res_incl as [z res_incl]. destruct z.
+      + unfold includedN in res_incl. destruct res_incl as [z res_incl]. destruct z as [c0|].
         * rewrite none_dot in res_incl. rewrite some_dot_some in res_incl.
           have ri' := discrete_equiv_opt _ _ _ res_incl.
           have t := iRes_incl_from_proj γ (x ⋅ c0) p2 n ri'.
@@ -443,11 +443,11 @@ Proof using A Disc i Σ.
         unfold "⋅", cmra_op, optionR, option_op_instance, union_with, option_union_with.
         unfold project in p1eqn.
         destruct (p1 (inG_id i) !! γ) eqn:p1eqn'; try discriminate.
-        inversion p1eqn.
+        inversion p1eqn as [J].
         rewrite p1eqn'. f_equiv.
         rewrite <- (cmra_morphism_op _).
         rewrite <- cmra_transport_op.
-        simpl in req_eq. setoid_rewrite req_eq. setoid_rewrite <- H6.
+        simpl in req_eq. setoid_rewrite req_eq. setoid_rewrite <- J.
         rewrite cmra_transport_trans eq_trans_sym_inv_l /=.
         setoid_rewrite own.inG_unfold_fold. 
         trivial.
@@ -461,7 +461,7 @@ Proof using A Disc i Σ.
       setoid_rewrite discrete_fun_lookup_insert_ne; trivial.
       apply ucmra_unit_left_id.
   - have ineq1 := discrete_fun_insert_incl_iRes_singleton n m p1 γ.
-    destruct (project p2 γ) eqn:p2eqn.
+    destruct (project p2 γ) as [c0|] eqn:p2eqn.
     + assert (project p2 γ ≡ Some c0) as p2eqn'. { rewrite p2eqn. trivial. }
       have ineq2 := iRes_incl_from_proj γ c0 p2 n p2eqn'.
       have ineq3 := Some_incl_Some_Some_to_iRes_singleton_incl _ _ _ _ γ res_incl.
@@ -483,7 +483,7 @@ Context `{Disc : CmraDiscrete A}.
 Lemma incl_opq (x: A) (a: option A)
   : x ≼ x ⋅? a.
 Proof.
-  destruct a.
+  destruct a as [u|].
   - unfold "⋅?". unfold "≼". exists u. trivial.
   - unfold "⋅?". unfold "≼". exists ε. symmetry. apply ucmra_unit_right_id.
 Qed.

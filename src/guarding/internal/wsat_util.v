@@ -1,10 +1,9 @@
-From stdpp Require Export coPset.
+From iris.prelude Require Import options.
 From iris.algebra Require Import gmap_view gset coPset.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Export own.
-From iris.base_logic.lib Require Export wsat.
-From iris.prelude Require Import options.
+From iris.base_logic.lib Require Export own wsat.
 Import uPred.
+From stdpp Require Export coPset.
 From iris.algebra Require Import functions.
 
 Section wsat_util.
@@ -212,7 +211,7 @@ Lemma own_updateP_extra `{i : !inG Σ A} `{j : !inG Σ B} (P : A → gname → P
     (∀ (n : nat) (mz : option A) (N : gname → Prop) , ✓{n} (a ⋅? mz) → pred_finite N → ∃ (y: A) (γ': gname), P y γ' ∧ ✓{n} (y ⋅? mz) ∧ ¬ N γ') →
     (✓ b) →
     own γ a ⊢ |==> ∃ a' γ', ⌜P a' γ'⌝ ∗ own γ a' ∗ own γ' b.
-Proof using H Σ.
+Proof.
   intros Hupd Hvalb. rewrite !own.own_eq.
   rewrite -(bupd_mono (∃ m,
     ⌜ ∃ a' γ', m = (own.iRes_singleton γ a' ⋅ own.iRes_singleton γ' b) ∧ P a' γ' ⌝ ∧ uPred_ownM m)%I).

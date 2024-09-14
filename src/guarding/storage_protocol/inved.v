@@ -1,16 +1,7 @@
-From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import auth.
 From iris.prelude Require Import options.
-
+From iris.algebra Require Export cmra updates proofmode_classes.
 From iris.base_logic.lib Require Export own iprop.
-From iris.proofmode Require Import base.
-From iris.proofmode Require Import ltac_tactics.
-From iris.proofmode Require Import tactics.
-From iris.proofmode Require Import coq_tactics.
-
-From iris.proofmode Require Import coq_tactics reduction.
-From iris.proofmode Require Export tactics.
+From iris.proofmode Require Import base ltac_tactics tactics coq_tactics reduction.
 
 (*
 Context {Σ: gFunctors}.
@@ -81,7 +72,7 @@ Proof.
   unfold "≼".
   unfold "≼" in mle.
   destruct mle as [z mle].
-  destruct z.
+  destruct z as [|p].
   - right. unfold "≡", inved_protocol_equiv, "⋅", inved_protocol_op in mle. trivial.
   - left. exists p.
     unfold "≡", inved_protocol_equiv, "⋅", inved_protocol_op in mle. trivial.
@@ -105,7 +96,7 @@ Global Instance inved_protocol_equivalence
     : Equivalence (≡@{InvedProtocol P}).
 Proof.
   split.
-  - unfold Reflexive. intros. unfold "≡", inved_protocol_equiv. destruct x; trivial.
+  - unfold Reflexive. intros x. unfold "≡", inved_protocol_equiv. destruct x; trivial.
   - unfold Symmetric. intros x y. unfold "≡", inved_protocol_equiv. destruct x, y; trivial.
   - unfold Transitive. intros x y z. 
       unfold "≡", inved_protocol_equiv. destruct x, y, z; trivial.
@@ -133,27 +124,29 @@ Definition inved_protocol_ra_mixin {P}
     {equ: @Equivalence P (≡)}
     (protocol_mixin: ProtocolMixin P) : RAMixin (InvedProtocol P).
 Proof.
-  destruct protocol_mixin.
-  destruct protocol_ra_mixin0.
+  destruct protocol_mixin as [protocol_ra_mixin0
+    protocol_unit_left_id0 inv_implies_valid0 inv_proper0].
+  have protocol_ra_mixin1 := protocol_ra_mixin0.
+  destruct protocol_ra_mixin0 as [ra_op_proper ra_core_proper ra_validN_proper ra_assoc ra_comm ra_pcore_l ra_pcore_idemp ra_pcore_mono ra_valid_op_l].
   split.
- - intro.
+ - intro inved_prot.
     + unfold Proper, equiv, "==>".
       unfold inved_protocol_equiv.
-      intros a b. destruct a; destruct b; unfold "⋅", inved_protocol_op; intro e; destruct x; trivial; try contradiction.
+      intros a b. destruct a; destruct b; unfold "⋅", inved_protocol_op; intro e; destruct inved_prot; trivial; try contradiction.
       eapply ra_op_proper; trivial.
  - intros x y cx e p.
-    destruct x, y.
+    destruct x as [|p0], y as [|p1].
     + exists Nah. split; trivial.
         destruct cx; trivial. unfold pcore, inved_protocol_pcore in p. inversion p.
     + inversion e.
     + inversion e.
     + unfold "≡", inved_protocol_equiv in e.
-        destruct cx.
+        destruct cx as [|p2].
         * unfold pcore, inved_protocol_pcore in p.
           unfold pcore, inved_protocol_pcore.
-          destruct (pcore p0) eqn:l0.
+          destruct (pcore p0) as [p2|] eqn:l0.
           { inversion p. }
-          destruct (pcore p1) eqn:l1.
+          destruct (pcore p1) as [p2|] eqn:l1.
           {
             assert (p1 ≡ p0) as esym. { symmetry. trivial. }
             have t := ra_core_proper p1 p0 p2 esym l1. 
@@ -164,13 +157,13 @@ Proof.
         * 
         have t := ra_core_proper p0 p1 p2 e.
         unfold pcore, inved_protocol_pcore in p.
-        destruct (pcore p0) eqn:q.
+        destruct (pcore p0) as [p3|] eqn:q.
 
         ++ assert (Some p3 = Some p2) as pe. { f_equal. inversion p. trivial. }
           have t0 := t pe. destruct t0 as [cy [t0 t1]]. exists (Inved cy). split.
           ** unfold pcore. unfold inved_protocol_pcore. rewrite t0. trivial.
           ** unfold "≡", inved_protocol_equiv. trivial.
-        ++ destruct (pcore p1) eqn:l1.
+        ++ destruct (pcore p1) as [p3|] eqn:l1.
           {
             assert (p1 ≡ p0) as esym. { symmetry. trivial. }
             have t2 := ra_core_proper p1 p0 p3 esym l1. 
@@ -182,7 +175,7 @@ Proof.
           inversion p. trivial.
     
  - unfold Proper, equiv, impl, "==>". intros x y ipe. unfold "✓", inved_protocol_valid.
-    destruct x; destruct y.
+    destruct x as [|p]; destruct y as [|p0].
     + trivial.
     + inversion ipe.
     + inversion ipe.
@@ -193,25 +186,25 @@ Proof.
       assert (p0 ⋅ b ≡ b ⋅ p0) as Y. { eapply ra_comm. }
       setoid_rewrite X. setoid_rewrite Y.
       eapply ra_op_proper. trivial.
- - unfold Assoc. intros. destruct x, y, z; unfold "⋅"; unfold inved_protocol_op;
+ - unfold Assoc. intros x y z. destruct x, y, z; unfold "⋅"; unfold inved_protocol_op;
     unfold "≡"; unfold inved_protocol_equiv; trivial. (*apply ra_assoc.*)
- - unfold Comm. intros. destruct x, y; unfold "⋅"; unfold inved_protocol_op;
+ - unfold Comm. intros x y. destruct x, y; unfold "⋅"; unfold inved_protocol_op;
     unfold "≡"; unfold inved_protocol_equiv; trivial. (*apply ra_comm.*)
- - intros x cx pc. destruct x, cx.
+ - intros x cx pc. destruct x as [|p], cx as [|p0].
     + trivial.
     + inversion pc.
     + unfold "⋅", inved_protocol_op. unfold "≡", inved_protocol_equiv. trivial.
     + unfold "⋅". unfold inved_protocol_op. unfold "≡". unfold inved_protocol_equiv.
-      unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) eqn:pp.
+      unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) as [p1|] eqn:pp.
       * have t := ra_pcore_l p p1 pp. inversion pc. subst p0. trivial.
       * inversion pc. subst p0. apply protocol_unit_left_id0.
- - intros x cx pc. destruct x, cx.
+ - intros x cx pc. destruct x as [|p], cx as [|p0].
     + unfold pcore. unfold inved_protocol_pcore.
         unfold "≡". unfold option_equiv. apply Some_Forall2. trivial.
     + inversion pc.
     + unfold pcore. unfold inved_protocol_pcore.
         unfold "≡". unfold option_equiv. apply Some_Forall2. trivial.
-    + unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) eqn:pp; try discriminate.
+    + unfold pcore, inved_protocol_pcore in pc. destruct (pcore p) as [p1|] eqn:pp; try discriminate.
       { have t := ra_pcore_idemp p p1 pp.
           inversion pc. subst p0.
           unfold pcore, inved_protocol_pcore. destruct (pcore p1) eqn:pp1.
@@ -221,16 +214,16 @@ Proof.
       }
       {
         inversion pc. subst p0. unfold pcore. unfold inved_protocol_pcore.
-        destruct (pcore ε) eqn:pe; trivial.
-        have ll := ra_pcore_l ε p0 pe.
+        destruct (pcore ε) as [p3|] eqn:pe; trivial.
+        have ll := ra_pcore_l ε p3 pe.
         generalize ll. rewrite ra_comm. rewrite protocol_unit_left_id0. intro mm.
         unfold "≡", option_equiv. apply Some_Forall2. unfold "≡", inved_protocol_equiv.
         trivial.
       }
- - intros x y cx mle pc. destruct x, y.
+ - intros x y cx mle pc. destruct x as [|p], y as [|p0].
     + exists Nah. split; trivial. unfold "≼". exists Nah. inversion pc. subst cx. trivial.
-    + unfold pcore, inved_protocol_pcore. destruct (pcore p).
-        * exists (Inved p0). split; trivial. unfold "≼". exists (Inved p0).
+    + unfold pcore, inved_protocol_pcore. destruct (pcore p0) as [p2|].
+        * exists (Inved p2). split; trivial. unfold "≼". exists (Inved p2).
               inversion pc. subst cx. unfold "⋅", inved_protocol_op.
               unfold "≡". unfold inved_protocol_equiv. trivial.
         * exists (Inved ε). split; trivial.
@@ -241,15 +234,15 @@ Proof.
         unfold inved_protocol_equiv in mle. destruct z; unfold "⋅", inved_protocol_op in mle;
             contradiction.
     + have mle2 := inved_incl_to_incl _ _ mle. destruct mle2 as [mle2|yy].
-        * destruct cx.
-          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0).
+        * destruct cx as [|p1].
+          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0) as [p1|].
             ** exists (Inved p1). split; trivial. unfold "≼". exists (Inved p1).
                   inversion pc. unfold "⋅", inved_protocol_op.
                   unfold "≡". unfold inved_protocol_equiv. trivial.
             ** exists (Inved ε). split; trivial. unfold "≼". exists (Inved ε).
                   inversion pc. trivial.
           ++ unfold pcore, inved_protocol_pcore in pc.
-              destruct (pcore p) eqn:pp; try discriminate.
+              destruct (pcore p) as [p2|] eqn:pp; try discriminate.
               { inversion pc. subst p2.
                 have t := ra_pcore_mono p p0 p1 mle2 pp.
                 destruct t as [cy [t1 t2]].
@@ -259,21 +252,21 @@ Proof.
                 ** apply incl_to_inved_incl. trivial.
               }
               { inversion pc. subst p1. unfold pcore, inved_protocol_pcore.
-                destruct (pcore p0).
+                destruct (pcore p0) as [p1|].
                 ** exists (Inved p1). split; trivial. apply incl_to_inved_incl.
                     unfold "≼". exists p1. rewrite protocol_unit_left_id0. trivial.
                 ** exists (Inved ε). split; trivial. apply incl_to_inved_incl.
                     unfold "≼". exists ε. rewrite protocol_unit_left_id0. trivial.
               }
-        * destruct cx.
-          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0).
+        * destruct cx as [|p1].
+          ++ unfold pcore, inved_protocol_pcore. destruct (pcore p0) as [p1|].
             ** exists (Inved p1). split; trivial. unfold "≼". exists (Inved p1).
                   inversion pc. unfold "⋅", inved_protocol_op.
                   unfold "≡". unfold inved_protocol_equiv. trivial.
             ** exists (Inved ε). split; trivial. unfold "≼". exists (Inved ε).
                   inversion pc. trivial.
           ++ symmetry in yy. unfold pcore, inved_protocol_pcore in pc.
-              destruct (pcore p) eqn:pp; try discriminate.
+              destruct (pcore p) as [p2|] eqn:pp; try discriminate.
              { have j := ra_core_proper p p0 p2 yy pp. destruct j as [cy [j1 j2]].
                 exists (Inved cy).
                 split. { unfold pcore. unfold inved_protocol_pcore. rewrite j1. trivial. }
@@ -281,7 +274,7 @@ Proof.
                 unfold "≼". exists Nah. unfold "⋅". unfold inved_protocol_op.
                 unfold "≡", inved_protocol_equiv. symmetry. trivial.
              }
-             { inversion pc. subst p1. destruct (pcore p0) eqn:pp0.
+             { inversion pc. subst p1. destruct (pcore p0) as [p1|] eqn:pp0.
                 ** assert (p0 ≡ p) as yy_sym by (symmetry; trivial).
                     have j := ra_core_proper p0 p p1 yy_sym pp0. destruct j as [cy [w v]].
                     rewrite w in pp. discriminate.
@@ -290,7 +283,7 @@ Proof.
                     apply incl_to_inved_incl. unfold "≼". exists ε.
                       rewrite protocol_unit_left_id0. trivial.
              }
- - intros x y.  unfold "✓". unfold inved_protocol_valid. destruct x, y.
+ - intros x y.  unfold "✓". unfold inved_protocol_valid. destruct x as [|p], y as [|p0].
     + unfold "⋅", inved_protocol_op. trivial.
     + unfold "⋅", inved_protocol_op. trivial.
     + unfold "⋅", inved_protocol_op. trivial.

@@ -1,9 +1,7 @@
+From iris.prelude Require Import options.
 From iris.algebra Require Export cmra updates.
 From iris.algebra Require Import proofmode_classes.
 From iris.algebra Require Import auth.
-From iris.algebra Require Import functions.
-From iris.algebra Require Import gmap.
-From iris.prelude Require Import options.
 
 From iris.base_logic Require Import upred.
 From iris.base_logic.lib Require Export own iprop.
@@ -11,8 +9,6 @@ From iris.proofmode Require Import base.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
-
-From stdpp Require Import numbers.
 
 Require Import guarding.own_and.
 
@@ -25,9 +21,9 @@ Context `{Disc : CmraDiscrete C}.
 
 Lemma auth_op_rhs_is_frag (p: C) z (val : ✓ (● p ⋅ z)) : ∃ q , z = ◯ q.
 Proof.
-  destruct z. exists view_frag_proj. rename view_frag_proj into f.
+  destruct z as [a f]. exists f.
   unfold "◯", "◯V". f_equal.
-  destruct view_auth_proj; trivial.
+  destruct a as [p0|]; trivial.
   exfalso.
   unfold "●", "●V" in val.
   
@@ -42,7 +38,7 @@ Proof.
   
   rewrite /op /view_op_instance /view_auth_proj /view_frag_proj in val2.
   rewrite /valid /view_valid_instance /view_auth_proj in val2.
-  destruct p0.
+  destruct p0 as [d a].
   assert (Some (DfracOwn 1, to_agree p) ⋅ Some (d, a)
       = Some (DfracOwn 1 ⋅ d, to_agree p ⋅ a)) as Q.
     { trivial. }
@@ -66,8 +62,8 @@ Lemma rhs_has_auth (x y : C) (q1 q2: auth C)
 Proof.
   have ao := auth_op_rhs_is_frag x q1 v.
   destruct ao as [q ao]. subst q1.
-  destruct q2.
-  exists (◯ view_frag_proj).
+  destruct q2 as [a f].
+  exists (◯ f).
   unfold "●", "●V", "◯", "◯V".
   
   rewrite view_op_rw.
@@ -78,10 +74,10 @@ Proof.
     rewrite view_op_rw in eq.
     rewrite view_op_rw in eq.
     
-    inversion eq.
-    unfold view.view_auth_proj in H.
-    setoid_rewrite H.
-    + destruct view_auth_proj; trivial.
+    inversion eq as [Q R].
+    unfold view.view_auth_proj in Q.
+    setoid_rewrite Q.
+    + destruct a; trivial.
   - rewrite left_id. trivial.
 Qed.
   
@@ -258,11 +254,7 @@ Qed.
 Lemma auth_frag_disjointness_helper (q r : C) (a b : auth C)
   (eq1 : ◯ q ⋅ a ≡ ● r ⋅ b) : ◯ q ≼ b.
 Proof.
-  destruct a, b.
-  rename view_frag_proj into f.
-  rename view_auth_proj into g.
-  rename view_frag_proj0 into f0.
-  rename view_auth_proj0 into g0.
+  destruct a as [g f], b as [g0 f0].
   unfold "◯", "◯V" in eq1.
   unfold "●", "●V" in eq1.
   unfold "◯", "◯V".
@@ -273,9 +265,9 @@ Proof.
   replace (@View C C (@auth_view_rel C) (Some (DfracOwn 1, to_agree r)) ε ⋅ @View C C (@auth_view_rel C) g0 f0)
     with (@View C C (@auth_view_rel C) (Some (DfracOwn 1, to_agree r) ⋅ g0) (ε ⋅ f0)) in eq1 by trivial.
     
-  inversion eq1.
-  unfold view_frag_proj in H0.
-  generalize H0.
+  inversion eq1 as [Q R].
+  unfold view_frag_proj in R.
+  generalize R.
   rewrite ucmra_unit_left_id.
   intro X.
   
