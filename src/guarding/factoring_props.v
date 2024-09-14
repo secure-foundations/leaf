@@ -1,81 +1,57 @@
-From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import auth.
-From iris.algebra Require Import functions.
-From iris.algebra Require Import gmap.
 From iris.prelude Require Import options.
-
+From iris.algebra Require Import cmra updates proofmode_classes auth functions gmap.
 From iris.base_logic Require Import upred.
-From iris.base_logic.lib Require Export own iprop.
-From iris.proofmode Require Import base.
-From iris.proofmode Require Import ltac_tactics.
-From iris.proofmode Require Import tactics.
-From iris.proofmode Require Import coq_tactics.
-
-From iris.base_logic.lib Require Export invariants.
-
-From iris.base_logic.lib Require Export fancy_updates.
-From iris.base_logic.lib Require Export fancy_updates_from_vs.
-
-From iris.bi Require Import derived_laws_later.
-
-From iris.proofmode Require Import coq_tactics reduction.
-From iris.proofmode Require Export tactics.
-From iris.program_logic Require Import atomic.
-From iris.prelude Require Import options.
-
-From iris.base_logic.lib Require Export wsat.
-
-From iris.bi Require Import derived_laws.
-
+From iris.base_logic.lib Require Import own iprop.
+From iris.base_logic.lib Require Import fancy_updates fancy_updates_from_vs.
+From iris.proofmode Require Import base ltac_tactics tactics coq_tactics reduction.
+From iris.bi Require Import derived_laws_later derived_laws.
 Require Import guarding.internal.factoring_upred.
 
 (**
-In general, it does *not* hold that:
-
+In general, it does _not_ hold that:
+<<
     (P ⊢ Q) → (P &&{_}&&> Q)
-    
+>>
 (See Appendix 1.4; https://arxiv.org/pdf/2309.04851 for a counter-example.)
 
 This does hold if we can "factor" P as Q ∗ R.
-
+<<
     (Q ∗ R) &&{_}&&> Q.
-    
+>>
 For this reason, it is useful to identify propositions that Q that are _always_
 factor-out-able in this sense. This is true for propositions like `own γ x`.
 That is, we have:
 
-    If `P ⊢ own γ x` then there is `Q` such that `P ⊣⊢ own γ x ∗ Q`
-    
-(Specifically, we can take `Q` to be `own γ x -∗ P`.)
+    If [`P ⊢ own γ x`] then there exists [Q] such that [P ⊣⊢ own γ x ∗ Q]
+
+(Specifically, we can take [Q] to be [own γ x -∗ P].)
 
 This lets us prove:
-
+<<
     (P ⊢ own γ x) → P &&{_}&&> own γ x
-
+>>
 Now, I don't know if this particular rule is very useful, but this factorizability property
-*is* crucial for stating and proving Leaf's (∧)-related rules.
+_is_ crucial for stating and proving Leaf's (∧)-related rules.
 
 Unfortunately, I don't have a clean description of the class of propositions Q that
 meet this factorizability property, let alone one that also handles all the fiddly
-details with ◇ and ▷ that we need. I do know that all propositions of the form
-`uPred_ownM x` work for everything we need (thus any proposition of the form
-`own γ x` and ∗-conjunctions thereof). So that's what we classify here.
+details with [◇] and [▷] that we need. I do know that all propositions of the form
+[uPred_ownM x] work for everything we need (thus any proposition of the form
+[own γ x] and [∗]-conjunctions thereof). So that's what we classify here.
 
 This definitely isn't the complete set -- we should probably extend it to include
 persistent propositions at the very least.
 It would be nice to have a clean definition like:
-
+<<
     Definition can_always_factor_out Q := ∀ P , (P -∗ Q) ∗ P ⊢ Q ∗ (Q -∗ P).
-
+>>
 But from a definition like this, I haven't been able to answer basic questions, like
 whether this is true:
-
+<<
     can_always_factor_out P →
     can_always_factor_out Q →
     can_always_factor_out (P ∗ Q)
-    
-If you know a proof or counterexample to this, do let me know!
+>>   
 *)
 
 Section Factoring.

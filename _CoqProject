@@ -9,7 +9,7 @@ src/guarding/own_and_own_sep.v
 src/guarding/factoring_props.v
 src/guarding/guard.v
 src/guarding/tactics.v
-src/guarding/guard_later.v
+src/guarding/guard_later_pers.v
 
 src/guarding/storage_protocol/inved.v
 src/guarding/storage_protocol/protocol.v

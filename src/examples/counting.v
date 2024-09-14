@@ -17,7 +17,6 @@ From iris Require Import options.
 From iris.algebra Require Import auth.
 
 Require Import guarding.guard.
-Require Import guarding.guard_later.
 
 Require Import guarding.storage_protocol.protocol.
 Require Import guarding.storage_protocol.inved.

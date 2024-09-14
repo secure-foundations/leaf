@@ -16,7 +16,6 @@ From lang Require Import lang.
 From iris Require Import options.
 
 Require Import guarding.guard.
-Require Import guarding.guard_later.
 Require Import examples.misc_tactics.
 Require Import guarding.storage_protocol.protocol.
 Require Import guarding.storage_protocol.inved.

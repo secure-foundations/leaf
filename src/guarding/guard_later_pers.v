@@ -1,18 +1,19 @@
 From iris.algebra Require Export cmra.
-From iris.algebra Require Import functions.
-From iris.algebra Require Import gmap.
-From iris.prelude Require Import options.
-
 From iris.base_logic Require Import upred.
-From iris.base_logic.lib Require Export own iprop.
-From iris.base_logic.lib Require Export wsat invariants.
-
-From iris.algebra Require Import auth.
-
+From iris.base_logic.lib Require Export own iprop wsat invariants.
 From iris.proofmode Require Export tactics.
 Require Import guarding.guard.
 
-Section GuardLater.
+(** Say you have [P &&{E}&&> (▷ Q)] and you want to eliminate the [▷].
+If [Q] is timeless, you can do this with [guards_remove_later].
+
+What if [Q] is the conjunction of a timeless part and a persistent part?
+Persistent props can be moved in and out of guards easily.
+Thus you can eliminate the [▷] by moving the persistent part out,
+eliminating the later, then moving the persistent part back in.
+This file contains some type classes to automate this. *)
+
+Section GuardLaterPers.
 
 Class LaterGuardExtractable {Σ: gFunctors} (P : iProp Σ) := {
   extract_pers : iProp Σ;
@@ -75,7 +76,7 @@ Context `{!invGS Σ}.
 
 (* Later-Pers-Guard *)
     
-Definition extract_later1 (X T P : iProp Σ) E F
+Lemma extract_later1 (X T P : iProp Σ) E F
     (pers: Persistent P)
     (tl: Timeless T)
     (su: F ⊆ E)
@@ -99,7 +100,7 @@ Proof.
   iFrame "p". iFrame "g4".
 Qed.
 
-Definition extract_later (X S : iProp Σ) E F
+Lemma extract_later (X S : iProp Σ) E F
     (ex: LaterGuardExtractable S)
     (su: F ⊆ E)
     : ⊢ (X ∗ (X &&{F}&&> ▷ S)) ={E}=∗
@@ -111,5 +112,4 @@ Proof.
   - apply lg_timeless.
 Qed.
 
-
-End GuardLater.
+End GuardLaterPers.

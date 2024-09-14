@@ -16,7 +16,7 @@ From lang Require Import heap_ra.
 From iris Require Import options.
 
 Require Import guarding.guard.
-Require Import guarding.guard_later.
+Require Import guarding.guard_later_pers.
 Require Import guarding.lib.rwlock.
 Require Import examples.misc_tactics.
 

@@ -1,32 +1,28 @@
+From iris.prelude Require Import options.
 Require Import guarding.guard.
 Require Import guarding.own_and.
 Require Import guarding.tactics.
-
 Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import excl.
-From iris.algebra Require Import gmap_view.
-From iris.prelude Require Import options.
+From iris.algebra Require Import proofmode_classes excl gmap_view.
+From iris.base_logic.lib Require Export own iprop invariants.
+From iris.proofmode Require Import base ltac_tactics tactics coq_tactics.
 
-From iris.base_logic.lib Require Export own iprop.
-From iris.proofmode Require Import base.
-From iris.proofmode Require Import ltac_tactics.
-From iris.proofmode Require Import tactics.
-From iris.proofmode Require Import coq_tactics.
-From iris.base_logic.lib Require Export invariants.
+(** Non-atomic map. **)
 
 Inductive ReadWriteState :=
   | Reading : nat → ReadWriteState
   | Writing : ReadWriteState
 .
 
-Inductive ReadWriteState' :=
-  | Reading' : ReadWriteState'
-  | Writing' : ReadWriteState'
-.
+(* begin hide *)
 
 Section NonAtomicInternals.
+
+  Inductive ReadWriteState' :=
+    | Reading' : ReadWriteState'
+    | Writing' : ReadWriteState'
+  .
 
   Context `{!EqDecision L, !Countable L}.
   Context {V: Type}.
@@ -264,13 +260,13 @@ Section NonAtomicInternals.
     destruct r. - subst n. trivial. - lia.
   Qed.
 End NonAtomicInternals.
+
+(* end hide *)
   
 Class na_logicG L V `{!EqDecision L, !Countable L} Σ := {
-  na1_inG : inG Σ (gmap_viewR L (agreeR (leibnizO (V * ReadWriteState')))) ;
-  na2_inG : inG Σ (gmap_viewR (L * nat) (agreeR (laterO (iPropO Σ))))
+  #[local] na1_inG :: inG Σ (gmap_viewR L (agreeR (leibnizO (V * ReadWriteState')))) ;
+  #[local] na2_inG :: inG Σ (gmap_viewR (L * nat) (agreeR (laterO (iPropO Σ))))
 }.
-Local Existing Instance na1_inG. 
-Local Existing Instance na2_inG. 
 
 Definition na_logicΣ L V `{!EqDecision L, !Countable L} : gFunctors := #[
   GFunctor (gmap_viewR L (agreeR (leibnizO (V * ReadWriteState')))) ;
@@ -291,32 +287,79 @@ Section NonAtomicMap.
   Context `{!na_logicG L V Σ}.
   Context `{!invGS Σ}. 
   
+  Implicit Types (γ: gname) (l: L) (v: V).
+  Implicit Types (G: iProp Σ).
+  Implicit Types (σ: gmap L (V * ReadWriteState)).
+  
+  (* begin hide *)
   Local Definition γh (γ: gname) : gname := match prod_decode_fst γ with Some x => x | _ => γ end.
   Local Definition γi (γ: gname) : gname := match prod_decode_snd γ with Some x => x | _ => γ end.
   
-  Definition points_to (γ: gname) (l: L) (v: V) : iProp Σ :=
+  Local Definition points_to_def (γ: gname) (l: L) (v: V) : iProp Σ :=
       own (γh γ) (gmap_view_frag (V:=agreeR $ leibnizO (V * ReadWriteState')) l (DfracOwn 1) (to_agree (v, Reading'))).
+  Local Definition points_to_aux : seal (@points_to_def). Proof. by eexists. Qed.
+  (* end hide *)
+  Definition points_to γ l v : iProp Σ. exact (points_to_aux.(unseal) γ l v). Defined.
+  (* begin hide *)
+  Local Definition points_to_unseal :
+      @points_to = @points_to_def := points_to_aux.(seal_eq).
       
+  (* end hide *)
   Notation "l ↦[ γ ] v" := (points_to γ l v)
     (at level 20, format "l  ↦[ γ ]  v") : bi_scope.
+    
+  (* begin hide *)
       
-  Definition points_to_w_intermediate (γ: gname) (l: L) (v: V) : iProp Σ :=
+  Local Definition points_to_w_intermediate_def (γ: gname) (l: L) (v: V) : iProp Σ :=
       own (γh γ) (gmap_view_frag (V:=agreeR $ leibnizO (V * ReadWriteState')) l (DfracOwn 1) (to_agree (v, Writing'))).
-  
-  Definition points_to_r_intermediate (γ: gname) (l: L) (v: V) (G: iProp Σ) : iProp Σ :=
+      
+  Local Definition points_to_r_intermediate_def (γ: gname) (l: L) (v: V) (G: iProp Σ) : iProp Σ :=
     (∃ i, own (γi γ) (gmap_view_frag (l, i) (DfracOwn 1) (to_agree (Next G)))) ∗ (G &&{⊤}&&> (l ↦[γ] v)).
     
-  Definition non_atomic_map (γ: gname) (σ: gmap L (V * ReadWriteState)) : iProp Σ
+  Local Definition non_atomic_map_def (γ: gname) (σ: gmap L (V * ReadWriteState)) : iProp Σ
     := ∃ (m : gmap (L * nat) (iProp Σ)),
       own (γh γ) (gmap_view_auth (V:=agreeR $ leibnizO (V * ReadWriteState')) (DfracOwn 1) (to_agree <$> (erase_count_map σ)))
         ∗ own (γi γ) (gmap_view_auth (DfracOwn 1) (to_agree <$> (Next <$> m)))
         ∗ ⌜ counts_agree σ m ⌝
         ∗ [∗ map] k ↦ G ∈ m , G ∗ ∃ v, (G &&{⊤}&&> (k.1) ↦[γ] v).
+      
+  Local Definition points_to_w_intermediate_aux : seal (@points_to_w_intermediate_def). Proof. by eexists. Qed.
+  (* end hide *)
+  Definition points_to_w_intermediate γ l v : iProp Σ. exact (points_to_w_intermediate_aux.(unseal) γ l v). Defined.
+  (* begin hide *)
+  Local Definition points_to_w_intermediate_unseal :
+      @points_to_w_intermediate = @points_to_w_intermediate_def := points_to_w_intermediate_aux.(seal_eq).
+      
+  Local Definition points_to_r_intermediate_aux : seal (@points_to_r_intermediate_def). Proof. by eexists. Qed.
+  (* end hide *)
+  Definition points_to_r_intermediate γ l v G : iProp Σ. exact (points_to_r_intermediate_aux.(unseal) γ l v G). Defined.
+  (* begin hide *)
+  Local Definition points_to_r_intermediate_unseal :
+      @points_to_r_intermediate = @points_to_r_intermediate_def := points_to_r_intermediate_aux.(seal_eq).
+  
+          
+  Local Definition non_atomic_map_aux : seal (@non_atomic_map_def). Proof. by eexists. Qed.
+  (* end hide *)
+  Definition non_atomic_map γ σ : iProp Σ. exact (non_atomic_map_aux.(unseal) γ σ). Defined.
+  (* begin hide *)
+  Local Definition non_atomic_map_unseal :
+      @non_atomic_map = @non_atomic_map_def := non_atomic_map_aux.(seal_eq).
+  
+  Local Ltac unseal := rewrite
+    ?non_atomic_map_unseal /non_atomic_map_def
+    ?points_to_unseal /points_to_def
+    ?points_to_r_intermediate_unseal /points_to_r_intermediate_def
+    ?points_to_w_intermediate_unseal /points_to_w_intermediate_def.
+    
+  (* end hide *)
+    
+  Global Instance points_to_timeless γ l v : Timeless (l ↦[γ] v).
+  Proof. unseal. apply _. Qed.
         
   Lemma non_atomic_map_alloc_empty
     : ⊢ |==> ∃ γ, non_atomic_map γ ∅.
   Proof.
-    iIntros.
+    unseal. iIntros.
     iMod (@own_alloc Σ _ na1_inG
       (gmap_view_auth (V:=agreeR (leibnizO (V * ReadWriteState'))) (DfracOwn 1) ∅))
       as (γh0) "H". { apply gmap_view_auth_valid. }
@@ -330,15 +373,16 @@ Section NonAtomicMap.
     done.
   Qed.
         
+  (* begin hide *)
   Local Lemma points_to_heap_agree' γ l v σ :
     (l ↦[γ] v) ∗ own (γh γ) (gmap_view_auth (V:=agreeR $ leibnizO (V * ReadWriteState')) (DfracOwn 1) (to_agree <$> erase_count_map σ)) ⊢ ⌜ ∃ n, σ !! l = Some (v, Reading n) ⌝.
   Proof.
-    iIntros "[pt oh]".
+    unseal. iIntros "[pt oh]".
     iCombine "oh pt" gives
       %(av' & _ & _ & Hav' & _ & Hincl)%gmap_view_both_dfrac_valid_discrete_total.
     iPureIntro.
     apply lookup_fmap_Some in Hav' as [v' [<- Hv']].
-    apply to_agree_included_L in Hincl. 
+    rewrite to_agree_included_L in Hincl. 
     unfold erase_count_map in Hv'. rewrite lookup_fmap in Hv'.
     destruct (σ !! l).
     - unfold "<$>", option_fmap, option_map in Hv'.
@@ -347,18 +391,19 @@ Section NonAtomicMap.
       + rewrite <- Hincl in Hv'. inversion Hv'.
     - inversion Hv'.
   Qed.
+  (* end hide *)
   
-  Local Lemma points_to_heap_agree γ l v σ :
+  Lemma points_to_heap_agree γ l v σ :
     (l ↦[γ] v) ∗ non_atomic_map γ σ ⊢ ⌜ ∃ n, σ !! l = Some (v, Reading n) ⌝.
   Proof.
-    iIntros "[pt na]". iDestruct "na" as (m) "[oh [oi [%ca big]]]".
-    iApply points_to_heap_agree'. iFrame.
+    unseal. iIntros "[pt na]". iDestruct "na" as (m) "[oh [oi [%ca big]]]".
+    iApply points_to_heap_agree'. unseal. iFrame.
   Qed.
   
-  Local Lemma points_to_heap_agree_w γ l v σ :
+  Lemma points_to_heap_agree_w γ l v σ :
     points_to_w_intermediate γ l v ∗ non_atomic_map γ σ ⊢ ⌜ σ !! l = Some (v, Writing) ⌝.
   Proof.
-    iIntros "[pt na]". iDestruct "na" as (m) "[oh [oi [%ca big]]]".
+    unseal. iIntros "[pt na]". iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iCombine "oh pt" gives
       %(av' & _ & _ & Hav' & _ & Hincl)%gmap_view_both_dfrac_valid_discrete_total.
     
@@ -374,14 +419,14 @@ Section NonAtomicMap.
     - inversion Hv'.
   Qed.
 
-  Local Lemma points_to_heap_reading0 γ l v σ :
+  Lemma points_to_heap_reading0 γ l v σ :
     ⊢ (l ↦[γ] v) ∗ non_atomic_map γ σ ={⊤}=∗
       (l ↦[γ] v) ∗ non_atomic_map γ σ ∗ ⌜ σ !! l = Some (v, Reading 0) ⌝.
   Proof.
-    iIntros "[pt na]".
+    unseal. iIntros "[pt na]".
     
     iDestruct (points_to_heap_agree with "[pt na]") as "%is_read".
-      { iFrame "pt".  iFrame "na". }
+      { unseal. iFrame "pt".  iFrame "na". }
     destruct is_read as [n is_read].
     have h : Decision (n = 0) by solve_decision. destruct h as [h|h]; trivial.
     { iModIntro. iFrame. iPureIntro. subst n. trivial. }
@@ -409,10 +454,10 @@ Section NonAtomicMap.
         ∗ points_to_w_intermediate γ l v
         ∗ non_atomic_map γ (<[ l := (v, Writing) ]> σ).
   Proof.
-    iIntros "[pt na]".
+    unseal. iIntros "[pt na]".
     iMod (points_to_heap_reading0 with "[pt na]") as "[pt [na %is_read]]".
-      { iFrame "pt".  iFrame "na". }
-    iDestruct "na" as (m) "[oh [oi [%ca big]]]".
+      { unseal. iFrame "pt".  iFrame "na". }
+    unseal. iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iCombine "oh pt" as "heap".
     iMod (@own_update Σ _ na1_inG (γh γ) _ ((
       gmap_view_auth (V := agreeR (leibnizO (V * ReadWriteState')))
@@ -438,6 +483,7 @@ Section NonAtomicMap.
     iIntros "[pt na]".
     iDestruct (points_to_heap_agree_w with "[pt na]") as "%is_write".
       { iFrame "pt".  iFrame "na". }
+    unseal.
     iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iCombine "oh pt" as "heap".
     iMod (@own_update Σ _ na1_inG (γh γ) _ ((
@@ -465,6 +511,7 @@ Section NonAtomicMap.
     leaf_open "guard" with "g" as "[pt back]". { set_solver. }
     iDestruct (points_to_heap_agree with "[pt na]") as "%is_read".
       { iFrame "pt". iFrame "na". }
+    unseal.
     destruct is_read as [n is_read]. iExists n.
     iMod ("back" with "pt") as "G".
     iDestruct "na" as (m) "[oh [oi [%ca big]]]".
@@ -487,7 +534,7 @@ Section NonAtomicMap.
     iSplitR. { iPureIntro. trivial. }
     unfold points_to_r_intermediate. iFrame "ptr".
     rewrite (erase_count_map_same_update_read_count _ _ _ _ _ is_read). iFrame "oh".
-    iFrame "guard".
+    unseal. iFrame "guard".
     iSplitR. { iPureIntro. apply counts_agree_insert_read; trivial. }
     rewrite big_sepM_insert; trivial.
     iFrame. iExists v. iFrame "guard".
@@ -499,7 +546,7 @@ Section NonAtomicMap.
         ∗ G
         ∗ non_atomic_map γ (<[ l := (v, Reading (n - 1)) ]> σ).
   Proof.
-    iIntros "[[ptr #guard] na]".
+    unseal. iIntros "[[ptr #guard] na]".
     iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iDestruct "ptr" as (i) "ptr".
     iAssert (∃ n G' v0, ⌜ σ !! l = Some (v0, Reading n) ∧ n ≥ 1 ∧ m !! (l, i) = Some G'⌝
@@ -591,7 +638,7 @@ Section NonAtomicMap.
     (σ !! l = None) →
     non_atomic_map γ σ ={⊤}=∗ (l ↦[γ] v) ∗ non_atomic_map γ (<[ l := (v, Reading 0) ]> σ).
   Proof.
-    intros not_in. iIntros "na".
+    unseal. intros not_in. iIntros "na".
     iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iMod (@own_update Σ _ na1_inG (γh γ) _ ((
       gmap_view_auth (V := agreeR (leibnizO (V * ReadWriteState')))
@@ -616,7 +663,7 @@ Section NonAtomicMap.
   Proof.
     iIntros "a".
     iMod (points_to_heap_reading0 with "a") as "[pt [na %is_in]]".
-    iDestruct "na" as (m) "[oh [oi [%ca big]]]".
+    unseal. iDestruct "na" as (m) "[oh [oi [%ca big]]]".
     iCombine "oh pt" as "oh".
     iMod (@own_update Σ _ na1_inG (γh γ) _ ((
       gmap_view_auth (V := agreeR (leibnizO (V * ReadWriteState')))

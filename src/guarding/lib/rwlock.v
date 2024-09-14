@@ -1,21 +1,16 @@
+From iris.prelude Require Import options.
 Require Import guarding.guard.
 Require Import guarding.storage_protocol.base_storage_opt.
 Require Import guarding.storage_protocol.protocol.
 Require Import guarding.storage_protocol.inved.
-
 Require Import stdpp.base.
-From iris.algebra Require Export cmra updates.
-From iris.algebra Require Import proofmode_classes.
-From iris.algebra Require Import auth.
-From iris.prelude Require Import options.
+From iris.algebra Require Import cmra updates proofmode_classes auth.
+From iris.base_logic.lib Require Export own iprop invariants.
+From iris.proofmode Require Import base ltac_tactics tactics coq_tactics.
 
-From iris.base_logic.lib Require Export own iprop.
-From iris.proofmode Require Import base.
-From iris.proofmode Require Import ltac_tactics.
-From iris.proofmode Require Import tactics.
-From iris.proofmode Require Import coq_tactics.
-From iris.base_logic.lib Require Export invariants.
+(** Resource logic for implementing a RwLock **)
 
+(* begin hide *)
 Inductive AgN (S: Type) `{!EqDecision S} :=
   | Empty : AgN S
   | Have : S -> nat -> AgN S
@@ -357,6 +352,7 @@ Definition rwlock_logicΣ {S: Type} {eqdec: EqDecision S} : gFunctors := #[
 Global Instance subG_rwlock_logicΣ {S: Type} {eqdec: EqDecision S} {Σ} :
     subG (@rwlock_logicΣ S eqdec) Σ → @rwlock_logicG S eqdec Σ.
 Proof. solve_inG. Qed.
+(* end hide *)
 
 Section RwlockLogic.
 

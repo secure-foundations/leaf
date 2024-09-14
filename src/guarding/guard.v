@@ -1,14 +1,8 @@
-From iris.algebra Require Export cmra.
-From iris.algebra Require Import functions.
-From iris.algebra Require Import gmap.
 From iris.prelude Require Import options.
-
+From iris.algebra Require Import gmap auth.
 From iris.base_logic Require Import upred.
-From iris.base_logic.lib Require Export own iprop.
-From iris.base_logic.lib Require Export wsat invariants.
-
-From iris.algebra Require Import auth.
-
+From iris.base_logic.lib Require Export own iprop wsat invariants.
+From iris.base_logic.lib Require Import fancy_updates fancy_updates_from_vs.
 From iris.proofmode Require Export tactics.
 Require Import guarding.factoring_props.
 
@@ -1325,7 +1319,7 @@ Proof.
   iMod "b". iModIntro. iFrame.
 Qed.
 
-Definition lguards_include_pers (P X Q : iProp Σ) F n
+Lemma lguards_include_pers (P X Q : iProp Σ) F n
     (pers: Persistent P) :
   P ∗ (X &&{ F; n }&&> Q) ⊢ (X &&{ F; n }&&> (Q ∗ P)).
 Proof.
@@ -1339,7 +1333,7 @@ Qed.
 
 (* Guard-Pers *)
     
-Definition guards_include_pers (P X Q : iProp Σ) F
+Lemma guards_include_pers (P X Q : iProp Σ) F
     (pers: Persistent P) :
   P ∗ (X &&{ F }&&> Q) ⊢ (X &&{ F }&&> (Q ∗ P)).
 Proof.
@@ -1366,7 +1360,7 @@ Proof.
   iDestruct (lguards_weaken_rhs_r with "g") as "g". iFrame "g".
 Qed.
 
-Definition lguards_impl_point (P Q S : iProp Σ) F n
+Lemma lguards_impl_point (P Q S : iProp Σ) F n
     (point: point_prop S)
     (qrx: (Q ⊢ S))
     : (
@@ -1383,7 +1377,7 @@ Qed.
 
 (* Guard-Implies *)
 
-Definition guards_impl_point (P Q S : iProp Σ) F
+Lemma guards_impl_point (P Q S : iProp Σ) F
     (point: point_prop S)
     (qrx: (Q ⊢ S))
     : (
@@ -1395,7 +1389,7 @@ Proof.
   apply lguards_impl_point; trivial.
 Qed.
 
-Definition lguards_and_point (P Q R S : iProp Σ) F n
+Lemma lguards_and_point (P Q R S : iProp Σ) F n
     (point: point_prop S)
     (qrx: (Q ∧ R ⊢ S))
     : (
@@ -1419,7 +1413,7 @@ Qed.
 
 (* Guard-And *)
 
-Definition guards_and_point (P Q R S : iProp Σ) F
+Lemma guards_and_point (P Q R S : iProp Σ) F
     (point: point_prop S)
     (qrx: (Q ∧ R ⊢ S))
     : (
@@ -1431,7 +1425,7 @@ Proof.
   apply lguards_and_point; trivial.
 Qed.
 
-Definition guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
+Lemma guards_and (P Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F
     (qrx: (Q ∧ R ⊢ own γ x))
     : (
       (P &&{F}&&> Q) ∗ (P &&{F}&&> R)
@@ -1601,4 +1595,3 @@ Notation "P &&{ E }&&> Q" := (guards P Q E)
   
 Notation "P &&{ E ; n }&&> Q" := (lguards P Q E n)
   (at level 99, E at level 50, Q at level 200).
-   

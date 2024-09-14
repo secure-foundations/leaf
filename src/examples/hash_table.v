@@ -2,7 +2,7 @@ From iris.base_logic.lib Require Import invariants.
 From lang Require Import lang simp adequacy primitive_laws.
 
 Require Import guarding.guard.
-Require Import guarding.guard_later.
+Require Import guarding.guard_later_pers.
 Require Import guarding.lib.rwlock.
 
 From lang Require Import heap_ra.

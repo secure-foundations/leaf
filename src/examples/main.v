@@ -6,6 +6,7 @@ From iris.program_logic Require Import ectx_lifting.
 From iris Require Import options.
 
 Require Import guarding.guard.
+Require Import guarding.guard_later_pers.
 Require Import guarding.lib.rwlock.
 
 From lang Require Import lang simp adequacy primitive_laws.
@@ -13,7 +14,6 @@ From lang Require Import heap_ra.
 
 From examples Require Import forever.
 From examples Require Import hash_table.
-From guarding Require Import guard_later.
 From examples Require Import seqs.
 From examples Require Import hash_table_logic.
 From examples Require Import hash_table_raw.
