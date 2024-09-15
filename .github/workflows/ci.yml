@@ -22,6 +22,7 @@ jobs:
         opam update
         opam pin coq 8.19.1 --confirm-level=yes
         opam pin coq-iris 4.2.0 --confirm-level=yes
+        opam pin coq-iris-heap-lang 4.2.0 --confirm-level=yes
 
     - name: Run check
       run: |

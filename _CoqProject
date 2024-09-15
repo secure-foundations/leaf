@@ -45,6 +45,7 @@ src/examples/seqs.v
 src/examples/main.v
 src/examples/fractional.v
 src/examples/counting.v
+src/examples/heap_lang_wp_load_shared.v
 
 -arg -w -arg -argument-scope-delimiter
 -arg -w -arg -notation-overridden
