@@ -80,16 +80,17 @@ Proof. split.
   - typeclasses eauto.
   - unfold Assoc. intros. apply lt_assoc.
   - unfold Comm. intros. apply lt_comm.
-  - intros x cx peq. unfold pcore, lt_pcore in peq. destruct x.
+  - intros x cx peq. unfold pcore, lt_pcore in peq. destruct x as [o|].
     + inversion peq. subst cx. unfold "⋅", lt_op. destruct o; f_equiv; set_solver.
     + inversion peq. subst cx. trivial.
   - intros x cx peq. unfold pcore, lt_pcore in peq. destruct x.
     + inversion peq. subst cx. trivial.
     + inversion peq. subst cx. trivial.
     
-  - intros x y cx xley peq. destruct x, y; destruct xley as [t equ]; destruct t;
+  - intros x y cx xley peq.
+      destruct x as [o a d|], y as [o1 a1 d1|]; destruct xley as [[o2 a2 d2|] equ];
       unfold pcore, lt_pcore; unfold pcore, lt_pcore in peq; inversion peq; subst cx.
-      + exists (LtOk None ∅ g2); intuition.  apply LtOk_incl_3.
+      + exists (LtOk None ∅ d1); intuition.  apply LtOk_incl_3.
           eapply multiset_subseteq_of_LtOk_incl. apply equ.
       + unfold "⋅", lt_op in equ. inversion equ. destruct o; discriminate.
       + exists LtFail. intuition. exists LtFail. trivial.
@@ -115,7 +116,7 @@ Global Instance lt_unit : Unit LtRa := LtOk None ∅ ∅.
 Definition lt_ucmra_mixin : UcmraMixin LtRa.
 split; trivial.
   - exists (LtOk (Some (∅, ∅)) ∅ ∅). unfold lt_inv. simpl; set_solver.
-  - intro x. destruct x; simpl; trivial.
+  - intro x. destruct x as [o a d|]; simpl; trivial.
       destruct o; trivial.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
@@ -172,7 +173,7 @@ Proof.
   - apply cond.
   - intros lti. unfold lt_inv in lti.
     replace (x ⋅ LtFail) with LtFail in lti. { contradiction. }
-    destruct x; trivial. destruct o; trivial.
+    destruct x as [o a d|]; trivial. destruct o; trivial.
 Qed.
 
 Lemma new_lt k sa sd :
@@ -506,10 +507,10 @@ Qed.
 Local Lemma not_subset_eq_get (a b : gset nat) : (a ⊈ b) → ∃ k , k ∈ a ∧ k ∉ b.
 Proof.
   assert (∀ r , list_to_set r ⊈ b → ∃ u: nat , u ∈ ((list_to_set r) : gset nat) ∧ u ∉ b) as X.
-  { induction r.
+  { intro r. induction r as [|a0 r IHr].
     - intros emp. rewrite list_to_set_nil in emp. set_solver.
     - intros not_in. rewrite list_to_set_cons in not_in.
-      have h : Decision (a0 ∈ b) by solve_decision. destruct h as [h|n]; trivial.
+      destruct (decide (a0 ∈ b)); trivial.
       + assert (list_to_set r ⊈ b) as K by set_solver.
         have IHr2 := IHr K. destruct IHr2 as [u IHr2]. exists u. set_solver.
       + exists a0. intuition. rewrite list_to_set_cons. set_solver.

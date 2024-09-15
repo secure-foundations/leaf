@@ -108,7 +108,7 @@ Section NonAtomicInternals.
   Proof.
     assert (exists x , x ∉ ((λ a , a.1.2) <$> map_to_list m)) as [x H].
     { exists (fresh ((λ a , a.1.2) <$> map_to_list m)). apply infinite_is_fresh. }
-    exists x. destruct (m !! (l, x)) as [|] eqn:mlx; trivial.
+    exists x. destruct (m !! (l, x)) as [u|] eqn:mlx; trivial.
     exfalso. apply H. rewrite <- elem_of_map_to_list in mlx.
     rewrite elem_of_list_fmap. exists ((l, x), u). intuition.
   Qed.
@@ -257,7 +257,7 @@ Section NonAtomicInternals.
     rewrite <- cal in j. unfold heap_count in j, cal.
     destruct (σ !! l) as [[v r]|]; last by lia.
     exists (m_count m l). exists v. intuition. f_equal. f_equal.
-    destruct r. - subst n. trivial. - lia.
+    destruct r as [n|]. - subst n. trivial. - lia.
   Qed.
 End NonAtomicInternals.
 
@@ -384,7 +384,7 @@ Section NonAtomicMap.
     apply lookup_fmap_Some in Hav' as [v' [<- Hv']].
     rewrite to_agree_included_L in Hincl. 
     unfold erase_count_map in Hv'. rewrite lookup_fmap in Hv'.
-    destruct (σ !! l).
+    destruct (σ !! l) as [p|].
     - unfold "<$>", option_fmap, option_map in Hv'.
       destruct p as [a [n|]].
       + exists n. f_equal.  f_equal. rewrite <- Hincl in Hv'. inversion Hv'. trivial.
@@ -411,7 +411,7 @@ Section NonAtomicMap.
     apply lookup_fmap_Some in Hav' as [v' [<- Hv']].
     rewrite to_agree_included_L in Hincl. 
     unfold erase_count_map in Hv'. rewrite lookup_fmap in Hv'.
-    destruct (σ !! l).
+    destruct (σ !! l) as [p|].
     - unfold "<$>", option_fmap, option_map in Hv'.
       destruct p as [a [n|]].
       + rewrite <- Hincl in Hv'. inversion Hv'.
@@ -559,11 +559,11 @@ Section NonAtomicMap.
       rewrite lookup_fmap in sm. rewrite lookup_fmap in sm.
       
       destruct ((@lookup (prod L nat) (uPredO (iResUR Σ))
-                  (@gmap (prod L nat) (@prod_eq_dec L EqDecision0 nat Nat.eq_dec)
-                     (@prod_countable L EqDecision0 Countable0 nat Nat.eq_dec nat_countable)
+                  (@gmap (prod L nat) (@prod_eq_dec L _ nat Nat.eq_dec)
+                     (@prod_countable L _ _ nat Nat.eq_dec nat_countable)
                      (uPredO (iResUR Σ)))
-                  (@gmap_lookup (prod L nat) (@prod_eq_dec L EqDecision0 nat Nat.eq_dec)
-                     (@prod_countable L EqDecision0 Countable0 nat Nat.eq_dec nat_countable)
+                  (@gmap_lookup (prod L nat) (@prod_eq_dec L _ nat Nat.eq_dec)
+                     (@prod_countable L _ _ nat Nat.eq_dec nat_countable)
                      (uPredO (iResUR Σ))) (@pair L nat l i) m))
               as [G'|] eqn:dest_eqn; rewrite dest_eqn in sm; last by inversion sm.
      rewrite dest_eqn.
