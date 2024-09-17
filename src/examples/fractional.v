@@ -20,12 +20,10 @@ From iris Require Import options.
 
 Require Import guarding.guard.
 Require Import guarding.storage_protocol.protocol.
+Require Import guarding.tactics.
 From iris.algebra Require Import auth.
 
 Require Import examples.misc_tactics.
-
-Context {Σ: gFunctors}.
-Context `{!invGS Σ}.
 
 Definition FRAC_NAMESPACE := nroot .@ "fractional".
 
@@ -164,32 +162,13 @@ Proof. split.
   - intros. unfold "✓", nat_valid_instance. trivial.
 Qed.
 
-Class frac_logicG Σ :=
-    {
-      #[local] frac_sp_inG ::
-        sp_logicG (storage_mixin_from_ii frac_storage_mixin_ii) Σ
-    }.
-
-Definition frac_logicΣ : gFunctors := #[
-  sp_logicΣ (storage_mixin_from_ii frac_storage_mixin_ii)
-].
-
-Global Instance subG_frac_logicΣ {Σ} : subG frac_logicΣ Σ → frac_logicG Σ.
-Proof. solve_inG. Qed.
-
-Section Frac.
-
-Context {Σ: gFunctors}.
-Context `{@frac_logicG Σ}.
-Context `{!invGS Σ}.
-
-Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
+Fixpoint sep_pow {Σ} (n: nat) (P: iProp Σ) : iProp Σ :=
   match n with
     | 0%nat => (True)%I
     | S k => (bi_sep P (sep_pow k P))%I
   end. 
 
-Lemma sep_pow_additive (a b : nat) (Q: iProp Σ)
+Lemma sep_pow_additive {Σ} (a b : nat) (Q: iProp Σ)
     : sep_pow (a + b) Q ≡ (sep_pow a Q ∗ sep_pow b Q)%I.
 Proof.
   induction b as [|b IHb].
@@ -201,9 +180,9 @@ Proof.
     { iIntros "[a [b c]]". iFrame. }
 Qed.
 
-Definition family (Q: iProp Σ) (n: nat) : iProp Σ := sep_pow n Q.
+Definition family {Σ} (Q: iProp Σ) (n: nat) : iProp Σ := sep_pow n Q.
   
-Lemma wf_prop_map_family (Q: iProp Σ) : wf_prop_map (family Q).
+Lemma wf_prop_map_family {Σ} (Q: iProp Σ) : wf_prop_map (family Q).
 Proof.  split.
   { unfold Proper, "==>", nat_equiv_instance. intros x y e. unfold "≡" in e.
     subst x. trivial.
@@ -211,30 +190,6 @@ Proof.  split.
   split.
   { unfold ε, nat_unit_instance. unfold family, sep_pow. trivial. }
   intros a b x. unfold "⋅", nat_op_instance. unfold family. apply sep_pow_additive.
-Qed.
-
-Definition m (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := frac_sp_inG) γ (family Q).
-
-Definition own_frac (γ: gname) (qp: Qp) := sp_own (sp_i := frac_sp_inG) γ (Some qp).
-
-Lemma frac_init E (Q: iProp Σ)
-  : ⊢ True ={E}=∗ ∃ (γ: gname) , m γ Q.
-Proof.
-  iIntros "t".
-  iDestruct (sp_alloc_ns (sp_i := frac_sp_inG)
-      (None : option Qp)
-      ε
-      (family Q)
-      E
-      FRAC_NAMESPACE
-      with "[t]") as "x".
-  { unfold sp_inv, frac_inv. split; trivial. unfold sp_inv. trivial. }
-  { apply wf_prop_map_family. }
-  { unfold family. unfold sp_interp, frac_interp_instance. unfold sep_pow. iFrame. }
-  iMod "x". iModIntro.
-  iDestruct "x" as (γ) "[%inn [a b]]".
-  iExists γ.
-  iFrame "a".
 Qed.
 
 Lemma q_le_add_1 (a b: Q) (is_le: Qle a b) : Qle (a + 1) (b + 1).
@@ -377,74 +332,135 @@ Proof.
   rewrite Qred_involutive. trivial.
 Qed.
 
-Lemma frac_deposit (R: iProp Σ) γ
-  : m γ R ⊢ R ={{[γ]}}=∗ own_frac γ 1.
-Proof.
-  iIntros "#m q".
-  iDestruct (sp_deposit None (Some (1%Qp)) 1 _ _ with "m [q]") as "x".
-  { rewrite eq_storage_protocol_deposit_ii. intros q Y. split.
-    { unfold sp_inv, frac_inv in *. destruct q.
-      { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_plus_1. trivial. }
-      { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_1. }
+Class frac_logicG Σ :=
+    {
+      #[local] frac_sp_inG ::
+        sp_logicG (storage_mixin_from_ii frac_storage_mixin_ii) Σ
+    }.
+
+Definition frac_logicΣ : gFunctors := #[
+  sp_logicΣ (storage_mixin_from_ii frac_storage_mixin_ii)
+].
+
+Global Instance subG_frac_logicΣ {Σ} : subG frac_logicΣ Σ → frac_logicG Σ.
+Proof. solve_inG. Qed.
+
+Section Frac.
+  Context {Σ: gFunctors}.
+  Context `{@frac_logicG Σ}.
+  Context `{!invGS Σ}.
+
+  Definition sto_frac (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := frac_sp_inG) γ (family Q).
+  Definition own_frac (γ: gname) (qp: Qp) := sp_own (sp_i := frac_sp_inG) γ (Some qp).
+
+
+  Lemma frac_alloc E (Q: iProp Σ)
+    : ⊢ |={E}=> ∃ (γ: gname) , sto_frac γ Q ∗ ⌜ γ ∈ (↑FRAC_NAMESPACE : coPset) ⌝.
+  Proof.
+    iIntros.
+    iDestruct (sp_alloc_ns (sp_i := frac_sp_inG)
+        (None : option Qp)
+        ε
+        (family Q)
+        E
+        FRAC_NAMESPACE
+        with "[]") as "x".
+    { unfold sp_rel, sp_inv, frac_inv. split; trivial. unfold sp_inv. trivial. }
+    { apply wf_prop_map_family. }
+    { done. }
+    iMod "x". iModIntro.
+    iDestruct "x" as (γ) "[%inn [a b]]".
+    iExists γ.
+    iFrame "a". iPureIntro. trivial.
+  Qed.
+
+  Lemma frac_deposit (R: iProp Σ) γ
+    : sto_frac γ R ⊢ R ={{[γ]}}=∗ own_frac γ 1.
+  Proof.
+    iIntros "#m q".
+    iDestruct (sp_deposit None (Some (1%Qp)) 1 _ _ with "m [q]") as "x".
+    { rewrite eq_storage_protocol_deposit_ii. intros q Y. split.
+      { unfold sp_inv, frac_inv in *. destruct q.
+        { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_plus_1. trivial. }
+        { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_1. }
+      }
+      split.
+      { unfold "✓", nat_valid_instance. trivial. }
+      { unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance in *.
+          destruct q.
+          { unfold "⋅", frac_op_instance, "≡", nat_equiv_instance.
+              apply to_nat_add_1. }
+          simpl. trivial. } 
     }
-    split.
-    { unfold "✓", nat_valid_instance. trivial. }
-    { unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance in *.
-        destruct q.
-        { unfold "⋅", frac_op_instance, "≡", nat_equiv_instance.
-            apply to_nat_add_1. }
-        simpl. trivial. } 
-  }
-  { iSplitR. { iDestruct (sp_own_unit with "m") as "u". unfold ε, option_unit. iFrame "u". }
-      { iModIntro. unfold family, sep_pow, sep_pow. iFrame "q". }
-  }
-  iMod "x". iModIntro. iFrame "x".
-Qed.
-
-Lemma frac_join q1 q2 γ :
-  (own_frac γ q1) ∗ (own_frac γ q2) ⊣⊢ own_frac γ (q1 + q2).
-Proof.
-  setoid_rewrite <- sp_own_op.
-  unfold own_frac.
-  trivial.
-Qed.
-
-Lemma frac_withdraw (R: iProp Σ) γ :
-  m γ R ⊢ own_frac γ 1 ={{[γ]}}=∗ ▷ R.
-Proof.
-  iIntros "#m q".
-  iDestruct (sp_withdraw (Some (1%Qp)) None 1 _ _ with "m [q]") as "x".
-  { rewrite eq_storage_protocol_withdraw_ii. intros q Y. split.
-    { unfold sp_inv, frac_inv in *. destruct q.
-      { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_minus_1. trivial. }
-      { unfold "⋅", option_op, "⋅", frac_op_instance in *. trivial. }
+    { iSplitR. { iDestruct (sp_own_unit with "m") as "u". unfold ε, option_unit. iFrame "u". }
+        { iModIntro. unfold family, sep_pow, sep_pow. iFrame "q". }
     }
-    unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance. destruct q.
-    - symmetry. apply to_nat_add_1.
-    - simpl. trivial. }
-  { iFrame "q". }
-  iMod "x" as "[x y]".
-  iModIntro. iModIntro. unfold family, sep_pow. iDestruct "y" as "[y z]". iFrame "y".
-Qed.
+    iMod "x". iModIntro. iFrame "x".
+  Qed.
 
-Lemma frac_guard (R: iProp Σ) γ q :
-  m γ R ⊢ own_frac γ q &&{ {[γ]} }&&> ▷ R.
-Proof.
-  unfold m.
-  unfold own_frac.
-  assert (R ⊣⊢ (family R 1)) as X.
-  {
-    unfold family, sep_pow. iIntros. iSplit. { iIntros. iFrame. } iIntros "[x y]". iFrame.
-  }
-  setoid_rewrite X at 2.
-  apply sp_guard.
-  2: { set_solver. }
-  rewrite eq_storage_protocol_guards_ii. intro q0. unfold "≼", sp_inv, frac_inv.
-  intro.
-  apply nat_ge_to_exists. unfold sp_interp, frac_interp_instance, "⋅", option_op.
-  destruct q0.
-  - apply nat_ceil_ge_1.
-  - apply nat_ceil_ge_1.
-Qed.
+  Lemma frac_join q1 q2 γ :
+    (own_frac γ q1) ∗ (own_frac γ q2) ⊣⊢ own_frac γ (q1 + q2).
+  Proof.
+    setoid_rewrite <- sp_own_op.
+    unfold own_frac.
+    trivial.
+  Qed.
+
+  Lemma frac_withdraw (R: iProp Σ) γ :
+    sto_frac γ R ⊢ own_frac γ 1 ={{[γ]}}=∗ ▷ R.
+  Proof.
+    iIntros "#m q".
+    iDestruct (sp_withdraw (Some (1%Qp)) None 1 _ _ with "m [q]") as "x".
+    { rewrite eq_storage_protocol_withdraw_ii. intros q Y. split.
+      { unfold sp_inv, frac_inv in *. destruct q.
+        { unfold "⋅", option_op, "⋅", frac_op_instance in *. apply is_int_minus_1. trivial. }
+        { unfold "⋅", option_op, "⋅", frac_op_instance in *. trivial. }
+      }
+      unfold sp_interp, frac_interp_instance, "⋅", option_op, nat_op_instance. destruct q.
+      - symmetry. apply to_nat_add_1.
+      - simpl. trivial. }
+    { iFrame "q". }
+    iMod "x" as "[x y]".
+    iModIntro. iModIntro. unfold family, sep_pow. iDestruct "y" as "[y z]". iFrame "y".
+  Qed.
+
+  Lemma frac_guard (R: iProp Σ) γ q :
+    sto_frac γ R ⊢ own_frac γ q &&{ {[γ]} }&&> ▷ R.
+  Proof.
+    unfold sto_frac.
+    unfold own_frac.
+    assert (R ⊣⊢ (family R 1)) as X.
+    {
+      unfold family, sep_pow. iIntros. iSplit. { iIntros. iFrame. } iIntros "[x y]". iFrame.
+    }
+    setoid_rewrite X at 2.
+    apply sp_guard.
+    2: { set_solver. }
+    rewrite eq_storage_protocol_guards_ii. intro q0. unfold "≼", sp_inv, frac_inv.
+    intro.
+    apply nat_ge_to_exists. unfold sp_interp, frac_interp_instance, "⋅", option_op.
+    destruct q0.
+    - apply nat_ceil_ge_1.
+    - apply nat_ceil_ge_1.
+  Qed.
+  
+  Lemma frac_alloc2 (P: iProp Σ) (E: coPset) :
+    (↑FRAC_NAMESPACE ⊆ E) →
+    P ⊢ |={E}=> ∃ (γ: gname) , own_frac γ 1%Qp
+          ∗ □ (own_frac γ 1%Qp ={↑FRAC_NAMESPACE}=∗ ▷ P)
+          ∗ (∀ q , own_frac γ q &&{↑FRAC_NAMESPACE}&&> ▷ P).
+  Proof.
+    intros HE. iIntros "P".
+    iMod (frac_alloc E P) as (γ) "[#sto %Hns]".
+    Print fupd_mask_frame.
+    iMod (fupd_mask_subseteq {[γ]}) as "Hb". { set_solver. }
+    iMod (frac_deposit with "sto P") as "H1".
+    iMod "Hb". iModIntro.
+    iExists γ. iFrame "H1". iSplit.
+    - iModIntro. iIntros "Ho1". iApply (fupd_mask_mono {[γ]}). { set_solver. }
+      iApply frac_withdraw; iFrame. iFrame "sto".
+    - iIntros (q). leaf_goal mask to ({[γ]}). { set_solver. }
+      iApply frac_guard. iFrame "sto".
+  Qed.
 
 End Frac.
