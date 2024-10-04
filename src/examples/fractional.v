@@ -452,7 +452,6 @@ Section Frac.
   Proof.
     intros HE. iIntros "P".
     iMod (frac_alloc E P) as (γ) "[#sto %Hns]".
-    Print fupd_mask_frame.
     iMod (fupd_mask_subseteq {[γ]}) as "Hb". { set_solver. }
     iMod (frac_deposit with "sto P") as "H1".
     iMod "Hb". iModIntro.

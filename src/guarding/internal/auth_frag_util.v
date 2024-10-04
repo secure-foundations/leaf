@@ -294,4 +294,16 @@ Proof using C Disc m Σ.
   rewrite cmra_assoc. trivial.
 Qed.
 
+Lemma view_frag_included_frag (z : auth C) :
+    ∃ bz , (∀ b , ◯V b ≼ z → b ≼ bz) ∧ ◯V bz ≼ z .
+Proof.
+  exists (view_frag_proj z).
+  destruct z as [af1 bf1]. split.
+      + intros b [[af bf] Hb]. exists bf.
+        destruct Hb as [Hba Hbb]. apply Hbb.
+      + exists (View af1 ε). unfold "⋅", cmra_op, viewR, view_op_instance. f_equiv.
+         - unfold view_auth_proj, view_frag. rewrite left_id. trivial.
+         - unfold view_frag_proj, view_frag. rewrite right_id. trivial.
+Qed.
+
 End AuthFragUtil.

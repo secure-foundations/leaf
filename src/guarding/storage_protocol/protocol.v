@@ -924,14 +924,24 @@ Section StorageLogic.
     apply own_op.
   Qed.
   
-  (* TODO
   Lemma sp_own_and x y γ :
       sp_own γ x ∧ sp_own γ y ⊢ ∃ z , ⌜ x ≼ z ∧ y ≼ z ⌝ ∗ sp_own γ z.
   Proof.
-    iIntros "H". unfold sp_own. iDestruct (and_own_discrete_ucmra with "H") as (z) "[J %t]".
-    destruct t as [Hxz Hyz]. destruct z as [|p].
+    iIntros "H". rewrite sp_own_eq. unfold sp_own_def.
+    iDestruct (and_own_discrete_ucmra with "H") as (z) "[J %t]".
+    destruct t as [Hxz Hyz]. 
+    destruct (view_frag_included_frag z) as (bz & Hf & Hle).
+    destruct bz as [|bz].
+    - destruct (Hf (Inved x) Hxz) as [z2 Heq].
+      destruct z2; inversion Heq.
+    - iExists bz. destruct Hle as [z2 Hle]. setoid_rewrite Hle.
+      iDestruct "J" as "[J1 J2]". unfold "◯". iFrame "J1".
+      iPureIntro. split.
+      + have h := Hf (Inved x) Hxz. 
+        apply (incl_of_inved_incl_assumes_unital _ _ h).
+      + have h := Hf (Inved y) Hyz. 
+        apply (incl_of_inved_incl_assumes_unital _ _ h).
   Qed.
-  *)
   
   Lemma op_unit (p: P) : p ⋅ ε ≡ p.
   Proof using storage_mixin.
@@ -1109,7 +1119,7 @@ Section StorageLogic.
     iModIntro. iExists γ. iFrame.
   Qed.
   
-  Lemma fupd_singleton_mask_frame (γ: gname) (X Y Z : iProp Σ) E
+  Local Lemma fupd_singleton_mask_frame (γ: gname) (X Y Z : iProp Σ) E
     (premise: X ⊢ Y ={ {[ γ ]} }=∗ Z) (is_in: γ ∈ E) : X ⊢ Y ={ E }=∗ Z.
   Proof.
     iIntros "x y".
