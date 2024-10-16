@@ -128,37 +128,46 @@ Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
 (* end hide *)
 
-Class lt_logicG Σ := { lt_logic_inG : inG Σ ltUR ; exclG : inG Σ (exclR unitO) }.
-Local Existing Instance lt_logic_inG.
+Class llft_logicGpreS Σ := { llft_logic_inG : inG Σ ltUR ; exclG : inG Σ (exclR unitO) }.
+Class llft_logicGS Σ := LlftLogicG {
+  llft_inG : llft_logicGpreS Σ;
+  llft_name: gname;
+}.
+Local Existing Instance llft_logic_inG.
 Local Existing Instance exclG.
+Local Existing Instance llft_inG.
 
-Definition lt_logicΣ : gFunctors := #[ GFunctor ltUR ; GFunctor (exclR unitO) ].
+Definition llft_logicΣ : gFunctors := #[ GFunctor ltUR ; GFunctor (exclR unitO) ].
 
-Global Instance subG_lt_logicΣ Σ : subG lt_logicΣ Σ → lt_logicG Σ.
+Global Instance subG_lt_logicΣ Σ : subG llft_logicΣ Σ → llft_logicGpreS Σ.
 Proof.
   solve_inG.
 Qed.
 
-Section LlftLogic.
-
+Section LlftHelperResources.
   Context {Σ: gFunctors}.
-  Context `{!lt_logicG Σ}.
+  Context `{!llft_logicGpreS Σ}.
   Context `{!invGS Σ}.
-
-  Context (γlt : gname).
-
+  
   (* begin hide *)
 
   Definition lt_state (sa sd : gset nat) := LtOk (Some (sa, sd)) ∅ sd.
-  Definition LtState (sa sd : gset nat) : iProp Σ := own γlt (lt_state sa sd).
+  Definition LtState γlt (sa sd : gset nat) : iProp Σ := own γlt (lt_state sa sd).
 
   Definition dead (k: nat) := LtOk None ∅ ({[ k ]}).
-  Definition Dead (k: nat) : iProp Σ := own γlt (dead k).
+  Definition Dead γlt (k: nat) : iProp Σ := own γlt (dead k).
 
   Definition alive (k: nat) := LtOk None ({[+ k +]}) ∅.
-  Definition Alive (k: nat) : iProp Σ := own γlt (alive k).
+  Definition Alive γlt (k: nat) : iProp Σ := own γlt (alive k).
+  
+  Local Lemma lt_alloc :
+    ⊢ |==> ∃ γ , LtState γ ∅ ∅.
+  Proof.
+    apply own_alloc. unfold "✓", cmra_valid, ltR, lt_valid.
+    exists (LtOk None ∅ ∅). simpl; set_solver.
+  Qed.
 
-  Lemma update_helper (a b : LtRa)
+  Local Lemma update_helper (a b : LtRa)
     (cond: ∀ z : ltR, lt_inv (a ⋅ z) → lt_inv (b ⋅ z))
     : a ~~> b.
   Proof.
@@ -167,7 +176,7 @@ Section LlftLogic.
     have co := cond _ ay. exists t. rewrite <- lt_assoc. apply co.
   Qed.
 
-  Lemma update_helper2 (x y : LtRa)
+  Local Lemma update_helper2 (x y : LtRa)
     (cond: ∀ o a d , lt_inv (x ⋅ LtOk o a d) → lt_inv (y ⋅ LtOk o a d))
     : x ~~> y.
   Proof.
@@ -178,9 +187,9 @@ Section LlftLogic.
       destruct x as [o a d|]; trivial. destruct o; trivial.
   Qed.
 
-  Lemma new_lt k sa sd :
+  Local Lemma new_lt γlt k sa sd :
     (k ∉ sa) → (k ∉ sd) →
-    LtState sa sd ==∗ LtState (sa ∪ {[ k ]}) sd ∗ Alive k ∗ Alive k.
+    LtState γlt sa sd ==∗ LtState γlt (sa ∪ {[ k ]}) sd ∗ Alive γlt k ∗ Alive γlt k.
   Proof.
     intros k_sa k_sd.
     setoid_rewrite <- own_op. setoid_rewrite <- own_op.
@@ -221,7 +230,7 @@ Section LlftLogic.
           rewrite multiplicity_singleton_ne; trivial.
   Qed.
 
-  Lemma double_incl_lt_inv a b z' :
+  Local Lemma double_incl_lt_inv a b z' :
     (a ≼ z') → (b ≼ z') → (✓ z') → ∃ z, a ≼ z ∧ b ≼ z ∧ lt_inv z.
   Proof.
     intros az bz valz. destruct valz as [t valz]. exists (z' ⋅ t).
@@ -232,7 +241,7 @@ Section LlftLogic.
     trivial.
   Qed.
 
-  Lemma lt_state_incl_lt_ok sa sd sa1 sd1 a d 
+  Local Lemma lt_state_incl_lt_ok sa sd sa1 sd1 a d 
     : (lt_state sa sd ≼ LtOk (Some (sa1, sd1)) a d) → sa = sa1 ∧ sd = sd1.
   Proof.
     intros lts. destruct lts as [t lts].
@@ -242,7 +251,7 @@ Section LlftLogic.
     - unfold lt_state in lts. unfold "⋅", lt_op in lts. inversion lts.
   Qed.
 
-  Lemma alive_incl_lt_ok k sa1 sd1 a d
+  Local Lemma alive_incl_lt_ok k sa1 sd1 a d
     : (alive k ≼ LtOk (Some (sa1, sd1)) a d) → lt_inv (LtOk (Some (sa1, sd1)) a d) → k ∈ sa1.
   Proof.
     intros lts lti. destruct lts as [t lts].
@@ -258,7 +267,7 @@ Section LlftLogic.
     - inversion lts.
   Qed.
 
-  Lemma dead_incl_lt_ok k sa1 sd1 a d
+  Local Lemma dead_incl_lt_ok k sa1 sd1 a d
     : (dead k ≼ LtOk (Some (sa1, sd1)) a d) → lt_inv (LtOk (Some (sa1, sd1)) a d) → k ∈ sd1.
   Proof.
     intros lts lti. destruct lts as [t lts].
@@ -269,14 +278,14 @@ Section LlftLogic.
     - inversion lts.
   Qed.
 
-  Lemma alive_dead_contradiction k sa sd a d
+  Local Lemma alive_dead_contradiction k sa sd a d
     : (lt_inv (LtOk (Some (sa, sd)) a d)) → (k ∈ sa) → (k ∈ sd) → False.
   Proof.
     intros lts lti. destruct lts as [_ [no_int _]]. set_solver.
   Qed.
 
-  Lemma lt_state_alive k sa sd :
-    LtState sa sd ∧ Alive k ⊢ ⌜ k ∈ sa ⌝.
+  Local Lemma lt_state_alive γlt k sa sd :
+    LtState γlt sa sd ∧ Alive γlt k ⊢ ⌜ k ∈ sa ⌝.
   Proof.
     iIntros "P". iDestruct (and_own_discrete_ucmra with "P") as (z') "[o [%incl1 %incl2]]".
     iDestruct (own_valid with "o") as "%valz".
@@ -288,8 +297,8 @@ Section LlftLogic.
     apply (alive_incl_lt_ok _ _ _ _ _ inc2). apply lti.
   Qed.
 
-  Lemma lt_state_dead k sa sd :
-    LtState sa sd ∧ Dead k ⊢ ⌜ k ∈ sd ⌝.
+  Local Lemma lt_state_dead γlt k sa sd :
+    LtState γlt sa sd ∧ Dead γlt k ⊢ ⌜ k ∈ sd ⌝.
   Proof.
     iIntros "P". iDestruct (and_own_discrete_ucmra with "P") as (z') "[o [%incl1 %incl2]]".
     iDestruct (own_valid with "o") as "%valz".
@@ -301,8 +310,8 @@ Section LlftLogic.
     apply (dead_incl_lt_ok _ _ _ _ _ inc2). apply lti.
   Qed.
 
-  Lemma lt_alive_dead_false k :
-    Alive k ∧ Dead k ⊢ False.
+  Local Lemma lt_alive_dead_false γlt k :
+    Alive γlt k ∧ Dead γlt k ⊢ False.
   Proof.
     iIntros "P". iDestruct (and_own_discrete_ucmra with "P") as (z') "[o [%incl1 %incl2]]".
     iDestruct (own_valid with "o") as "%valz".
@@ -315,8 +324,9 @@ Section LlftLogic.
     eapply alive_dead_contradiction. { apply lti. } { apply j1. apply lti. } { apply j2. apply lti. }
   Qed.
 
-  Lemma kill_lt k sa sd :
-    LtState sa sd ∗ Alive k ∗ Alive k ==∗ LtState (sa ∖ {[ k ]}) (sd ∪ {[ k ]}) ∗ Dead k.
+  Local Lemma kill_lt γlt k sa sd :
+    LtState γlt sa sd ∗ Alive γlt k ∗ Alive γlt k ==∗
+        LtState γlt (sa ∖ {[ k ]}) (sd ∪ {[ k ]}) ∗ Dead γlt k.
   Proof.
     setoid_rewrite <- own_op. setoid_rewrite <- own_op.
     iIntros "a". iApply own_update. 2: { iFrame "a". } apply update_helper2.
@@ -357,9 +367,9 @@ Section LlftLogic.
             rewrite multiplicity_disj_union in fmm2i. lia.
   Qed.
 
-  Lemma bigSepS_alive_equiv_own a
+  Local Lemma bigSepS_alive_equiv_own γlt a
     (ne_emp: a ≠ ∅)
-      : ([∗ set] k ∈ a, Alive k) ⊣⊢ own γlt (LtOk None (list_to_set_disj (elements a)) ∅).
+      : ([∗ set] k ∈ a, Alive γlt k) ⊣⊢ own γlt (LtOk None (list_to_set_disj (elements a)) ∅).
   Proof.
     induction a as [|x T ? IH] using set_ind_L. 
     - contradiction.
@@ -376,13 +386,13 @@ Section LlftLogic.
           rewrite elements_union_singleton; trivial.
   Qed.
 
-  Lemma lt_ok_none_left o a1 d1 a2 d2
+  Local Lemma lt_ok_none_left o a1 d1 a2 d2
       : LtOk None a1 d1 ⋅ LtOk o a2 d2 = LtOk o (a1 ⊎ a2) (d1 ∪ d2).
   Proof.
     destruct o as [o|]; trivial.
   Qed.
 
-  Lemma mult_list_to_set_disj_not_in (a: gset nat) (x: nat)
+  Local Lemma mult_list_to_set_disj_not_in (a: gset nat) (x: nat)
     (not_in: x ∉ a) : multiplicity x (list_to_set_disj (elements a)) = 0.
   Proof.
   induction a as [|y b ? IH] using set_ind_L. 
@@ -392,7 +402,7 @@ Section LlftLogic.
       assert (x ≠ y) by set_solver. rewrite multiplicity_singleton_ne; trivial.
   Qed.
 
-  Lemma mult_list_to_set_disj_in (a: gset nat) (x: nat)
+  Local Lemma mult_list_to_set_disj_in (a: gset nat) (x: nat)
     (is_in: x ∈ a) : multiplicity x (list_to_set_disj (elements a)) = 1.
   Proof.
   induction a as [|y b ? IH] using set_ind_L. 
@@ -406,7 +416,7 @@ Section LlftLogic.
           subst x. contradiction.
   Qed.
 
-  Lemma multiplicity_le o1 a1 d1 o2 a2 d2 x
+  Local Lemma multiplicity_le o1 a1 d1 o2 a2 d2 x
     : LtOk o1 a1 d1 ≼ LtOk o2 a2 d2 → multiplicity x a1 ≤ multiplicity x a2.
   Proof.
     intro incl. destruct incl as [t incl]. destruct t as [o3 a3 d3|].
@@ -418,7 +428,7 @@ Section LlftLogic.
     - unfold "⋅", lt_op in incl. destruct o1; inversion incl.
   Qed.
 
-  Lemma own_and_alive (a1 a2 : gset nat)
+  Local Lemma own_and_alive γlt (a1 a2 : gset nat)
     : own γlt (LtOk None (list_to_set_disj (elements a1)) ∅)
       ∧ own γlt (LtOk None (list_to_set_disj (elements a2)) ∅)
       ⊢ own γlt (LtOk None (list_to_set_disj (elements (a1 ∪ a2))) ∅).
@@ -453,9 +463,9 @@ Section LlftLogic.
       destruct b; trivial.
   Qed.
 
-  Lemma alive_and_bigSepS (a1 a2 : gset nat)
-    : ([∗ set] k ∈ a1, Alive k) ∧ ([∗ set] k ∈ a2, Alive k)
-      ⊢ [∗ set] k ∈ a1 ∪ a2, Alive k.
+  Local Lemma alive_and_bigSepS γlt (a1 a2 : gset nat)
+    : ([∗ set] k ∈ a1, Alive γlt k) ∧ ([∗ set] k ∈ a2, Alive γlt k)
+      ⊢ [∗ set] k ∈ a1 ∪ a2, Alive γlt k.
   Proof.
     have h: Decision (a1 = ∅) by solve_decision. destruct h as [h1|n1].
     { subst a1. rewrite big_sepS_empty. rewrite bi.emp_and.
@@ -471,12 +481,12 @@ Section LlftLogic.
     apply own_and_alive.
   Qed.
 
-  Local Instance pers_dead k : Persistent (Dead k).
+  Local Instance pers_dead γlt k : Persistent (Dead γlt k).
   Proof.
     apply own_core_persistent. unfold CoreId. trivial.
   Qed.
 
-  Lemma LtState_entails_Dead k sa sd : (k ∈ sd) → LtState sa sd ⊢ Dead k.
+  Local Lemma LtState_entails_Dead γlt k sa sd : (k ∈ sd) → LtState γlt sa sd ⊢ Dead γlt k.
   Proof.
     intros ksd.
     unfold LtState.
@@ -485,7 +495,7 @@ Section LlftLogic.
     unfold dead, lt_state, "⋅", lt_op. f_equal. set_solver.
   Qed.
 
-  Lemma LtState_disjoint sa sd : LtState sa sd ⊢ ⌜ sa ∩ sd = ∅ ⌝.
+  Local Lemma LtState_disjoint γlt sa sd : LtState γlt sa sd ⊢ ⌜ sa ∩ sd = ∅ ⌝.
   Proof.
     iIntros "T". iDestruct (own_valid with "T") as "%val". iPureIntro.
     destruct val as [t lts].
@@ -495,8 +505,8 @@ Section LlftLogic.
     - inversion lts.
   Qed.
 
-  Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
-  Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
+  Local Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
+  Local Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
   Proof.
     iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold Cancel. iFrame "H".
   Qed.
@@ -523,6 +533,12 @@ Section LlftLogic.
     have Z := X1 Y. destruct Z as [u [Z1 Z2]]. exists u. split; trivial.
     rewrite list_to_set_elements in Z1. trivial.
   Qed.
+End LlftHelperResources.
+
+Section LlftLogic.
+  Context {Σ: gFunctors}.
+  Context `{!llft_logicGS Σ}.
+  Context `{!invGS Σ}.
 
   (*** Lifetime logic ***)
 
@@ -539,11 +555,11 @@ Section LlftLogic.
   Definition llft_empty : Lifetime := ∅.
   (* begin hide *)
 
-  Local Definition llft_alive_def (κ : Lifetime) : iProp Σ := [∗ set] k ∈ κ , Alive k.
-  Local Definition llft_dead_def (κ : Lifetime) : iProp Σ := ∃ k , ⌜ k ∈ κ ⌝ ∗ Dead k.
+  Local Definition llft_alive_def (κ : Lifetime) : iProp Σ := [∗ set] k ∈ κ , Alive llft_name k.
+  Local Definition llft_dead_def (κ : Lifetime) : iProp Σ := ∃ k , ⌜ k ∈ κ ⌝ ∗ Dead llft_name k.
 
   Local Definition llft_ctx_def :=
-    (True &&{↑NLLFT}&&> ∃ sa sd , LtState sa sd ∗ llft_alive_def sa).
+    (True &&{↑NLLFT}&&> ∃ sa sd , LtState llft_name sa sd ∗ llft_alive_def sa).
 
   Local Definition llft_alive_aux : seal (@llft_alive_def). Proof. by eexists. Qed.
   Local Definition llft_dead_aux : seal (@llft_dead_def). Proof. by eexists. Qed.
@@ -570,6 +586,9 @@ Section LlftLogic.
     ?llft_alive_unseal /llft_alive_def
     ?llft_dead_unseal /llft_dead_def
     ?llft_ctx_unseal /llft_ctx_def.
+    
+  Local Instance pers_dead2 γlt k : Persistent (Dead γlt k).
+  Proof. apply pers_dead. Qed.
 
   (* end hide *)
 
@@ -589,7 +608,7 @@ Section LlftLogic.
 
   Global Instance pers_llft_ctx : Persistent llft_ctx.
   Proof. unseal. typeclasses eauto. Qed.
-
+  
   Global Instance pers_llft_dead κ : Persistent ([† κ ]).
   Proof. unseal. typeclasses eauto. Qed.
 
@@ -603,13 +622,13 @@ Section LlftLogic.
   Proof.
     unseal. iIntros "[A D]". iDestruct "D" as (k) "[%kk D]".
     iDestruct ((big_sepS_delete _ _ k) with "A") as "[A _]". { trivial. }
-    iApply (lt_alive_dead_false k). iSplit; iFrame.
+    iApply (lt_alive_dead_false llft_name k). iSplit; iFrame.
   Qed.
 
   Lemma llftl_not_own_end_and κ : @[ κ ] ∧ [† κ ] ⊢ False.
   Proof.
     unseal. iIntros "AD". unfold llft_dead. rewrite bi.and_exist_l. iDestruct "AD" as (k) "AD".
-    iApply (lt_alive_dead_false k).
+    iApply (lt_alive_dead_false llft_name k).
     iAssert (⌜k ∈ κ⌝)%I as "%kk". { iDestruct "AD" as "[_ [D _]]".  iFrame. }
     iSplit; iFrame.
     { iDestruct "AD" as "[A _]".
@@ -627,7 +646,7 @@ Section LlftLogic.
 
       assert (∃ k , k ∉ (sa ∪ sd)) as Fres. { exists (fresh (sa ∪ sd)). apply is_fresh. }
       destruct Fres as [k Fres].
-      iMod (new_lt k sa sd with "[State]") as "T".
+      iMod (new_lt llft_name k sa sd with "[State]") as "T".
       { set_solver. } { set_solver. } { iFrame. }
       iDestruct "T" as "[State [A1 A2]]".
       iMod ("back" with "[Alive State A1]").
@@ -646,10 +665,10 @@ Section LlftLogic.
       { iFrame "ctx". }
       iMod "J" as "[J back]". iDestruct "J" as (sa1 sd1) "[State Alive]".
       iAssert (⌜k ∈ sa1⌝)%I as "%k_sa1".
-      { iApply (lt_state_alive k sa1 sd1). iSplit. { iFrame "State". } iFrame "token". }
+      { iApply (lt_state_alive llft_name k sa1 sd1). iSplit. { iFrame "State". } iFrame "token". }
       unseal. rewrite (big_sepS_delete _ sa1 k); trivial.
       iDestruct "Alive" as "[token2 Alive]".
-      iMod (kill_lt k sa1 sd1 with "[State token token2]") as "[State dead]". { iFrame. }
+      iMod (kill_lt llft_name k sa1 sd1 with "[State token token2]") as "[State dead]". { iFrame. }
       iMod ("back" with "[State Alive]") as "X".
       { iExists (sa1 ∖ {[k]}). iExists (sd1 ∪ {[k]}). iFrame. }
       iModIntro. unfold llft_dead. iExists k. iFrame "dead". iPureIntro. set_solver.
@@ -702,7 +721,7 @@ Section LlftLogic.
   Lemma llftl_incl_dead_implies_dead κ κ' :
       ⊢ llft_ctx ∗ κ ⊑ κ' ∗ [† κ' ] ={↑NLLFT}=∗ [† κ ].
   Proof.
-    unseal. iIntros "[#ctx [#incl #dead]]".
+    iIntros "[#ctx [#incl #dead]]". unseal.
 
     unfold llft_incl.
 
@@ -712,8 +731,8 @@ Section LlftLogic.
       iApply (llftl_not_own_end κ'). iFrame. unseal. iFrame "dead".
     }
     unfold llft_ctx.
-    leaf_hyp "ctx" rhs to ((∃ sa sd : gset nat, ⌜ κ ⊆ sa ⌝ ∗ LtState sa sd ∗ llft_alive sa)
-        ∨ (∃ sa sd : gset nat, ⌜ ¬(κ ⊆ sa) ⌝ ∗ LtState sa sd ∗ llft_alive sa) )%I
+    leaf_hyp "ctx" rhs to ((∃ sa sd : gset nat, ⌜ κ ⊆ sa ⌝ ∗ LtState llft_name sa sd ∗ llft_alive sa)
+        ∨ (∃ sa sd : gset nat, ⌜ ¬(κ ⊆ sa) ⌝ ∗ LtState llft_name sa sd ∗ llft_alive sa) )%I
         as "ctx2".
     {
       leaf_by_sep. iIntros "T". iSplitL.
@@ -726,7 +745,7 @@ Section LlftLogic.
           + iDestruct "T" as (sa sd) "[_ T]". iExists sa. iExists sd. unseal. iFrame.
       }
 
-      iAssert (True &&{ ↑NLLFT}&&> (∃ sa sd : gset nat, ⌜κ ⊈ sa⌝ ∗ LtState sa sd ∗ llft_alive sa)) as "G3".
+      iAssert (True &&{ ↑NLLFT}&&> (∃ sa sd : gset nat, ⌜κ ⊈ sa⌝ ∗ LtState llft_name sa sd ∗ llft_alive sa)) as "G3".
         { iApply guards_or_guards_false. iFrame "ctx2". 
           leaf_goal rhs to (llft_alive κ). { iFrame "G2". }
           leaf_by_sep.
@@ -755,12 +774,12 @@ Section LlftLogic.
       iDestruct "J" as (sa sd) "[%k_sa [State alive]]".
       have the_k := not_subset_eq_get κ sa k_sa. destruct the_k as [k [k_in k_not_in]].
       have h : Decision (k ∈ sd) by solve_decision. destruct h as [h|n]; trivial.
-        - iDestruct (LtState_entails_Dead k sa sd with "State") as "#deadk"; trivial.
+        - iDestruct (LtState_entails_Dead llft_name k sa sd with "State") as "#deadk"; trivial.
           iMod ("back" with "[State alive]") as "true". { iExists sa. iExists sd. iFrame. iPureIntro; trivial. } iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro. apply k_in.
         - (* weird technicality, if k was never made alive in the first place;
             first create it, then immediately kill it *)
-          iMod (new_lt k sa sd with "State") as "[State [al1 al2]]"; trivial.
-          iMod (kill_lt k (sa ∪ {[ k ]}) sd with "[State al1 al2]") as "[State deadk]".
+          iMod (new_lt llft_name k sa sd with "State") as "[State [al1 al2]]"; trivial.
+          iMod (kill_lt llft_name k (sa ∪ {[ k ]}) sd with "[State al1 al2]") as "[State deadk]".
             { iFrame. }
           iMod ("back" with "[State alive]") as "J".
           { iExists sa. iExists (sd ∪ {[k]}). iFrame.
@@ -846,5 +865,18 @@ Section LlftLogic.
     iIntros "t". iDestruct "t" as (k) "[%p t]".
     rewrite elem_of_empty in p. contradiction.
   Qed.
-
 End LlftLogic.
+
+Lemma llft_alloc {Σ: gFunctors} `{!llft_logicGpreS Σ} `{!invGS Σ} E
+  : ⊢ |={E}=> ∃ _ : llft_logicGS Σ, llft_ctx.
+Proof.
+  iIntros. iMod lt_alloc as (γ) "J".
+  iMod (inv_alloc_with_guard (NLLFT) E
+      (∃ sa sd : gset nat, LtState γ sa sd ∗ [∗ set] k ∈ sa , Alive γ k) with "[J]") as "[_ K]".
+   { iModIntro. iExists ∅. iExists ∅. iFrame. done. }
+  iModIntro.
+  iExists (LlftLogicG _ _ γ).
+  rewrite llft_ctx_unseal /llft_ctx_def.
+  iDestruct (guards_remove_later2 with "K") as "K2".
+  unfold llft_alive_def. iFrame "K2".
+Qed.
