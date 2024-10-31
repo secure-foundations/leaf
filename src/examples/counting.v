@@ -16,9 +16,6 @@ Require Import guarding.storage_protocol.protocol.
 
 Require Import examples.misc_tactics.
 
-Context {Σ: gFunctors}.
-Context `{!invGS Σ}.
-
 Definition COUNT_NAMESPACE := nroot .@ "count".
 
 Inductive Co :=

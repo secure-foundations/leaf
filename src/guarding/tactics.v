@@ -84,16 +84,16 @@ Qed.
 End TacticsHelpers.
 
 Tactic Notation "leaf_hyp" constr(g1) "rhs" "to" open_constr(Q) "as" constr(g2) :=
-  iPoseProof (guard_weaken_helper_right _ _ Q with (append g1 " []")) as g2.
+  iPoseProof (guard_weaken_helper_right _ _ Q with (String.append g1 " []")) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "rhs" "to" open_constr(Q) "laters" "plus" open_constr(n) "as" constr(g2) :=
-  iPoseProof (guard_weaken_helper_right_laters_plus _ _ Q _ _ n with (append g1 " []")) as g2.
+  iPoseProof (guard_weaken_helper_right_laters_plus _ _ Q _ _ n with (String.append g1 " []")) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "lhs" "to" open_constr(Q) "as" constr(g2) :=
-  iPoseProof (guard_weaken_helper_left Q with (append g1 " []")) as g2.
+  iPoseProof (guard_weaken_helper_left Q with (String.append g1 " []")) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "lhs" "to" open_constr(Q) "laters" "plus" open_constr(n) "as" constr(g2) :=
-  iPoseProof (guard_weaken_helper_left_laters_plus Q _ _ _ _ n with (append g1 " []")) as g2.
+  iPoseProof (guard_weaken_helper_left_laters_plus Q _ _ _ _ n with (String.append g1 " []")) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "mask" "to" open_constr(E) "as" constr(g2) :=
   iPoseProof (lguards_mask_weaken _ _ _ E with g1) as g2.
@@ -126,16 +126,15 @@ Tactic Notation "leaf_by_sep_except0" :=
   iApply lguards_weaken_except0; iModIntro.
   
 Tactic Notation "leaf_open" constr(g) "with" constr(sel) "as" constr(pat) :=
-  iMod (guards_open_helper with (append g (append " " sel))) as pat.
+  iMod (guards_open_helper with (String.append g (String.append " " sel))) as pat.
    
 Tactic Notation "leaf_open_laters" constr(g) "with" constr(sel) "as" constr(pat) :=
-  iMod (lguards_open_helper with (append g (append " " sel))) as pat.
+  iMod (lguards_open_helper with (String.append g (String.append " " sel))) as pat.
 
+Section TacticsTests.
   
 Context {Σ: gFunctors}.
 Context `{!invGS Σ}. 
- 
-Section TacticsTests.
   
 Local Lemma test_leaf_hyp (A B C D : iProp Σ) E
     : (A &&{∅ ; 3}&&> B ∗ C) ⊢ (A ∗ D &&{E ; 20}&&> B).

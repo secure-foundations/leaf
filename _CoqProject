@@ -52,3 +52,4 @@ src/examples/heap_lang_wp_load_shared.v
 -arg -w -arg -redundant-canonical-projection
 -arg -w -arg -unknown-warning
 -arg -w -arg -argument-scope-delimiter
+-arg -w -arg -notation-incompatible-prefix
