@@ -1024,7 +1024,7 @@ Opening a guard ([guards_open]) is a lot like opening an invariant;
 it decreases the current mask
 and gives you a view-shift wand to close it back up again.
 
-[guards_upd] is what you get if you use [guard_open], apply some update, and close
+[guards_upd] is what you get if you use [guards_open], apply some update, and close
 it back up again. This lemma is meant to capture the intuition that a guard
 [P &&{_}&&> Q] let you "use [P] as a read-only [Q]". In most cases, though, it's
 probably easier to use [guards_open] directly.
@@ -1458,7 +1458,7 @@ Qed.
 
 (** The relationship between guarding and invariants **)
 
-Lemma guards_from_inv (P: iProp Σ) i E
+Lemma guards_from_ownI (P: iProp Σ) i E
     (i_in_e: i ∈ E)
     : ownI i P ⊢ True &&{ E }&&> (▷ P).
 Proof.
@@ -1468,15 +1468,32 @@ Proof.
   { iApply fguards_from_inv. iFrame "o". }
 Qed.
 
-Lemma inv_alloc_with_guard N E P : ▷ P ={E}=∗ inv N P ∗ (True &&{↑N}&&> ▷ P).
+Lemma inv_from_guards (P: iProp Σ) (N: namespace)
+    : (True &&{ ↑N }&&> (▷ P)) ⊢ inv N P.
+Proof.
+  rewrite invariants.inv_unseal. unfold invariants.inv_def.
+  iIntros "#G". iModIntro. iIntros (E) "%NinE".
+  iMod (guards_open (True) (▷ P) E (↑N) with "[G]") as "[P back]".
+    { trivial. } { iFrame "G". }
+  iModIntro. iFrame.
+Qed.
+
+Lemma guards_alloc E N P : ▷ P ={E}=∗ (True &&{↑N}&&> ▷ P).
 Proof.
   iIntros "HP".
   iMod (own_inv_alloc N E P with "HP") as "#HP".
+  unfold own_inv.
+  iDestruct "HP" as (i) "[%i_in_N OI]".
   iModIntro.
-  iDestruct (own_inv_to_inv with "HP") as "inv".
-  unfold own_inv. iDestruct "HP" as (i) "[%in oi]".
-  iDestruct (guards_from_inv _ _ (↑N) with "oi") as "g". { trivial. }
-  iFrame "#".
+  iApply (guards_from_ownI P i (↑N)); trivial.
+Qed.
+
+Lemma guards_alloc_with_inv N E P : ▷ P ={E}=∗ inv N P ∗ (True &&{↑N}&&> ▷ P).
+Proof.
+  iIntros "HP".
+  iMod (guards_alloc E N P with "HP") as "#G".
+  iModIntro.
+  iFrame "G". iApply (inv_from_guards P N). iFrame "G".
 Qed.
 
 End Guard.

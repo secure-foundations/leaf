@@ -461,7 +461,7 @@ Section StorageLogic.
     : sp_sto γ f ⊢ (sp_own γ p &&{ E }&&> ▷ f b).
   Proof using equ_p.
     unfold sp_sto. iIntros "[%wfm [#ounit #oinv]]".
-    iDestruct (guards_from_inv _ _ E with "oinv") as "mg". { set_solver. }
+    iDestruct (guards_from_ownI _ _ E with "oinv") as "mg". { set_solver. }
     assert (Inhabited (P * B)) as IP. { apply populate. apply (ε, ε). }
     rewrite bi.later_exist.
     iDestruct (guards_true E (sp_own γ p)) as "gt".
@@ -764,7 +764,7 @@ Section StorageLogic.
   Proof.
     unfold sp_sto. rewrite sp_own_eq. unfold sp_own_def.
     iIntros "[[%wfm [#ounit #m]] #gu] [g [p f]]".
-    iDestruct (guards_from_inv _ _ E with "m") as "mg". { set_solver. }
+    iDestruct (guards_from_ownI _ _ E with "m") as "mg". { set_solver. }
     iDestruct (guards_true E G) as "gt".
     iDestruct (guards_transitive _ G True%I with "[gt mg]") as "gg".
     { iFrame "gt". iFrame "mg". }

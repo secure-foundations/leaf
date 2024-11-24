@@ -679,7 +679,7 @@ Section LlftLogic.
   Proof.
     iIntros "P".
     iMod new_cancel as (γc) "c1".
-    iMod (inv_alloc_with_guard (NLLFT) (↑NLLFT) ((P ∨ (llft_dead κ ∗ Cancel γc))) with "[P]") as "[#Tinv #Tguard]".
+    iMod (guards_alloc_with_inv (NLLFT) (↑NLLFT) ((P ∨ (llft_dead κ ∗ Cancel γc))) with "[P]") as "[#Tinv #Tguard]".
     { iNext. iLeft. iFrame "P". }
     iModIntro.
     iSplit.
@@ -871,7 +871,7 @@ Lemma llft_alloc {Σ: gFunctors} `{!llft_logicGpreS Σ} `{!invGS Σ} E
   : ⊢ |={E}=> ∃ _ : llft_logicGS Σ, llft_ctx.
 Proof.
   iIntros. iMod lt_alloc as (γ) "J".
-  iMod (inv_alloc_with_guard (NLLFT) E
+  iMod (guards_alloc_with_inv (NLLFT) E
       (∃ sa sd : gset nat, LtState γ sa sd ∗ [∗ set] k ∈ sa , Alive γ k) with "[J]") as "[_ K]".
    { iModIntro. iExists ∅. iExists ∅. iFrame. done. }
   iModIntro.
