@@ -155,12 +155,12 @@ Proof.
   - lia.
   - have h : Decision (i = n) by solve_decision. destruct h.
     + subst i. cbn [seq_iprop].
-      apply guards_weaken_l.
+      apply guards_weaken_sep_l.
     + assert (i < n) as iln by lia. intuition.
       cbn [seq_iprop].
       iApply (guards_transitive F _ (seq_iprop fn n) _).
       iSplitL.
-      { iApply guards_weaken_r. }
+      { iApply guards_weaken_sep_r. }
       iApply H0.
 Qed.
 
@@ -265,7 +265,7 @@ Lemma guarded_destruct_slots_i g E F γ γrws slots locks i
     ={E}=∗ g ∗ ⌜ ∃ (l: Z) , elem slots i = #l ⌝.
 Proof.
   iIntros "[g guards]".
-  iApply (guards_persistent g (is_ht_i γ γrws slots locks i) _ E F); trivial.
+  iApply (guards_extract_persistent g (is_ht_i γ γrws slots locks i) _ E F); trivial.
   iFrame.
   iApply destruct_slots_i.
 Qed.
@@ -291,7 +291,7 @@ Lemma guarded_destruct_ht g E F γ γrws ht
           /\ (∀ i , γrws i ∈ (↑ HT_RW_NAMESPACE : coPset)) ⌝.
 Proof.
   iIntros "[g guards]".
-  iApply (guards_persistent g (is_ht γ γrws ht) _ E F); trivial.
+  iApply (guards_extract_persistent g (is_ht γ γrws ht) _ E F); trivial.
   iFrame.
   iApply destruct_ht.
 Qed.
@@ -302,7 +302,7 @@ Lemma guarded_inner_ht g F γ γrws slots locks
     ⊢ (g &&{F}&&> is_ht_sl γ γrws slots locks).
 Proof.
   unfold is_ht.
-  apply guards_weaken_rhs_l.
+  apply guards_weaken_rhs_sep_l.
 Qed.
 
 Lemma guard_is_ht_i g F γ γrws slots locks (i: nat)
@@ -1124,10 +1124,10 @@ Proof.
     
     (* unpack all the stuff from the sh_guard *)
     
-    iDestruct (guards_remove_later2 with "guard_storage_lat") as "guard_storage".
+    iDestruct (guards_remove_later_rhs with "guard_storage_lat") as "guard_storage".
     unfold storage_fn at 3.
-    iDestruct (guards_weaken_rhs_l with "guard_storage") as "guard_mem".
-    iDestruct (guards_weaken_rhs_r with "guard_storage") as "guard_own_slot".
+    iDestruct (guards_weaken_rhs_sep_l with "guard_storage") as "guard_mem".
+    iDestruct (guards_weaken_rhs_sep_r with "guard_storage") as "guard_own_slot".
     
     (* read the slot *)
     

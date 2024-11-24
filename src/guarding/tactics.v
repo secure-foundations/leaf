@@ -9,42 +9,42 @@ Context `{!invGS Σ}.
 Local Lemma guard_weaken_helper_right (A B C : iProp Σ) (E: coPset) (n: nat)
     : (A &&{E; n}&&> B) -∗ (B &&{E}&&> C) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (n + 0) with n by trivial. iFrame "z".
 Qed.
 
 Local Lemma guard_weaken_helper_right_laters_plus (A B C : iProp Σ) (E: coPset) (n m: nat)
     : (A &&{E; n}&&> B) -∗ (B &&{E; m}&&> C) -∗ (A &&{E; n + m}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (n + 0) with n by trivial. iFrame "z".
 Qed.
 
 Local Lemma guard_weaken_helper_left (A B C : iProp Σ) (E: coPset) (n: nat)
     : (B &&{E; n}&&> C) -∗ (A &&{E}&&> B) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (0 + n) with n by trivial. iFrame "z".
 Qed.
 
 Local Lemma guard_weaken_helper_left_laters_plus (A B C : iProp Σ) (E: coPset) (n m: nat)
     : (B &&{E; n}&&> C) -∗ (A &&{E; m}&&> B) -∗ (A &&{E; n + m}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (n + m) with (m + n) by lia. iFrame "z".
 Qed.
  
 Local Lemma guard_goal_helper_right (A B C : iProp Σ) (E: coPset) (n: nat)
     : (A &&{E}&&> B) -∗ (B &&{E; n}&&> C) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (0 + n) with (n) by lia. iFrame "z".
 Qed.
 
 Local Lemma guard_goal_helper_left (A B C : iProp Σ) (E: coPset) (n: nat)
     : (B &&{E}&&> C) -∗ (A &&{E; n}&&> B) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (n + 0) with (n) by trivial. iFrame "z".
 Qed.
 
@@ -52,7 +52,7 @@ Local Lemma guard_goal_helper_right_laters_minus (A B C : iProp Σ) (E: coPset) 
   (le: m ≤ n)
     : (A &&{E; m}&&> B) -∗ (B &&{E; n-m}&&> C) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (m + (n-m)) with (n) by lia. iFrame "z".
 Qed.
 
@@ -60,7 +60,7 @@ Local Lemma guard_goal_helper_left_laters_minus (A B C : iProp Σ) (E: coPset) (
   (le: m ≤ n)
     : (B &&{E; m}&&> C) -∗ (A &&{E; n-m}&&> B) -∗ (A &&{E; n}&&> C).
 Proof.
-  iIntros "x y". iDestruct (lguards_transitive _ A B C with "[x y]") as "z".
+  iIntros "x y". iDestruct (guards_transitive_additive _ A B C with "[x y]") as "z".
   - iFrame "x". iFrame "y". - replace (n - m + m) with (n) by lia. iFrame "z".
 Qed.
 
@@ -69,7 +69,7 @@ Local Lemma lguards_open_helper (P Q : iProp Σ) (E F : coPset) n
     : (P &&{F; n}&&> Q) -∗ P ={E, E ∖ F}=∗
       ▷^n |={E ∖ F}=> (Q ∗ (Q ={E ∖ F, E}=∗ P)).
 Proof.
-  iIntros "x y". iApply lguards_open; trivial. iFrame.
+  iIntros "x y". iApply guards_open_later; trivial. iFrame.
 Qed.
 
 Local Lemma guards_open_helper (P Q : iProp Σ) (E F : coPset)
@@ -79,7 +79,6 @@ Local Lemma guards_open_helper (P Q : iProp Σ) (E F : coPset)
 Proof.
   iIntros "x y". iApply guards_open; trivial. iFrame.
 Qed.
-
 
 End TacticsHelpers.
 
@@ -96,7 +95,7 @@ Tactic Notation "leaf_hyp" constr(g1) "lhs" "to" open_constr(Q) "laters" "plus" 
   iPoseProof (guard_weaken_helper_left_laters_plus Q _ _ _ _ n with (String.append g1 " []")) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "mask" "to" open_constr(E) "as" constr(g2) :=
-  iPoseProof (lguards_mask_weaken _ _ _ E with g1) as g2.
+  iPoseProof (guards_weaken_mask _ E _ _ with g1) as g2.
   
 Tactic Notation "leaf_hyp" constr(g1) "laters" "to" open_constr(n) "as" constr(g2) :=
   iPoseProof (lguards_weaken_later _ _ _ _ n with g1) as g2.
@@ -114,7 +113,7 @@ Tactic Notation "leaf_goal" "lhs" "to" open_constr(Q) :=
   iApply (guard_goal_helper_right _ Q).
   
 Tactic Notation "leaf_goal" "mask" "to" open_constr(E) :=
-  iApply (lguards_mask_weaken _ _ E).
+  iApply (guards_weaken_mask E).
   
 Tactic Notation "leaf_goal" "laters" "to" open_constr(n) :=
   iApply (lguards_weaken_later _ _ _ n).

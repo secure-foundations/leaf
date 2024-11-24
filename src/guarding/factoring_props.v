@@ -14,7 +14,7 @@ In general, it does _not_ hold that:
 >>
 (See Appendix 1.4; https://arxiv.org/pdf/2309.04851 for a counter-example.)
 
-This does hold if we can "factor" P as Q ∗ R.
+However, this does hold if we can "factor" P as Q ∗ R.
 <<
     (Q ∗ R) &&{_}&&> Q.
 >>
@@ -41,11 +41,13 @@ details with [◇] and [▷] that we need. I do know that all propositions of th
 
 This definitely isn't the complete set -- we should probably extend it to include
 persistent propositions at the very least.
-It would be nice to have a clean definition like:
+
+In principle, it would be nice to have a clean definition like:
 <<
     Definition can_always_factor_out Q := ∀ P , (P -∗ Q) ∗ P ⊢ Q ∗ (Q -∗ P).
 >>
-But from a definition like this, I haven't been able to answer basic questions, like
+However, I haven't figured out how to make use of such a definition.
+For example, I haven't been able to answer basic questions, like
 whether this is true:
 <<
     can_always_factor_out P →

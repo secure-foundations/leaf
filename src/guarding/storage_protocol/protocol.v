@@ -519,7 +519,7 @@ Section StorageLogic.
       rewrite bi.later_sep. iFrame.
     } }    
     setoid_rewrite Equ.
-    iApply guards_weaken_rhs_l. iFrame "ggg".
+    iApply guards_weaken_rhs_sep_l. iFrame "ggg".
   Qed.
    
   Lemma own_sep_inv_incll_helper_nondet (p1 st : P) (t1 : B) (output_ok : P → P → Prop)

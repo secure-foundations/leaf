@@ -877,6 +877,6 @@ Proof.
   iModIntro.
   iExists (LlftLogicG _ _ γ).
   rewrite llft_ctx_unseal /llft_ctx_def.
-  iDestruct (guards_remove_later2 with "K") as "K2".
+  iDestruct (guards_remove_later_rhs with "K") as "K2".
   unfold llft_alive_def. iFrame "K2".
 Qed.

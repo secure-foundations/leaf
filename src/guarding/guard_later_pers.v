@@ -84,13 +84,13 @@ Lemma extract_later1 (X T P : iProp Σ) E F
         (X ∗ ▷ (X &&{F}&&> (T ∗ P))).
 Proof.
   iIntros "[x #g]".
-  iMod (guards_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "[x p]"; trivial.
+  iMod (guards_extract_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "[x p]"; trivial.
   { iFrame "x". iFrame "g". iIntros "[_ latp]". iFrame "latp". }
   
-  iDestruct (guards_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "r"; trivial.
+  iDestruct (guards_extract_persistent X (▷ (T ∗ P)) (▷ P) E F with "[x g]") as "r"; trivial.
   { iFrame "x". iFrame "g". iIntros "[_ latp]". iFrame "latp". }
   
-  iDestruct (guards_weaken_l F (▷ T) (▷ P)) as "g1".
+  iDestruct (guards_weaken_sep_l F (▷ T) (▷ P)) as "g1".
   iDestruct (guards_remove_later T F) as "g2".
   iDestruct (guards_transitive F X _ (▷ T) with "[g g1]") as "g3".
     { iFrame "g". setoid_rewrite bi.later_sep at 2. iFrame "g1". }

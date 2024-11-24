@@ -96,7 +96,7 @@ Lemma ht_QueryFound_b γ j k v0 v g F E (su: F ⊆ E) :
     ) ={E}=∗ g ∗ ⌜ v = Some v0 ⌝.
 Proof.
   iIntros "[g guards]".
-  iMod (guards_persistent g _ (⌜v = Some v0⌝)%I E F with "[g guards]") as "[g res]".
+  iMod (guards_extract_persistent g _ (⌜v = Some v0⌝)%I E F with "[g guards]") as "[g res]".
   { trivial. }
   { iFrame "g". iFrame "guards". iApply ht_QueryFound. }
   iModIntro. iFrame.
@@ -132,7 +132,7 @@ Lemma ht_QueryReachedEnd_b γ r k v g F E (su: F ⊆ E) :
 Proof.
   intro f.
   iIntros "[g guards]".
-  iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
+  iMod (guards_extract_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
   { trivial. }
   { iFrame "g". iFrame "guards".
     iIntros "[a b]".
@@ -161,7 +161,7 @@ Lemma ht_QueryNotFound_b γ r k v j g F E (su: F ⊆ E) :
 Proof.
   intro f.
   iIntros "[g guards]".
-  iMod (guards_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
+  iMod (guards_extract_persistent g _ (⌜v = None⌝)%I E F with "[g guards]") as "[g res]".
   { trivial. }
   { iFrame "g". iFrame "guards". iApply ht_QueryNotFound. trivial. }
   iModIntro. iFrame.
