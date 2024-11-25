@@ -348,20 +348,6 @@ Proof.
   }
 Qed.
 
-Local Lemma lfguards_equiv_except0 P Q n
-  : □(P -∗ ▷^n ◇ Q) ∗ □(Q -∗ P) ⊢ P &&{ ∅ ; n }&&$> Q.
-Proof.
-  unfold lfguards, lguards_with. iIntros "[#pq #qp]". iSplit.
-  {
-    iIntros (T) "[p g]".
-    iDestruct ("pq" with "p") as "latq".
-    rewrite bi.except_0_sep. iFrame.
-    iModIntro. iModIntro.
-    iIntros "q". iApply "g". iApply "qp". iFrame.
-  }
-  iApply know_bulk_inv_empty. done.
-Qed.
-
 Local Lemma lfguards_weaken_except0 P Q n
   : □(P -∗ ▷^n ◇ (Q ∗ (Q -∗ P))) ⊢ P &&{ ∅ ; n }&&$> Q.
 Proof.
@@ -1068,20 +1054,20 @@ Qed.
 
 (** More general variants of sep-weakening **)
 
-Lemma lguards_equiv_except0 (P Q : iProp Σ) n E
-  : □(P -∗ ▷^n ◇ Q) ∗ □(Q -∗ P) ⊢ P &&{ E ; n }&&> Q.
-Proof.
-  rewrite guards_unseal. unfold guards_def.
-  iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
-  iApply lfguards_equiv_except0. iFrame "#".
-Qed.
-
 Lemma lguards_weaken_except0 (P Q : iProp Σ) n E
   : □(P -∗ ▷^n ◇ (Q ∗ (Q -∗ P))) ⊢ P &&{ E ; n }&&> Q.
 Proof.
   rewrite guards_unseal. unfold guards_def.
   iIntros. iModIntro. iExists ∅. iSplit. { iPureIntro. set_solver. }
   iApply lfguards_weaken_except0. iFrame "#".
+Qed.
+
+Lemma lguards_equiv_except0 (P Q : iProp Σ) n E
+  : □(P -∗ ▷^n ◇ Q) ∗ □(Q -∗ P) ⊢ P &&{ E ; n }&&> Q.
+Proof.
+  iIntros "[#A #B]". iApply lguards_weaken_except0.
+  iModIntro. iIntros "P". iDestruct ("A" with "P") as "Q". iNext. iMod "Q". iModIntro.
+  iFrame "Q". iFrame "B".
 Qed.
 
 Lemma lguards_weaken (P Q : iProp Σ) n E
@@ -1099,6 +1085,20 @@ Proof.
 Qed.
 
 (** Guarding and laters **)
+
+Lemma guards_later_add_1 (P : iProp Σ) E
+  : ⊢ (▷ P) &&{E ; 1}&&> P.
+Proof.
+  iIntros. iApply lguards_weaken. iModIntro. iIntros "P".
+  iNext. iFrame "P". iIntros "P". iModIntro. iFrame "P".
+Qed.
+
+Lemma guards_later_add_n (P : iProp Σ) E n
+  : ⊢ (▷^n P) &&{E ; n}&&> P.
+Proof.
+  iIntros. iApply lguards_weaken. iModIntro. iIntros "P".
+  iNext. iFrame "P". iIntros "P". iModIntro. iFrame "P".
+Qed.
 
 Lemma guards_remove_later_or_r (P Q : iProp Σ) E
     (tl: Timeless P)
@@ -1133,7 +1133,8 @@ Proof.
   trivial.
 Qed.
 
-(** Working with persistent props **)
+(** Extracting persistent propositions from guards. Really, these just follow from
+[guards_open] and [guards_open_later]. **)
 
 Lemma guards_extract_persistent_later (P Q R : iProp Σ) E F n
     (pers: Persistent R)
@@ -1157,7 +1158,7 @@ Proof.
   iMod "b". iMod "b". iModIntro. iFrame "b".
 Qed.
 
-Lemma lguards_persistent2 (X P Q R : iProp Σ) E F n
+Lemma guards_extract_persistent2_later (X P Q R : iProp Σ) E F n
     (pers: Persistent R)
     (su: F ⊆ E)
     : ⊢ (X ∗ P ∗ (P &&{F ; n}&&> Q) ∗ (X ∗ Q -∗ R)) ={E, E ∖ F}=∗ ▷^n (|={E ∖ F, E}=> X ∗ P ∗ R).
@@ -1186,21 +1187,22 @@ Proof.
   have j := copset_diff_union F E. set_solver.
 Qed.
 
-Lemma guards_persistent2 (X P Q R : iProp Σ) E F
+Lemma guards_extract_persistent2 (X P Q R : iProp Σ) E F
     (pers: Persistent R)
     (su: F ⊆ E)
     : ⊢ (X ∗ P ∗ (P &&{F}&&> Q) ∗ (X ∗ Q -∗ R)) ={E}=∗ X ∗ P ∗ R.
 Proof.
-  iIntros "a". iDestruct (lguards_persistent2 X P Q R E F with "a") as "b"; trivial.
+  iIntros "a".
+  iDestruct (guards_extract_persistent2_later X P Q R E F with "a") as "b"; trivial.
   iMod "b". iMod "b". iModIntro. iFrame "b".
 Qed.
 
-Lemma l_unguard_pers (A B C G : iProp Σ) (pers: Persistent C) E n
+Lemma unguard_pers_later (A B C G : iProp Σ) (pers: Persistent C) E n
   (hyp: A ∗ B ⊢ C)
   : G ∗ (G &&{E; n}&&> A) ∗ B ={E,∅}=∗ ▷^n |={∅,E}=> G ∗ (G &&{E; n}&&> A) ∗ B ∗ C.
 Proof.
   iIntros "[g [#gu b]]".
-  iDestruct (lguards_persistent2 B G A C E E with "[g b]") as "x".
+  iDestruct (guards_extract_persistent2_later B G A C E E with "[g b]") as "x".
   { set_solver. } { iFrame. iFrame "gu". iIntros "[a b]". iApply hyp. iFrame. }
   replace (E ∖ E) with (@empty coPset coPset_empty) by set_solver.
   iMod "x". iModIntro. iNext. iMod "x". iModIntro.
@@ -1213,11 +1215,13 @@ Lemma unguard_pers (A B C G : iProp Σ) (pers: Persistent C) E
   (hyp: A ∗ B ⊢ C)
   : G ∗ (G &&{E}&&> A) ∗ B ={E}=∗ G ∗ (G &&{E}&&> A) ∗ B ∗ C.
 Proof.
-  iIntros "a". iDestruct (l_unguard_pers A B C G pers E with "a") as "b"; trivial.
+  iIntros "a". iDestruct (unguard_pers_later A B C G pers E with "a") as "b"; trivial.
   iMod "b". iMod "b". iModIntro. iFrame "b".
 Qed.
 
-Lemma lguards_include_pers (P X Q : iProp Σ) F n
+(** Moving persistent propositions into guards. **)
+
+Lemma guards_include_pers (P X Q : iProp Σ) F n
     (pers: Persistent P) :
   P ∗ (X &&{ F; n }&&> Q) ⊢ (X &&{ F; n }&&> (Q ∗ P)).
 Proof.
@@ -1229,31 +1233,12 @@ Proof.
   iModIntro. iExists m. iSplit. { iPureIntro. trivial. } iFrame "newg".
 Qed.
 
-(* Guard-Pers *)
-    
-Lemma guards_include_pers (P X Q : iProp Σ) F
-    (pers: Persistent P) :
-  P ∗ (X &&{ F }&&> Q) ⊢ (X &&{ F }&&> (Q ∗ P)).
-Proof.
-  apply lguards_include_pers; trivial.
-Qed.
-
-Lemma guards_include_pers_simple (C : iProp Σ) E
-    (per: Persistent C)
-    : C ⊢ (True &&{E}&&> C).
-Proof.
-  iIntros "r".
-  iDestruct (guards_include_pers C (True)%I (True)%I E with "[r]") as "g".
-  { iFrame "r". iApply guards_refl. }
-  iDestruct (guards_weaken_rhs_sep_r with "g") as "g". iFrame "g".
-Qed.
-
-Lemma lguards_include_pers_simple (C : iProp Σ) E n
+Lemma guards_include_pers_simple (C : iProp Σ) E n
     (per: Persistent C)
     : C ⊢ (True &&{E; n}&&> C).
 Proof.
   iIntros "r".
-  iDestruct (lguards_include_pers C (True)%I (True)%I E with "[r]") as "g".
+  iDestruct (guards_include_pers C (True)%I (True)%I E with "[r]") as "g".
   { iFrame "r". iApply guards_refl. }
   iDestruct (guards_weaken_rhs_sep_r with "g") as "g". iFrame "g".
 Qed.

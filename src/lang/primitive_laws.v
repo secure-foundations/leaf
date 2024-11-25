@@ -152,7 +152,7 @@ Proof.
   iIntros (Φ) "[g Hl] HΦ". iApply wp_lift_atomic_base_step_no_fork; first done.
   iIntros (σ1 κ κs n nt) "Hσ". (*"Hσ !>".*)
   
-  iMod (guards_persistent2
+  iMod (guards_extract_persistent2
       (state_interp σ1 κ (κs ++ n) nt)
       g (l ↦ v) (⌜ (heap σ1) !! l = Some v ⌝) E F with "[Hσ g Hl]") as "[Hσ [g %j]]".
   { trivial. }
