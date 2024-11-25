@@ -212,7 +212,7 @@ Proof.
   iExists (ht_dot r (s j (Some (k0, v0)))).
   iSplit.
   { iPureIntro. apply full_dot; trivial. }
-  iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
+  iApply (guards_and_own_sep_union g1 g2 (own γ r) (own γ (s j (Some (k0, v0))))).
   {
     apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
@@ -231,7 +231,7 @@ Lemma ht_BorrowedRangeAddM γ r k i j k1 v1 g1 g2 F1 F2
 Proof.
   iIntros "a b".
   rewrite <- own_op.
-  iApply (guards_and_sep_union g1 g2 (own γ r) (own γ (m k1 v1))).
+  iApply (guards_and_own_sep_union g1 g2 (own γ r) (own γ (m k1 v1))).
   {
     apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
@@ -249,7 +249,7 @@ Lemma ht_SAddM γ i slot k1 v1 g1 g2 F1 F2 :
 Proof.
   iIntros "a b".
   rewrite <- own_op.
-  iApply (guards_and_sep_union g1 g2 (own γ (s i slot)) (own γ (m k1 v1))).
+  iApply (guards_and_own_sep_union g1 g2 (own γ (s i slot)) (own γ (m k1 v1))).
   {
     apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.
@@ -272,7 +272,7 @@ Proof.
   rewrite <- own_op.
   rewrite <- own_op.
   replace (F1 ∪ F2 ∪ F3) with (F1 ∪ (F2 ∪ F3)) by set_solver.
-  iApply (guards_and_sep_union g1 (g2 ∗ g3)%I (own γ r) (own γ (s j slot ⋅ m k1 v1))).
+  iApply (guards_and_own_sep_union g1 (g2 ∗ g3)%I (own γ r) (own γ (s j slot ⋅ m k1 v1))).
   {
     apply (@and_own_discrete_ucmra_specific Σ). { apply ht_cmra_discrete. }
     intro w.

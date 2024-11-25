@@ -161,43 +161,6 @@ Proof.
   subst x2. setoid_rewrite Q. setoid_rewrite Q0. rewrite H. trivial.
 Qed.
 
-Local Lemma lfguards_impl (P Q S : iProp Σ) F (n: nat)
-    (point: point_prop S)
-    (qrx: (Q ⊢ S))
-    : (
-      (P &&{F ; n}&&$> Q)
-      ⊢
-      (P &&{F ; n}&&$> S)
-    ). 
-Proof.
-  iIntros "[pq kf]".
-  unfold lfguards, lguards_with.
-  iFrame "kf".
-  iIntros (T).
-  iDestruct ("pq" $! T) as "pq".
-  iIntros "k".
-  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ▷^n ◇ S)%I with "[pq]" as "X".
-  {
-    iIntros "l".
-    iAssert (▷^n ◇ Q)%I with "[pq l]" as "J". {
-      iDestruct ("pq" with "l") as "r".
-      iNext. iMod "r" as "[r s]". iModIntro.  iFrame.
-    }
-    iNext. iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
-  } 
-  iDestruct (own_separates_out_except0_point_later _ S with "[X k]") as "J".
-  { trivial. }
-  { iFrame "X". iFrame "k". }
-  iDestruct "J" as "[J T]".
-  iNext. iMod "J" as "J".
-  iModIntro.
-  iFrame "J".
-  iIntros "o".
-  iDestruct ("T" with "o") as "[p m]".
-  iApply "m".
-  iFrame "p".
-Qed.
-
 Local Lemma lfguards_and (P Q R S : iProp Σ) F (n: nat)
     (point: point_prop S)
     (qrx: (Q ∧ R ⊢ S))
@@ -1299,7 +1262,18 @@ Qed.
 
 (* Guard-Implies *)
 
-Lemma guards_impl_point (P Q S : iProp Σ) F n
+Lemma guards_point (P Q : iProp Σ) E n
+    (point: point_prop Q)
+    (p_entails_q: P ⊢ Q)
+    : ⊢ (P &&{E; n}&&> Q).
+Proof.
+  iIntros.
+  iApply lguards_weaken. iModIntro. iIntros "P". iModIntro.
+  iApply factoring_props.own_separates_out_point; trivial. iFrame "P".
+  iIntros "P". iApply p_entails_q. iFrame.
+Qed.
+
+Lemma guards_weaken_rhs_point (P Q S : iProp Σ) F n
     (point: point_prop S)
     (qrx: (Q ⊢ S))
     : (
@@ -1308,10 +1282,10 @@ Lemma guards_impl_point (P Q S : iProp Σ) F n
       (P &&{F; n}&&> S)
     ).
 Proof.
-  rewrite guards_unseal. unfold guards_def.
-  iIntros "#q". iDestruct "q" as (m1) "[%cond1 q]".
-  iExists (m1). iModIntro. iSplit. { iPureIntro. set_solver. }
-  iApply (lfguards_impl P Q S m1); trivial.
+  iIntros "g".
+  iDestruct (guards_point Q S F 0) as "g2"; trivial.
+  iApply guards_transitive_left.
+  iFrame "g". iFrame "g2".
 Qed.
 
 Lemma guards_and_point (P Q R S : iProp Σ) F n
@@ -1350,7 +1324,7 @@ Proof.
   apply point_prop_own.
 Qed.
 
-Lemma guards_and_sep_union (P1 P2 Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F1 F2
+Lemma guards_and_own_sep_union (P1 P2 Q R : iProp Σ) {A} `{ing : inG Σ A} γ (x: A) F1 F2
     (qrx: (Q ∧ R ⊢ own γ x))
     : (
       (P1 &&{F1}&&> Q) ∗ (P2 &&{F2}&&> R)
