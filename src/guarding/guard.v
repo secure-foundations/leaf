@@ -1332,7 +1332,7 @@ Qed.
 
 (** Guarding and disjunction **)
 
-Lemma lguards_or_with_lhs (P R S : iProp Σ) F n
+Lemma guards_cancel_or_with_lhs (P R S : iProp Σ) F n
     (pr_impl_false: (P ∧ R ⊢ False))
     : (
       (P &&{F; n}&&> (R ∨ S))
@@ -1346,7 +1346,7 @@ Proof.
   iApply lfguards_or_with_lhs; trivial. trivial.
 Qed.
 
-Lemma lguards_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F n
+Lemma guards_strengthen_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F n
     (pr_impl_s: (∀ x, P ∧ R x ⊢ S x))
     (pers: ∀ x, Persistent (S x))
     : (
@@ -1361,7 +1361,7 @@ Proof.
   iApply lfguards_exists_with_lhs; trivial.
 Qed.
 
-Lemma guards_or (P Q R S : iProp Σ) F1 F2 n
+Lemma guards_cancel_or (P Q R S : iProp Σ) F1 F2 n
     (qrx: (Q ∧ R ⊢ False))
     : (
       (P &&{F1; n}&&> Q) ∗ (P &&{F2; n}&&> (R ∨ S))
@@ -1393,7 +1393,7 @@ Proof.
 
 
 
-Lemma lguards_or_guards_false E P Q S n m :
+Lemma guards_cancel_or_by_chaining_additive E P Q S n m :
     (P &&{ E ; n }&&> Q ∨ S) ∗ (Q &&{ E ; m }&&> False) ⊢ (P &&{ E ; n + m }&&> S).
 Proof.
   rewrite guards_unseal. unfold guards_def.
@@ -1409,10 +1409,10 @@ Proof.
   iPureIntro. set_solver.
 Qed.
 
-Lemma guards_or_guards_false E P Q S :
+Lemma guards_cancel_or_by_chaining E P Q S :
     (P &&{ E }&&> Q ∨ S) ∗ (Q &&{ E }&&> False) ⊢ (P &&{ E }&&> S).
 Proof.
-  apply lguards_or_guards_false.
+  apply guards_cancel_or_by_chaining_additive.
 Qed.
 
 (** The relationship between guarding and invariants **)

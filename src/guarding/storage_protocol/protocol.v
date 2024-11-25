@@ -467,7 +467,7 @@ Section StorageLogic.
     iDestruct (guards_true E (sp_own γ p)) as "gt".
     iDestruct (guards_transitive _ (sp_own γ p) True%I with "[gt mg]") as "gg".
       { iFrame "gt". iFrame "mg". }
-    iDestruct (lguards_exists_with_lhs (P*B) (sp_own γ p) 
+    iDestruct (guards_strengthen_exists_with_lhs (P*B) (sp_own γ p) 
       (λ (state_t: P*B), (▷ (⌜ p ≼ state_t.1 ⌝))%I)
       (λ (state_t: P*B), (▷ (own γ (● Inved state_t.1) ∗ ⌜sp_rel state_t.1 state_t.2⌝ ∗ f state_t.2))%I)
       E 0

@@ -686,7 +686,7 @@ Section LlftLogic.
     { 
       iAssert (llft_alive κ &&{ ↑NLLFT ∪ ↑NLLFT }&&> ▷ P) as "H".
       { iApply
-        (guards_or (llft_alive κ) (llft_alive κ) (llft_dead κ ∗ Cancel γc) (▷ P)).
+        (guards_cancel_or (llft_alive κ) (llft_alive κ) (llft_dead κ ∗ Cancel γc) (▷ P)).
         { iIntros "t". iApply (llftl_not_own_end_and κ). iSplit.
           { iDestruct "t" as "[t _]". iFrame "t". }
           { iDestruct "t" as "[_ [t _]]". iFrame "t". }
@@ -746,7 +746,7 @@ Section LlftLogic.
       }
 
       iAssert (True &&{ ↑NLLFT}&&> (∃ sa sd : gset nat, ⌜κ ⊈ sa⌝ ∗ LtState llft_name sa sd ∗ llft_alive sa)) as "G3".
-        { iApply guards_or_guards_false. iFrame "ctx2". 
+        { iApply guards_cancel_or_by_chaining. iFrame "ctx2". 
           leaf_goal rhs to (llft_alive κ). { iFrame "G2". }
           leaf_by_sep.
           { iIntros "T". 
