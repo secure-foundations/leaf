@@ -202,98 +202,22 @@ Proof.
   iFrame "p".
 Qed.
 
-Local Lemma lfguards_and_with_lhs (P Q S : iProp Σ) F n
-    (point: point_prop S)
-    (qrx: (P ∧ Q ⊢ S))
-    : (
-      (P &&{F; n}&&$> Q)
-      ⊢
-      (P &&{F; n}&&$> S)
-    ). 
-Proof.
-  iIntros "[pq kf]".
-  unfold lfguards, lguards_with.
-  iFrame "kf".
-  iIntros (T).
-  iDestruct ("pq" $! T) as "pq".
-  iIntros "k".
-  iAssert (P ∗ (P -∗ storage_bulk_inv F ∗ T) -∗ ▷^n ◇ S)%I with "[pq]" as "X".
-  {
-    iIntros "l".
-    iAssert (▷^n ◇ (P ∧ Q))%I with "[pq l]" as "J". {
-      rewrite bi.except_0_and.
-      rewrite bi.laterN_and.
-      iSplit.
-      { iDestruct "l" as "[l l']". iModIntro. iFrame. }
-      { iDestruct ("pq" with "l") as "[r j]". iNext. iMod "j". iFrame "r". }
-    }
-    iNext. iMod "J" as "J". iModIntro. iApply qrx. iFrame "J".
-  } 
-  iDestruct (own_separates_out_except0_point_later _ S with "[X k]") as "J".
-  { trivial. }
-  { iFrame "X". iFrame "k". }
-  iDestruct "J" as "[J T]".
-  iNext. iMod "J" as "J". iModIntro. iFrame "J". iIntros "o".
-  iDestruct ("T" with "o") as "[p m]". iApply "m". iFrame "p".
-Qed.
-
-Local Lemma lfguards_or_with_lhs (P R S : iProp Σ) F n
-    (qrx: (P ∧ R ⊢ False))
-    : (
-      (P &&{F; n}&&$> (R ∨ S))
-      ⊢
-      (P &&{F; n}&&$> S)
-    ). 
-Proof.
-  iIntros "[prs kf]".
-  unfold lfguards, lguards_with.
-  iFrame "kf".
-  iIntros (T).
-  iDestruct ("prs" $! T) as "prs".
-  iIntros "k".
-  iAssert (▷^n ((◇ P) ∧ (◇ ((R ∨ S) ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T)))))%I with "[prs k]" as "X".
-  { iSplit.
-     { iModIntro. iDestruct "k" as "[p p2]". iFrame. }
-     { iDestruct ("prs" with "k") as "rs". iFrame "rs". }
-  }
-  rewrite <- bi.except_0_and. iNext. iMod "X" as "X". iModIntro.
-  iAssert
-    (P ∧ (
-      (R ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
-      ∨
-      (S ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
-    ))%I with "[X]" as "X".
-  { iSplit. { iDestruct "X" as "[Q _]". iFrame "Q". }
-    iDestruct "X" as "[_ [[r|s] rest]]".
-    { iLeft. iFrame. } { iRight. iFrame. }
-  }
-  rewrite bi.and_or_l.
-  iDestruct "X" as "[a|a]".
-  { iExFalso. iApply qrx. iSplit.
-      { iDestruct "a" as "[a _]". iFrame. }
-      { iDestruct "a" as "[_ [r _]]". iFrame. }
-  }
-  {
-    iDestruct "a" as "[_ [s t]]".
-    iFrame "s". iIntros "s". iApply "t". iRight. iFrame "s".
-  }
-Qed.
-
-Local Lemma lfguards_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F n
-    (pr_impl_s: (∀ x, P ∧ R x ⊢ S x))
+Local Lemma lfguards_exists_strengthen X (P Q : iProp Σ) (S R : X -> iProp Σ) F n
+    (pr_impl_s: (∀ x, Q ∧ R x ⊢ S x))
     (pers: ∀ x, Persistent (S x))
     : (
+      (P &&{F; n}&&$> Q) ∗
       (P &&{F; n}&&$> (∃ (x: X), R x))
       ⊢
       (P &&{F; n}&&$> (∃ (x: X), R x ∗ S x))
     ). 
 Proof.
-  iIntros "[prs kf]".
+  iIntros "[[pq _] [prs kf]]".
   unfold lfguards, lguards_with.
   iFrame "kf". iIntros (T). iDestruct ("prs" $! T) as "prs". iIntros "k".
-  iAssert (▷^n ((◇ P) ∧ (◇ ((∃ x, R x) ∗ ((∃ x, R x) -∗ storage_bulk_inv F ∗ T)))))%I with "[prs k]" as "X".
+  iAssert (▷^n ((◇ Q) ∧ (◇ ((∃ x, R x) ∗ ((∃ x, R x) -∗ storage_bulk_inv F ∗ T)))))%I with "[pq prs k]" as "X".
   { iSplit.
-     { iModIntro. iDestruct "k" as "[p p2]". iFrame. }
+     { iDestruct ("pq" with "k") as "[dq _]". iFrame "dq". }
      { iDestruct ("prs" with "k") as "rs". iFrame "rs". } }
   rewrite <- bi.except_0_and. iNext. iMod "X" as "X". iModIntro.
   rewrite bi.sep_exist_r. rewrite bi.and_exist_l. iDestruct "X" as (x) "X".
@@ -303,49 +227,6 @@ Proof.
   iDestruct "X" as "[_ [r back]]".
   iSplitL "r". { iExists x. iFrame "r". iFrame "s". }
   iIntros "j". iDestruct "j" as (x0) "[r s2]". iApply "back". iExists x0. iFrame "r".
-Qed.
-   
-Local Lemma lfguards_or (P Q R S : iProp Σ) F (n: nat)
-    (qrx: (Q ∧ R ⊢ False))
-    : (
-      (P &&{F; n}&&$> Q) ∗ (P &&{F; n}&&$> (R ∨ S))
-      ⊢
-      (P &&{F; n}&&$> S)
-    ). 
-Proof.
-  iIntros "[[pq kf] [prs _]]".
-  unfold lfguards, lguards_with.
-  iFrame "kf".
-  iIntros (T).
-  iDestruct ("pq" $! T) as "pq".
-  iDestruct ("prs" $! T) as "prs".
-  iIntros "k".
-  iAssert (▷^n ((◇ Q) ∧ (◇ ((R ∨ S) ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T)))))%I with "[pq prs k]" as "X".
-  { iSplit.
-     { iDestruct ("pq" with "k") as "[dq _]". iFrame "dq". }
-     { iDestruct ("prs" with "k") as "rs". iFrame "rs". }
-  }
-  rewrite <- bi.except_0_and. iNext. iMod "X" as "X". iModIntro.
-  iAssert
-    (Q ∧ (
-      (R ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
-      ∨
-      (S ∗ (R ∨ S -∗ storage_bulk_inv F ∗ T))
-    ))%I with "[X]" as "X".
-  { iSplit. { iDestruct "X" as "[Q _]". iFrame "Q". }
-    iDestruct "X" as "[_ [[r|s] rest]]".
-    { iLeft. iFrame. } { iRight. iFrame. }
-  }
-  rewrite bi.and_or_l.
-  iDestruct "X" as "[a|a]".
-  { iExFalso. iApply qrx. iSplit.
-      { iDestruct "a" as "[a _]". iFrame. }
-      { iDestruct "a" as "[_ [r _]]". iFrame. }
-  }
-  {
-    iDestruct "a" as "[_ [s t]]".
-    iFrame "s". iIntros "s". iApply "t". iRight. iFrame "s".
-  }
 Qed.
 
 Local Lemma lfguards_weaken_except0 P Q n
@@ -1332,18 +1213,27 @@ Qed.
 
 (** Guarding and disjunction **)
 
-Lemma guards_cancel_or_with_lhs (P R S : iProp Σ) F n
-    (pr_impl_false: (P ∧ R ⊢ False))
+Lemma guards_strengthen_exists X (P Q : iProp Σ) (S R : X -> iProp Σ) F n
+    (pr_impl_s: (∀ x, Q ∧ R x ⊢ S x))
+    (pers: ∀ x, Persistent (S x))
     : (
-      (P &&{F; n}&&> (R ∨ S))
+      (P &&{F; n}&&> Q) ∗
+      (P &&{F; n}&&> (∃ (x: X), R x))
       ⊢
-      (P &&{F; n}&&> S)
+      (P &&{F; n}&&> (∃ (x: X), R x ∗ S x))
     ). 
-Proof.
+Proof. 
   rewrite guards_unseal. unfold guards_def.
-  iIntros "#a". iDestruct "a" as (m1) "[%cond1 q]".
-  iExists m1. iModIntro. iSplit. { iPureIntro. set_solver. }
-  iApply lfguards_or_with_lhs; trivial. trivial.
+  iIntros "[#a #b]".
+  iDestruct "a" as (m1) "[%cond1 q]".
+  iDestruct "b" as (m2) "[%cond2 r]".
+  iExists (m1 ∪ m2).
+  iModIntro. iSplit.
+  { iPureIntro. set_solver. }
+  iDestruct (lfguards_weaken_mask_2 P Q P (∃ x, R x) m1 m2 with "[q r]") as "[q1 r1]". 
+  { iFrame "q". iFrame "r". }
+  iApply (lfguards_exists_strengthen X P Q S R (m1 ∪ m2)); trivial.
+  iFrame "#".
 Qed.
 
 Lemma guards_strengthen_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F n
@@ -1355,10 +1245,9 @@ Lemma guards_strengthen_exists_with_lhs X (P : iProp Σ) (S R : X -> iProp Σ) F
       (P &&{F; n}&&> (∃ (x: X), R x ∗ S x))
     ). 
 Proof.
-  rewrite guards_unseal. unfold guards_def.
-  iIntros "#a". iDestruct "a" as (m1) "[%cond1 q]".
-  iExists m1. iModIntro. iSplit. { iPureIntro. set_solver. }
-  iApply lfguards_exists_with_lhs; trivial.
+  iIntros "#G".
+  iApply (guards_strengthen_exists X P P S R F n); trivial. iFrame "G".
+  iApply guards_refl.
 Qed.
 
 Lemma guards_cancel_or (P Q R S : iProp Σ) F1 F2 n
@@ -1368,20 +1257,46 @@ Lemma guards_cancel_or (P Q R S : iProp Σ) F1 F2 n
       ⊢
       (P &&{F1 ∪ F2; n}&&> S)
     ). 
-Proof. 
-  rewrite guards_unseal. unfold guards_def.
-  iIntros "[#a #b]".
-  iDestruct "a" as (m1) "[%cond1 q]".
-  iDestruct "b" as (m2) "[%cond2 r]".
-  iExists (m1 ∪ m2).
-  iModIntro. iSplit.
-  { iPureIntro. set_solver. }
-  iDestruct (lfguards_weaken_mask_2 P Q P (R ∨ S) m1 m2 with "[q r]") as "[q1 r1]". 
-  { iFrame "q". iFrame "r". }
-  iApply (lfguards_or P Q R S (m1 ∪ m2)); trivial.
-  iFrame "#".
+Proof.
+  assert (R ∨ S ⊣⊢ (∃ (b: bool), if b then R else S)) as He1.
+  { iIntros. iSplit.
+    - iIntros "RS". iDestruct "RS" as "[R|S]".
+      + iExists true. iFrame. + iExists false. iFrame.
+    - iIntros "RS". iDestruct "RS" as (b) "RS". destruct b.
+      + iLeft. iFrame. + iRight. iFrame.
+  }
+  iIntros "[#G1 #G2]".
+  iDestruct (guards_weaken_mask F1 (F1 ∪ F2) P Q n with "G1") as "#H1". { set_solver. }
+  iDestruct (guards_weaken_mask F2 (F1 ∪ F2) P (R ∨ S) n with "G2") as "#H2". { set_solver. }
+  setoid_rewrite He1.
+  iDestruct (guards_strengthen_exists bool P Q
+    (λ b, ⌜b = false⌝)%I (λ b, if b then R else S) (F1 ∪ F2) n with "[]") as "A".
+  { intros b. iIntros "H". destruct b.
+      - iExFalso. iApply qrx. iFrame "H".
+      - iPureIntro. trivial.
+  }
+  { iFrame "#". }
+  assert (S ⊣⊢ (∃ x : bool, (if x then R else S) ∗ ⌜x = false⌝)) as He2.
+  { iIntros. iSplit.
+    - iIntros "S". iExists false. iFrame. iPureIntro. trivial.
+    - iIntros "S". iDestruct "S" as (b) "[S %xf]". rewrite xf. iFrame.
+  }
+  setoid_rewrite <- He2. iFrame "A".
 Qed.
 
+Lemma guards_cancel_or_with_lhs (P R S : iProp Σ) F n
+    (pr_impl_false: (P ∧ R ⊢ False))
+    : (
+      (P &&{F; n}&&> (R ∨ S))
+      ⊢
+      (P &&{F; n}&&> S)
+    ). 
+Proof.
+  iIntros "#G".
+  iDestruct (guards_cancel_or P P R S F F n with "[]") as "J"; trivial.
+  { iFrame "G". iApply guards_refl. }
+  replace (F ∪ F) with F by set_solver. iFrame "J".
+Qed.
 
 (*
 Lemma guards_exists {X} (x0: X) (F: X -> iProp Σ) (P: iProp Σ) E
