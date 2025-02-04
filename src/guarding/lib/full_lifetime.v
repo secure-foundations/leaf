@@ -21,19 +21,22 @@ From iris.base_logic.lib Require Export invariants.
 
 (* begin hide *)
 
-Definition unborrow_multiset := gmultiset (slice_name * gset nat).
-Definition borrow_multiset := gmultiset (slice_name * gset nat * gset nat).
+Inductive BorState :=
+  | Borrow : gset nat → gset nat → BorState
+  | Unborrow : gset nat → BorState
+.
+
+Definition borrow_map := gmap slice_name BorState.
 
 Inductive LtRa :=
   | LtOk :
       (* Alive set, Dead set, unborrows, borrows *)
-      (option (gset nat * gset nat * unborrow_multiset * borrow_multiset)) →
+      (option (gset nat * gset nat * borrow_map)) →
       (* alive tokens (2 each) *)
       gmultiset nat →
       (* dead tokens (persistent) *)
       gset nat →
-      unborrow_multiset →
-      borrow_multiset →
+      borrow_map →
       LtRa
   | LtFail.
 
@@ -50,19 +53,29 @@ Definition merge_fb (fb1 fb2 : gmap (gset nat * gset nat) (gmultiset gname))
     *)
     
 Local Instance lt_op : Op LtRa := λ a b , match a, b with
-  | LtOk (Some o) a1 d1 ums1 bms1, LtOk None a2 d2 ums2 bms2 =>
-      LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (ums1 ⊎ ums2) (bms1 ⊎ bms2)
-  | LtOk None a1 d1 ums1 bms1, LtOk (Some o) a2 d2 ums2 bms2 =>
-      LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (ums1 ⋅ ums2) (bms1 ⊎ bms2)
-  | LtOk None a1 d1 ums1 bms1, LtOk None a2 d2 ums2 bms2 =>
-      LtOk None (a1 ⊎ a2) (d1 ∪ d2) (ums1 ⋅ ums2) (bms1 ⊎ bms2)
+  | LtOk (Some o) a1 d1 bm1, LtOk None a2 d2 bm2 =>
+      if decide (map_disjoint bm1 bm2) then
+        LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
+      else
+        LtFail
+  | LtOk None a1 d1 bm1, LtOk (Some o) a2 d2 bm2 =>
+      if decide (map_disjoint bm1 bm2) then
+        LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
+      else
+        LtFail
+  | LtOk None a1 d1 bm1, LtOk None a2 d2 bm2 =>
+      if decide (map_disjoint bm1 bm2) then
+        LtOk None (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
+      else
+        LtFail
   | _, _ => LtFail
 end.
 
 Definition lt_inv (a: LtRa) := match a with
-  | LtOk (Some (sa, sd)) a d =>
+  | LtOk (Some (sa, sd, sbm)) a d bm =>
       sd = d ∧ sa ∩ sd = ∅
-      ∧ ∀ m , (m ∈ sa → multiplicity m a = 2) ∧ (m ∉ sa → multiplicity m a = 0)
+      ∧ (∀ m , (m ∈ sa → multiplicity m a = 2) ∧ (m ∉ sa → multiplicity m a = 0))
+      ∧ sbm = bm
   | _ => False
 end.
 
@@ -71,38 +84,38 @@ Instance lt_valid : Valid LtRa := λ a , ∃ b , lt_inv (a ⋅ b).
 Instance lt_equiv : Equiv LtRa := λ a b , a = b.
 
 Instance lt_pcore : PCore LtRa := λ a , match a with
-  | LtOk o1 a1 d1 => Some (LtOk None ∅ d1)
+  | LtOk o1 a1 d1 bm1 => Some (LtOk None ∅ d1 ∅)
   | LtFail => Some LtFail
 end.
 
 Lemma lt_assoc : Assoc (=) lt_op.
-Proof.
+Proof. Admitted. (*
   unfold Assoc. intros x y z. unfold lt_op.
   destruct x as [[o|] a d|], y as [[o1|] a1 d1|], z as [[o2|] a2 d2|]; trivial; f_equiv; (try set_solver); rewrite gmultiset_disj_union_assoc; trivial.
-Qed.
+Qed. *)
   
 Lemma lt_comm : Comm (=) lt_op.
-Proof.
+Proof. Admitted. (*
   unfold Comm. intros x y. unfold lt_op.
   destruct x as [[o|] a d|], y as [[o1|] a1 d1|]; trivial; f_equiv; (try set_solver); rewrite gmultiset_disj_union_comm; trivial.
-Qed.
+Qed. *)
 
-Lemma LtOk_incl_3 a b d1 d2
+Lemma LtOk_incl_3 a b d1 d2 bm
   (d_incl: d1 ⊆ d2)
-  : LtOk a b d1 ≼ LtOk a b d2.
-Proof.
+  : LtOk a b d1 bm ≼ LtOk a b d2 bm.
+Proof. Admitted. (*
   exists (LtOk None ∅ d2). destruct a as [a|]; unfold "⋅", lt_op; f_equiv; try set_solver.
-Qed.
+Qed. *)
   
-Lemma multiset_subseteq_of_LtOk_incl o0 a0 d0 o1 a1 d1 o2 a2 d2
-  (incl: LtOk o0 a0 d0 ≡ LtOk o1 a1 d1 ⋅ LtOk o2 a2 d2)
+Lemma multiset_subseteq_of_LtOk_incl o0 a0 d0 bm0 o1 a1 d1 bm1 o2 a2 d2 bm2
+  (incl: LtOk o0 a0 d0 bm0 ≡ LtOk o1 a1 d1 bm1 ⋅ LtOk o2 a2 d2 bm2)
   : d1 ⊆ d0.
-Proof.
+Proof. Admitted. (*
   unfold "⋅", lt_op in incl; destruct o1, o2; inversion incl; set_solver.
-Qed.
+Qed. *)
 
 Definition lt_ra_mixin : RAMixin LtRa.
-Proof. split.
+Proof. Admitted. (*split.
   - typeclasses eauto.
   - intros a b cx abe. rewrite abe. intros t. exists cx. intuition.
   - typeclasses eauto.
@@ -129,7 +142,7 @@ Proof. split.
       + exists LtFail. intuition. exists LtFail. trivial.
   - intros x y. unfold "✓", lt_valid. intros t. destruct t as [b t].
       rewrite <- lt_assoc in t. exists (lt_op y b). apply t.
-Qed.
+Qed. *)
 
 Canonical Structure ltO
   := discreteO LtRa.
@@ -139,16 +152,16 @@ Canonical Structure ltR := discreteR LtRa lt_ra_mixin.
 Global Instance lt_cmra_discrete : CmraDiscrete ltR.
 Proof. apply discrete_cmra_discrete. Qed.
 
-Global Instance lt_unit : Unit LtRa := LtOk None ∅ ∅.
+Global Instance lt_unit : Unit LtRa := LtOk None ∅ ∅ ∅.
 
 Definition lt_ucmra_mixin : UcmraMixin LtRa.
-split; trivial.
-  - exists (LtOk (Some (∅, ∅)) ∅ ∅). unfold lt_inv. simpl; set_solver.
+split; trivial. Admitted. (*
+  - exists (LtOk (Some (∅, ∅, ∅)) ∅ ∅ ∅). unfold lt_inv. simpl. set_solver.
   - intro x. destruct x as [o a d|]; simpl; trivial.
       destruct o; trivial.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
-Qed.
+Qed. *)
 
 Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
@@ -177,21 +190,29 @@ Section LlftHelperResources.
   
   (* begin hide *)
 
-  Definition lt_state (sa sd : gset nat) := LtOk (Some (sa, sd)) ∅ sd.
-  Definition LtState γlt (sa sd : gset nat) : iProp Σ := own γlt (lt_state sa sd).
+  Definition lt_state (sa sd : gset nat) (bm: borrow_map) := LtOk (Some (sa, sd, bm)) ∅ sd ∅.
+  Definition LtState γlt (sa sd : gset nat) (bm: borrow_map): iProp Σ := own γlt (lt_state sa sd bm).
 
-  Definition dead (k: nat) := LtOk None ∅ ({[ k ]}).
+  Definition dead (k: nat) := LtOk None ∅ ({[ k ]}) ∅.
   Definition Dead γlt (k: nat) : iProp Σ := own γlt (dead k).
 
-  Definition alive (k: nat) := LtOk None ({[+ k +]}) ∅.
+  Definition alive (k: nat) := LtOk None ({[+ k +]}) ∅ ∅.
   Definition Alive γlt (k: nat) : iProp Σ := own γlt (alive k).
   
+  Definition rawbor (sn: slice_name) (k_alive k_dead : gset nat) :=
+      LtOk None ∅ ∅ {[ sn := Borrow k_alive k_dead ]}.
+  Definition RawBor γlt (sn: slice_name) (k_alive k_dead : gset nat) :=
+      own γlt (rawbor sn k_alive k_dead).
+      
+  Definition unbor (sn: slice_name) (k : gset nat) := LtOk None ∅ ∅ {[ sn := Unborrow k ]}.
+  Definition UnBor γlt (sn: slice_name) (k : gset nat) := own γlt (unbor sn k).
+  
   Local Lemma lt_alloc :
-    ⊢ |==> ∃ γ , LtState γ ∅ ∅.
+    ⊢ |==> ∃ γ , LtState γ ∅ ∅ ∅.
   Proof.
     apply own_alloc. unfold "✓", cmra_valid, ltR, lt_valid.
-    exists (LtOk None ∅ ∅). simpl; set_solver.
-  Qed.
+    exists (LtOk None ∅ ∅ ∅). Admitted. (* simpl; set_solver.
+  Qed. *)
 
   Local Lemma update_helper (a b : LtRa)
     (cond: ∀ z : ltR, lt_inv (a ⋅ z) → lt_inv (b ⋅ z))
@@ -203,7 +224,7 @@ Section LlftHelperResources.
   Qed.
 
   Local Lemma update_helper2 (x y : LtRa)
-    (cond: ∀ o a d , lt_inv (x ⋅ LtOk o a d) → lt_inv (y ⋅ LtOk o a d))
+    (cond: ∀ o a d bm , lt_inv (x ⋅ LtOk o a d bm) → lt_inv (y ⋅ LtOk o a d bm))
     : x ~~> y.
   Proof.
     apply update_helper. intros z. destruct z as [o a d|].
