@@ -439,6 +439,75 @@ Proof.
   - iFrame "Hguards3".
 Qed.
 
+Lemma slice_empty_many E q f P (Qs : gmap gname (iProp Σ)) :
+  ↑N ⊆ E →
+  (∀ γ Q, Qs !! γ = Some Q → f !! γ = Some true) →
+  (∀ γ Q, ⌜Qs !! γ = Some Q⌝ -∗ slice N γ Q) -∗
+  ▷?q box N f P ={E}=∗
+  ▷ ([∗ map] γ ↦ Q ∈ Qs , Q) ∗ ▷?q box N (((λ _, false) <$> Qs) ∪ f) P.
+Proof.
+  induction Qs as [|x T ? IHnone IHQs] using map_ind. 
+  - intros Hmask. intros Htrue. iIntros "#slices box".
+    iModIntro. rewrite big_sepM_empty. rewrite fmap_empty.
+    rewrite map_empty_union. iFrame. iModIntro. done.
+  - intros Hmask. intros Htrue. iIntros "#slices box".
+    iMod (IHQs Hmask with "[] box") as "[map box]".
+      { intros γ Q Hmγ.  have Ht := Htrue γ Q.
+        assert (x ≠ γ) as Hne. { intro Heq. subst γ. rewrite IHnone in Hmγ. discriminate. }
+        rewrite lookup_insert_ne in Ht; trivial.
+        apply Ht. trivial.
+      }
+      { iIntros (γ Q) "%Hmγ".  have Ht := Htrue γ Q.
+        assert (x ≠ γ) as Hne. { intro Heq. subst γ. rewrite IHnone in Hmγ. discriminate. }
+        rewrite lookup_insert_ne in Ht; trivial.
+        iApply "slices". iPureIntro. rewrite lookup_insert_ne; trivial.
+      }
+    iMod (slice_empty E q _ P T x Hmask with "[] box") as "[Q box]".
+      { rewrite lookup_union_r. { apply (Htrue x T). rewrite lookup_insert. trivial. }
+        rewrite lookup_fmap. rewrite IHnone. trivial. }
+      { iApply "slices". iPureIntro. rewrite lookup_insert. trivial. }
+      iModIntro.
+      iSplitL "map Q".
+      { rewrite big_sepM_insert; last by trivial. iFrame. }
+      replace (<[x:=false]> (((λ _ : iProp Σ, false) <$> m) ∪ f))
+          with (((λ _ : iProp Σ, false) <$> <[x:=T]> m) ∪ f); first by iFrame "box".
+      rewrite insert_union_l. f_equiv. rewrite fmap_insert. trivial.
+  Qed.
+
+  Lemma slice_fill_many E q f P (Qs : gmap gname (iProp Σ)) :
+  ↑N ⊆ E →
+  (∀ γ Q, Qs !! γ = Some Q → f !! γ = Some false) →
+  (∀ γ Q, ⌜Qs !! γ = Some Q⌝ -∗ slice N γ Q) -∗
+  ▷ ([∗ map] γ ↦ Q ∈ Qs , Q) -∗
+  ▷?q box N f P ={E}=∗
+  ▷?q box N (((λ _, true) <$> Qs) ∪ f) P.
+Proof.
+  induction Qs as [|x T ? IHnone IHQs] using map_ind. 
+  - intros Hmask. intros Htrue. iIntros "#slices map box".
+    iModIntro. rewrite big_sepM_empty. rewrite fmap_empty.
+    rewrite map_empty_union. iFrame.
+  - intros Hmask. intros Htrue. iIntros "#slices map box".
+    rewrite big_sepM_insert; last by trivial. iDestruct "map" as "[T map]".
+    iMod (IHQs Hmask with "[] map box") as "box".
+      { intros γ Q Hmγ.  have Ht := Htrue γ Q.
+        assert (x ≠ γ) as Hne. { intro Heq. subst γ. rewrite IHnone in Hmγ. discriminate. }
+        rewrite lookup_insert_ne in Ht; trivial.
+        apply Ht. trivial.
+      }
+      { iIntros (γ Q) "%Hmγ".  have Ht := Htrue γ Q.
+        assert (x ≠ γ) as Hne. { intro Heq. subst γ. rewrite IHnone in Hmγ. discriminate. }
+        rewrite lookup_insert_ne in Ht; trivial.
+        iApply "slices". iPureIntro. rewrite lookup_insert_ne; trivial.
+      }
+    iMod (slice_fill E q _ x P T Hmask with "[] T box") as "box".
+      { rewrite lookup_union_r. { apply (Htrue x T). rewrite lookup_insert. trivial. }
+        rewrite lookup_fmap. rewrite IHnone. trivial. }
+      { iApply "slices". iPureIntro. rewrite lookup_insert. trivial. }
+      iModIntro.
+      replace (<[x:=true]> (((λ _ : iProp Σ, true) <$> m) ∪ f))
+          with (((λ _ : iProp Σ, true) <$> <[x:=T]> m) ∪ f); first by iFrame "box".
+      rewrite insert_union_l. f_equiv. rewrite fmap_insert. trivial.
+  Qed.
 End box.
 
 Global Typeclasses Opaque slice box.

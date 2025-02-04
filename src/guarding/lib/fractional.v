@@ -3,8 +3,6 @@ Require Import Coq.QArith.Qround.
 Require Import Coq.QArith.Qcanon.
 Require Import Coq.ZArith.Int.
 
-Undelimit Scope Int_scope.
-
 From iris.base_logic.lib Require Import invariants.
 
 From iris.base_logic Require Export base_logic.
@@ -24,8 +22,6 @@ Require Import guarding.tactics.
 From iris.algebra Require Import auth.
 
 Require Import examples.misc_tactics.
-
-Definition FRAC_NAMESPACE := nroot .@ "fractional".
 
 Definition frac := option Qp.
 
@@ -347,15 +343,15 @@ Proof. solve_inG. Qed.
 
 Section Frac.
   Context {Σ: gFunctors}.
-  Context `{@frac_logicG Σ}.
+  Context `{!frac_logicG Σ}.
   Context `{!invGS_gen hlc Σ}.
 
   Definition sto_frac (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := frac_sp_inG) γ (family Q).
   Definition own_frac (γ: gname) (qp: Qp) := sp_own (sp_i := frac_sp_inG) γ (Some qp).
 
 
-  Lemma frac_alloc E (Q: iProp Σ)
-    : ⊢ |={E}=> ∃ (γ: gname) , sto_frac γ Q ∗ ⌜ γ ∈ (↑FRAC_NAMESPACE : coPset) ⌝.
+  Lemma frac_alloc (N: namespace) E (Q: iProp Σ)
+    : ⊢ |={E}=> ∃ (γ: gname) , sto_frac γ Q ∗ ⌜ γ ∈ (↑N : coPset) ⌝.
   Proof.
     iIntros.
     iDestruct (sp_alloc_ns (sp_i := frac_sp_inG)
@@ -363,7 +359,7 @@ Section Frac.
         ε
         (family Q)
         E
-        FRAC_NAMESPACE
+        N
         with "[]") as "x".
     { unfold sp_rel, sp_inv, frac_inv. split; trivial. unfold sp_inv. trivial. }
     { apply wf_prop_map_family. }
@@ -444,14 +440,14 @@ Section Frac.
     - apply nat_ceil_ge_1.
   Qed.
   
-  Lemma frac_alloc2 (P: iProp Σ) (E: coPset) :
-    (↑FRAC_NAMESPACE ⊆ E) →
+  Lemma frac_alloc2 (N: namespace) (P: iProp Σ) (E: coPset) :
+    (↑N ⊆ E) →
     P ⊢ |={E}=> ∃ (γ: gname) , own_frac γ 1%Qp
-          ∗ □ (own_frac γ 1%Qp ={↑FRAC_NAMESPACE}=∗ ▷ P)
-          ∗ (∀ q , own_frac γ q &&{↑FRAC_NAMESPACE}&&> ▷ P).
+          ∗ □ (own_frac γ 1%Qp ={↑N}=∗ ▷ P)
+          ∗ (∀ q , own_frac γ q &&{↑N}&&> ▷ P).
   Proof.
     intros HE. iIntros "P".
-    iMod (frac_alloc E P) as (γ) "[#sto %Hns]".
+    iMod (frac_alloc N E P) as (γ) "[#sto %Hns]".
     iMod (fupd_mask_subseteq {[γ]}) as "Hb". { set_solver. }
     iMod (frac_deposit with "sto P") as "H1".
     iMod "Hb". iModIntro.

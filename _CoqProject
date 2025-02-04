@@ -15,11 +15,16 @@ src/guarding/guard_later_pers.v
 src/guarding/storage_protocol/protocol.v
 src/guarding/storage_protocol/base_storage_opt.v
 
+src/guarding/lib/fractional.v
 src/guarding/lib/lifetime.v
 src/guarding/lib/cancellable.v
 src/guarding/lib/non_atomic_map.v
 src/guarding/lib/rwlock.v
 src/guarding/lib/boxes.v
+src/guarding/lib/lifetime_full.v
+
+src/guarding/lib/lifetime_internals_ra.v
+src/guarding/lib/lifetime_internals_inv.v
 
 -Q src/lang lang
 
@@ -44,7 +49,6 @@ src/examples/hash_table_logic.v
 src/examples/hash_table.v
 src/examples/seqs.v
 src/examples/main.v
-src/examples/fractional.v
 src/examples/counting.v
 src/examples/heap_lang_wp_load_shared.v
 
