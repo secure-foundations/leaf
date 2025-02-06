@@ -6,11 +6,9 @@ Require Import stdpp.base.
 From iris.algebra Require Export cmra updates.
 From iris.algebra Require Import proofmode_classes.
 From iris.algebra Require Import excl.
-From iris.algebra Require Import gmap.
-From iris.algebra Require Import gmultiset.
 From iris.prelude Require Import options.
 
-From iris.base_logic.lib Require Export own iprop boxes.
+From iris.base_logic.lib Require Export own iprop boxes ghost_map.
 From iris.proofmode Require Import base.
 From iris.proofmode Require Import ltac_tactics.
 From iris.proofmode Require Import tactics.
@@ -23,59 +21,226 @@ From iris.base_logic.lib Require Export invariants.
 
 Inductive BorState :=
   | Borrow : gset nat → gset nat → BorState
-  | Unborrow : gset nat → BorState
-.
+  | Unborrow : gset nat → BorState.
 
-Definition borrow_map := gmap slice_name BorState.
+Section FullBorrows.
+  Context {Σ: gFunctors}.
+  Context `{!invGS Σ}.
+  Context `{!ghost_mapG Σ slice_name BorState}.
+  Context `{!boxG Σ}.
+  
+  Context {γ: gname}.
+  
+  Definition RawBor (sn: slice_name) (alive: gset nat) (dead: gset nat) : iProp Σ :=
+    sn ↪[γ] (Borrow alive dead).
+  Definition UnBor (sn: slice_name) (k: gset nat) : iProp Σ :=
+    sn ↪[γ] (Unborrow k).
+  
+  (*Definition llft_fb_vs (all alive : gset nat) : iProp Σ := *)
+    
+  Definition llftboxN: namespace := nroot .@ "llft_box_namespace".
+  
+  Definition boxmap_of_borrowmap
+      (alive_now dead_now : gset nat) (m: gmap slice_name BorState)
+        : gmap slice_name bool :=
+      (λ bs , match bs with
+        | Borrow alive dead => bool_decide (alive ⊆ alive_now ∧ ¬(dead ## dead_now))
+        | Unborrow _ => false
+      end) <$> m.
+  
+  Definition total_borrows_active_when (alive dead : gset nat) (m: gmap slice_name BorState)
+      : iProp Σ. Admitted.
+      
+  Definition total_returned_by (dead : gset nat) (m: gmap slice_name BorState)
+      : iProp Σ. Admitted.
+  
+  Definition map_wf (alive_now dead_now blocked_now : gset nat) (m: gmap slice_name BorState)
+    :=
+    blocked_now ⊆ alive_now
+    ∧ (∀ sn bs , m !! sn = Some bs → match bs with
+      | Borrow alive dead => (alive ∪ dead) ⊆ (alive_now ∪ dead_now)
+      | Unborrow blocking => blocking ⊆ blocked_now
+    end).
+      
+  Fixpoint llft_fb_vs' fuel (alive dead : gset nat) (m: gmap slice_name BorState) : iProp Σ :=
+    match fuel with
+      | 0 => True
+      | S fuel' =>
+        ∀ (future_alive : gset nat) , ⌜future_alive ⊂ alive⌝ -∗
+            (▷ (total_borrows_active_when alive dead m
+                ∗ total_returned_by (dead ∪ (alive ∖ future_alive)) m))
+            ={∅}=∗
+            (▷ total_borrows_active_when future_alive (dead ∪ (alive ∖ future_alive)) m)
+            ∗ llft_fb_vs' fuel' future_alive (dead ∪ (alive ∖ future_alive)) m
+    end.
+  
+  Definition llft_fb_vs (alive dead : gset nat) (m: gmap slice_name BorState) : iProp Σ :=
+      llft_fb_vs' (length (elements alive)) alive dead m.
+  
+  Lemma llft_fb_vs_def (alive dead : gset nat) (m: gmap slice_name BorState)
+    : llft_fb_vs alive dead m ⊣⊢
+      ∀ (future_alive : gset nat) , ⌜future_alive ⊂ alive⌝ -∗
+            (▷ (total_borrows_active_when alive dead m
+                ∗ total_returned_by (dead ∪ (alive ∖ future_alive)) m))
+            ={∅}=∗
+            (▷ total_borrows_active_when future_alive (dead ∪ (alive ∖ future_alive)) m)
+            ∗ llft_fb_vs future_alive (dead ∪ (alive ∖ future_alive)) m.
+  Admitted.
+  
+  Lemma set_ind_strong `{!EqDecision A, !Countable A} (P : gset A → Prop) (ind: ∀ s, (∀ q, q ⊂ s → P q) → P s)
+      (s : gset A) : P s. Admitted.
+      
+  Lemma set_lemma1 (future_alive alive0 alive0' : gset nat)
+    (Hsub : alive0 ⊆ alive0')
+    (Hsub1 : future_alive ⊂ alive0')
+    : (future_alive ∖ (alive0' ∖ alive0) ⊂ alive0)
+        ∨ (future_alive ∖ (alive0' ∖ alive0) = alive0). Admitted.
+        
+  Lemma total_borrows_active_when_subseteq_alive
+    alive alive' dead m
+    (seq: alive ⊆ alive')
+  : total_borrows_active_when alive' dead m ⊢ total_borrows_active_when alive dead m.
+  Admitted.
+  
+  Lemma total_borrows_active_by_adding_new_lifetime (alive dead blocked alive1 dead1 alive2 dead2 : gset nat) m
+    (mwf: map_wf alive dead blocked m)
+    (irrel_dead: (dead2 ∖ dead1) ## (alive ∪ dead))
+    (irrel_alive: (alive2 ∖ alive1) ## (alive ∪ dead))
+  : total_borrows_active_when alive1 dead1 m ⊢ total_borrows_active_when alive2 dead2 m.
+  Admitted.
+  
+  Lemma total_returned_by_adding_new_lifetime (alive dead blocked dead1 dead2 : gset nat) m
+    (mwf: map_wf alive dead blocked m)
+    (irrel: (dead2 ∖ dead1) ## (alive ∪ dead)) :
+    total_returned_by dead1 m ⊢ total_returned_by dead2 m. Admitted.
+    
+  
+  Lemma set_lemma2 (a b a1 b1 : gset nat)
+    (su: a ⊆ a1)
+      : (a ∪ b) ∖ (a1 ∪ b1) = b ∖ (a1 ∪ b1). Proof. set_solver. Qed.
+      
+  Lemma set_lemma4 (a b a1 b1 c : gset nat)
+    (d1: (a ∖ a1) ## c)
+    (d2: (b ∖ b1) ## c)
+    : ((a ∪ b) ∖ (a1 ∪ b1)) ## c.
+  Proof.
+    set_solver.
+  Qed.
+      
+  Lemma set_lemma3 (a b a1 b1 : gset nat)
+          (Hdisjoint : a ## b)
+          (Hidsjoint' : a1 ## b1)
+          (Hsub : b ⊆ b1)
+          (Heq : b ∪ a = b1 ∪ a1)
+          : a1 ⊆ a. Proof. set_solver. Qed.
+  
+  Lemma set_lemma5 (a b c : gset nat)
+    (su: a ⊆ c)
+    : a ∪ (b ∪ (c ∖ a)) = b ∪ c. Admitted.
+    
+  Lemma set_lemma6 (a c : gset nat)
+    (su: a ⊆ c)
+    : a ∪ ((c ∖ a)) = c. Admitted.
+  
+  Lemma llfb_fb_vs_monotonic_in_alive
+      (alive alive' dead blocked : gset nat) (m: gmap slice_name BorState)
+      (alive_sub : alive ⊆ alive')
+      (disj : dead ## alive')
+      (mwf: map_wf alive dead blocked m)
+      : llft_fb_vs alive dead m ⊢ llft_fb_vs alive' dead m.
+  Proof.
+    apply (set_ind_strong (λ alive0' , ∀ alive0 dead0 dead0' ,
+        alive0 ⊆ alive0'
+        → alive0 ⊆ alive
+        → (alive0' ∖ alive0) ## (alive ∪ dead)
+        → dead0 ## alive0
+        → dead0' ## alive0'
+        → alive0 ∪ dead0 = alive ∪ dead
+        → alive0' ∪ dead0' = alive' ∪ dead
+        → llft_fb_vs alive0 dead0 m ⊢ llft_fb_vs alive0' dead0' m)); trivial.
+    2: { set_solver. } 2: { set_solver. }
+    intros alive0' Hind alive0 dead0 dead0' Hsub Hsub2 Hdi Hdisjoint Hidsjoint' Hcup Hcup'.
+
+    (*rewrite llft_fb_vs_def.*)
+    rewrite (llft_fb_vs_def alive0').
+    iIntros "H" (future_alive) "%Hsub1 [X1 X2]".
+    
+    have Hs := set_lemma1 future_alive alive0 alive0' Hsub Hsub1.
+    destruct Hs as [Hs|Hs].
+    - rewrite llft_fb_vs_def.
+      iDestruct ("H" $! (future_alive ∖ (alive0' ∖ alive0))) as "H".
+      iDestruct ("H" with "[]") as "H". { iPureIntro. trivial. }
+      iMod ("H" with "[X1 X2]") as "H".
+      { iNext. iDestruct (total_borrows_active_by_adding_new_lifetime alive dead blocked
+          alive0' dead0' alive0 dead0 with "X1") as "X1"; trivial.
+          { set_solver. } { set_solver. } iFrame "X1".
+        iApply (total_returned_by_adding_new_lifetime alive dead blocked 
+          (dead0' ∪ alive0' ∖ future_alive)); trivial. { set_solver. }
+      }
+      iModIntro. iDestruct "H" as "[Hlat Hvs]".
+      iSplitL "Hlat".
+      {  iNext.
+        iApply (total_borrows_active_by_adding_new_lifetime alive dead blocked 
+            (future_alive ∖ (alive0' ∖ alive0))
+            (dead0 ∪ alive0 ∖ (future_alive ∖ (alive0' ∖ alive0)))
+               ); trivial.
+        { apply set_lemma4. { set_solver. } set_solver. }
+        { set_solver. }
+      }
+      iApply ( Hind future_alive Hsub1 
+        (future_alive ∖ (alive0' ∖ alive0))
+        (dead0 ∪ alive0 ∖ (future_alive ∖ (alive0' ∖ alive0)))
+        (dead0' ∪ alive0' ∖ future_alive) ).
+      + set_solver.
+      + set_solver.
+      + set_solver.
+      + set_solver.
+      + set_solver.
+      + rewrite set_lemma5; set_solver.
+      + rewrite set_lemma5; set_solver.
+      + iFrame "Hvs".
+    - iModIntro. iSplitL "X1".
+    { iNext.
+      iApply (total_borrows_active_by_adding_new_lifetime alive dead blocked 
+          alive0' dead0'); trivial; set_solver.
+    }
+    {
+     iApply ( Hind future_alive Hsub1 alive0 dead0 (dead0' ∪ alive0' ∖ future_alive));
+        trivial.
+      + set_solver.
+      + set_solver.
+      + set_solver.
+      + rewrite set_lemma5; set_solver.
+    }
+  Qed.
+  
+  Definition llft_fb_inv (alive_now dead_now blocked : gset nat) : iProp Σ :=
+    ∃ (m: gmap slice_name BorState) Ptotal ,
+      ghost_map_auth γ 1 m
+        ∗ box llftboxN (boxmap_of_borrowmap alive_now dead_now m) Ptotal
+        ∗ llft_fb_vs alive dead m
+  .
+
+End FullBorrows.
 
 Inductive LtRa :=
-  | LtOk :
-      (* Alive set, Dead set, unborrows, borrows *)
-      (option (gset nat * gset nat * borrow_map)) →
-      (* alive tokens (2 each) *)
-      gmultiset nat →
-      (* dead tokens (persistent) *)
-      gset nat →
-      borrow_map →
-      LtRa
+  | LtOk : (option (gset nat * gset nat)) → gmultiset nat → gset nat → LtRa
   | LtFail.
-
-(*
-Print gmap_merge.
-Definition merge_fb (fb1 fb2 : gmap (gset nat * gset nat) (gmultiset gname))
-  := gmap_merge (λ fb1_entry fb2_entry,
-    match fb1_entry, fb2_entry with
-      | None, None => None
-      | Some x, None => Some x
-      | None, Some y => Some y
-      | Some x, Some y => Some (x ⊎ y)
-    end.
-    *)
-    
-Local Instance lt_op : Op LtRa := λ a b , match a, b with
-  | LtOk (Some o) a1 d1 bm1, LtOk None a2 d2 bm2 =>
-      if decide (map_disjoint bm1 bm2) then
-        LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
-      else
-        LtFail
-  | LtOk None a1 d1 bm1, LtOk (Some o) a2 d2 bm2 =>
-      if decide (map_disjoint bm1 bm2) then
-        LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
-      else
-        LtFail
-  | LtOk None a1 d1 bm1, LtOk None a2 d2 bm2 =>
-      if decide (map_disjoint bm1 bm2) then
-        LtOk None (a1 ⊎ a2) (d1 ∪ d2) (map_union bm1 bm2)
-      else
-        LtFail
+  
+Instance lt_op : Op LtRa := λ a b , match a, b with
+  | LtOk (Some o) a1 d1, LtOk None a2 d2 =>
+      LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2)
+  | LtOk None a1 d1, LtOk (Some o) a2 d2 =>
+      LtOk (Some o) (a1 ⊎ a2) (d1 ∪ d2)
+  | LtOk None a1 d1, LtOk None a2 d2 =>
+      LtOk None (a1 ⊎ a2) (d1 ∪ d2)
   | _, _ => LtFail
 end.
 
 Definition lt_inv (a: LtRa) := match a with
-  | LtOk (Some (sa, sd, sbm)) a d bm =>
+  | LtOk (Some (sa, sd)) a d =>
       sd = d ∧ sa ∩ sd = ∅
-      ∧ (∀ m , (m ∈ sa → multiplicity m a = 2) ∧ (m ∉ sa → multiplicity m a = 0))
-      ∧ sbm = bm
+      ∧ ∀ m , (m ∈ sa → multiplicity m a = 2) ∧ (m ∉ sa → multiplicity m a = 0)
   | _ => False
 end.
 
@@ -84,38 +249,38 @@ Instance lt_valid : Valid LtRa := λ a , ∃ b , lt_inv (a ⋅ b).
 Instance lt_equiv : Equiv LtRa := λ a b , a = b.
 
 Instance lt_pcore : PCore LtRa := λ a , match a with
-  | LtOk o1 a1 d1 bm1 => Some (LtOk None ∅ d1 ∅)
+  | LtOk o1 a1 d1 => Some (LtOk None ∅ d1)
   | LtFail => Some LtFail
 end.
 
 Lemma lt_assoc : Assoc (=) lt_op.
-Proof. Admitted. (*
+Proof.
   unfold Assoc. intros x y z. unfold lt_op.
   destruct x as [[o|] a d|], y as [[o1|] a1 d1|], z as [[o2|] a2 d2|]; trivial; f_equiv; (try set_solver); rewrite gmultiset_disj_union_assoc; trivial.
-Qed. *)
+Qed.
   
 Lemma lt_comm : Comm (=) lt_op.
-Proof. Admitted. (*
+Proof.
   unfold Comm. intros x y. unfold lt_op.
   destruct x as [[o|] a d|], y as [[o1|] a1 d1|]; trivial; f_equiv; (try set_solver); rewrite gmultiset_disj_union_comm; trivial.
-Qed. *)
+Qed.
 
-Lemma LtOk_incl_3 a b d1 d2 bm
+Lemma LtOk_incl_3 a b d1 d2
   (d_incl: d1 ⊆ d2)
-  : LtOk a b d1 bm ≼ LtOk a b d2 bm.
-Proof. Admitted. (*
+  : LtOk a b d1 ≼ LtOk a b d2.
+Proof.
   exists (LtOk None ∅ d2). destruct a as [a|]; unfold "⋅", lt_op; f_equiv; try set_solver.
-Qed. *)
+Qed.
   
-Lemma multiset_subseteq_of_LtOk_incl o0 a0 d0 bm0 o1 a1 d1 bm1 o2 a2 d2 bm2
-  (incl: LtOk o0 a0 d0 bm0 ≡ LtOk o1 a1 d1 bm1 ⋅ LtOk o2 a2 d2 bm2)
+Lemma multiset_subseteq_of_LtOk_incl o0 a0 d0 o1 a1 d1 o2 a2 d2
+  (incl: LtOk o0 a0 d0 ≡ LtOk o1 a1 d1 ⋅ LtOk o2 a2 d2)
   : d1 ⊆ d0.
-Proof. Admitted. (*
+Proof.
   unfold "⋅", lt_op in incl; destruct o1, o2; inversion incl; set_solver.
-Qed. *)
+Qed.
 
 Definition lt_ra_mixin : RAMixin LtRa.
-Proof. Admitted. (*split.
+Proof. split.
   - typeclasses eauto.
   - intros a b cx abe. rewrite abe. intros t. exists cx. intuition.
   - typeclasses eauto.
@@ -142,7 +307,7 @@ Proof. Admitted. (*split.
       + exists LtFail. intuition. exists LtFail. trivial.
   - intros x y. unfold "✓", lt_valid. intros t. destruct t as [b t].
       rewrite <- lt_assoc in t. exists (lt_op y b). apply t.
-Qed. *)
+Qed.
 
 Canonical Structure ltO
   := discreteO LtRa.
@@ -152,16 +317,16 @@ Canonical Structure ltR := discreteR LtRa lt_ra_mixin.
 Global Instance lt_cmra_discrete : CmraDiscrete ltR.
 Proof. apply discrete_cmra_discrete. Qed.
 
-Global Instance lt_unit : Unit LtRa := LtOk None ∅ ∅ ∅.
+Global Instance lt_unit : Unit LtRa := LtOk None ∅ ∅.
 
 Definition lt_ucmra_mixin : UcmraMixin LtRa.
-split; trivial. Admitted. (*
-  - exists (LtOk (Some (∅, ∅, ∅)) ∅ ∅ ∅). unfold lt_inv. simpl. set_solver.
+split; trivial.
+  - exists (LtOk (Some (∅, ∅)) ∅ ∅). unfold lt_inv. simpl; set_solver.
   - intro x. destruct x as [o a d|]; simpl; trivial.
       destruct o; trivial.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
       + unfold ε, lt_unit, "⋅", lt_op. f_equiv; set_solver.
-Qed. *)
+Qed.
 
 Canonical Structure ltUR := Ucmra LtRa lt_ucmra_mixin.
 
@@ -190,29 +355,21 @@ Section LlftHelperResources.
   
   (* begin hide *)
 
-  Definition lt_state (sa sd : gset nat) (bm: borrow_map) := LtOk (Some (sa, sd, bm)) ∅ sd ∅.
-  Definition LtState γlt (sa sd : gset nat) (bm: borrow_map): iProp Σ := own γlt (lt_state sa sd bm).
+  Definition lt_state (sa sd : gset nat) := LtOk (Some (sa, sd)) ∅ sd.
+  Definition LtState γlt (sa sd : gset nat) : iProp Σ := own γlt (lt_state sa sd).
 
-  Definition dead (k: nat) := LtOk None ∅ ({[ k ]}) ∅.
+  Definition dead (k: nat) := LtOk None ∅ ({[ k ]}).
   Definition Dead γlt (k: nat) : iProp Σ := own γlt (dead k).
 
-  Definition alive (k: nat) := LtOk None ({[+ k +]}) ∅ ∅.
+  Definition alive (k: nat) := LtOk None ({[+ k +]}) ∅.
   Definition Alive γlt (k: nat) : iProp Σ := own γlt (alive k).
   
-  Definition rawbor (sn: slice_name) (k_alive k_dead : gset nat) :=
-      LtOk None ∅ ∅ {[ sn := Borrow k_alive k_dead ]}.
-  Definition RawBor γlt (sn: slice_name) (k_alive k_dead : gset nat) :=
-      own γlt (rawbor sn k_alive k_dead).
-      
-  Definition unbor (sn: slice_name) (k : gset nat) := LtOk None ∅ ∅ {[ sn := Unborrow k ]}.
-  Definition UnBor γlt (sn: slice_name) (k : gset nat) := own γlt (unbor sn k).
-  
   Local Lemma lt_alloc :
-    ⊢ |==> ∃ γ , LtState γ ∅ ∅ ∅.
+    ⊢ |==> ∃ γ , LtState γ ∅ ∅.
   Proof.
     apply own_alloc. unfold "✓", cmra_valid, ltR, lt_valid.
-    exists (LtOk None ∅ ∅ ∅). Admitted. (* simpl; set_solver.
-  Qed. *)
+    exists (LtOk None ∅ ∅). simpl; set_solver.
+  Qed.
 
   Local Lemma update_helper (a b : LtRa)
     (cond: ∀ z : ltR, lt_inv (a ⋅ z) → lt_inv (b ⋅ z))
@@ -224,7 +381,7 @@ Section LlftHelperResources.
   Qed.
 
   Local Lemma update_helper2 (x y : LtRa)
-    (cond: ∀ o a d bm , lt_inv (x ⋅ LtOk o a d bm) → lt_inv (y ⋅ LtOk o a d bm))
+    (cond: ∀ o a d , lt_inv (x ⋅ LtOk o a d) → lt_inv (y ⋅ LtOk o a d))
     : x ~~> y.
   Proof.
     apply update_helper. intros z. destruct z as [o a d|].
