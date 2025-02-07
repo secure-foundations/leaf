@@ -133,15 +133,21 @@ Section FullBorrows.
           (Hsub : b ⊆ b1)
           (Heq : b ∪ a = b1 ∪ a1)
           : a1 ⊆ a. Proof. set_solver. Qed.
+          
+  Local Lemma union_diff_eq_union (E1 E2 : gset nat) : E1 ∪ (E2 ∖ E1) = E1 ∪ E2.
+  Proof.
+    apply set_eq. intro x.
+    have h : Decision (x ∈ E1) by solve_decision. destruct h; set_solver.
+  Qed.
   
   Lemma set_lemma5 (a b c : gset nat)
     (su: a ⊆ c)
-    : a ∪ (b ∪ (c ∖ a)) = b ∪ c. Admitted.
+    : a ∪ (b ∪ (c ∖ a)) = b ∪ c.
+  Proof.
+      have h := union_diff_eq_union a c.
+      set_solver.
+  Qed.
     
-  Lemma set_lemma6 (a c : gset nat)
-    (su: a ⊆ c)
-    : a ∪ ((c ∖ a)) = c. Admitted.
-  
   Lemma llfb_fb_vs_monotonic_in_alive
       (alive alive' dead blocked : gset nat) (m: gmap slice_name BorState)
       (alive_sub : alive ⊆ alive')
