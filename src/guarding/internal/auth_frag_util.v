@@ -221,13 +221,14 @@ Proof using C Disc m Σ.
   iPureIntro. split; trivial.
 Qed.
 
-Lemma auth_frag_conjunct (x y : C) (γ : gname)
-    : own γ (● x) ∧ own γ (◯ y) ⊢ ⌜ y ≼ x ⌝.
-Proof using C Disc m Σ.
-  iIntros "x".
-  iDestruct (@and_own_discrete_ucmra Σ with "x") as (z) "[o %e]".
-  iDestruct (own_valid with "o") as "%val". iPureIntro.
-  destruct e as [[t1 l1] [t2 l2]].
+Lemma auth_frag_incl (x y : C) (z: @viewUR _ C auth_view_rel) :
+  ● x ≼ z →
+  ◯ y ≼ z →
+  ✓ z →
+  y ≼ x.
+Proof using Disc.
+  intros e1 e2 val.
+  destruct e1 as [t1 l1]. destruct e2 as [t2 l2].
   setoid_rewrite l1 in l2.
   
   assert (✓ (● x ⋅ t1)) as D.
@@ -249,6 +250,16 @@ Proof using C Disc m Σ.
   have ll := cmra_valid_op_l _ _ val.
   generalize ll.
   rewrite auth_both_valid_discrete. intuition.
+Qed.
+
+Lemma auth_frag_conjunct (x y : C) (γ : gname)
+    : own γ (● x) ∧ own γ (◯ y) ⊢ ⌜ y ≼ x ⌝.
+Proof using C Disc m Σ.
+  iIntros "x".
+  iDestruct (@and_own_discrete_ucmra Σ with "x") as (z) "[o %e]".
+  iDestruct (own_valid with "o") as "%val". iPureIntro.
+  destruct e as [e1 e2].
+  apply (auth_frag_incl _ _ _ e1 e2 val).
 Qed.
 
 Lemma auth_frag_disjointness_helper (q r : C) (a b : auth C)

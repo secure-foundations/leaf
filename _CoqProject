@@ -19,6 +19,7 @@ src/guarding/lib/lifetime.v
 src/guarding/lib/cancellable.v
 src/guarding/lib/non_atomic_map.v
 src/guarding/lib/rwlock.v
+src/guarding/lib/boxes.v
 
 -Q src/lang lang
 

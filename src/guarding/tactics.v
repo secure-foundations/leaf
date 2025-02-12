@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 Section TacticsHelpers.
 
 Context {Σ: gFunctors}.
-Context `{!invGS Σ}. 
+Context `{!invGS_gen hlc Σ}. 
  
 Local Lemma guard_weaken_helper_right (A B C : iProp Σ) (E: coPset) (n: nat)
     : (A &&{E; n}&&> B) -∗ (B &&{E}&&> C) -∗ (A &&{E; n}&&> C).

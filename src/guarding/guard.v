@@ -9,7 +9,7 @@ Require Import guarding.factoring_props.
 Section Guard.
 
 Context {Σ: gFunctors}.
-Context `{!invGS Σ}. 
+Context `{!invGS_gen hlc Σ}. 
 
 (* begin hide *)
 Local Definition storage_inv (i: positive) : iProp Σ := ∃ P , ownI i P ∗ ▷ P.
@@ -663,7 +663,7 @@ Lemma fguards_sep_disjoint P1 P2 Q1 Q2 E1 E2
 (**** guards ****)
 
 
-Local Definition guards_def (P Q : iProp Σ) (E: coPset) (n: nat) : iProp Σ :=
+Local Definition guards_def (n: nat) (E: coPset) (P Q : iProp Σ) : iProp Σ :=
     □ (∃ m , ⌜ ∀ x , x ∈ m -> x ∈ E ⌝ ∗ lfguards P Q m n).
 
 Local Definition guards_aux : seal (@guards_def). Proof. by eexists. Qed.
@@ -674,7 +674,7 @@ Local Definition guards_aux : seal (@guards_def). Proof. by eexists. Qed.
 The "later count" can be provided with a semicolon as in [P &&{ E ; n }&&> Q].
 *)
 
-Definition guards (P Q : iProp Σ) (E: coPset) (n: nat) : iProp Σ. exact (guards_aux.(unseal) P Q E n). Defined.
+Definition guards (n: nat) (E: coPset) (P Q : iProp Σ) : iProp Σ. exact (guards_aux.(unseal) n E P Q). Defined.
 (* begin hide *)
 Local Definition guards_unseal : @guards = @guards_def := guards_aux.(seal_eq).
 (* end hide *)
@@ -683,10 +683,10 @@ Local Definition guards_unseal : @guards = @guards_def := guards_aux.(seal_eq).
 Definition guards (P Q : iProp Σ) (E: coPset) : iProp Σ := lguards P Q E 0.
 *)
     
-Notation "P &&{ E }&&> Q" := (guards P Q E 0)
+Notation "P &&{ E }&&> Q" := (guards 0 E P Q)
   (at level 99, E at level 50, Q at level 200).
   
-Notation "P &&{ E ; n }&&> Q" := (guards P Q E n)
+Notation "P &&{ E ; n }&&> Q" := (guards n E P Q)
   (at level 99, E at level 50, Q at level 200).
   
 (** Global instances for guards.
@@ -695,29 +695,29 @@ and it is nonexpansive in both its arguments.
 Also, when [n ≥ 0], it is contractive in the right-hand side.
 *)
 
-Global Instance guards_proper :
-    Proper ((≡) ==> (≡) ==> (=) ==> (=) ==> (≡)) guards.
+Global Instance guards_proper n E :
+    Proper ((≡) ==> (≡) ==> (≡)) (guards n E).
 Proof.
   unfold Proper, "==>". rewrite guards_unseal. unfold guards_def.
-  intros x y Q x0 y0 Q0 x1 y1 Q1 x2 y2 Q2.
-  setoid_rewrite Q. setoid_rewrite Q0. setoid_rewrite Q1. rewrite Q2.  trivial.
+  intros x y Q x0 y0 Q0.
+  setoid_rewrite Q. setoid_rewrite Q0. trivial.
 Qed.
 
-Global Instance guards_persistent P Q E n :
+Global Instance guards_persistent n E P Q :
     Persistent (P &&{E; n}&&> Q).
 Proof.
   rewrite guards_unseal. unfold guards_def. apply _.
 Qed.
 
-Global Instance guards_nonexpansive2 E n :
-    NonExpansive2 (λ P Q, P &&{E; n}&&> Q).
+Global Instance guards_nonexpansive2 n E :
+    NonExpansive2 (guards n E).
 Proof.
     rewrite guards_unseal. unfold guards_def. unfold lfguards. unfold lguards_with.
     solve_proper.
 Qed.
 
 Global Instance guards_contractive_right_if_n_ge_1 P E n (n_ge_1: n ≥ 1) :
-    Contractive (λ Q, P &&{E; n}&&> Q).
+    Contractive (guards n E P).
 Proof.
     rewrite guards_unseal. unfold guards_def. unfold lfguards. unfold lguards_with.
     replace n with (S (n-1)) by lia. unfold bi_laterN. solve_contractive.
@@ -1373,8 +1373,8 @@ Qed.
 End Guard.
 (* begin hide *)
 
-Notation "P &&{ E }&&> Q" := (guards P Q E 0)
+Notation "P &&{ E }&&> Q" := (guards 0 E P Q)
   (at level 99, E at level 50, Q at level 200).
   
-Notation "P &&{ E ; n }&&> Q" := (guards P Q E n)
+Notation "P &&{ E ; n }&&> Q" := (guards n E P Q)
   (at level 99, E at level 50, Q at level 200).
