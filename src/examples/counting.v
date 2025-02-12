@@ -107,7 +107,7 @@ Section Counting.
 
 Context {Σ: gFunctors}.
 Context `{co_in_Σ: !@co_logicG Σ}.
-Context `{!invGS Σ}.
+Context `{!invGS_gen hlc Σ}.
 
 Fixpoint sep_pow (n: nat) (P: iProp Σ) : iProp Σ :=
   match n with

@@ -147,7 +147,7 @@ Section Forever.
 
 Context {Σ: gFunctors}.
 Context `{f_in_Σ: @forever_logicG Σ}.
-Context `{!invGS Σ}.
+Context `{!invGS_gen hlc Σ}.
 
 Definition family (Q: iProp Σ) (e: Exc ()) : iProp Σ :=
   match e with

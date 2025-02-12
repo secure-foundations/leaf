@@ -285,7 +285,7 @@ Section NonAtomicMap.
   
   Context {Σ: gFunctors}.
   Context `{!na_logicG L V Σ}.
-  Context `{!invGS Σ}. 
+  Context `{!invGS_gen hlc Σ}. 
   
   Implicit Types (γ: gname) (l: L) (v: V).
   Implicit Types (G: iProp Σ).

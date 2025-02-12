@@ -147,7 +147,7 @@ Qed.
 Section LlftHelperResources.
   Context {Σ: gFunctors}.
   Context `{!llft_logicGpreS Σ}.
-  Context `{!invGS Σ}.
+  Context `{!invGS_gen hlc Σ}.
   
   (* begin hide *)
 
@@ -538,7 +538,7 @@ End LlftHelperResources.
 Section LlftLogic.
   Context {Σ: gFunctors}.
   Context `{!llft_logicGS Σ}.
-  Context `{!invGS Σ}.
+  Context `{!invGS_gen hlc Σ}.
 
   (*** Lifetime logic ***)
 
@@ -867,7 +867,7 @@ Section LlftLogic.
   Qed.
 End LlftLogic.
 
-Lemma llft_alloc {Σ: gFunctors} `{!llft_logicGpreS Σ} `{!invGS Σ} E
+Lemma llft_alloc {Σ: gFunctors} `{!llft_logicGpreS Σ} `{!invGS_gen hlc Σ} E
   : ⊢ |={E}=> ∃ _ : llft_logicGS Σ, llft_ctx.
 Proof.
   iIntros. iMod lt_alloc as (γ) "J".

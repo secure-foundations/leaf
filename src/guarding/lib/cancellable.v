@@ -29,7 +29,7 @@ Section CancellableInvariants.
 
   Context {Σ: gFunctors}.
   Context `{!ecInv_logicG Σ}.
-  Context `{!invGS Σ}.
+  Context `{!invGS_gen hlc Σ}.
 
   Definition Active (γ: gname) : iProp Σ := own γ (Excl ()).
   

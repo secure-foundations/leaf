@@ -72,7 +72,7 @@ Proof.
 Qed.
 
 Context {Σ: gFunctors}.
-Context `{!invGS Σ}. 
+Context `{!invGS_gen hlc Σ}. 
 
 (* Later-Pers-Guard *)
     

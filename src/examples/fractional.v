@@ -348,7 +348,7 @@ Proof. solve_inG. Qed.
 Section Frac.
   Context {Σ: gFunctors}.
   Context `{@frac_logicG Σ}.
-  Context `{!invGS Σ}.
+  Context `{!invGS_gen hlc Σ}.
 
   Definition sto_frac (γ: gname) (Q: iProp Σ) := sp_sto (sp_i := frac_sp_inG) γ (family Q).
   Definition own_frac (γ: gname) (qp: Qp) := sp_own (sp_i := frac_sp_inG) γ (Some qp).

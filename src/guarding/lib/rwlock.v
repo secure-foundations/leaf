@@ -354,7 +354,7 @@ Context {eqdec: EqDecision S}.
 
 Context {Σ: gFunctors}.
 Context `{@rwlock_logicG S _ Σ}.
-Context `{!invGS Σ}.
+Context `{!invGS_gen hlc Σ}.
 
 Definition fields γ (e: bool) (r: Z) (x: S) : iProp Σ
     := sp_own (sp_i := rwlock_sp_inG) γ (Central e r x).

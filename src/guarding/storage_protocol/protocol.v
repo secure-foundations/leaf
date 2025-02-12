@@ -366,7 +366,7 @@ Section StorageLogic.
 
   Context {Σ: gFunctors}.
   Context `{sp_i: !sp_logicG storage_mixin Σ}.
-  Context `{!invGS Σ}.
+  Context `{!invGS_gen hlc Σ}.
   
   Definition sp_sto (γ: gname) (f: B → iProp Σ) : iProp Σ :=
       ⌜ wf_prop_map f ⌝ ∗

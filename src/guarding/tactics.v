@@ -4,7 +4,7 @@ From iris.prelude Require Import options.
 Section TacticsHelpers.
 
 Context {Σ: gFunctors}.
-Context `{!invGS_gen hlc Σ}. 
+Context `{!invGS_gen hlc Σ}.
  
 Local Lemma guard_weaken_helper_right (A B C : iProp Σ) (E: coPset) (n: nat)
     : (A &&{E; n}&&> B) -∗ (B &&{E}&&> C) -∗ (A &&{E; n}&&> C).
@@ -133,7 +133,7 @@ Tactic Notation "leaf_open_laters" constr(g) "with" constr(sel) "as" constr(pat)
 Section TacticsTests.
   
 Context {Σ: gFunctors}.
-Context `{!invGS Σ}. 
+Context `{!invGS_gen hlc Σ}.
   
 Local Lemma test_leaf_hyp (A B C D : iProp Σ) E
     : (A &&{∅ ; 3}&&> B ∗ C) ⊢ (A ∗ D &&{E ; 20}&&> B).

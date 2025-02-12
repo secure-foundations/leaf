@@ -66,7 +66,7 @@ Section HashTableLogic.
 
 Context {Σ: gFunctors}.
 Context {htl: ht_logicG Σ}.
-Context `{!invGS Σ}. 
+Context `{!invGS_gen hlc Σ}.
 
 Lemma ht_Init (n: nat) :
   ⊢ |==> (∃ γ , own γ (mseq n) ∗ own γ (sseq ht_fixed_size))%I.
