@@ -40,6 +40,7 @@ Section FullBorrows.
     
   Definition llftboxN: namespace := nroot .@ "llft_box_namespace".
   
+  
   Definition boxmap_of_borrowmap
       (alive_now dead_now : gset nat) (m: gmap slice_name BorState)
         : gmap slice_name bool :=
@@ -94,7 +95,12 @@ Section FullBorrows.
     (Hsub : alive0 ⊆ alive0')
     (Hsub1 : future_alive ⊂ alive0')
     : (future_alive ∖ (alive0' ∖ alive0) ⊂ alive0)
-        ∨ (future_alive ∖ (alive0' ∖ alive0) = alive0). Admitted.
+        ∨ (future_alive ∖ (alive0' ∖ alive0) = alive0).
+  Proof.
+    enough (future_alive ∖ (alive0' ∖ alive0) ⊆ alive0).
+    { destruct (decide (future_alive ∖ (alive0' ∖ alive0) = alive0)); set_solver. }
+    set_solver.
+  Qed.
         
   Lemma total_borrows_active_when_subseteq_alive
     alive alive' dead m
