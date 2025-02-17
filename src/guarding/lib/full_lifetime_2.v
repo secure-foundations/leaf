@@ -992,12 +992,23 @@ Section FullBorrows.
   
   Lemma llft_vs_for_unborrow_end alive dead blocked outlives mbs mprops bl al de sn sn2 P Q :
   (bl ⊆ blocked) →
+  (bl ⊆ alive) →
   llft_fb_vs alive dead blocked outlives mbs mprops
     ∗ (▷ Q ∗ (∃ k : nat, ⌜k ∈ bl⌝ ∗ Dead γ k) ={∅}=∗ ▷ P)
     ∗ (▷ (mprops !! sn ≡ Some P))
   ⊢
   llft_fb_vs alive dead (blocked ∖ bl) outlives (<[sn2:=Borrow al de]> (delete sn mbs))
-    (<[sn2:=Q]> (delete sn mprops)). Admitted.
+    (<[sn2:=Q]> (delete sn mprops)).
+  Proof.
+    intros Hbl. generalize dead. clear dead.
+    induction alive as [my_alive IH] using set_ind_strong. 
+    iIntros (my_dead Hbml_my_alive) "[Hvs [qvs #Heq]]".
+    
+    rewrite llft_fb_vs_def.
+    rewrite (llft_fb_vs_def my_alive).
+    iIntros (k) "[%Hin_my_alive [Dead [inval return]]]".
+    destruct (decide (k ∈ bl)).
+    Admitted.
         
   Lemma llft_fb_unborrow_end alive dead blocked sn bl al de P Q :
     (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead
