@@ -699,18 +699,58 @@ Section FullBorrows.
       | Unborrow bl al de => bl ⊆ blocked ∧ ¬(de ## dead)
           ∧ (∀ a , a ∈ al → (bl, a) ∈ outlives)
           ∧ (al ∪ de) ⊆ (alive ∪ dead)
-    end).
+    end)
+    ∧ (∀ sn1 bs1 sn2 bs2 , sn1 ≠ sn2 → m !! sn1 = Some bs1 → m !! sn2 = Some bs2 →
+        match (bs1, bs2) with
+        | (Unborrow bl1 _ _, Unborrow bl2 _ _) => bl1 ## bl2
+        | _ => True
+        end)
+    .
+  
+  Lemma map_wf_insert_unborrow alive dead blocked bl al de outlives mbs sn :
+  (al ⊆ alive) →
+  (bl ⊆ alive) →
+  ¬(de ## dead) →
+  (de ⊆ (alive ∪ dead)) →
+  (bl ## blocked) →
+  (∀ a : nat, a ∈ al → (bl, a) ∈ outlives) →
+  map_wf alive dead blocked outlives mbs →
+  map_wf alive dead (blocked ∪ bl) outlives (<[sn:=Unborrow bl al de]> mbs).
+  Proof.
+    unfold map_wf.
+    intros Hal Hblalive Hde Hdewf Hbl Ho [Hdisj [Hblal [Hdd [Hf1 Hf2]]]]. 
+      split; trivial.
+      split. { set_solver. }
+      split; trivial.
+      split.
+      - intros sn' bs'. destruct (decide (sn = sn')).
+        + intros Hmbssn'. subst sn'. rewrite lookup_insert in Hmbssn'. inversion Hmbssn'.
+          split. { set_solver. } split; trivial. split; trivial. set_solver.
+        + intros Hmbssn'. rewrite lookup_insert_ne in Hmbssn'; trivial.
+          have Hfa := Hf1 sn' bs' Hmbssn'. destruct bs'; trivial. set_solver.
+      - intros sn1 bs1 sn2 bs2. destruct (decide (sn = sn1)).
+        + subst sn1. intros Hne2 Hmbssn1 Hmbssn2.
+          rewrite lookup_insert in Hmbssn1. rewrite lookup_insert_ne in Hmbssn2; trivial.
+          inversion Hmbssn1. destruct bs2 as [|bl2 al2 de2]; trivial.
+          subst bs1. have Hfa := Hf1 sn2 (Unborrow bl2 al2 de2) Hmbssn2. set_solver.
+        + destruct (decide (sn = sn2)).
+        * subst sn2. intros Hne1 Hmbssn1 Hmbssn2.
+          rewrite lookup_insert in Hmbssn2. rewrite lookup_insert_ne in Hmbssn1; trivial.
+          inversion Hmbssn2. destruct bs1 as [|bl1 al1 de1]; trivial.
+          subst bs2. have Hfa := Hf1 sn1 (Unborrow bl1 al1 de1) Hmbssn1. set_solver.
+        * intros Hne Hmbssn1 Hmbssn2.
+          destruct bs1 as [|bl1 al1 de1]; destruct bs2 as [|bl2 al2 de2]; trivial.
+          rewrite lookup_insert_ne in Hmbssn1; trivial.
+          rewrite lookup_insert_ne in Hmbssn2; trivial.
+          have Hfa := Hf2 sn1 (Unborrow bl1 al1 de1) sn2 (Unborrow bl2 al2 de2).
+          intuition.
+  Qed.
     
   Lemma map_wf_insert
-      (alive dead blocked : gset nat) (outlives : outlives_set) (m: gmap_bor_state) sn bs :
+      (alive dead blocked : gset nat) (outlives : outlives_set) (m: gmap_bor_state) sn al de :
   map_wf alive dead blocked outlives m →
-  (match bs with
-      | Borrow al de => (al ∪ de) ⊆ (alive ∪ dead)
-      | Unborrow bl al de => bl ⊆ blocked ∧ ¬(de ## dead)
-          ∧ (∀ a , a ∈ al → (bl, a) ∈ outlives)
-          ∧ (al ∪ de) ⊆ (alive ∪ dead)
-  end) →
-  map_wf alive dead blocked outlives (<[sn:=bs]> m).
+  (al ∪ de) ⊆ (alive ∪ dead) →
+  map_wf alive dead blocked outlives (<[sn:=Borrow al de]> m).
   Admitted.
   
   Lemma map_wf_delete
@@ -719,7 +759,7 @@ Section FullBorrows.
   map_wf alive dead blocked outlives (delete sn m).
   Admitted.
      
-  Definition llft_fb_vs (alive dead blocked : gset nat) (outlives: outlives_set) 
+  Definition llft_fb_vs (alive dead : gset nat) (outlives: outlives_set) 
       (m: gmap_bor_state) (mprops: gmap_props Σ) : iProp Σ.
       Admitted.
       
@@ -747,14 +787,14 @@ Section FullBorrows.
     (alive dead : gset nat) (k: nat) (m: gmap_bor_state) (mprops: gmap_props Σ) : iProp Σ :=
       borrow_sum (invalidated alive dead k) m mprops.
     
-  Lemma llft_fb_vs_def (alive dead blocked : gset nat) (outlives: outlives_set) 
+  Lemma llft_fb_vs_def (alive dead : gset nat) (outlives: outlives_set) 
       (m: gmap_bor_state) (mprops: gmap_props Σ) :
-    llft_fb_vs alive dead blocked outlives m mprops ⊣⊢
+    llft_fb_vs alive dead outlives m mprops ⊣⊢
     ∀ (k: nat),
       ⌜k ∈ alive ∧ outlives_consistent (dead ∪ {[k]}) outlives⌝ ∗ Dead γ k ∗
         ▷ (full_borrows_invalidated_via alive dead k m mprops)
       ={∅}=∗ ▷ (full_borrows_revalidated_via alive dead k m mprops)
-           ∗ llft_fb_vs (alive ∖ {[k]}) (dead ∪ {[k]}) blocked outlives m mprops.
+           ∗ llft_fb_vs (alive ∖ {[k]}) (dead ∪ {[k]}) outlives m mprops.
   Admitted.
   
   Lemma set_ind_strong `{FinSet A C} `{!LeibnizEquiv C} (P : C → Prop) :
@@ -901,16 +941,16 @@ Section FullBorrows.
       { apply Hmbssn. } iFrame.
   Qed.
 
-  Lemma llfb_fb_vs_split sn sn1 sn2 (mbs : gmap_bor_state) alive dead al de blocked outlives mprops P Q
+  Lemma llfb_fb_vs_split sn sn1 sn2 (mbs : gmap_bor_state) alive dead al de outlives mprops P Q
   :
     (delete sn mbs !! sn1 = None) →
     (delete sn mbs !! sn2 = None) →
     (sn1 ≠ sn2) →
     (mbs !! sn = Some (Borrow al de)) →
-    (llft_fb_vs alive dead blocked outlives mbs mprops
+    (llft_fb_vs alive dead outlives mbs mprops
         ∗ ▷ (mprops !! sn ≡ Some (P ∗ Q)))
     ⊢
-      llft_fb_vs alive dead blocked outlives
+      llft_fb_vs alive dead outlives
         (<[sn2:=Borrow al de]> (<[sn1:=Borrow al de]> (delete sn mbs)))
         (<[sn2:=Q]> (<[sn1:=P]> (delete sn mprops))).
   Proof.
@@ -918,7 +958,7 @@ Section FullBorrows.
     induction alive as [my_alive IH] using set_ind_strong. 
     iIntros (my_dead) "[Hvs #Heq]".
     rewrite llft_fb_vs_def.
-    rewrite (llft_fb_vs_def _ _ _ _ (<[sn2:=Borrow al de]> (<[sn1:=Borrow al de]> (delete sn mbs)))).
+    rewrite (llft_fb_vs_def _ _ _ (<[sn2:=Borrow al de]> (<[sn1:=Borrow al de]> (delete sn mbs)))).
     iIntros (k) "[%Hin_my_alive [Dead inval]]".
     iMod ("Hvs" $! k with "[Dead inval]") as "[reval Hvs]".
     { iFrame. iSplitR. { iPureIntro. trivial. }
@@ -936,7 +976,7 @@ Section FullBorrows.
     ∃ (mbs: gmap_bor_state) (mprops: gmap_props Σ) Ptotal (outlives: outlives_set),
         AuthBorState γ mbs
           ∗ box Nbox (boxmap alive dead mbs) Ptotal
-          ∗ llft_fb_vs alive dead blocked outlives mbs mprops
+          ∗ llft_fb_vs alive dead outlives mbs mprops
           ∗ ⌜dom mbs = dom mprops
               ∧ map_wf alive dead blocked outlives mbs
               ∧ outlives_consistent dead outlives
@@ -1038,7 +1078,7 @@ Section FullBorrows.
     iMod (alloc_bor_state2 γ sn2 (<[sn1:=Borrow al de']> (delete sn mbs)) alive dead al de de' with "[LtState auth]") as "[LtState [auth own2]]".
       { rewrite lookup_insert_ne; trivial. } { trivial. } { iFrame. }
     
-    iDestruct (bi.later_mono _ _ (llfb_fb_vs_split sn sn1 sn2 mbs alive dead al de' blocked outlives mprops P Q Hdel1 Hdel2 Hne Hmbs_sn) with "[vs]") as "vs".
+    iDestruct (bi.later_mono _ _ (llfb_fb_vs_split sn sn1 sn2 mbs alive dead al de' outlives mprops P Q Hdel1 Hdel2 Hne Hmbs_sn) with "[vs]") as "vs".
     { iFrame. iNext.
       destruct pures as [Hdom Hrest].
       iApply (agree_slice_with_map mbs mprops sn _ (P ∗ Q)%I Hdom Hmbs_sn). iFrame "#".
@@ -1058,7 +1098,7 @@ Section FullBorrows.
     
     destruct pures as [Hdom [Hwf Hoc]].
     assert (al ∪ de' ⊆ alive ∪ dead) as Hwfalde. {
-      destruct Hwf as [Ha [Hb [Hc Hforall]]].
+      destruct Hwf as [Ha [Hb [Hc [Hforall Hforall2]]]].
       apply (Hforall sn (Borrow al de') Hmbs_sn).
     }
     iSplitL. { iPureIntro. 
@@ -1093,15 +1133,15 @@ Section FullBorrows.
     ⊢ (▷ llft_fb_inv alive dead blocked) ∗ Outlives outlives'.
   Admitted.
   
-  Lemma llft_fb_vs_for_unborrow_start alive dead blocked outlives mbs mprops sn bl al de de' P :
+  Lemma llft_fb_vs_for_unborrow_start alive dead outlives mbs mprops sn bl al de de' P :
     (alive ## dead) →
     (mbs !! sn = Some (Borrow al de')) →
     (¬ de' ## dead) →
     (¬ de ## dead) →
-    llft_fb_vs alive dead blocked outlives mbs mprops
+    llft_fb_vs alive dead outlives mbs mprops
       ∗ ▷ (mprops !! sn ≡ Some P)
     ⊢
-    llft_fb_vs alive dead blocked outlives (<[sn:=Unborrow bl al de]> mbs) (<[sn:=P]> (delete sn mprops)).
+    llft_fb_vs alive dead outlives (<[sn:=Unborrow bl al de]> mbs) (<[sn:=P]> (delete sn mprops)).
   Proof.
     replace (<[sn:=Unborrow bl al de]> mbs) with 
         (<[sn:=Unborrow bl al de]> (delete sn mbs)).
@@ -1143,6 +1183,7 @@ Section FullBorrows.
     (al ⊆ alive) →
     ¬(de ## dead) →
     (bl ## blocked) →
+    (bl ⊆ alive) →
     (∀ (k : nat) , k ∈ al → (bl, k) ∈ outlives) →
     (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead ∗ Outlives outlives
         ∗ OwnBorState γ sn (Borrow al de)
@@ -1153,7 +1194,7 @@ Section FullBorrows.
         ∗ OwnBorState γ sn (Unborrow bl al de)
         ∗ (▷ P).
   Proof.
-    intros Hal Hde Hbl Houtlives.
+    intros Hal Hde Hbl Hblalive Houtlives.
     iIntros "[Inv [LtState [Outlives [OwnBor #slice]]]]".
     unfold llft_fb_inv.
     iDestruct "Inv" as (mbs mprops Ptotal outlives') "[>auth [box [vs [>%pures [#slices >outlives]]]]]".
@@ -1176,7 +1217,7 @@ Section FullBorrows.
     assert (alive ## dead) as Hdisj. { unfold map_wf in pures; intuition. }
     assert (¬ de' ## dead) as Hde'. { set_solver. }
     
-    iDestruct (bi.later_mono _ _ (llft_fb_vs_for_unborrow_start alive dead blocked outlives mbs mprops sn bl al de de' P Hdisj Hmbssn Hde' Hde) with "[vs]") as "vs".
+    iDestruct (bi.later_mono _ _ (llft_fb_vs_for_unborrow_start alive dead outlives mbs mprops sn bl al de de' P Hdisj Hmbssn Hde' Hde) with "[vs]") as "vs".
       { iFrame. iNext. iDestruct (agree_slice_with_map mbs mprops sn _ P with "[]") as "EqSlice".
         { intuition. } { apply Hmbssn. } { iFrame "#". }
        iFrame. iFrame "#".
@@ -1195,7 +1236,7 @@ Section FullBorrows.
     
     destruct pures as [Hdom [Hwf Hoc]].
     assert (al ∪ de' ⊆ alive ∪ dead) as Hwfalde. {
-      destruct Hwf as [Ha [Hb [Hc Hforall]]].
+      destruct Hwf as [Ha [Hb [Hc [Hforall Hforall2]]]].
       apply (Hforall sn (Borrow al de') Hmbssn).
     }
     iSplitL. { iPureIntro. 
@@ -1205,18 +1246,21 @@ Section FullBorrows.
         rewrite dom_delete_L. rewrite Hdom. apply set_eq. intro x.
           destruct (decide (x = sn)); set_solver.
       }
-      split. { apply map_wf_insert; trivial. intuition.
+      split. { apply map_wf_insert_unborrow; trivial. { set_solver. }
+      
+    }
   Admitted.
+  *)
     
-  Lemma llft_vs_for_unborrow_end' k1 alive dead blocked outlives mbs mprops bl al de sn sn2 Q :
+  Lemma llft_vs_for_unborrow_end' k1 alive dead outlives mbs mprops bl al de sn sn2 Q :
     (mbs !! sn = Some (Unborrow bl al de)) →
     ((delete sn mbs) !! sn2 = None) →
     (∀ a, a ∈ al → (bl, a) ∈ outlives) →
     (k1 ∈ al) →
     (k1 ∉ alive) →
     (¬(de ## dead)) →
-  llft_fb_vs alive dead blocked outlives mbs mprops
-  ⊢ llft_fb_vs alive dead (blocked ∖ bl) outlives (<[sn2:=Borrow al de]> (delete sn mbs))
+  llft_fb_vs alive dead outlives mbs mprops
+  ⊢ llft_fb_vs alive dead outlives (<[sn2:=Borrow al de]> (delete sn mbs))
     (<[sn2:=Q]> (delete sn mprops)).
   Proof.
     intros Hsn Hsnmbs2 Hbl_a_outlives Hk1al. generalize dead. clear dead.
@@ -1256,12 +1300,12 @@ Section FullBorrows.
     (∀ a, a ∈ al → (bl, a) ∈ outlives) →
     (al ⊆ alive) →
     (¬(de ## dead)) →
-  llft_fb_vs alive dead blocked outlives mbs mprops
+  llft_fb_vs alive dead outlives mbs mprops
     ∗ (∀ d, ⌜d ∈ dead⌝ -∗ Dead γ d)
     ∗ (▷ Q ∗ (∃ k : nat, ⌜k ∈ bl⌝ ∗ Dead γ k) ={∅}=∗ ▷ P)
     ∗ (▷ (mprops !! sn ≡ Some P))
   ⊢
-  llft_fb_vs alive dead (blocked ∖ bl) outlives (<[sn2:=Borrow al de]> (delete sn mbs))
+  llft_fb_vs alive dead outlives (<[sn2:=Borrow al de]> (delete sn mbs))
     (<[sn2:=Q]> (delete sn mprops)).
   Proof.
     intros Hsn Hsn2 Hbl_a_outlives. generalize dead. clear dead.
@@ -1316,6 +1360,7 @@ Section FullBorrows.
       }
       
       iApply (llft_vs_for_unborrow_end' k); trivial. { set_solver. } { set_solver. }
+        { set_solver. } set_solver.
    - iDestruct (full_borrows_invalidated_via_insert_false with "inval") as "inval".
       { apply Hsn2. }
      iDestruct (full_borrows_invalidated_via_delete_false with "inval") as "inval".
@@ -1394,7 +1439,7 @@ Section FullBorrows.
       have Hf := Hforall sn _ Hmbssn. intuition.
     }
     
-    iDestruct (bi.later_mono _ _ (llft_vs_for_unborrow_end alive dead blocked outlives mbs mprops bl al de sn sn2 P Q Hmbssn Hsn2 Hoforall Hal Hde) with "[vs qvs]") as "vs".
+    iDestruct (bi.later_mono _ _ (llft_vs_for_unborrow_end alive dead outlives mbs mprops bl al de sn sn2 P Q Hmbssn Hsn2 Hoforall Hal Hde) with "[vs qvs]") as "vs".
     { iFrame. iNext.
       iDestruct (agree_slice_with_map mbs mprops sn _ P with "[]") as "EqSlice"; trivial.
       { apply Hmbssn. } { iFrame "#". } iFrame "EqSlice". iFrame "Halldeads".
@@ -1514,17 +1559,17 @@ Section FullBorrows.
         { apply Hmbssn. } iFrame.
    Qed.
           
-  Lemma llfb_fb_vs_for_reborrow alive dead blocked outlives mbs mprops sn sn2 al al' dd P :
+  Lemma llfb_fb_vs_for_reborrow alive dead outlives mbs mprops sn sn2 al al' dd P :
     (sn ≠ sn2) →
     alive ## dead →
     ¬(dd ## dead) →
     (al' ⊆ alive ∪ dead) →
     mbs !! sn = Some (Borrow al dd) →
     mbs !! sn2 = None →
-    llft_fb_vs alive dead blocked outlives mbs mprops
+    llft_fb_vs alive dead outlives mbs mprops
       ∗ ▷ (mprops !! sn ≡ Some P)
     ⊢ 
-    llft_fb_vs alive dead blocked outlives
+    llft_fb_vs alive dead outlives
       (<[sn2:=Borrow (al ∪ al') dd]> (<[sn:=Borrow al al']> mbs))
       (<[sn2:=P]> (<[sn:=P]> (delete sn mprops))).
   Proof.
@@ -1557,13 +1602,13 @@ Section FullBorrows.
     iFrame. iFrame "#".
   Qed.
       
-  Lemma llfb_fb_vs_for_delete_already_dead alive dead blocked outlives mbs mprops sn al dd :
+  Lemma llfb_fb_vs_for_delete_already_dead alive dead outlives mbs mprops sn al dd :
     alive ## dead →
     ¬(al ## dead) →
     (mbs !! sn = Some (Borrow al dd)) →
-      llft_fb_vs alive dead blocked outlives mbs mprops
+      llft_fb_vs alive dead outlives mbs mprops
       ⊢
-      llft_fb_vs alive dead blocked outlives (delete sn mbs) (delete sn mprops).
+      llft_fb_vs alive dead outlives (delete sn mbs) (delete sn mprops).
   Proof.
     generalize dead. clear dead.
     induction alive as [my_alive IH] using set_ind_strong. 
@@ -1591,17 +1636,17 @@ Section FullBorrows.
       iApply IH; trivial. { set_solver. } { set_solver. }
   Qed.
     
-  Lemma llfb_fb_vs_for_unnest alive dead blocked outlives mbs mprops sn sn' al al' dd dd' :
+  Lemma llfb_fb_vs_for_unnest alive dead outlives mbs mprops sn sn' al al' dd dd' :
     (mbs !! sn' = Some (Borrow al' dd')) →
     alive ## dead →
     ¬(dd ## dead) →
     al' ⊆ alive →
-    (llft_fb_vs alive dead blocked outlives mbs mprops
+    (llft_fb_vs alive dead outlives mbs mprops
       ∗ (∀ d, ⌜d ∈ dead⌝ -∗ Dead γ d)
       ∗ OwnBorState γ sn (Borrow al al')
       ∗ ▷ (mprops !! sn' ≡ Some (OwnBorState γ sn (Borrow al dd)))
       ⊢ 
-      llft_fb_vs alive dead blocked outlives (delete sn' mbs) (delete sn' mprops))%I.
+      llft_fb_vs alive dead outlives (delete sn' mbs) (delete sn' mprops))%I.
   Proof.
     intros Hmbssn'.
     generalize dead. clear dead.
@@ -1643,7 +1688,7 @@ Section FullBorrows.
           iFrame "reval".
       }
       
-      iApply (llfb_fb_vs_for_delete_already_dead _ _ blocked outlives mbs mprops sn' al' dd').
+      iApply (llfb_fb_vs_for_delete_already_dead _ _ outlives mbs mprops sn' al' dd').
         { set_solver. } { set_solver. } { trivial. }
       iFrame "vs".
       
@@ -1749,7 +1794,7 @@ Section FullBorrows.
     assert (sn ≠ sn2) as Hne2.
       { intro Heq. subst sn2. rewrite lookup_insert in Hsn2None. discriminate. }
     
-    iDestruct (bi.later_mono _ _ (llfb_fb_vs_for_unnest alive dead blocked outlives mbs mprops sn sn' al al' {[default_dead]} _ Hmbssn' Halive_disj_dead Hdddead Hal'_sub_alive) with "[vs OwnBor]") as "vs".
+    iDestruct (bi.later_mono _ _ (llfb_fb_vs_for_unnest alive dead outlives mbs mprops sn sn' al al' {[default_dead]} _ Hmbssn' Halive_disj_dead Hdddead Hal'_sub_alive) with "[vs OwnBor]") as "vs".
      { iNext. iDestruct (agree_slice_with_map mbs mprops sn' _
           (OwnBorState γ sn (Borrow al dd)) with "[]") as "EqSlice".
         { intuition. } { apply Hmbssn'. } { iFrame "#". }
@@ -1760,7 +1805,7 @@ Section FullBorrows.
       eapply lookup_insert_delete_boxmap_helper2. apply Hsn2None.
     }
      
-    iDestruct (bi.later_mono _ _ (llfb_fb_vs_for_reborrow alive dead blocked outlives
+    iDestruct (bi.later_mono _ _ (llfb_fb_vs_for_reborrow alive dead outlives
         (delete sn' mbs) _ sn sn2 al al' dd P Hne2 Halive_disj_dead Hdddead _ _ Hdelsn') with "[vs]") as "vs".
      { iNext. iFrame "vs". iDestruct (agree_slice_with_map mbs mprops sn _ P with "[]") as "EqSlice".
         { intuition. } { apply Hmbssn. } { iFrame "#". }
