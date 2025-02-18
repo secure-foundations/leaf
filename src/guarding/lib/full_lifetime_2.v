@@ -1045,12 +1045,17 @@ Section FullBorrows.
           
   Lemma llft_fb_fake (alive dead blocked al de : gset nat) Q :
     ¬(al ## dead) →
-    (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead
-    ⊢ |={↑Nbox}=> ∃ sn, 
-    (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead
-        ∗ OwnBorState γ sn (Borrow al de) ∗ slice Nbox sn Q.
+    LtState γ alive dead ⊢ |={↑Nbox}=> ∃ sn, 
+    LtState γ alive dead ∗ OwnBorState γ sn (Borrow al de) ∗ slice Nbox sn Q.
   Proof.
-  Admitted.
+    intros Hnotdisj.
+    iIntros "LtState".
+    iDestruct (box_alloc Nbox) as "box".
+    iMod (slice_insert_empty Nbox (↑Nbox) false ∅ Q (True)%I with "box") as (sn) "[H [slice box2]]".
+    iMod (alloc_fake_bor_state_lts γ sn alive dead al de with "LtState") as "[LtState OwnBor]".
+    { trivial. }
+    iModIntro. iExists sn. iFrame.
+  Qed.
   
   Lemma delete_boxmap_implies_delete_original_is_none alive dead mbs sn1 sn2
     : delete sn1 (boxmap alive dead mbs) !! sn2 = None →
@@ -1107,10 +1112,10 @@ Section FullBorrows.
     iIntros "[Inv [LtState [OwnBor #slice]]]".
     destruct (decide (al ## dead)) as [Hdisj|Hnot_disj].
     2: {
-      iMod (llft_fb_fake alive dead blocked al de P Hnot_disj with "[Inv LtState]")
-          as (sn1) "[Inv [LtState [Ob2 Slice2]]]". { iFrame. }
-      iMod (llft_fb_fake alive dead blocked al de Q Hnot_disj with "[Inv LtState]")
-          as (sn2) "[Inv [LtState [Ob3 Slice3]]]". { iFrame. }
+      iMod (llft_fb_fake alive dead blocked al de P Hnot_disj with "LtState")
+          as (sn1) "[LtState [Ob2 Slice2]]".
+      iMod (llft_fb_fake alive dead blocked al de Q Hnot_disj with "LtState")
+          as (sn2) "[LtState [Ob3 Slice3]]".
       iModIntro. iExists sn1. iExists sn2. iFrame.
     }
     unfold llft_fb_inv.
@@ -1803,7 +1808,7 @@ Section FullBorrows.
   Proof.
     iIntros "[Inv [LtState [#sliceP [OwnBor' #sliceBorrow]]]]".
     destruct (decide ((al ∪ al') ## dead)) as [Hdisj|Hndisj].
-      2: { iApply llft_fb_fake; trivial. iFrame. }
+      2: { iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "LtState") as (sn2) "LtState"; trivial. iModIntro. iExists sn2. iFrame. }
     
     unfold llft_fb_inv.
     iDestruct "Inv" as (mbs mprops Ptotal outlives) "[>auth [box [vs [>%pures [#slices >outlives]]]]]".
@@ -1969,14 +1974,14 @@ Section FullBorrows.
     iIntros "[Inv [LtState [OwnBor #sliceP]]]".
     destruct (decide (al ## dead)) as [Hdisj|Hndisj].
     2: {
-      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "[Inv LtState]") as (sn1) "[Inv [LtState [A Aslice]]]". { set_solver. } { iFrame. }
-      iMod (llft_fb_fake alive dead blocked al al' P with "[Inv LtState]") as (sn2) "[Inv [LtState [B Bslice]]]". { set_solver. } { iFrame. }
+      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "LtState") as (sn1) "[LtState [A Aslice]]". { set_solver. }
+      iMod (llft_fb_fake alive dead blocked al al' P with "LtState") as (sn2) "[LtState [B Bslice]]". { set_solver. }
       iModIntro. iExists sn1. iExists sn2. iFrame.
     }
     
     destruct (decide (al' ## dead)) as [Hdisj'|Hndisj].
     2: {
-      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "[Inv LtState]") as (sn1) "[Inv [LtState [A Aslice]]]". { set_solver. } { iFrame. }
+      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "LtState") as (sn1) "[LtState [A Aslice]]". { set_solver. }
       
       iDestruct (inv_get_dead with "Inv") as "#X". iMod "X". iDestruct "X" as "%Hdd".
       
@@ -2074,21 +2079,23 @@ Section FullBorrows.
         
    Lemma llft_fb_borrow_create alive dead blocked lt P :
       (lt ⊆ alive ∪ dead) →
-      (▷ llft_fb_inv alive dead blocked) ∗ P
+      (▷ llft_fb_inv alive dead blocked)
+        ∗ LtState γ alive dead
+        ∗ P
         ={↑Nbox}=∗
         ∃ sn sn2, (▷ llft_fb_inv alive dead blocked)
+            ∗ LtState γ alive dead
             ∗ OwnBorState γ sn (Borrow lt {[ default_dead ]})
             ∗ OwnBorState γ sn2 (Borrow ∅ lt)
             ∗ slice Nbox sn P
             ∗ slice Nbox sn2 P.
    Proof.
-    intros Hlt. iIntros "[Inv P]".
+    intros Hlt. iIntros "[Inv [LtState P]]".
     iMod (llft_fb_borrow_create_empty alive dead blocked lt P Hlt with "[Inv P]") as (sn) "[Inv [OwnBor #slice]]". { iFrame. }
-    iMod (llft_fb_reborrow alive dead blocked P sn ∅ lt {[default_dead]} with "[Inv OwnBor]") as (sn1 sn2) "[Ha [Hb [Hd [He Hf]]]]".
+    iMod (llft_fb_reborrow alive dead blocked P sn lt {[default_dead]} Hlt with "[Inv LtState OwnBor]") as (sn1 sn2) "[Ha [Hb [Hd [He Hf]]]]".
       { iFrame. iFrame "#". }
     iModIntro. iExists sn1. iExists sn2. iFrame.
   Qed.
-
   
   Lemma bool_decide_equiv P Q `{Decision P, Decision Q} :
     (P ↔ Q) → bool_decide P = bool_decide Q. Admitted.
