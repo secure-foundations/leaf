@@ -1065,6 +1065,10 @@ Section FullBorrows.
       <[sn:=false]> (delete sn' (boxmap alive dead mbs)) !! sn2 = None →
       (delete sn' mbs) !! sn2 = None. Admitted.
       
+  Lemma lookup_insert_boxmap_helper3 sn b alive dead mbs sn2 :
+    <[sn:=b]> (boxmap alive dead mbs) !! sn2 = None →
+    mbs !! sn2 = None ∧ sn ≠ sn2. Admitted.
+      
   Lemma boxmap_insert_Borrow alive dead sn al de mbs
     : boxmap alive dead (<[ sn := Borrow al de ]> mbs)
       = <[ sn := bool_decide (al ⊆ alive ∧ ¬(de ## dead)) ]> (boxmap alive dead mbs).
@@ -1933,8 +1937,22 @@ Section FullBorrows.
     rewrite lookup_delete_ne; trivial.
   Qed.
   
+  Lemma inv_get_dead alive dead blocked
+    : llft_fb_inv alive dead blocked ⊢ ⌜default_dead ∈ dead⌝.
+  Admitted.
+  
+  Lemma lemma_set5 (al dd' alive dead : gset nat) :
+    al ∪ dd' ⊆ alive ∪ dead →
+    al ## dead →
+    al ⊆ alive. Proof. set_solver. Qed.
+    
+  Lemma lemma_set6 (al' dd' alive dead : gset nat) :
+    al'  ⊆ alive ∪ dead →
+    al' ## dead →
+    al' ⊆ alive. Proof. set_solver. Qed.
             
   Lemma llft_fb_reborrow alive dead blocked P sn al al' :
+      (al' ⊆ alive ∪ dead) →
       (▷ llft_fb_inv alive dead blocked)
         ∗ LtState γ alive dead
         ∗ OwnBorState γ sn (Borrow al {[default_dead]})
@@ -1947,14 +1965,112 @@ Section FullBorrows.
         ∗ slice Nbox sn1 P
         ∗ slice Nbox sn2 P.
   Proof.
+    intros Hal'wf.
     iIntros "[Inv [LtState [OwnBor #sliceP]]]".
     destruct (decide (al ## dead)) as [Hdisj|Hndisj].
     2: {
       iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "[Inv LtState]") as (sn1) "[Inv [LtState [A Aslice]]]". { set_solver. } { iFrame. }
       iMod (llft_fb_fake alive dead blocked al al' P with "[Inv LtState]") as (sn2) "[Inv [LtState [B Bslice]]]". { set_solver. } { iFrame. }
       iModIntro. iExists sn1. iExists sn2. iFrame.
-   }
-   Admitted.
+    }
+    
+    destruct (decide (al' ## dead)) as [Hdisj'|Hndisj].
+    2: {
+      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "[Inv LtState]") as (sn1) "[Inv [LtState [A Aslice]]]". { set_solver. } { iFrame. }
+      
+      iDestruct (inv_get_dead with "Inv") as "#X". iMod "X". iDestruct "X" as "%Hdd".
+      
+      assert (∃ x , x ∈ al' ∩ dead) as Hex_x. { apply set_choose_L; set_solver. }
+      destruct Hex_x as [x Hex].
+      iMod (get_all_deads γ alive dead with "LtState") as "[LtState #Deads]".
+      iMod (update_bor_state_borrow_fix_dead γ sn al {[default_dead]} al' default_dead x with "[OwnBor]") as "OwnBor2"; trivial. { set_solver. } { set_solver. } {
+        iFrame. iSplitL.
+          { iApply "Deads". iPureIntro. trivial. }
+          { iApply "Deads". iPureIntro. set_solver. }
+      }
+      
+      iModIntro. iExists sn1. iExists sn. iFrame. iFrame "#".
+    }
+   
+    unfold llft_fb_inv.
+    iDestruct "Inv" as (mbs mprops Ptotal outlives) "[>auth [box [vs [>%pures [#slices >outlives]]]]]".
+    
+    iDestruct (agree_bor_state_borrow_lts γ sn mbs alive dead al {[default_dead]}
+        with "[LtState auth OwnBor]") as (dd') "[%Hmbssn %Hrel_dd]". { set_solver. } { iFrame.    }
+        
+    destruct pures as [Hdom [Hwf Houtlives]].
+    assert (alive ## dead) as Halive_disj_dead. { unfold map_wf in Hwf. intuition. }
+    assert (default_dead ∈ dead) as Hdddead. { unfold map_wf in Hwf. intuition. }
+    assert (¬ dd' ## dead) as Hdd'dead. { set_solver. }
+    assert (al ⊆ alive) as Halalive. { unfold map_wf in Hwf.
+      destruct Hwf as [Ha [Hb [Hc [Hforall Hforall2]]]].
+      have Hf := Hforall sn _ Hmbssn.
+      apply (lemma_set5 al dd' alive dead); trivial.
+    }
+    assert (al' ⊆ alive) as Hal'alive. { apply (lemma_set6 al' dd' alive dead); trivial. }
+    assert (dd' ⊆ alive ∪ dead) as Hdd'wf. { 
+      destruct Hwf as [Ha [Hb [Hc [Hforall Hforall2]]]].
+      have Hf := Hforall sn _ Hmbssn.
+      set_solver.
+    }
+        
+    iMod (slice_empty Nbox (↑Nbox) true (boxmap alive dead mbs) Ptotal P sn with "sliceP box")
+      as "[P box]"; trivial.
+    {
+      unfold boxmap. rewrite lookup_fmap. rewrite Hmbssn. simpl. f_equiv.
+      rewrite bool_decide_eq_true. set_solver.
+    }
+        
+    iMod (slice_insert_full Nbox (↑Nbox) true (<[sn:=false]> (boxmap alive dead mbs)) Ptotal P with "P box")
+      as (sn2) "[%Hlookup_sn2 [#slice box]]".
+    { trivial. }
+    
+    destruct (lookup_insert_boxmap_helper3 sn false alive dead mbs sn2 Hlookup_sn2) as [Hmbssn2 Hne].
+    
+    iMod (alloc_bor_state γ sn2 mbs (Borrow al al') with "auth") as "[auth OwnBor2]"; trivial.
+    
+    iDestruct (bi.later_mono _ _ (llfb_fb_vs_for_reborrow alive dead outlives mbs mprops sn sn2 al al' dd' P Hne Halive_disj_dead Hdd'dead Hal'wf Hmbssn Hmbssn2)
+     with "[vs]") as "vs"; trivial. { iFrame. iNext.
+      iDestruct (agree_slice_with_map mbs mprops sn _ P with "[]") as "EqSlice"; trivial.
+      { apply Hmbssn. } iFrame "#". }
+        
+    iModIntro.
+    iExists sn. iExists sn2.
+    iFrame "LtState". iFrame "OwnBor". iFrame "OwnBor2". iFrame "slice". iFrame "sliceP".
+    iNext.
+    iExists (<[sn2:=Borrow (al ∪ al') dd']> (<[sn:=Borrow al al']> mbs)).
+    iExists (<[sn2:=P]> (<[sn:=P]> (delete sn mprops))).
+    iExists (P ∗ Ptotal)%I.
+    iExists outlives.
+    iFrame "outlives". iFrame "auth".
+    iSplitL "box". {
+      rewrite boxmap_insert_Borrow.
+      rewrite boxmap_insert_Borrow.
+      rewrite bool_decide_eq_true_2.
+      - rewrite bool_decide_eq_false_2.
+        + iFrame "box". 
+        + set_solver.
+      - set_solver.
+    }
+    iFrame "vs".
+    iSplitL. { iPureIntro. 
+      split. { rewrite dom_insert_L. rewrite dom_insert_L. rewrite dom_insert_L.
+      rewrite dom_insert_L. rewrite dom_delete_L. rewrite Hdom.
+        apply set_eq. intros x.
+        destruct (decide (x = sn2)); destruct (decide (x = sn)); set_solver.
+      }
+      split. {
+        apply map_wf_insert; trivial. 2: { set_solver. }
+        apply map_wf_insert; trivial. set_solver.
+      }
+      trivial.
+    }
+    { iApply big_sepM_insert_1. iFrame "slice".
+      iApply big_sepM_insert_1. iFrame "sliceP".
+      rewrite big_sepM_forall. rewrite big_sepM_forall. iIntros (x R) "%Dm".
+      iApply "slices". iPureIntro. rewrite lookup_delete_Some in Dm. intuition.
+    }
+   Qed.
         
    Lemma llft_fb_borrow_create alive dead blocked lt P :
       (lt ⊆ alive ∪ dead) →
