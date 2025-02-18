@@ -1171,17 +1171,15 @@ Section FullBorrows.
     }
   Qed. 
   
-  Lemma llft_fb_borrow_create alive dead blocked lt P :
+  Lemma llft_fb_borrow_create_empty alive dead blocked lt P :
       (lt ⊆ alive ∪ dead) →
       (▷ llft_fb_inv alive dead blocked) ∗ P
         ={↑Nbox}=∗
-        ∃ sn sn2, (▷ llft_fb_inv alive dead blocked)
-            ∗ OwnBorState γ sn (Borrow lt {[ default_dead ]})
-            ∗ OwnBorState γ sn2 (Borrow ∅ lt)
-            ∗ slice Nbox sn P
-            ∗ slice Nbox sn2 P.
+        ∃ sn , (▷ llft_fb_inv alive dead blocked)
+            ∗ OwnBorState γ sn (Borrow ∅ {[ default_dead ]})
+            ∗ slice Nbox sn P.
   Admitted.
-  
+    
   Lemma llft_fb_augment_outlives alive dead blocked outlives outlives' :
     (outlives ⊆ outlives') →
       (▷ llft_fb_inv alive dead blocked) ∗ Outlives outlives
@@ -1555,7 +1553,7 @@ Section FullBorrows.
   ⊢ ▷ full_borrows_invalidated_via alive dead k mbs mprops
       ∗ (⌜ al ⊆ alive ∧ k ∉ al ∧ al' ⊆ alive ∧ k ∈ al' ⌝ -∗ ▷ P).
   Proof.
-    iIntros (Hdisj Halive Hdead Hwfal' Hmbssn Hmbssn2) "[inval #Heq]".
+    iIntros (Hne Hdisj Halive Hdead Hmbssn Hmbssn2) "[inval #Heq]".
     destruct (decide (k ∈ al ∧ al ⊆ alive)) as [Hin|Hout].
     
     - destruct (decide (al' ⊆ alive)) as [Hsub|Hnotsub].
@@ -1935,6 +1933,47 @@ Section FullBorrows.
     rewrite lookup_delete_ne; trivial.
   Qed.
   
+            
+  Lemma llft_fb_reborrow alive dead blocked P sn al al' :
+      (▷ llft_fb_inv alive dead blocked)
+        ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn (Borrow al {[default_dead]})
+        ∗ slice Nbox sn P
+        ={↑Nbox}=∗ ∃ sn1 sn2,
+      (▷ llft_fb_inv alive dead blocked)
+        ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn1 (Borrow (al ∪ al') {[default_dead]})
+        ∗ OwnBorState γ sn2 (Borrow al al')
+        ∗ slice Nbox sn1 P
+        ∗ slice Nbox sn2 P.
+  Proof.
+    iIntros "[Inv [LtState [OwnBor #sliceP]]]".
+    destruct (decide (al ## dead)) as [Hdisj|Hndisj].
+    2: {
+      iMod (llft_fb_fake alive dead blocked (al ∪ al') {[default_dead]} P with "[Inv LtState]") as (sn1) "[Inv [LtState [A Aslice]]]". { set_solver. } { iFrame. }
+      iMod (llft_fb_fake alive dead blocked al al' P with "[Inv LtState]") as (sn2) "[Inv [LtState [B Bslice]]]". { set_solver. } { iFrame. }
+      iModIntro. iExists sn1. iExists sn2. iFrame.
+   }
+   Admitted.
+        
+   Lemma llft_fb_borrow_create alive dead blocked lt P :
+      (lt ⊆ alive ∪ dead) →
+      (▷ llft_fb_inv alive dead blocked) ∗ P
+        ={↑Nbox}=∗
+        ∃ sn sn2, (▷ llft_fb_inv alive dead blocked)
+            ∗ OwnBorState γ sn (Borrow lt {[ default_dead ]})
+            ∗ OwnBorState γ sn2 (Borrow ∅ lt)
+            ∗ slice Nbox sn P
+            ∗ slice Nbox sn2 P.
+   Proof.
+    intros Hlt. iIntros "[Inv P]".
+    iMod (llft_fb_borrow_create_empty alive dead blocked lt P Hlt with "[Inv P]") as (sn) "[Inv [OwnBor #slice]]". { iFrame. }
+    iMod (llft_fb_reborrow alive dead blocked P sn ∅ lt {[default_dead]} with "[Inv OwnBor]") as (sn1 sn2) "[Ha [Hb [Hd [He Hf]]]]".
+      { iFrame. iFrame "#". }
+    iModIntro. iExists sn1. iExists sn2. iFrame.
+  Qed.
+
+  
   Lemma bool_decide_equiv P Q `{Decision P, Decision Q} :
     (P ↔ Q) → bool_decide P = bool_decide Q. Admitted.
     
@@ -2217,7 +2256,7 @@ Section FullBorrows.
       
     
     
-    
+End FullBorrows.
 
 
 
