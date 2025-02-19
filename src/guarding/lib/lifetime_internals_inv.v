@@ -17,6 +17,13 @@ From iris.proofmode Require Import tactics.
 From iris.proofmode Require Import coq_tactics.
 From iris.base_logic.lib Require Export invariants.
 
+Definition Nllft       : namespace := nroot .@ "leaf_lifetime_logic".
+Definition NllftG      : namespace := nroot .@ "leaf_lifetime_logic" .@ "guarding".
+
+Definition NllftO      : namespace := nroot .@ "leaf_lifetime_logic" .@ "other".
+Definition Nmain       : namespace := NllftG .@ "main".
+Definition Nbox        : namespace := NllftG .@ "box".
+
 Section FullBorrows.
   (* (A, B) means A must end before B
       A alive ==> B alive
@@ -29,15 +36,10 @@ Section FullBorrows.
   Context `{!invGS Σ}.
   Context `{!boxG Σ}.
   
-  Context {γ: gname}.
+  Context (γ: gname).
   
-  Definition Nllft       : namespace := nroot .@ "leaf_lifetime_logic".
-  Local Definition Nbox  : namespace := Nllft .@ "box".
-  Local Definition Nmain : namespace := Nllft .@ "main".
-  
-  Definition Nllft_full  : namespace := nroot .@ "leaf_lifetime_logic_full".
-  
-  Definition Outlives (outlives: outlives_set) : iProp Σ. Admitted. Lemma outlives_agree o1 o2 :
+  Definition Outlives (outlives: outlives_set) : iProp Σ. Admitted.
+  Lemma outlives_agree o1 o2 :
       Outlives o1 ∗ Outlives o2 ⊢ ⌜o1 = o2⌝. Admitted.
   Lemma outlives_update o1 o2 o :
       Outlives o1 ∗ Outlives o2 ==∗ Outlives o ∗ Outlives o. Admitted.
@@ -48,7 +50,7 @@ Section FullBorrows.
       Delayed o1 ∗ Delayed o2 ⊢ ⌜o1 = o2⌝. Admitted.
   Lemma delayed_update o1 o2 o :
       Delayed o1 ∗ Delayed o2 ==∗ Delayed o ∗ Delayed o. Admitted.
-  
+      
   Definition boxmap
       (alive dead : gset nat) (m: gmap_bor_state)
         : gmap slice_name bool :=

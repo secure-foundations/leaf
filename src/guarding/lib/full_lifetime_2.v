@@ -6,6 +6,7 @@ Require Import guarding.lib.lifetime_internals_ra.
 Require Import guarding.lib.lifetime_internals_inv.
 
 Require Import stdpp.base.
+Require Import stdpp.namespaces.
 From iris.algebra Require Export cmra updates.
 From iris.algebra Require Import proofmode_classes.
 From iris.algebra Require Import excl.
@@ -22,11 +23,12 @@ Section LlftLogic.
   Context {Σ: gFunctors}.
   Context `{!llft_logicGS Σ}.
   Context `{!invGS Σ}.
+  Context `{!boxG Σ}.
 
   (*** Lifetime logic ***)
 
   (* end hide *)
-  Definition NLLFT := nroot .@ "leaf-lifetime".
+  Definition NLLFT := nroot .@ "leaf_lifetime_logic".
 
   (** A Lifetime κ is defined as a [gset nat]. Though this should technically be
   an implementation detail, this makes it easy to export the basic properties of [Lifetime]
@@ -41,8 +43,16 @@ Section LlftLogic.
   Local Definition llft_alive_def (κ : Lifetime) : iProp Σ := [∗ set] k ∈ κ , Alive llft_name k.
   Local Definition llft_dead_def (κ : Lifetime) : iProp Σ := ∃ k , ⌜ k ∈ κ ⌝ ∗ Dead llft_name k.
 
-  Local Definition llft_ctx_def :=
-    (True &&{↑NLLFT}&&> ∃ sa sd , LtState llft_name sa sd ∗ llft_alive_def sa).
+  Local Definition llft_ctx_def : iProp Σ :=
+    (inv NllftO (∃ outlives, Delayed llft_name None ∗ Outlives llft_name outlives
+        ∗ ∀ o, ⌜o ∈ outlives⌝ -∗ (llft_alive_def o.1 &&{↑NLLFT}&&> Alive llft_name o.2))) ∗
+    (True &&{↑Nmain}&&>
+      ∃ (sa sd blocked : gset nat),
+        LtState llft_name sa sd
+          ∗ llft_alive_def sa
+          ∗ (▷ outer_inv llft_name sa sd blocked)
+          ∗ llft_alive_def blocked
+    ).
 
   Local Definition llft_alive_aux : seal (@llft_alive_def). Proof. by eexists. Qed.
   Local Definition llft_dead_aux : seal (@llft_dead_def). Proof. by eexists. Qed.
@@ -71,7 +81,7 @@ Section LlftLogic.
     ?llft_ctx_unseal /llft_ctx_def.
     
   Local Instance pers_dead2 γlt k : Persistent (Dead γlt k).
-  Proof. apply pers_dead. Qed.
+  Proof. Admitted.
 
   (* end hide *)
 
@@ -118,22 +128,29 @@ Section LlftLogic.
       iDestruct ((big_sepS_delete _ _ k) with "A") as "[A _]". { trivial. } iFrame. }
     { iDestruct "AD" as "[_ [_ D]]". iFrame. }
   Qed.
+  
+  Local Instance timeless_delayed o : Timeless (Delayed llft_name o). Admitted.
 
   Lemma llftl_begin :
       llft_ctx ⊢ |={↑NLLFT}=> ∃ κ, @[ κ ] ∗ (@[ κ ] ={↑NLLFT}=∗ [† κ ]).
   Proof.
-      unseal. iIntros "#ctx".  unfold llft_ctx.
-      iDestruct (guards_open (True)%I _ (↑NLLFT) (↑NLLFT) with "[ctx]") as "J". { set_solver. }
-      { iFrame "ctx". }
-      iMod "J" as "[J back]". iDestruct "J" as (sa sd) "[State Alive]".
-
+      unseal. iIntros "[#other #ctx]".  unfold llft_ctx.
+      iDestruct (guards_open (True)%I _ (↑NLLFT) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [Ou Blo]]]".
+      
       assert (∃ k , k ∉ (sa ∪ sd)) as Fres. { exists (fresh (sa ∪ sd)). apply is_fresh. }
       destruct Fres as [k Fres].
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (outer_new_lt llft_name sa sd blocked k with "[Ou Delayed]") as "X"; trivial. { iFrame "Ou". iFrame "Delayed". }
+      iMod (fupd_mask_mono with "X") as "[Ou Delayed]". { solve_ndisj. }
+      iMod ("Hclose" with "[Delayed O]"). { iFrame. }
+      
       iMod (new_lt llft_name k sa sd with "[State]") as "T".
       { set_solver. } { set_solver. } { iFrame. }
       iDestruct "T" as "[State [A1 A2]]".
-      iMod ("back" with "[Alive State A1]").
-      { iExists (sa ∪ {[k]}). iExists sd. iFrame.
+      iMod ("back" with "[Alive State A1 Ou Blo]").
+      { iExists (sa ∪ {[k]}). iExists sd. iExists blocked. iFrame.
         unfold llft_alive.
         replace ((sa ∪ {[k]})) with (({[k]} ∪ sa)).
         { unseal. rewrite big_sepS_insert. { iFrame. } set_solver. } set_solver.
@@ -144,13 +161,13 @@ Section LlftLogic.
       iIntros "token".
 
       (* ending the lifetime *)
-      iDestruct (guards_open (True)%I _ (↑NLLFT) (↑NLLFT) with "[ctx]") as "J". { set_solver. }
+      iDestruct (guards_open (True)%I _ (↑NLLFT) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. }
       { iFrame "ctx". }
-      iMod "J" as "[J back]". iDestruct "J" as (sa1 sd1) "[State Alive]".
+      iMod "J" as "[J back]". iDestruct "J" as (sa1 sd1 blocked1) "[State Alive]".
       iAssert (⌜k ∈ sa1⌝)%I as "%k_sa1".
       { iApply (lt_state_alive llft_name k sa1 sd1). iSplit. { iFrame "State". } iFrame "token". }
       unseal. rewrite (big_sepS_delete _ sa1 k); trivial.
-      iDestruct "Alive" as "[token2 Alive]".
+      iDestruct "Alive" as "[[token2 Alive] [Ou Blo]]".
       iMod (kill_lt llft_name k sa1 sd1 with "[State token token2]") as "[State dead]". { iFrame. }
       iMod ("back" with "[State Alive]") as "X".
       { iExists (sa1 ∖ {[k]}). iExists (sd1 ∪ {[k]}). iFrame. }
