@@ -164,6 +164,12 @@ Section FullBorrows.
     map_wf (alive ∪ {[k]}) dead blocked outlives mbs.
   Admitted.
   
+  Lemma map_wf_new_lt_dead alive dead blocked outlives mbs k :
+    (k ∉ alive ∪ dead) →
+    map_wf alive dead blocked outlives mbs →
+    map_wf alive (dead ∪ {[k]}) blocked outlives mbs.
+  Admitted.
+  
   Lemma map_wf_preserved_on_kill alive dead blocked outlives k mbs :
     (k ∉ blocked) →
     map_wf alive dead blocked outlives mbs →
@@ -1754,6 +1760,47 @@ Section FullBorrows.
     iFrame "slices". iFrame "outlives".
   Qed.
   
+  Lemma llft_fb_instant_kill_lt alive dead blocked k :
+    (k ∉ alive ∪ dead) →
+    (▷ llft_fb_inv alive dead blocked)
+      ={↑Nbox}=∗
+    (▷ llft_fb_inv alive (dead ∪ {[k]}) blocked).
+  Proof.
+    intros Hk_fresh.
+    iIntros "Inv".
+    unfold llft_fb_inv.
+    iDestruct "Inv" as (mbs mprops Ptotal outlives) "[>auth [box [vs [>%pures [#slices >outlives]]]]]".
+    
+    iDestruct (llfb_fb_vs_for_new_lt' alive dead blocked outlives alive dead mbs mprops k with "vs") as "vs"; trivial.
+      { intuition. }
+      { unfold map_wf in pures. intuition. }
+      { set_solver. }
+      { set_solver. }
+    
+    iModIntro. iNext.
+    iExists mbs. iExists mprops. iExists Ptotal. iExists outlives.
+    iFrame "auth".
+    destruct pures as [Hdom [Hwf Hoc]].
+    iSplitL "box". {
+      replace (boxmap alive (dead ∪ {[k]}) mbs) with (boxmap alive dead mbs). { iFrame. }
+      unfold boxmap. apply map_eq. intros sn.
+      rewrite lookup_fmap. rewrite lookup_fmap.
+      destruct (mbs !! sn) as [[al de|bl al de]|] eqn:Hmbssn.
+      - rewrite Hmbssn. simpl. f_equiv. apply bool_decide_equiv.
+        destruct Hwf as [Ha [Hb [Hc [Hforall Hforall2]]]].
+        have Hf2 := Hforall sn (Borrow al de). set_solver.
+      - rewrite Hmbssn. simpl. trivial.
+      - rewrite Hmbssn. trivial.
+    }
+    iFrame "vs".
+  Admitted. (*
+    iSplitR. { iPureIntro.
+      split; trivial. split; trivial.
+      { apply map_wf_new_lt_dead; trivial. }
+    }
+    iFrame "slices". iFrame "outlives".
+  Qed. *)
+  
   Lemma outlives_consistent_preserved_on_kill outlives dead k :
       (∀ other : gset nat, (other, k) ∈ outlives → ¬ other ## dead) →
       (outlives_consistent dead outlives) →
@@ -1826,7 +1873,8 @@ Section FullBorrows.
     { apply map_wf_preserved_on_kill; trivial. }
     { apply outlives_consistent_preserved_on_kill; trivial. }
   Qed.
-   
+  
+    
   Definition outer_inv (alive dead blocked : gset nat) : iProp Σ :=
       ∃ opt_k , Delayed opt_k ∗ 
           match opt_k with
