@@ -37,18 +37,17 @@ Section FullBorrows.
   
   Definition Nllft_full  : namespace := nroot .@ "leaf_lifetime_logic_full".
   
-  Definition Outlives (outlives: outlives_set) : iProp Σ. Admitted.
-  Lemma outlives_agree o1 o2 :
+  Definition Outlives (outlives: outlives_set) : iProp Σ. Admitted. Lemma outlives_agree o1 o2 :
       Outlives o1 ∗ Outlives o2 ⊢ ⌜o1 = o2⌝. Admitted.
   Lemma outlives_update o1 o2 o :
-      Outlives o1 ∗ Outlives o2 ⊢ Outlives o ∗ Outlives o. Admitted.
+      Outlives o1 ∗ Outlives o2 ==∗ Outlives o ∗ Outlives o. Admitted.
   Local Instance timeless_outlives o : Timeless (Outlives o). Admitted.
       
   Definition Delayed (opt_k: option nat) : iProp Σ. Admitted.
   Lemma delayed_agree o1 o2 :
       Delayed o1 ∗ Delayed o2 ⊢ ⌜o1 = o2⌝. Admitted.
   Lemma delayed_update o1 o2 o :
-      Delayed o1 ∗ Delayed o2 ⊢ Delayed o ∗ Delayed o. Admitted.
+      Delayed o1 ∗ Delayed o2 ==∗ Delayed o ∗ Delayed o. Admitted.
   
   Definition boxmap
       (alive dead : gset nat) (m: gmap_bor_state)
@@ -552,6 +551,14 @@ Section FullBorrows.
       iApply "slices". iPureIntro. rewrite lookup_delete_Some in Dm. intuition.
     }
   Qed. 
+  
+  Lemma llft_fb_join alive dead blocked sn1 sn2 al de P Q :
+    (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn1 (Borrow al de) ∗ OwnBorState γ sn2 (Borrow al de)
+        ∗ slice Nbox sn1 P ∗ slice Nbox sn2 Q
+      ⊢ |={↑Nbox}=> ∃ sn, (▷ llft_fb_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn (Borrow al de) ∗ slice Nbox sn (P ∗ Q).
+  Admitted.
   
   Lemma llft_fb_vs_create_empty alive dead outlives mbs mprops sn P dd :
   ¬(dd ## dead) →
@@ -1533,7 +1540,7 @@ Section FullBorrows.
             ∗ slice Nbox sn2 P.
    Proof.
     intros Hlt. iIntros "[Inv [LtState P]]".
-    iMod (llft_fb_borrow_create_empty alive dead blocked lt P Hlt with "[Inv P]") as (sn) "[Inv [OwnBor #slice]]". { iFrame. }
+    iMod (llft_fb_borrow_create_empty alive dead blocked P with "[Inv P]") as (sn) "[Inv [OwnBor #slice]]". { iFrame. }
     iMod (llft_fb_reborrow alive dead blocked P sn lt {[default_dead]} Hlt with "[Inv LtState OwnBor]") as (sn1 sn2) "[Ha [Hb [Hd [He Hf]]]]".
       { iFrame. iFrame "#". }
     iModIntro. iExists sn1. iExists sn2. iFrame.
@@ -1818,12 +1825,209 @@ Section FullBorrows.
     { apply outlives_consistent_preserved_on_kill; trivial. }
   Qed.
    
-      
-    
-    
+  Definition outer_inv (alive dead blocked : gset nat) : iProp Σ :=
+      ∃ opt_k , Delayed opt_k ∗ 
+          match opt_k with
+          | None => llft_fb_inv alive dead blocked
+          | Some k => llft_fb_inv (alive ∪ {[k]}) (dead ∖ {[k]}) blocked
+          end.
+          
+  Local Instance timeless_delayed o : Timeless (Delayed o). Admitted.
+  
+  Lemma outer_new_lt alive dead blocked k :
+    (k ∉ alive ∪ dead) →
+    (▷ outer_inv alive dead blocked) ∗ Delayed None ={↑Nbox}=∗
+    (▷ outer_inv (alive ∪ {[ k ]}) dead blocked) ∗ Delayed None.
+  Proof.
+    intros Had.
+    iIntros "[Inv Delayed]". iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_new_lt alive dead blocked k with "Inv") as "Inv"; trivial.
+    iModIntro. iFrame. iFrame.
+  Qed.
+  
+  Lemma outer_kill_lt_step1 alive dead blocked k :
+    (k ∈ alive) →
+    (k ∉ dead) →
+    (▷ outer_inv alive dead blocked) ∗ Delayed None
+      ={↑Nbox}=∗
+    (▷ outer_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked) ∗ Delayed (Some k).
+  Proof.
+    intros kalive kdead.
+    iIntros "[Inv Delayed]". iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (delayed_update _ _ (Some k) with "[D Delayed]") as "[D Delayed]". { iFrame "D Delayed". }
+    iModIntro.
+    iFrame "Delayed". iFrame "D". 
+    replace (alive ∖ {[k]} ∪ {[k]}) with alive.
+    - replace ((dead ∪ {[k]}) ∖ {[k]}) with dead.
+      + iFrame.
+      + set_solver.
+    - apply set_eq. intros x. destruct (decide (x = k)); set_solver.
+  Qed.
+
+  Lemma outer_kill_lt_step2 alive dead blocked outlives k :
+    (k ∈ alive) →
+    (k ∉ dead) →
+    (k ∉ blocked) →
+    (∀ other , (other, k) ∈ outlives → ¬(other ## dead)) →
+    (▷ outer_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked)
+      ∗ Outlives outlives
+      ∗ Dead γ k
+      ∗ Delayed (Some k)
+      ={↑Nbox}=∗ ▷ |={↑Nbox}=>
+    (▷ outer_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked)
+      ∗ Outlives outlives
+      ∗ Delayed None.
+  Proof.
+    intros Hkalive Hkdead Hkblocked Houtlives.
+    iIntros "[Inv [Outlives [Dead Delayed]]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (delayed_update _ _ None with "[D Delayed]") as "[D Delayed]".
+        { iFrame "D Delayed". }
+    iDestruct (llft_fb_kill_lt alive dead blocked outlives k with "[Inv Outlives Dead]")
+      as "X"; trivial. {
+    replace (alive ∖ {[k]} ∪ {[k]}) with alive.
+    - replace ((dead ∪ {[k]}) ∖ {[k]}) with dead.
+      + iFrame "Inv". iFrame.
+      + set_solver.
+    - apply set_eq. intros x. destruct (decide (x = k)); set_solver.
+    }
+    iFrame. iFrame.
+  Qed.
+  
+  Lemma outer_borrow_create alive dead blocked lt P :
+      (lt ⊆ alive ∪ dead) →
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked)
+        ∗ LtState γ alive dead
+        ∗ P
+        ={↑Nbox}=∗
+      Delayed None ∗
+      ∃ sn sn2, (▷ outer_inv alive dead blocked)
+          ∗ LtState γ alive dead
+          ∗ OwnBorState γ sn (Borrow lt {[ default_dead ]})
+          ∗ OwnBorState γ sn2 (Borrow ∅ lt)
+          ∗ slice Nbox sn P
+          ∗ slice Nbox sn2 P.
+  Proof.
+    intros Hlt. iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_borrow_create alive dead blocked lt P Hlt with "[H Inv]") as (sn sn2) "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+  
+  Lemma outer_unborrow_start alive dead blocked outlives sn (bl al de : gset nat) P :
+    (al ⊆ alive) →
+    ¬(de ## dead) →
+    (bl ## blocked) →
+    (bl ⊆ alive) →
+    (∀ (k : nat) , k ∈ al → (bl, k) ∈ outlives) →
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead ∗ Outlives outlives
+        ∗ OwnBorState γ sn (Borrow al de)
+        ∗ slice Nbox sn P
+      ⊢ |={↑Nbox}=> 
+      Delayed None
+        ∗ (▷ outer_inv alive dead (blocked ∪ bl)) ∗ LtState γ alive dead
+        ∗ Outlives outlives
+        ∗ OwnBorState γ sn (Unborrow bl al de)
+        ∗ (▷ P).
+  Proof.
+    intros Hal Hde Hbl Hblal Ho. iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_unborrow_start alive dead blocked outlives sn bl al de P Hal Hde Hbl Hblal Ho with "[H Inv]") as "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+  
+  Lemma outer_llft_fb_unborrow_end alive dead blocked sn bl al de P Q :
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn (Unborrow bl al de)
+        ∗ slice Nbox sn P
+        ∗ (▷ (▷ Q ∗ (∃ k , ⌜ k ∈ bl ⌝ ∗ Dead γ k) ={∅}=∗ ▷ P))
+        ∗ (▷ Q)
+        ={↑Nbox}=∗ ∃ sn2,
+      Delayed None
+        ∗ (▷ outer_inv alive dead (blocked ∖ bl)) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn2 (Borrow al de)
+        ∗ slice Nbox sn2 Q
+        ∗ ⌜bl ⊆ blocked⌝
+        .
+  Proof.
+    iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_unborrow_end alive dead blocked sn bl al de P Q with "[H Inv]") as (sn2) "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+  
+  Lemma outer_unnest alive dead blocked sn sn' al al' P :
+    Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead 
+        ∗ slice Nbox sn P
+        ∗ OwnBorState γ sn' (Borrow al' {[ default_dead ]})
+        ∗ slice Nbox sn' (OwnBorState γ sn (Borrow al {[ default_dead ]}))
+      ={↑Nbox}=∗ ∃ sn2,
+    Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn2 (Borrow (al ∪ al') {[ default_dead ]})
+        ∗ slice Nbox sn2 P.
+  Proof.
+    iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_unnest alive dead blocked sn sn' al al' P with "[H Inv]") as (sn2) "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+  
+  Lemma outer_split alive dead blocked sn al de P Q :
+      Delayed None
+      ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead
+      ∗ OwnBorState γ sn (Borrow al de) ∗ slice Nbox sn (P ∗ Q)
+      ⊢ |={↑Nbox}=> ∃ sn1 sn2,
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn1 (Borrow al de) ∗ OwnBorState γ sn2 (Borrow al de)
+        ∗ slice Nbox sn1 P ∗ slice Nbox sn2 Q.
+  Proof.
+    iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_split alive dead blocked sn al de P Q with "[H Inv]") as (sn1 sn2) "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+  
+  Lemma outer_join alive dead blocked sn1 sn2 al de P Q :
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked)
+        ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn1 (Borrow al de) ∗ OwnBorState γ sn2 (Borrow al de)
+        ∗ slice Nbox sn1 P ∗ slice Nbox sn2 Q
+      ⊢ |={↑Nbox}=> ∃ sn,
+      Delayed None
+        ∗ (▷ outer_inv alive dead blocked) ∗ LtState γ alive dead
+        ∗ OwnBorState γ sn (Borrow al de) ∗ slice Nbox sn (P ∗ Q).
+  Proof.
+    iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iMod (llft_fb_join alive dead blocked sn1 sn2 al de P Q with "[H Inv]") as (sn) "[Inv H]". { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
 End FullBorrows.
-
-
 
 Section LlftLogic.
   Context {Σ: gFunctors}.
