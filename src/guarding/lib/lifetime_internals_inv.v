@@ -1827,14 +1827,13 @@ Section FullBorrows.
   Qed.
   
   Lemma outlives_consistent_preserved_on_kill outlives dead k :
-      (∀ other : gset nat, (other, k) ∈ outlives → ¬ other ## dead) →
+      (∀ other : gset nat, (other, k) ∈ outlives → ¬ other ## (dead ∪ {[k]})) →
       (outlives_consistent dead outlives) →
       outlives_consistent (dead ∪ {[k]}) outlives.
   Proof.
     unfold outlives_consistent. intros Ho Hoc o Ho_in Ho2_dead.
     have Hoc2 := Hoc o. have Ho2 := Ho (o.1). set_solver.
   Qed.
-  
     
   Lemma box_take_all_invalidate alive dead k mbs mprops Ptotal :
     box Nbox (boxmap alive dead mbs) Ptotal
@@ -1855,7 +1854,7 @@ Section FullBorrows.
   Lemma llft_fb_kill_lt alive dead blocked outlives k :
     (k ∈ alive) →
     (k ∉ blocked) →
-    (∀ other , (other, k) ∈ outlives → ¬(other ## dead)) →
+    (∀ other , (other, k) ∈ outlives → ¬(other ## (dead ∪ {[k]}))) →
     (▷ llft_fb_inv alive dead blocked) ∗ Outlives outlives ∗ Dead γ k
       ={↑Nbox}=∗ ▷ |={↑Nbox}=>
     (▷ llft_fb_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked) ∗ Outlives outlives.
@@ -1889,7 +1888,7 @@ Section FullBorrows.
    
     iMod (box_put_all_revalidate alive dead k mbs mprops Ptotal with "[box reval]") as "box".
       { iFrame.  iFrame "slices". }
-   
+
     iModIntro. iSplitR "Outlives". 2: { iFrame. }
     iNext. unfold llft_fb_inv. iExists mbs. iExists mprops. iExists Ptotal.
     iExists outlives. iFrame. iFrame "slices". iPureIntro.
@@ -1904,7 +1903,7 @@ Section FullBorrows.
           match opt_k with
           | None => llft_fb_inv alive dead blocked
           | Some (k, alive') =>
-              llft_fb_inv (alive ∪ {[k]}) (dead ∖ {[k]}) blocked ∗ ⌜ k ∈ dead ∧ alive' = alive ⌝
+              llft_fb_inv (alive ∪ {[k]}) (dead ∖ {[k]}) blocked ∗ ⌜ k ∉ alive ∧ k ∈ dead ∧ alive' = alive ⌝
           end.
           
   Local Instance timeless_delayed o : Timeless (Delayed o). Admitted.
@@ -1971,6 +1970,16 @@ Section FullBorrows.
       (∀ other : gset nat, (other, k) ∈ outlives → other ⊈ alive) →
       (▷ outer_inv alive dead blocked) ∗ Outlives outlives ⊢
       ▷ ⌜∀ other : gset nat, (other, k) ∈ outlives → ¬ other ## dead ∖ {[k]}⌝. Admitted. *)
+      
+  Lemma set_lemma7 (other alive dead : gset nat) (k : nat) :
+        k ∉ alive →
+        k ∈ dead →
+        other ⊈ alive →
+        other ⊆ alive ∪ {[k]} ∪ dead ∖ {[k]} →
+        ¬ other ## dead ∖ {[k]} ∪ {[k]}.
+  Proof.
+    set_solver.
+  Qed.
 
   Lemma outer_kill_lt_step2 alive dead blocked outlives k alive' :
     (k ∉ blocked) →
@@ -1989,24 +1998,38 @@ Section FullBorrows.
     iDestruct "Inv" as (opt_k) "[>D Inv]".
     iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
     subst opt_k.
-    iDestruct "Inv" as "[Inv #>p]". iDestruct "p" as "[%Hkdead %Heq]". subst alive'.
+    iDestruct "Inv" as "[Inv #>p]". iDestruct "p" as "[%Hkdead [%Hkalive %Heq]]". subst alive'.
+    
+    (*enough (∃ mbs, map_wf (alive ∪ {[k]}) (dead ∖ {[k]}) blocked outlives mbs) as H.
+    - destruct H as [mbs Hwf].
+      destruct Hwf as [Ha [Hb [Hc [Hforall [Hforall2 Hforall3]]]]].*)
+    enough (∀ o : gset nat * nat, o ∈ outlives → o.1 ⊆ alive ∪ {[k]} ∪ dead ∖ {[k]}) as H2.
+    +
+    
     (*iDestruct (inv_get_alive_dead_disj with "Inv") as "#>Hdisj". iDestruct "Hdisj" as "%Hdisj".*)
-    iDestruct (outlives_flip alive dead blocked outlives k with "[Outlives Inv]") as "#>Ho2"; trivial. { iFrame. }
+    (*iDestruct (outlives_flip alive dead blocked outlives k with "[Outlives Inv]") as "#>Ho2"; trivial. { iFrame. }*)
     iMod (delayed_update _ _ None with "[D Delayed]") as "[D Delayed]".
         { iFrame "D Delayed". }
-    iDestruct (llft_fb_kill_lt (alive ∪ {[k]}) (dead ∖ {[k]}) blocked outlives k with "[Inv Outlives Dead]")
+    iMod (llft_fb_kill_lt (alive ∪ {[k]}) (dead ∖ {[k]}) blocked outlives k with "[Inv Outlives Dead]")
       as "X"; trivial. { set_solver. }
       { 
-        intros other. have Ho := Houtlives other. set_solver.
-      
-    replace (alive ∖ {[k]} ∪ {[k]}) with alive.
-    - replace ((dead ∪ {[k]}) ∖ {[k]}) with dead.
-      + iFrame "Inv". iFrame.
-      + set_solver.
-    - apply set_eq. intros x. destruct (decide (x = k)); set_solver.
+        intros other. have Ho := Houtlives other.
+        have Ho2 := H2 (other, k).
+        intros Hin. have Hox := Ho Hin. have Hoy := Ho2 Hin. simpl in Hoy.
+        apply (set_lemma7 other alive dead k); trivial.
+      } { iFrame "Dead". iFrame "Inv". iFrame "Outlives". }
+    iModIntro. iNext. iMod "X". iModIntro.
+    iDestruct "X" as "[X Y]".
+    iFrame "Y". iSplitL "X D". {
+      iExists None. iFrame "D".
+      replace (((alive ∪ {[k]}) ∖ {[k]})) with alive by set_solver.
+      replace ((dead ∖ {[k]} ∪ {[k]})) with dead. 2: {
+        apply set_eq. intro x. destruct (decide (x = k)); set_solver.
+      }
+      iFrame.
     }
-    iFrame. iFrame.
-  Qed.
+    iFrame "Delayed".
+  Admitted.
   
   Lemma outer_borrow_create alive dead blocked lt P :
       (lt ⊆ alive ∪ dead) →

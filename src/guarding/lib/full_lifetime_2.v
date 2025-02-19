@@ -45,7 +45,7 @@ Section LlftLogic.
 
   Local Definition llft_ctx_def : iProp Σ :=
     (inv NllftO (∃ outlives, Delayed llft_name None ∗ Outlives llft_name outlives
-        ∗ ∀ o, ⌜o ∈ outlives⌝ -∗ (llft_alive_def o.1 &&{↑NLLFT}&&> Alive llft_name o.2))) ∗
+        ∗ ∀ o, ⌜o ∈ outlives⌝ -∗ (llft_alive_def o.1 &&{↑NllftG}&&> Alive llft_name o.2))) ∗
     (True &&{↑Nmain}&&>
       ∃ (sa sd blocked : gset nat),
         LtState llft_name sa sd
@@ -130,6 +130,7 @@ Section LlftLogic.
   Qed.
   
   Local Instance timeless_delayed o : Timeless (Delayed llft_name o). Admitted.
+  Local Instance timeless_outlives o : Timeless (Outlives llft_name o). Admitted.
 
   Lemma llftl_borrow_shared κ (P : iProp Σ) :
       ▷ P ={↑NLLFT}=∗ (@[ κ ] &&{↑NllftG}&&> ▷ P) ∗ ([† κ ] ={↑NLLFT}=∗ ▷ P).
@@ -328,7 +329,7 @@ Section LlftLogic.
   Qed.
   
   Lemma llftl_begin :
-      llft_ctx ⊢ |={↑NLLFT}=> ∃ κ, @[ κ ] ∗ (@[ κ ] ={↑NLLFT}=∗ [† κ ]).
+      llft_ctx ⊢ |={↑NLLFT}=> ∃ κ, @[ κ ] ∗ (@[ κ ] ={↑NLLFT}[∅]▷=∗ [† κ ]).
   Proof.
       unseal. iIntros "[#other #ctx]".  unfold llft_ctx.
       iDestruct (guards_open (True)%I _ (↑NLLFT) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
@@ -357,7 +358,7 @@ Section LlftLogic.
       iIntros "token".
 
       (* ending the lifetime *)
-      iInv "other" as (outlives1) "[>Delayed [O1 O2]]" "Hclose".
+      iInv "other" as (outlives1) "[>Delayed [>O1 O2]]" "Hclose".
       
       iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. }
       { iFrame "ctx". }
@@ -369,7 +370,7 @@ Section LlftLogic.
       
       unseal. rewrite (big_sepS_delete _ sa1 k); trivial.
       iDestruct "Alive" as "[[token2 Alive] [Ou Blo]]".
-      iMod (kill_lt llft_name k sa1 sd1 with "[State token token2]") as "[State dead]". { iFrame. }
+      iMod (kill_lt llft_name k sa1 sd1 with "[State token token2]") as "[State #dead]". { iFrame. }
       
       iDestruct (outer_kill_lt_step1 llft_name sa1 sd1 blocked1 k with "[Ou Delayed]") as "X"; trivial. { set_solver. } { iFrame "Ou". iFrame "Delayed". }
       iMod (fupd_mask_mono with "X") as "[Ou Delayed]". { solve_ndisj. }
@@ -377,21 +378,47 @@ Section LlftLogic.
       iMod ("back" with "[State Alive Ou Blo]") as "true".
       { iExists (sa1 ∖ {[k]}). iExists (sd1 ∪ {[k]}). iExists blocked1. iFrame. }
       
-      destruct (decide (filter (λ (o: (gset nat * nat)) , o.2 = k ∧ o.1 ## sd) outlives = ∅)).
+      destruct (decide (filter (λ (o: (gset nat * nat)) , o.2 = k ∧ o.1 ⊆ sa1 ∖ {[k]}) outlives1 = ∅)).
       { 
-        assert (∀ other , (other, k) ∈ outlives → ¬(other ## sd)) as Houtlives.
+        assert (∀ other , (other, k) ∈ outlives1 → ¬(other ⊆ sa1 ∖ {[k]})) as Houtlives.
         { intros other. intros Hin Hdisj2. 
-          assert ((other,  k) ∈ filter (λ o : gset nat * nat, o.2 = k ∧ o.1 ## sd) outlives) as X. { rewrite elem_of_filter. set_solver. } rewrite e in X. set_solver. }
+          assert ((other,  k) ∈ filter (λ o : gset nat * nat, o.2 = k ∧ o.1 ⊆ sa1 ∖ {[k]}) outlives1) as X. { rewrite elem_of_filter. set_solver. } rewrite e in X. set_solver. }
           
        iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. }
       { iFrame "ctx". }
       iMod "J" as "[J back]". iDestruct "J" as (sa2 sd2 blocked2) "[State [Alive [Ou Blo]]]".
       
-      iAssert (⌜k ∈ sa2⌝)%I as "%k_sa2".
-      { iApply (lt_state_alive llft_name k sa2 sd2). iSplit. { iFrame "State". } }
-        
-        iDestruct (outer_kill_lt_step2 llft_name sa2 sd2 blocked2 outlives k with "[Ou Delayed]") as "X"; trivial. { set_solver. } { iFrame "Ou". iFrame "Delayed". }
-        iMod (fupd_mask_mono with "X") as "[Ou Delayed]". { solve_ndisj. }
+      destruct (decide (k ∈ blocked2)). {
+        iDestruct (big_sepS_delete _ _ k with "Blo") as "[B Blo]"; trivial.
+        iExFalso. iApply (lt_alive_dead_false llft_name k). iSplit. { iFrame. } iFrame "dead".
+      }
+      
+      iDestruct (outer_kill_lt_step2 llft_name sa2 sd2 blocked2 outlives1 k (sa1 ∖ {[k]}) with "[Ou Delayed O1]") as "X"; trivial. { iFrame "Ou". iFrame "Delayed". iFrame "O1". iFrame "dead". }
+      iDestruct (step_fupd_mask_mono _ (↑NLLFT ∖ ↑NllftO ∖ ↑Nmain) _ ∅ with
+       "X") as "X". { solve_ndisj. } { solve_ndisj. } iMod "X". iModIntro.
+       iNext. iMod "X". iDestruct "X" as "[Inv [Outlives Delayed]]".
+       
+      iMod ("back" with "[Alive State Blo Inv]") as "X". { iExists sa2. iExists sd2. iExists blocked2.
+        iFrame "State". iFrame "Alive". iFrame "Inv". iFrame "Blo". }
+      iMod ("Hclose" with "[Outlives Delayed O2]") as "Y".
+      { iNext. iExists outlives1. iFrame "Delayed". iFrame "Outlives". iFrame "O2". }
+      
+      iModIntro. iExists k. iFrame "dead". iPureIntro. set_solver.
+     }
+     
+     (* case: something violates the outlives relation. derive a contradiction. *)
+     assert (∃ (x : gset nat * nat) , x ∈ filter (λ o : gset nat * nat, o.2 = k ∧ o.1 ⊆ sa1 ∖ {[k]}) outlives1) as Hex_x. { apply set_choose_L; trivial. }
+     destruct Hex_x as [[oalive odead] Hex].
+     rewrite elem_of_filter in Hex. simpl in Hex. destruct Hex as [[Hex1 Hex2] Hex3].
+     subst odead.
+     iMod (fupd_mask_subseteq ∅) as "Hupd". { set_solver. }
+     iModIntro. iNext. iMod "Hupd" as "_".
+     iDestruct ("O2" $! ((oalive, k)) with "[]") as "#Oguard". { iPureIntro; trivial. }
+     iDestruct (llftl_incl_dead_implies_dead oalive {[k]} with "[]") as "#OdeadUpd".
+     { unseal. iFrame "#". unfold llft_incl. unseal. rewrite big_sepS_singleton.
+      iFrame "Oguard". iPureIntro. set_solver. }
+     
+     iMod (fupd_mask_mono with "OdeadUpd") as "#Odead".
 
       
       iModIntro. unfold llft_dead. iExists k. iFrame "dead". iPureIntro. set_solver.
