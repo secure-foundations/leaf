@@ -79,6 +79,7 @@ Section FullBorrows.
         | (Unborrow bl1 _ _, Unborrow bl2 _ _) => bl1 ## bl2
         | _ => True
         end)
+    ∧ (∀ o , o ∈ outlives → o.2 ∈ alive ∪ dead)
     .
   
   Lemma map_wf_insert_unborrow alive dead blocked bl al de outlives mbs sn :
@@ -92,17 +93,19 @@ Section FullBorrows.
     map_wf alive dead (blocked ∪ bl) outlives (<[sn:=Unborrow bl al de]> mbs).
   Proof.
     unfold map_wf.
-    intros Hal Hblalive Hde Hdewf Hbl Ho [Hdisj [Hblal [Hdd [Hf1 Hf2]]]]. 
+    intros Hal Hblalive Hde Hdewf Hbl Ho [Hdisj [Hblal [Hdd [Hf1 [Hf2 Hf3]]]]]. 
       split; trivial.
       split. { set_solver. }
       split; trivial.
-      split.
-      - intros sn' bs'. destruct (decide (sn = sn')).
+      split. {
+        intros sn' bs'. destruct (decide (sn = sn')).
         + intros Hmbssn'. subst sn'. rewrite lookup_insert in Hmbssn'. inversion Hmbssn'.
           split. { set_solver. } split; trivial. split; trivial. set_solver.
         + intros Hmbssn'. rewrite lookup_insert_ne in Hmbssn'; trivial.
           have Hfa := Hf1 sn' bs' Hmbssn'. destruct bs'; trivial. set_solver.
-      - intros sn1 bs1 sn2 bs2. destruct (decide (sn = sn1)).
+      }
+      split. {
+      intros sn1 bs1 sn2 bs2. destruct (decide (sn = sn1)).
         + subst sn1. intros Hne2 Hmbssn1 Hmbssn2.
           rewrite lookup_insert in Hmbssn1. rewrite lookup_insert_ne in Hmbssn2; trivial.
           inversion Hmbssn1. destruct bs2 as [|bl2 al2 de2]; trivial.
@@ -118,6 +121,8 @@ Section FullBorrows.
           rewrite lookup_insert_ne in Hmbssn2; trivial.
           have Hfa := Hf2 sn1 (Unborrow bl1 al1 de1) sn2 (Unborrow bl2 al2 de2).
           intuition.
+      }
+      trivial.
   Qed.
   
   Lemma map_wf_delete_unborrow alive dead blocked bl al de outlives mbs sn :
@@ -128,21 +133,26 @@ Section FullBorrows.
     map_wf alive dead (blocked ∖ bl) outlives (delete sn mbs).
   Proof.
     unfold map_wf.
-    intros Hal Hbl Hmbssn [Hdisj [Hblal [Hdd [Hf1 Hf2]]]]. 
+    intros Hal Hbl Hmbssn [Hdisj [Hblal [Hdd [Hf1 [Hf2 Hf3]]]]]. 
       split; trivial.
       split. { set_solver. }
       split; trivial.
-      split.
-      - intros sn' bs' Hdel. destruct (decide (sn = sn')).
+      split. {
+      intros sn' bs' Hdel. destruct (decide (sn = sn')).
         + subst sn'. rewrite lookup_delete in Hdel. discriminate.
         + rewrite lookup_delete_ne in Hdel; trivial.
           have Hfa := Hf1 sn' bs'. destruct bs'; intuition. set_solver.
-      - intros sn1 bs1 sn2 bs2 Hne Hdel1 Hdel2. 
+      }
+      split. {
+        intros sn1 bs1 sn2 bs2 Hne Hdel1 Hdel2. 
+      
         destruct (decide (sn = sn1)). { subst sn1. rewrite lookup_delete in Hdel1. discriminate. }
         destruct (decide (sn = sn2)). { subst sn2. rewrite lookup_delete in Hdel2. discriminate. }
         rewrite lookup_delete_ne in Hdel1; trivial.
         rewrite lookup_delete_ne in Hdel2; trivial.
         apply (Hf2 sn1 bs1 sn2 bs2); trivial.
+      }
+      trivial.
   Qed.
     
   Lemma map_wf_insert
@@ -1760,10 +1770,21 @@ Section FullBorrows.
     iFrame "slices". iFrame "outlives".
   Qed.
   
+  Lemma outlives_consistent_instant_kill alive dead blocked outlives mbs k :
+    (k ∉ alive ∪ dead) →
+    map_wf alive dead blocked outlives mbs →
+    outlives_consistent dead outlives →
+    outlives_consistent (dead ∪ {[k]}) outlives.
+  Proof.
+    intros Hk Hwf Hoc o. 
+    destruct Hwf as [Ha [Hb [Hc [Hforall [Hforall2 Hforall3]]]]].
+    have H1 := Hoc o. have H2 := Hforall3 o. set_solver.
+  Qed.
+  
   Lemma llft_fb_instant_kill_lt alive dead blocked k :
     (k ∉ alive ∪ dead) →
     (▷ llft_fb_inv alive dead blocked)
-      ={↑Nbox}=∗
+      ={∅}=∗
     (▷ llft_fb_inv alive (dead ∪ {[k]}) blocked).
   Proof.
     intros Hk_fresh.
@@ -1793,13 +1814,13 @@ Section FullBorrows.
       - rewrite Hmbssn. trivial.
     }
     iFrame "vs".
-  Admitted. (*
     iSplitR. { iPureIntro.
       split; trivial. split; trivial.
       { apply map_wf_new_lt_dead; trivial. }
+      apply (outlives_consistent_instant_kill alive dead blocked outlives mbs k); trivial.
     }
     iFrame "slices". iFrame "outlives".
-  Qed. *)
+  Qed.
   
   Lemma outlives_consistent_preserved_on_kill outlives dead k :
       (∀ other : gset nat, (other, k) ∈ outlives → ¬ other ## dead) →
@@ -1879,7 +1900,7 @@ Section FullBorrows.
       ∃ opt_k , Delayed opt_k ∗ 
           match opt_k with
           | None => llft_fb_inv alive dead blocked
-          | Some k => llft_fb_inv (alive ∪ {[k]}) (dead ∖ {[k]}) blocked
+          | Some k => llft_fb_inv (alive ∪ {[k]}) (dead ∖ {[k]}) blocked ∗ ⌜ k ∈ dead ⌝
           end.
           
   Local Instance timeless_delayed o : Timeless (Delayed o). Admitted.
@@ -1895,6 +1916,30 @@ Section FullBorrows.
     subst opt_k.
     iMod (llft_fb_new_lt alive dead blocked k with "Inv") as "Inv"; trivial.
     iModIntro. iFrame. iFrame.
+  Qed.
+  
+  Lemma outer_instant_kill_lt alive dead blocked k :
+    (k ∉ alive ∪ dead) →
+    (▷ outer_inv alive dead blocked) ={∅}=∗
+    (▷ outer_inv alive (dead ∪ {[k]}) blocked).
+  Proof.
+    intros Had.
+    iIntros "Inv". iDestruct "Inv" as (opt_k) "[>D Inv]".
+    destruct opt_k as [|k'].
+    {
+      iDestruct "Inv" as "[Inv >Hndead]".
+      iDestruct "Hndead" as "%Hndead".
+      iMod (llft_fb_instant_kill_lt _ _ blocked k with "Inv") as "Inv"; trivial.
+      { set_solver. }
+      iModIntro. iExists (Some n). iSplitL "D". { iFrame. }
+      replace ((dead ∖ {[n]} ∪ {[k]})) with ((dead ∪ {[k]}) ∖ {[n]}).
+      2: { apply set_eq. intros x. set_solver. }
+      iFrame. iPureIntro. set_solver.
+    }
+    {
+      iMod (llft_fb_instant_kill_lt alive dead blocked k with "Inv") as "Inv"; trivial.
+      iModIntro. iExists None. iFrame "Inv". iFrame "D".
+    }
   Qed.
   
   Lemma outer_kill_lt_step1 alive dead blocked k :
@@ -1913,7 +1958,7 @@ Section FullBorrows.
     iFrame "Delayed". iFrame "D". 
     replace (alive ∖ {[k]} ∪ {[k]}) with alive.
     - replace ((dead ∪ {[k]}) ∖ {[k]}) with dead.
-      + iFrame.
+      + iFrame. iPureIntro. set_solver.
       + set_solver.
     - apply set_eq. intros x. destruct (decide (x = k)); set_solver.
   Qed.
@@ -1937,6 +1982,7 @@ Section FullBorrows.
     iDestruct "Inv" as (opt_k) "[>D Inv]".
     iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
     subst opt_k.
+    iDestruct "Inv" as "[Inv _]".
     iMod (delayed_update _ _ None with "[D Delayed]") as "[D Delayed]".
         { iFrame "D Delayed". }
     iDestruct (llft_fb_kill_lt alive dead blocked outlives k with "[Inv Outlives Dead]")

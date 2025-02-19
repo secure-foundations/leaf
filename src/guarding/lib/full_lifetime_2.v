@@ -229,18 +229,21 @@ Section LlftLogic.
 
       leaf_open "G3" with "[]" as "[J back]". { set_solver. } { done. }
 
-      iDestruct "J" as (sa sd blocked) "[%k_sa [State [alive ou]]]".
+      iDestruct "J" as (sa sd blocked) "[%k_sa [State [alive [ou Blo]]]]".
       have the_k := not_subset_eq_get κ sa k_sa. destruct the_k as [k [k_in k_not_in]].
       have h : Decision (k ∈ sd) by solve_decision. destruct h as [h|n]; trivial.
         - iDestruct (LtState_entails_Dead llft_name k sa sd with "State") as "#deadk"; trivial.
-          iMod ("back" with "[State alive ou]") as "true". { iExists sa. iExists sd. iExists blocked. iFrame. iPureIntro; trivial. } iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro. apply k_in.
+          iMod ("back" with "[State alive ou Blo]") as "true". { iExists sa. iExists sd. iExists blocked. iFrame. iPureIntro; trivial. } iModIntro. unfold llft_dead. iExists k. iFrame "deadk". iPureIntro. apply k_in.
         - (* weird technicality, if k was never made alive in the first place;
             first create it, then immediately kill it *)
           iMod (new_lt llft_name k sa sd with "State") as "[State [al1 al2]]"; trivial.
-          iMod (kill_lt llft_name k (sa ∪ {[ k ]}) sd with "[State al1 al2]") as "[State deadk]".
-            { iFrame. }
-          iMod ("back" with "[State alive]") as "J".
-          { iExists sa. iExists (sd ∪ {[k]}). iFrame.
+          iMod (kill_lt llft_name k (sa ∪ {[ k ]}) sd with "[State al1 al2]") as "[State deadk]". { iFrame. }
+          iDestruct (outer_instant_kill_lt llft_name sa sd blocked k with "ou") as "ou".
+          { set_solver. }
+          iMod (fupd_mask_mono with "ou") as "ou". { solve_ndisj. }
+          
+          iMod ("back" with "[State alive ou Blo]") as "J".
+          { iExists sa. iExists (sd ∪ {[k]}). iExists blocked. iFrame.
             replace (((sa ∪ {[k]}) ∖ {[k]})) with sa.
             { iFrame. iPureIntro. trivial. } set_solver.
           }
@@ -371,8 +374,26 @@ Section LlftLogic.
       iDestruct (outer_kill_lt_step1 llft_name sa1 sd1 blocked1 k with "[Ou Delayed]") as "X"; trivial. { set_solver. } { iFrame "Ou". iFrame "Delayed". }
       iMod (fupd_mask_mono with "X") as "[Ou Delayed]". { solve_ndisj. }
       
-      iMod ("back" with "[State Alive Ou Blo]") as "X".
+      iMod ("back" with "[State Alive Ou Blo]") as "true".
       { iExists (sa1 ∖ {[k]}). iExists (sd1 ∪ {[k]}). iExists blocked1. iFrame. }
+      
+      destruct (decide (filter (λ (o: (gset nat * nat)) , o.2 = k ∧ o.1 ## sd) outlives = ∅)).
+      { 
+        assert (∀ other , (other, k) ∈ outlives → ¬(other ## sd)) as Houtlives.
+        { intros other. intros Hin Hdisj2. 
+          assert ((other,  k) ∈ filter (λ o : gset nat * nat, o.2 = k ∧ o.1 ## sd) outlives) as X. { rewrite elem_of_filter. set_solver. } rewrite e in X. set_solver. }
+          
+       iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. }
+      { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa2 sd2 blocked2) "[State [Alive [Ou Blo]]]".
+      
+      iAssert (⌜k ∈ sa2⌝)%I as "%k_sa2".
+      { iApply (lt_state_alive llft_name k sa2 sd2). iSplit. { iFrame "State". } }
+        
+        iDestruct (outer_kill_lt_step2 llft_name sa2 sd2 blocked2 outlives k with "[Ou Delayed]") as "X"; trivial. { set_solver. } { iFrame "Ou". iFrame "Delayed". }
+        iMod (fupd_mask_mono with "X") as "[Ou Delayed]". { solve_ndisj. }
+
+      
       iModIntro. unfold llft_dead. iExists k. iFrame "dead". iPureIntro. set_solver.
   Qed.
 End LlftLogic.
