@@ -614,14 +614,14 @@ Section LlftHelperResources.
     - inversion lts.
   Qed.
 
-  Definition Cancel (γ: gname) : iProp Σ := own γ (Excl ()).
-  Lemma new_cancel : ⊢ |==> ∃ γ , Cancel γ.
+  Definition CCancel (γ: gname) : iProp Σ := own γ (Excl ()).
+  Lemma new_cancel : ⊢ |==> ∃ γ , CCancel γ.
   Proof.
-    iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold Cancel. iFrame "H".
+    iIntros. iDestruct (own_alloc (Excl ())) as "H"; first done. unfold CCancel. iFrame "H".
   Qed.
-  Lemma cancel_cancel_false (γc : gname) : Cancel γc ∗ Cancel γc ⊢ False.
+  Lemma cancel_cancel_false (γc : gname) : CCancel γc ∗ CCancel γc ⊢ False.
   Proof.
-    iIntros "X". unfold Cancel. rewrite <- own_op.
+    iIntros "X". unfold CCancel. rewrite <- own_op.
     iDestruct (own_valid with "X") as "%J". contradiction.
   Qed.
 
