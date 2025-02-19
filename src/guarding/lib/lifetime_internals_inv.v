@@ -1964,16 +1964,13 @@ Section FullBorrows.
   Qed.
 
   Lemma outer_kill_lt_step2 alive dead blocked outlives k :
-    (k ∈ alive) →
-    (k ∉ dead) →
-    (k ∉ blocked) →
     (∀ other , (other, k) ∈ outlives → ¬(other ## dead)) →
-    (▷ outer_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked)
+    (▷ outer_inv alive dead blocked)
       ∗ Outlives outlives
       ∗ Dead γ k
       ∗ Delayed (Some k)
       ={↑Nbox}=∗ ▷ |={↑Nbox}=>
-    (▷ outer_inv (alive ∖ {[k]}) (dead ∪ {[k]}) blocked)
+    (▷ outer_inv alive dead blocked)
       ∗ Outlives outlives
       ∗ Delayed None.
   Proof.
