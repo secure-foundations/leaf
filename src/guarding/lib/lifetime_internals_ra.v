@@ -406,6 +406,10 @@ Section LlftHelperResources.
     apply (alive_incl_lt_ok _ _ _ _ _ inc2). apply lti.
   Qed.
 
+  Lemma lt_state_alive_set γlt lt sa sd :
+    LtState γlt sa sd ∗ ([∗ set] k ∈ lt, Alive γlt k) ⊢ ⌜ lt ⊆ sa ⌝.
+  Admitted.
+
   Lemma lt_state_dead γlt k sa sd :
     LtState γlt sa sd ∧ Dead γlt k ⊢ ⌜ k ∈ sd ⌝.
   Proof.

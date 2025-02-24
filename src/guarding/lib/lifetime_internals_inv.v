@@ -79,7 +79,7 @@ Section FullBorrows.
         | (Unborrow bl1 _ _, Unborrow bl2 _ _) => bl1 ## bl2
         | _ => True
         end)
-    ∧ (∀ o , o ∈ outlives → o.2 ∈ alive ∪ dead)
+    ∧ (∀ o , o ∈ outlives → o.1 ⊆ alive ∪ dead ∧ o.2 ∈ alive ∪ dead)
     .
   
   Lemma map_wf_insert_unborrow alive dead blocked bl al de outlives mbs sn :
@@ -608,7 +608,7 @@ Section FullBorrows.
   Qed.
   
   Lemma llft_fb_borrow_create_empty alive dead blocked P :
-      (▷ llft_fb_inv alive dead blocked) ∗ P
+      (▷ llft_fb_inv alive dead blocked) ∗ (▷ P)
         ={↑Nbox}=∗
         ∃ sn , (▷ llft_fb_inv alive dead blocked)
             ∗ OwnBorState γ sn (Borrow ∅ {[ default_dead ]})
@@ -657,6 +657,7 @@ Section FullBorrows.
   Qed.
 
   Lemma llft_fb_augment_outlives alive dead blocked outlives outlives' :
+    (∀ o , o ∈ outlives' → o.1 ⊆ alive ∪ dead ∧ o.2 ∈ alive ∪ dead) →
     (outlives ⊆ outlives') →
       (▷ llft_fb_inv alive dead blocked) ∗ Outlives outlives
     ⊢ (▷ llft_fb_inv alive dead blocked) ∗ Outlives outlives'.
@@ -1552,7 +1553,7 @@ Section FullBorrows.
       (lt ⊆ alive ∪ dead) →
       (▷ llft_fb_inv alive dead blocked)
         ∗ LtState γ alive dead
-        ∗ P
+        ∗ (▷ P)
         ={↑Nbox}=∗
         ∃ sn sn2, (▷ llft_fb_inv alive dead blocked)
             ∗ LtState γ alive dead
@@ -2036,7 +2037,7 @@ Section FullBorrows.
       Delayed None
         ∗ (▷ outer_inv alive dead blocked)
         ∗ LtState γ alive dead
-        ∗ P
+        ∗ (▷ P)
         ={↑Nbox}=∗
       Delayed None ∗
       ∃ sn sn2, (▷ outer_inv alive dead blocked)
@@ -2158,6 +2159,23 @@ Section FullBorrows.
     iMod (llft_fb_join alive dead blocked sn1 sn2 al de P Q with "[H Inv]") as (sn) "[Inv H]". { iFrame. }
     iModIntro. iFrame "Delayed H". iExists None. iFrame.
   Qed.
+  
+  Lemma outer_augment_outlives alive dead blocked outlives outlives' :
+    (∀ o , o ∈ outlives' → o.1 ⊆ alive ∪ dead ∧ o.2 ∈ alive ∪ dead) →
+    (outlives ⊆ outlives') →
+      Delayed None ∗ (▷ outer_inv alive dead blocked) ∗ Outlives outlives
+    ⊢ |={↑Nbox}=>
+      Delayed None ∗ (▷ outer_inv alive dead blocked) ∗ Outlives outlives'.
+  Proof.
+    intros Howf Hosub.
+    iIntros "[Delayed [Inv H]]".
+    iDestruct "Inv" as (opt_k) "[>D Inv]".
+    iDestruct (delayed_agree with "[D Delayed]") as "%Heq". { iFrame "D Delayed". }
+    subst opt_k.
+    iDestruct (llft_fb_augment_outlives alive dead blocked outlives outlives' with "[H Inv]") as "[Inv H]"; trivial. { iFrame. }
+    iModIntro. iFrame "Delayed H". iExists None. iFrame.
+  Qed.
+
 End FullBorrows.
 
 

@@ -131,6 +131,7 @@ Section LlftLogic.
   
   Local Instance timeless_delayed o : Timeless (Delayed llft_name o). Admitted.
   Local Instance timeless_outlives o : Timeless (Outlives llft_name o). Admitted.
+  Local Instance timeless_own_bor_state sn o : Timeless (OwnBorState llft_name sn o). Admitted.
 
   Lemma llftl_borrow_shared κ (P : iProp Σ) :
       ▷ P ={↑NLLFT}=∗ (@[ κ ] &&{↑NllftG}&&> ▷ P) ∗ ([† κ ] ={↑NLLFT}=∗ ▷ P).
@@ -418,11 +419,361 @@ Section LlftLogic.
      { unseal. iFrame "#". unfold llft_incl. unseal. rewrite big_sepS_singleton.
       iFrame "Oguard". iPureIntro. set_solver. }
      
-     iMod (fupd_mask_mono with "OdeadUpd") as "#Odead".
-
-      
-      iModIntro. unfold llft_dead. iExists k. iFrame "dead". iPureIntro. set_solver.
+     iMod (fupd_mask_mono with "OdeadUpd") as "#Odead". { solve_ndisj. }
+     
+     iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+     iMod "J" as "[J back]". iDestruct "J" as (sa2 sd2 blocked2) "[State [Alive [Ou Blo]]]".
+     iDestruct "Ou" as (opt_k) "[>Delayed2 X]".
+     iDestruct (delayed_agree with "[Delayed Delayed2]") as "%Dagree". { iFrame "Delayed". iFrame "Delayed2". }
+     subst opt_k. iDestruct "X" as "[X1 [X2 [X3 >X4]]]". iDestruct "X4" as "%Hsa2eq".
+     subst sa2.
+     iDestruct (big_sepS_subseteq _ _ oalive with "Alive") as "Alive"; trivial.
+     iExFalso. iApply (llftl_not_own_end oalive). unseal. iFrame "Alive". iFrame "Odead".
   Qed.
+  
+  (* indexed borrows and full borrows *)
+  
+  Definition Idx: Type := slice_name * gset nat. 
+  
+  Definition idx_bor (κ: Lifetime) (idx: Idx) (P: iProp Σ) : iProp Σ :=
+      let (sn, κ') := idx in
+        κ ⊑ κ' ∗ slice Nbox sn P.
+        
+  Local Instance pers_idx_bor κ idx P : Persistent (idx_bor κ idx P).
+  Proof. destruct idx. typeclasses eauto. Qed.
+  
+  Definition idx_bor_tok (idx: Idx) : iProp Σ :=
+      let (sn, κ') := idx in
+          OwnBorState llft_name sn (Borrow κ' {[default_dead]}).
+          
+  Definition full_bor (κ: Lifetime) (P: iProp Σ) : iProp Σ :=
+      ∃ sn κ' ,
+        κ ⊑ κ'
+          ∗ slice Nbox sn P
+          ∗ OwnBorState llft_name sn (Borrow κ' {[default_dead]}).
+  
+  Lemma llftl_bor_idx κ P :
+      full_bor κ P ⊣⊢ ∃ idx , idx_bor κ idx P ∗ idx_bor_tok idx.
+  Proof.
+    iIntros. iSplit.
+    { iIntros "F". iDestruct "F" as (sn κ') "[F [G H]]". iExists (sn, κ'). iFrame. }
+    { iIntros "F". iDestruct "F" as (idx) "[F G]". destruct idx as [sn κ'].
+      iDestruct "F" as "[F H]". iFrame. }
+  Qed.
+  
+  Lemma llftl_idx_shorten κ κ' idx P :
+      κ' ⊑ κ -∗ idx_bor κ idx P -∗ idx_bor κ' idx P.
+  Proof. destruct idx as [sn κ2]. iIntros "#g [#g2 #slice]". unfold idx_bor. 
+      iFrame "slice".
+      leaf_goal rhs to (@[κ])%I; iFrame "#".
+  Qed.
+  
+  Lemma make_everything_alive new sa sd blocked E :
+      (↑Nbox ⊆ E) →
+      LtState llft_name sa sd
+        -∗ llft_alive_def sa
+        -∗ ▷ outer_inv llft_name sa sd blocked
+        -∗ Delayed llft_name None
+        -∗ |={E}=> ∃ sa' ,
+        ⌜ new ⊆ sa' ∪ sd ⌝
+        ∗ LtState llft_name sa' sd
+        ∗ llft_alive_def sa'
+        ∗ ▷ outer_inv llft_name sa' sd blocked
+        ∗ Delayed llft_name None.
+  Admitted.
+  
+  Lemma outer_get_dead alive dead blocked
+    : Delayed llft_name None -∗ ▷ outer_inv llft_name alive dead blocked -∗ ▷ ⌜default_dead ∈ dead⌝.
+  Admitted.
+  
+  Lemma alive_alive_disjoint κ κ' sa :
+    κ ⊆ sa →
+    llft_alive_def sa -∗ llft_alive_def κ -∗ llft_alive_def κ' -∗ ⌜κ ## κ'⌝. Admitted.
+  
+  Lemma augment_outlives sa sd blocked outlives κ κ' E :
+    (κ ⊆ sa) →
+    (κ' ⊆ sa) →
+    (κ ⊑ κ')
+    -∗ ▷ (Outlives llft_name outlives ∗
+           ∀ o : Lifetime * nat,
+             ⌜o ∈ outlives⌝ -∗ llft_alive_def o.1 &&{ ↑NllftG }&&> Alive llft_name o.2)
+    -∗ ▷ outer_inv llft_name sa sd blocked
+    -∗ LtState llft_name sa sd
+    -∗ |={E}=> ∃ outlives' ,
+    ⌜ ∀ k : nat, k ∈ κ' → (κ, k) ∈ outlives' ⌝
+    ∗ ▷ (Outlives llft_name outlives' ∗
+           ∀ o : Lifetime * nat,
+             ⌜o ∈ outlives'⌝ -∗ llft_alive_def o.1 &&{ ↑NllftG }&&> Alive llft_name o.2)
+    ∗ ▷ outer_inv llft_name sa sd blocked
+    ∗ LtState llft_name sa sd.
+  Admitted.
+  
+  
+  Lemma llftl_idx_acc_fwd κ idx P :
+      llft_ctx ∗ idx_bor κ idx P ⊢
+        idx_bor_tok idx ∗ @[κ] ={↑Nllft}=∗ (▷ P)
+          ∗ OwnBorState llft_name (idx.1) (Unborrow κ idx.2 {[default_dead]}).
+  Proof.
+      unseal.
+      destruct idx as [sn κ']. iIntros "[[#other #ctx] [#Incl #Slice]] [OwnBor k]". unfold idx_bor_tok.
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      iMod (make_everything_alive (κ ∪ κ') with "State Alive OuInv Delayed") as (sa') "[%Hsa [State [Alive [OuInv Delayed]]]]". { solve_ndisj. }
+      
+      iDestruct (outer_get_dead with "Delayed OuInv") as "#>%Hdd".
+      iDestruct (lt_state_alive_set llft_name κ sa' sd with "[State k]") as "%Hksa'". { iFrame. }
+      
+      destruct (decide (κ' ⊆ sa')) as [Hk'sa'|Hk'sa'].
+      { 
+      iDestruct (alive_alive_disjoint with "Alive k Blo") as "%Hblocked_disj"; trivial.
+      iMod (augment_outlives with "Incl O OuInv State") as (outlives') "[%Ho' [O [OuInv State]]]". { set_solver. } { set_solver. }
+      iDestruct "O" as "[>Ostate Oguards]".
+      
+      
+      iClear "other". iClear "ctx".
+      
+      iDestruct (outer_unborrow_start llft_name sa' sd blocked outlives' sn κ κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { iFrame. iFrame "Slice". }
+      iMod (fupd_mask_mono with "X") as "[Delayed [OuInv [State [Ostate [OwnBor P]]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo k]"). {
+        iExists sa'. iExists sd. iExists (blocked ∪ κ). iFrame "State".
+        iFrame "Alive". iFrame "OuInv". unfold llft_alive_def. rewrite big_sepS_union.
+        { iFrame. } set_solver.
+      }
+      iMod ("Hclose" with "[Delayed Ostate Oguards]"). { iNext. iExists outlives'. iFrame. }
+      iModIntro. iFrame.
+      }
+      
+      assert (∃ x , x ∈ κ' ∩ sd) as Hex_x. { apply set_choose_L. set_solver. }
+      destruct Hex_x as [x Hex].
+      iDestruct (LtState_entails_Dead llft_name x sa' sd with "State") as "#Deadx". { set_solver. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
+      
+      iDestruct (llftl_incl_dead_implies_dead κ κ' with "[]") as "HdeadkUpd". { iFrame "#". unseal. iFrame "#". iPureIntro. set_solver. }
+      iMod (fupd_mask_mono with "HdeadkUpd") as "#Hdeadk". { solve_ndisj. }
+      iExFalso. iApply (llftl_not_own_end κ). unseal. iFrame. iFrame "Hdeadk".
+  Qed.
+  
+  Lemma llftl_idx_acc_back κ idx P :
+      llft_ctx ∗ idx_bor κ idx P ⊢
+        OwnBorState llft_name (idx.1) (Unborrow κ idx.2 {[default_dead]}) ∗ (▷ P)
+        ={↑Nllft}=∗ idx_bor_tok idx.
+  Proof.
+  Admitted.
+  
+  Lemma llftl_idx_acc_back_vs κ idx P Q :
+      llft_ctx ∗ idx_bor κ idx P ⊢
+        OwnBorState llft_name (idx.1) (Unborrow κ idx.2 {[default_dead]}) ∗ (▷ Q)
+          ∗ ▷ (▷ Q ∗ [†κ] ={∅}=∗ ▷ P)
+        ={↑Nllft}=∗ full_bor κ Q ∗ @[κ].
+  Proof.
+      unseal.
+      iIntros "[[#other #ctx] #idxbor] [OwnBor [Q vs]]". destruct idx as [sn κ'].
+      unfold idx_bor. iDestruct "idxbor" as "[#incl #slice]".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      
+      iDestruct (outer_llft_fb_unborrow_end llft_name sa sd blocked sn κ κ' {[default_dead]} P Q with "[Delayed OuInv OwnBor slice vs Q State]") as "X". { iFrame. iFrame "#". }
+      iMod (fupd_mask_mono with "X") as (sn2) "[Delayed [OuInv [State [OwnBor [#slice2 %Hbl]]]]]". { solve_ndisj. }
+      
+      iAssert (llft_alive_def (blocked ∖ κ) ∗ llft_alive_def κ)%I with "[Blo]" as "[Blo Ret]". {
+        unfold llft_alive_def. rewrite <- big_sepS_union. { 
+          replace (blocked ∖ κ ∪ κ) with blocked. { iFrame. }
+          apply set_eq. intro x. destruct (decide (x ∈ κ)); set_solver.
+        } set_solver.
+      }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa. iExists sd. iExists (blocked ∖ κ). iFrame. }
+      iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+      iModIntro. iFrame "Ret". unfold full_bor. iExists sn2. iExists κ'. iFrame.
+      iFrame "#".
+  Qed.
+  
+  Lemma llftl_bor_acc P κ :
+      llft_ctx -∗ full_bor κ P -∗ @[κ] -∗ |={↑Nllft}=> (▷ P) ∗
+          (∀ Q, ▷ (▷ Q ∗ [†κ] ={∅}=∗ ▷ P) ∗ ▷ Q ={↑Nllft}=∗ full_bor κ Q ∗ @[κ]).
+  Proof.
+    iIntros "#ctx fb alive". unfold full_bor. iDestruct "fb" as (sn κ') "[#incl [#slice OwnBor]]".
+    iMod (llftl_idx_acc_fwd κ (sn, κ') P with "[] [OwnBor alive]") as "[P OwnBor]".
+      { iFrame "#". } { iFrame. }
+    iModIntro. iFrame "P". iIntros (Q) "[vs Q]".
+    iMod (llftl_idx_acc_back_vs κ (sn, κ') P Q with "[] [OwnBor Q vs]") as "[fb alive]".
+      { iFrame "#". } { iFrame. }
+    iModIntro. iFrame "alive". unfold full_bor. iDestruct "fb" as (sn2 κ2) "[#incl2 [#slice2 OwnBor]]".
+    iExists sn2. iExists κ2.  iFrame. iFrame "#".
+  Qed.
+  
+  Lemma llftl_borrow_fwd P κ :
+      llft_ctx -∗ ▷ P -∗ |={↑Nllft}=> ∃ sn1 sn2 ,
+          slice Nbox sn1 P
+          ∗ slice Nbox sn2 P
+          ∗ OwnBorState llft_name sn1 (Borrow κ {[default_dead]})
+          ∗ OwnBorState llft_name sn2 (Borrow ∅ κ).
+  Proof.
+      unseal.
+      iIntros "[#other #ctx] P".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      iMod (make_everything_alive κ with "State Alive OuInv Delayed") as (sa') "[%Hsa' [State [Alive [OuInv Delayed]]]]". { solve_ndisj. }
+      
+      iDestruct (outer_borrow_create llft_name sa' sd blocked κ P with "[Delayed OuInv State P]") as "X"; trivial. { iFrame. }
+      iMod (fupd_mask_mono with "X") as "[Delayed X]". { solve_ndisj. }
+      iDestruct "X" as (sn1 sn2) "[OuInv [State [OwnBor1 [OwnBor2 [#slice1 #slice2]]]]]".
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
+      iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+      iModIntro. iExists sn1. iExists sn2. iFrame. iFrame "#".
+  Qed.
+  
+  Lemma llftl_borrow_rev P κ sn :
+      llft_ctx -∗ slice Nbox sn P -∗ OwnBorState llft_name sn (Borrow ∅ κ) -∗ [†κ] -∗
+        |={↑Nllft}=> ▷ P.
+  Proof.
+      unseal.
+      iIntros "[#other #ctx] P OwnBor #Dead".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      
+      iDestruct "Dead" as (k) "[%Hkdead Deadkin]".
+      iAssert (⌜ k ∈ sd ⌝)%I as "%Hksd". { iApply (lt_state_dead llft_name k sa sd). iSplitL; iFrame. iFrame "#". }
+      
+      iDestruct "O" as "[>Ostate #Oguards]".
+      
+      iDestruct (outer_unborrow_start llft_name sa sd blocked outlives sn ∅ ∅ κ P with "[Delayed OuInv State P Ostate OwnBor]") as "X"; trivial. { set_solver. } { set_solver. } { set_solver. } { set_solver. } { intros k0. set_solver. } { iFrame "OuInv". iFrame. }
+      iMod (fupd_mask_mono with "X") as "[Delayed [OuInv [State [Ostate [OwnBor P]]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa. iExists sd. iExists blocked. replace (blocked ∪ ∅) with blocked by set_solver. iFrame "OuInv". iFrame. }
+      iMod ("Hclose" with "[Delayed Ostate]"). { iNext. iExists outlives. iFrame. iFrame "Oguards". }
+      iModIntro. iFrame "P".
+  Qed.
+    
+  Lemma llftl_borrow κ P :
+      llft_ctx -∗ ▷ P -∗ |={↑Nllft}=> full_bor κ P ∗ ([†κ] ={↑Nllft}=∗ ▷ P).
+  Proof.
+    iIntros "#ctx P".
+    iMod (llftl_borrow_fwd P κ with "ctx P") as (sn1 sn2) "[#slice1 [#slice2 [OwnBor1 OwnBor2]]]".
+    iModIntro. unfold full_bor. iSplitL "OwnBor1". { iExists sn1. iExists κ. iFrame. iFrame "slice1". iApply guards_refl. }
+    iIntros "#kdead". iDestruct (llftl_borrow_rev P κ sn2 with "ctx slice2 OwnBor2 kdead") as "X". iFrame "X".
+  Qed.
+  
+  Lemma llftl_weaken sn κ κ' :
+      llft_ctx -∗ OwnBorState llft_name sn (Borrow κ {[default_dead]}) ={↑Nllft}=∗
+          ∃ sn' , OwnBorState llft_name sn' (Borrow (κ ∪ κ') {[default_dead]}).
+  Admitted.
+  
+  Lemma llftl_sep_split P Q κ :
+      llft_ctx -∗ full_bor κ (P ∗ Q) ={↑Nllft}=∗ full_bor κ P ∗ full_bor κ Q.
+  Proof.
+      unseal. iIntros "[#other #ctx] fbPQ". unfold full_bor.
+      iDestruct "fbPQ" as (sn κ') "[#incl [#slice OwnBor]]".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      
+      iDestruct (outer_split llft_name sa sd blocked sn κ' {[default_dead]} P Q
+        with "[Delayed State OuInv OwnBor slice]") as "X". { iFrame. iFrame "slice". }
+      iMod (fupd_mask_mono with "X") as (sn1 sn2) "[Delayed [OuInv [State [OwnBor1 [OwnBor2 [#slice1 #slice2]]]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa. iExists sd. iExists blocked. iFrame. }
+      iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+      iModIntro.
+      
+      iSplitL "OwnBor1". { iExists sn1. iExists κ'. iFrame. iFrame "#". }
+      { iExists sn2. iExists κ'. iFrame. iFrame "#". }
+  Qed.
+  
+  Lemma llftl_sep_join P Q κ :
+      llft_ctx -∗ full_bor κ P -∗ full_bor κ Q ={↑Nllft}=∗ full_bor κ (P ∗ Q).
+  Proof.
+      unseal. iIntros "[#other #ctx] fbP fbQ". unfold full_bor.
+      iDestruct "fbP" as (sn1 κ1) "[#incl1 [#slice1 OwnBor1]]".
+      iDestruct "fbQ" as (sn2 κ2) "[#incl2 [#slice2 OwnBor2]]".
+      
+      iMod (llftl_weaken sn1 κ1 κ2 with "[] OwnBor1") as (sn1') "OwnBor1". { unseal. iFrame "#". }
+      iMod (llftl_weaken sn2 κ2 κ1 with "[] OwnBor2") as (sn2') "OwnBor2". { unseal. iFrame "#". }
+      replace (κ2 ∪ κ1) with (κ1 ∪ κ2) by set_solver.
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      
+      iDestruct (outer_join llft_name sa sd blocked sn1 sn2 (κ1 ∩ κ2) {[default_dead]} P Q
+        with "[Delayed State OuInv OwnBor1 OwnBor2]") as "X". { iFrame. iFrame "#". }
+      iMod (fupd_mask_mono with "X") as (sn) "[Delayed [OuInv [State [OwnBor #slice]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa. iExists sd. iExists blocked. iFrame. }
+      iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+      iModIntro.
+      iExists sn. iExists (κ1 ∪ κ2). iFrame. iFrame "#".
+      iApply llftl_incl_glb. iFrame "#".
+  Qed.
+  
+  Lemma llftl_idx_bor_unnest κ κ' idx P :
+      llft_ctx -∗ idx_bor κ idx P -∗ full_bor κ' (idx_bor_tok idx) -∗ |={↑Nllft}=> full_bor (κ ⊓ κ') P.
+  Proof.
+      unseal. unfold idx_bor. destruct idx as [sn κ1]. unfold full_bor.
+      iIntros "[#other #ctx] [#incl #slice] fb".
+      iDestruct "fb" as (sn' κ2') "[#incl2 [#slice2 OwnBor2]]".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      
+      iDestruct (outer_unnest llft_name sa sd blocked sn sn' κ κ' P with "[Delayed OuInv State OwnBor2]") as "X"; trivial. { iFrame. iFrame "#". }
+      iMod (fupd_mask_mono with "X") as (sn2) "[Delayed [OuInv [State [OwnBor #slice3]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa. iExists sd. iExists blocked. replace (blocked ∪ ∅) with blocked by set_solver. iFrame "OuInv". iFrame. }
+      iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+      iModIntro. iExists sn2. iExists (κ ∪ κ'). 
+      iFrame "#". iFrame. iApply guards_refl.
+  Qed.
+  
+  (* derived rules *)
+  
+  Lemma llftl_bor_shorten κ κ' P :
+      κ' ⊑ κ -∗ full_bor κ P -∗ full_bor κ' P.
+  Proof.
+      rewrite llftl_bor_idx. rewrite llftl_bor_idx.
+      iIntros "#incl fb". iDestruct "fb" as (idx) "[idx tok]".
+      iDestruct (llftl_idx_shorten κ κ' with "incl idx") as "idx". iExists idx. iFrame.
+  Qed.
+  
+  Lemma llftl_reborrow κ κ' P :
+      llft_ctx -∗ κ' ⊑ κ -∗ full_bor κ P -∗ |={↑Nllft}=> full_bor κ' P ∗ ([†κ] ={↑Nllft}=∗ full_bor κ P).
+  Proof.
+      iIntros "#ctx #incl fb". rewrite llftl_bor_idx.
+      iDestruct "fb" as (idx) "[#idx tok]".
+      iMod (llftl_borrow κ' with "ctx tok") as "[tokbor back]".
+      iMod (llftl_idx_bor_unnest κ κ' idx P with "ctx idx tokbor") as "fullbor".
+      iModIntro. iSplitL "fullbor".
+      { iDestruct (llftl_bor_shorten _ κ' with "[] fullbor") as "fullbor".
+        { iApply llftl_incl_glb. iFrame "incl". iApply guards_refl. } iFrame.
+      }
+      iIntros "#dead". 
+      iDestruct (llftl_incl_dead_implies_dead κ' κ with "[]") as "#dead2". { iFrame "#". }
+      iMod (fupd_mask_mono with "dead2") as "#dead3". { solve_ndisj. }
+      destruct idx as [sn κ2].
+      iMod ("back" with "dead3") as ">back".
+      iModIntro. iExists (sn, κ2). iFrame. iFrame "#".
+  Qed.
+  
+  Lemma llftl_bor_freeze `{!Inhabited T} κ (P : T → iProp Σ):
+      llft_ctx -∗ full_bor κ (∃ (x: T) , P x) ={↑Nllft}=∗ ∃ (x: T), full_bor κ (P x).
+  Proof.
+      iIntros "#ctx fb". Admitted.
+      
+        
 End LlftLogic.
 
 Lemma llft_alloc {Σ: gFunctors} `{!llft_logicGpreS Σ} `{!invGS Σ} E
