@@ -1,6 +1,4 @@
-Require Import guarding.guard.
 Require Import guarding.own_and.
-Require Import guarding.tactics.
 Require Import guarding.lib.boxes.
 
 Require Import stdpp.base.

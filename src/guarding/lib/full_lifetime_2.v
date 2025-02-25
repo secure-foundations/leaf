@@ -632,8 +632,14 @@ Section LlftLogic.
       
       iClear "other". iClear "ctx".
       
-      iDestruct (outer_unborrow_start llft_name sa' sd blocked outlives sn κ' κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { set_solver. } { iFrame. iFrame "Slice". }
-      iMod (fupd_mask_mono with "X") as "[Delayed [OuInv [State [Ostate [OwnBor P]]]]]". { solve_ndisj. }
+      iDestruct (outer_unborrow_atomic llft_name sa' sd blocked sn κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { iFrame. iFrame "slice". }
+      iMod (fupd_mask_subseteq (↑Nbox)) as "Upd". { solve_ndisj. }
+      
+      iMod "X" as "[P X]". iModIntro. iLeft. iFrame "P".
+      iIntros (Q). iDestruct ("X" $! Q) as "X".
+      iIntros "Y". iDestruct ("X" with "Y") as "X".
+      
+      iMod (fupd_mask_mono with "X") as "X". { solve_ndisj. }
       
       iMod ("back" with "[State Alive OuInv Blo k]"). {
         iExists sa'. iExists sd. iExists (blocked ∪ κ). iFrame "State".
