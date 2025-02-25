@@ -611,7 +611,7 @@ Section LlftLogic.
   
   Lemma llftl_bor_acc_atomic P κ :
       llft_ctx -∗ full_bor κ P -∗ |={↑Nllft, ∅}=>
-          (▷ P ∗ (∀ Q, ▷ (▷ Q ∗ [†κ] ={∅}=∗ ▷ P) ∗ ▷ Q ={∅, ↑Nllft}=∗ full_bor κ Q ∗ @[κ]))
+          (▷ P ∗ (∀ Q, ▷ (▷ Q ∗ [†κ] ={∅}=∗ ▷ P) ∗ ▷ Q ={∅, ↑Nllft}=∗ full_bor κ Q))
           ∨ ([†κ] ∗ (|={∅, ↑Nllft}=> True)).
   Proof.
       unseal.
@@ -626,41 +626,59 @@ Section LlftLogic.
       
       iDestruct (outer_get_dead with "Delayed OuInv") as "#>%Hdd".
       
+      destruct (decide (κ ⊆ sa')) as [Hksa'|Hksa'].
+      { 
       destruct (decide (κ' ⊆ sa')) as [Hk'sa'|Hk'sa'].
       { 
-      iDestruct "O" as "[>Ostate Oguards]".
-      
-      iClear "other". iClear "ctx".
-      
-      iDestruct (outer_unborrow_atomic llft_name sa' sd blocked sn κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { iFrame. iFrame "slice". }
-      iMod (fupd_mask_subseteq (↑Nbox)) as "Upd". { solve_ndisj. }
-      
-      iMod "X" as "[P X]". iModIntro. iLeft. iFrame "P".
-      iIntros (Q). iDestruct ("X" $! Q) as "X".
-      iIntros "Y". iDestruct ("X" with "Y") as "X".
-      
-      iMod (fupd_mask_mono with "X") as "X". { solve_ndisj. }
-      
-      iMod ("back" with "[State Alive OuInv Blo k]"). {
-        iExists sa'. iExists sd. iExists (blocked ∪ κ). iFrame "State".
-        iFrame "Alive". iFrame "OuInv". unfold llft_alive_def. rewrite big_sepS_union.
-        { iFrame. } set_solver.
-      }
-      iMod ("Hclose" with "[Delayed Ostate Oguards]"). { iNext. iExists outlives'. iFrame. }
-      iModIntro. iFrame.
-      }
-      
-      assert (∃ x , x ∈ κ' ∩ sd) as Hex_x. { apply set_choose_L. set_solver. }
-      destruct Hex_x as [x Hex].
-      iDestruct (LtState_entails_Dead llft_name x sa' sd with "State") as "#Deadx". { set_solver. }
-      
-      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
-      
-      iDestruct (llftl_incl_dead_implies_dead κ κ' with "[]") as "HdeadkUpd". { iFrame "#". unseal. iFrame "#". iPureIntro. set_solver. }
-      iMod (fupd_mask_mono with "HdeadkUpd") as "#Hdeadk". { solve_ndisj. }
-      iExFalso. iApply (llftl_not_own_end κ). unseal. iFrame. iFrame "Hdeadk".
-  Qed.
+        iMod (augment_outlives with "Incl O OuInv State") as (outlives') "[%Ho' [O [OuInv State]]]". { set_solver. } { set_solver. }
+        iDestruct "O" as "[>Ostate Oguards]".
 
+        iClear "other". iClear "ctx".
+
+        iDestruct (outer_unborrow_atomic llft_name sa' sd blocked outlives' sn κ κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { iFrame. iFrame "slice". }
+        iMod (fupd_mask_subseteq (↑Nbox)) as "Upd". { solve_ndisj. }
+
+        iMod "X" as "[P X]". iModIntro. iLeft. iFrame "P".
+        iIntros (Q). iDestruct ("X" $! Q) as "X".
+        iIntros "Y". iDestruct ("X" with "Y") as "X".
+
+        iMod "X" as (sn2) "[Delayed [OuInv [State [Ostate [OwnBor #slice2]]]]]".
+        iMod "Upd".
+
+        iMod ("back" with "[State Alive OuInv Blo]"). {
+          iExists sa'. iExists sd. iExists blocked. iFrame "State".
+          iFrame "Alive". iFrame "OuInv". unfold llft_alive_def. { iFrame. } 
+        }
+        iMod ("Hclose" with "[Delayed Ostate Oguards]"). { iNext. iExists outlives'. iFrame. }
+        iModIntro. iFrame. iFrame "#".
+      }
+      {
+        assert (∃ x , x ∈ κ' ∩ sd) as Hex_x. { apply set_choose_L. set_solver. }
+        destruct Hex_x as [x Hex].
+        iDestruct (LtState_entails_Dead llft_name x sa' sd with "State") as "#Deadx". { set_solver. }
+
+        iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
+        iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+        
+        iDestruct (llftl_incl_dead_implies_dead κ κ' with "[]") as "HdeadkUpd". { iFrame "#". unseal. iFrame "#". iPureIntro. set_solver. }
+        iMod (fupd_mask_mono with "HdeadkUpd") as "#Hdeadk". { solve_ndisj. }
+        
+        iMod (fupd_mask_subseteq ∅) as "Upd". { solve_ndisj. }
+        iModIntro. iRight. iFrame "Upd". unseal. iFrame "Hdeadk".
+      }
+      }
+      {
+        assert (∃ x , x ∈ κ ∩ sd) as Hex_x. { apply set_choose_L. set_solver. }
+        destruct Hex_x as [x Hex].
+        iDestruct (LtState_entails_Dead llft_name x sa' sd with "State") as "#Deadx". { set_solver. }
+
+        iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
+        iMod ("Hclose" with "[Delayed O]"). { iNext. iExists outlives. iFrame. }
+        
+        iMod (fupd_mask_subseteq ∅) as "Upd". { solve_ndisj. }
+        iModIntro. iRight. iFrame "Upd". iExists x. iFrame "Deadx". iPureIntro. set_solver.
+      }
+  Qed.
   
   Lemma llftl_borrow_fwd P κ :
       llft_ctx -∗ ▷ P -∗ |={↑Nllft}=> ∃ sn1 sn2 ,
