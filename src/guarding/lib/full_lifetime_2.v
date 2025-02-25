@@ -609,6 +609,53 @@ Section LlftLogic.
     iExists sn2. iExists κ2.  iFrame. iFrame "#".
   Qed.
   
+  Lemma llftl_bor_acc_atomic P κ :
+      llft_ctx -∗ full_bor κ P -∗ |={↑Nllft, ∅}=>
+          (▷ P ∗ (∀ Q, ▷ (▷ Q ∗ [†κ] ={∅}=∗ ▷ P) ∗ ▷ Q ={∅, ↑Nllft}=∗ full_bor κ Q ∗ @[κ]))
+          ∨ ([†κ] ∗ (|={∅, ↑Nllft}=> True)).
+  Proof.
+      unseal.
+      iIntros "[#other #ctx] fb". unfold full_bor.
+      iDestruct "fb" as (sn κ') "[#Incl [#slice OwnBor]]".
+      
+      iInv "other" as (outlives) "[>Delayed O]" "Hclose".
+      
+      iDestruct (guards_open (True)%I _ (↑NLLFT ∖ ↑NllftO) (↑Nmain) with "[ctx]") as "J". { solve_ndisj. } { iFrame "ctx". }
+      iMod "J" as "[J back]". iDestruct "J" as (sa sd blocked) "[State [Alive [OuInv Blo]]]".
+      iMod (make_everything_alive (κ ∪ κ') with "State Alive OuInv Delayed") as (sa') "[%Hsa [State [Alive [OuInv Delayed]]]]". { solve_ndisj. }
+      
+      iDestruct (outer_get_dead with "Delayed OuInv") as "#>%Hdd".
+      
+      destruct (decide (κ' ⊆ sa')) as [Hk'sa'|Hk'sa'].
+      { 
+      iDestruct "O" as "[>Ostate Oguards]".
+      
+      iClear "other". iClear "ctx".
+      
+      iDestruct (outer_unborrow_start llft_name sa' sd blocked outlives sn κ' κ' {[default_dead]} P with "[Delayed OuInv OwnBor State Ostate]") as "X"; trivial. { set_solver. } { set_solver. } { iFrame. iFrame "Slice". }
+      iMod (fupd_mask_mono with "X") as "[Delayed [OuInv [State [Ostate [OwnBor P]]]]]". { solve_ndisj. }
+      
+      iMod ("back" with "[State Alive OuInv Blo k]"). {
+        iExists sa'. iExists sd. iExists (blocked ∪ κ). iFrame "State".
+        iFrame "Alive". iFrame "OuInv". unfold llft_alive_def. rewrite big_sepS_union.
+        { iFrame. } set_solver.
+      }
+      iMod ("Hclose" with "[Delayed Ostate Oguards]"). { iNext. iExists outlives'. iFrame. }
+      iModIntro. iFrame.
+      }
+      
+      assert (∃ x , x ∈ κ' ∩ sd) as Hex_x. { apply set_choose_L. set_solver. }
+      destruct Hex_x as [x Hex].
+      iDestruct (LtState_entails_Dead llft_name x sa' sd with "State") as "#Deadx". { set_solver. }
+      
+      iMod ("back" with "[State Alive OuInv Blo]"). { iExists sa'. iExists sd. iExists blocked. iFrame. }
+      
+      iDestruct (llftl_incl_dead_implies_dead κ κ' with "[]") as "HdeadkUpd". { iFrame "#". unseal. iFrame "#". iPureIntro. set_solver. }
+      iMod (fupd_mask_mono with "HdeadkUpd") as "#Hdeadk". { solve_ndisj. }
+      iExFalso. iApply (llftl_not_own_end κ). unseal. iFrame. iFrame "Hdeadk".
+  Qed.
+
+  
   Lemma llftl_borrow_fwd P κ :
       llft_ctx -∗ ▷ P -∗ |={↑Nllft}=> ∃ sn1 sn2 ,
           slice Nbox sn1 P
