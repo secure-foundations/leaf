@@ -74,9 +74,11 @@ src/lambda_verus/lang/tactics.v
 src/lambda_verus/lang/time.v
 
 src/lambda_verus/lang/lib/new_delete.v
+src/lambda_verus/lang/lib/memcpy.v
 
 src/lambda_verus/typing/base.v
 src/lambda_verus/typing/uniq_cmra.v
+src/lambda_verus/typing/lft_contexts.v
 
 
 -arg -w -arg -argument-scope-delimiter

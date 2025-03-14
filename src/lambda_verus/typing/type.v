@@ -2,7 +2,6 @@ From iris.algebra Require Import numbers list.
 From iris.base_logic.lib Require Export na_invariants.
 From lrust.util Require Export basic vector update fancy_lists.
 From lrust.prophecy Require Export prophecy.
-From lrust.lifetime Require Export frac_borrow.
 From lrust.lang Require Export proofmode notation.
 From lrust.typing Require Export base uniq_cmra.
 From lrust.typing Require Export lft_contexts.
@@ -11,12 +10,11 @@ Set Default Proof Using "Type".
 Implicit Type (𝔄 𝔅 ℭ: syn_type) (𝔄l 𝔅l: syn_typel).
 
 Class typeG Σ := TypeG {
-  type_lrustGS :> lrustGS Σ;
-  type_prophG :> prophG Σ;
-  type_uniqG :> uniqG Σ;
-  type_lftGS :> lftGS Σ;
-  type_na_invG :> na_invG Σ;
-  type_frac_borG :> frac_borG Σ;
+  #[global] type_lrustGS :: lrustGS Σ;
+  #[global] type_prophG :: prophG Σ;
+  #[global] type_uniqG :: uniqG Σ;
+  #[global] type_lftGS :: lifetime_internals_ra.llft_logicGS Σ;
+  #[global] type_na_invG :: na_invG Σ;
 }.
 
 Definition lrustN := nroot .@ "lrust".
@@ -27,7 +25,9 @@ Definition thread_id := na_inv_pool_name.
 (** * Type *)
 
 Record type `{!typeG Σ} 𝔄 := {
-  ty_size: nat;  ty_lfts: list lft;  ty_E: elctx;
+  ty_size: nat;
+  ty_lfts: list lft;
+  ty_E: elctx;
   ty_own: proph 𝔄 → nat → thread_id → list val → iProp Σ;
   ty_shr: proph 𝔄 → nat → lft → thread_id → loc → iProp Σ;
 
