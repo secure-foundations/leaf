@@ -1,4 +1,4 @@
-DIGEST 705f99fa3a41509a49a646dafa5f9b85
+DIGEST 1ec756c9279b3b42f09383abae9a91b5
 Flrust.util.basic
 R15:22 Coq.Program.Equality <> <> lib
 R24:47 Coq.Logic.FunctionalExtensionality <> <> lib
@@ -50,8 +50,8 @@ R477:484 lrust.util.basic <> semi_iso def
 R477:484 lrust.util.basic <> semi_iso def
 R477:484 lrust.util.basic <> semi_iso def
 rec 499:501 <> Iso
-proj 542:555 <> iso_semi_iso_l
-proj 573:586 <> iso_semi_iso_r
+proj 552:565 <> iso_semi_iso_l
+proj 593:606 <> iso_semi_iso_r
 binder 504:504 <> A:13
 binder 506:506 <> B:14
 R514:518 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
@@ -62,9 +62,739 @@ R527:531 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
 R526:526 lrust.util.basic <> B:14 var
 R532:532 lrust.util.basic <> A:13 var
 binder 523:523 <> g:16
-R560:566 lrust.util.basic <> SemiIso class
-R570:570 lrust.util.basic <> g:16 var
-R568:568 lrust.util.basic <> f:15 var
-R591:597 lrust.util.basic <> SemiIso class
-R601:601 lrust.util.basic <> f:15 var
-R599:599 lrust.util.basic <> g:16 var
+R570:576 lrust.util.basic <> SemiIso class
+R580:580 lrust.util.basic <> g:16 var
+R578:578 lrust.util.basic <> f:15 var
+R611:617 lrust.util.basic <> SemiIso class
+R621:621 lrust.util.basic <> f:15 var
+R619:619 lrust.util.basic <> g:16 var
+inst 643:648 <> iso_id
+binder 651:651 <> A:20
+R656:658 lrust.util.basic <> Iso class
+R668:669 Coq.Init.Datatypes <> id def
+R662:663 Coq.Init.Datatypes <> id def
+R665:665 lrust.util.basic <> A:20 var
+inst 707:718 <> semi_iso_inj
+R724:730 lrust.util.basic <> SemiIso class
+binder 732:732 <> A:21
+binder 734:734 <> B:22
+binder 736:736 <> f:23
+binder 738:738 <> g:24
+binder 722:738 <> H:25
+R743:745 stdpp.base <> Inj class
+R755:755 lrust.util.basic <> f:23 var
+R751:753 stdpp.base <> ::stdpp_scope:'(=)' not
+R747:749 stdpp.base <> ::stdpp_scope:'(=)' not
+R783:789 Coq.Init.Logic <> f_equal thm
+R807:815 lrust.util.basic <> semi_iso' thm
+R807:815 lrust.util.basic <> semi_iso' thm
+R807:815 lrust.util.basic <> semi_iso' thm
+R807:815 lrust.util.basic <> semi_iso' thm
+R807:815 lrust.util.basic <> semi_iso' thm
+prf 830:842 <> compose_assoc
+binder 845:845 <> A:26
+binder 847:847 <> B:27
+binder 849:849 <> C:28
+binder 851:851 <> D:29
+R859:863 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R858:858 lrust.util.basic <> A:26 var
+R864:864 lrust.util.basic <> B:27 var
+binder 855:855 <> f:30
+binder 867:867 <> g:31
+R874:878 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R873:873 lrust.util.basic <> C:28 var
+R879:879 lrust.util.basic <> D:29 var
+binder 870:870 <> h:32
+R899:901 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R885:890 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R898:898 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R884:884 lrust.util.basic <> h:32 var
+R892:896 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R891:891 lrust.util.basic <> g:31 var
+R897:897 lrust.util.basic <> f:30 var
+R902:902 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R910:915 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R904:908 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R903:903 lrust.util.basic <> h:32 var
+R909:909 lrust.util.basic <> g:31 var
+R916:916 lrust.util.basic <> f:30 var
+def 949:954 <> s_comb
+binder 957:957 <> A:33
+binder 959:959 <> B:34
+binder 961:961 <> C:35
+R969:973 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R968:968 lrust.util.basic <> A:33 var
+R975:979 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R974:974 lrust.util.basic <> B:34 var
+R980:980 lrust.util.basic <> C:35 var
+binder 965:965 <> f:36
+R988:992 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R987:987 lrust.util.basic <> A:33 var
+R993:993 lrust.util.basic <> B:34 var
+binder 984:984 <> g:37
+binder 996:996 <> x:38
+R1002:1002 lrust.util.basic <> f:36 var
+R1004:1004 lrust.util.basic <> x:38 var
+R1008:1008 lrust.util.basic <> g:37 var
+R1010:1010 lrust.util.basic <> x:38 var
+R1029:1034 lrust.util.basic <> s_comb def
+not 1020:1020 <> :::x_'⊛'_x
+R1088:1093 lrust.util.basic <> s_comb def
+R1088:1093 lrust.util.basic <> s_comb def
+ind 1167:1170 <> Inj3
+constr 1290:1293 <> inj3
+rec 1167:1170 <> Inj3
+proj 1290:1293 <> inj3
+binder 1173:1173 <> A:39
+binder 1175:1175 <> B:40
+binder 1177:1177 <> C:41
+binder 1179:1179 <> D:42
+R1187:1194 Coq.Relations.Relation_Definitions <> relation def
+R1196:1196 lrust.util.basic <> A:39 var
+binder 1183:1184 <> R1:43
+R1204:1211 Coq.Relations.Relation_Definitions <> relation def
+R1213:1213 lrust.util.basic <> B:40 var
+binder 1200:1201 <> R2:44
+R1221:1228 Coq.Relations.Relation_Definitions <> relation def
+R1230:1230 lrust.util.basic <> C:41 var
+binder 1217:1218 <> R3:45
+R1241:1248 Coq.Relations.Relation_Definitions <> relation def
+R1250:1250 lrust.util.basic <> D:42 var
+binder 1238:1238 <> S:46
+R1258:1262 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1257:1257 lrust.util.basic <> A:39 var
+R1264:1268 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1263:1263 lrust.util.basic <> B:40 var
+R1270:1274 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1269:1269 lrust.util.basic <> C:41 var
+R1275:1275 lrust.util.basic <> D:42 var
+binder 1254:1254 <> f:47
+binder 1295:1296 <> x1:49
+binder 1298:1299 <> x2:50
+binder 1301:1302 <> x3:51
+binder 1304:1305 <> y1:52
+binder 1307:1308 <> y2:53
+binder 1310:1311 <> y3:54
+R1346:1350 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1319:1319 lrust.util.basic <> S:46 var
+R1322:1322 lrust.util.basic <> f:47 var
+R1330:1331 lrust.util.basic <> x3:51 var
+R1327:1328 lrust.util.basic <> x2:50 var
+R1324:1325 lrust.util.basic <> x1:49 var
+R1335:1335 lrust.util.basic <> f:47 var
+R1343:1344 lrust.util.basic <> y3:54 var
+R1340:1341 lrust.util.basic <> y2:53 var
+R1337:1338 lrust.util.basic <> y1:52 var
+R1359:1363 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R1351:1352 lrust.util.basic <> R1:43 var
+R1354:1355 lrust.util.basic <> x1:49 var
+R1357:1358 lrust.util.basic <> y1:52 var
+R1372:1376 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R1364:1365 lrust.util.basic <> R2:44 var
+R1367:1368 lrust.util.basic <> x2:50 var
+R1370:1371 lrust.util.basic <> y2:53 var
+R1377:1378 lrust.util.basic <> R3:45 var
+R1380:1381 lrust.util.basic <> x3:51 var
+R1383:1384 lrust.util.basic <> y3:54 var
+R1405:1408 lrust.util.basic <> inj3 def
+R1405:1408 lrust.util.basic <> inj3 def
+inst 1506:1520 <> Empty_set_empty
+R1523:1527 stdpp.base <> Empty class
+R1536:1544 Coq.Init.Datatypes <> Empty_set ind
+inst 1563:1578 <> Empty_set_empty'
+R1581:1585 stdpp.base <> Empty class
+R1595:1603 Coq.Init.Datatypes <> Empty_set ind
+ind 1613:1616 <> Void
+constr 1623:1628 <> absurd
+rec 1613:1616 <> Void
+proj 1623:1628 <> absurd
+binder 1618:1618 <> A:56
+R1631:1633 Coq.Unicode.Utf8_core <> ::type_scope:'∀'_x_'..'_x_','_x not
+R1637:1638 Coq.Unicode.Utf8_core <> ::type_scope:'∀'_x_'..'_x_','_x not
+binder 1635:1635 <> B:58
+R1640:1644 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1639:1639 lrust.util.basic <> A:56 var
+R1645:1645 lrust.util.basic <> B:58 var
+inst 1665:1678 <> Empty_set_void
+R1681:1684 lrust.util.basic <> Void class
+R1686:1688 stdpp.base <> ::stdpp_scope:'∅' not
+inst 1728:1737 <> False_void
+R1740:1743 lrust.util.basic <> Void class
+R1745:1749 stdpp.base <> ::type_scope:'False' not
+inst 1790:1797 <> fun_void
+R1802:1810 stdpp.base <> Inhabited class
+binder 1812:1812 <> A:60
+binder 1801:1812 <> Inhabited0:61
+R1816:1819 lrust.util.basic <> Void class
+binder 1821:1821 <> B:62
+binder 1815:1821 <> Void0:63
+R1826:1829 lrust.util.basic <> Void class
+R1833:1837 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1832:1832 lrust.util.basic <> A:60 var
+R1838:1838 lrust.util.basic <> B:62 var
+R1859:1862 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R1873:1873 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R1863:1872 stdpp.base <> inhabitant meth
+R1887:1892 lrust.util.basic <> absurd def
+R1887:1892 lrust.util.basic <> absurd def
+inst 1917:1924 <> void_iso
+R1929:1932 lrust.util.basic <> Void class
+binder 1934:1934 <> A:64
+binder 1928:1934 <> Void0:65
+R1938:1941 lrust.util.basic <> Void class
+binder 1943:1943 <> B:66
+binder 1937:1943 <> Void1:67
+R1948:1950 lrust.util.basic <> Iso class
+R1959:1964 lrust.util.basic <> absurd def
+R1952:1957 lrust.util.basic <> absurd def
+R2003:2008 lrust.util.basic <> absurd def
+R2003:2008 lrust.util.basic <> absurd def
+R2003:2008 lrust.util.basic <> absurd def
+abbrev 2053:2060 <> big_sepL
+R2066:2072 iris.algebra.big_op <> big_opL def
+R2074:2079 iris.bi.interface <> bi_sep proj
+prf 2143:2149 <> succ_le
+binder 2151:2151 <> m:68
+binder 2153:2153 <> n:69
+R2166:2170 Coq.Unicode.Utf8_core <> ::type_scope:x_'↔'_x not
+R2160:2164 Coq.Unicode.Utf8 <> :::x_'≤'_x not
+R2157:2157 Coq.Init.Datatypes <> S constr
+R2159:2159 lrust.util.basic <> m:68 var
+R2165:2165 lrust.util.basic <> n:69 var
+R2171:2173 Coq.Unicode.Utf8_core <> ::type_scope:'∃'_x_'..'_x_','_x not
+R2176:2177 Coq.Unicode.Utf8_core <> ::type_scope:'∃'_x_'..'_x_','_x not
+binder 2174:2175 <> n':70
+R2186:2190 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R2179:2181 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2178:2178 lrust.util.basic <> n:69 var
+R2182:2182 Coq.Init.Datatypes <> S constr
+R2184:2185 lrust.util.basic <> n':70 var
+R2192:2196 Coq.Unicode.Utf8 <> :::x_'≤'_x not
+R2191:2191 lrust.util.basic <> m:68 var
+R2197:2198 lrust.util.basic <> n':70 var
+inst 2287:2296 <> eq_nat_sym
+R2300:2308 Coq.Classes.RelationClasses <> Symmetric class
+R2310:2315 Coq.Arith.EqNat <> eq_nat def
+R2348:2359 Coq.Arith.EqNat <> eq_nat_is_eq thm
+R2348:2359 Coq.Arith.EqNat <> eq_nat_is_eq thm
+R2348:2359 Coq.Arith.EqNat <> eq_nat_is_eq thm
+R2348:2359 Coq.Arith.EqNat <> eq_nat_is_eq thm
+R2348:2359 Coq.Arith.EqNat <> eq_nat_is_eq thm
+prf 2405:2413 <> negb_andb
+binder 2415:2415 <> b:71
+binder 2417:2417 <> c:72
+R2434:2436 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2421:2424 Coq.Init.Datatypes <> negb def
+R2428:2431 Coq.Init.Datatypes <> ::bool_scope:x_'&&'_x not
+R2427:2427 lrust.util.basic <> b:71 var
+R2432:2432 lrust.util.basic <> c:72 var
+R2443:2446 Coq.Init.Datatypes <> ::bool_scope:x_'||'_x not
+R2437:2440 Coq.Init.Datatypes <> negb def
+R2442:2442 lrust.util.basic <> b:71 var
+R2447:2450 Coq.Init.Datatypes <> negb def
+R2452:2452 lrust.util.basic <> c:72 var
+prf 2492:2499 <> negb_orb
+binder 2501:2501 <> b:73
+binder 2503:2503 <> c:74
+R2520:2522 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2507:2510 Coq.Init.Datatypes <> negb def
+R2514:2517 Coq.Init.Datatypes <> ::bool_scope:x_'||'_x not
+R2513:2513 lrust.util.basic <> b:73 var
+R2518:2518 lrust.util.basic <> c:74 var
+R2529:2532 Coq.Init.Datatypes <> ::bool_scope:x_'&&'_x not
+R2523:2526 Coq.Init.Datatypes <> negb def
+R2528:2528 lrust.util.basic <> b:73 var
+R2533:2536 Coq.Init.Datatypes <> negb def
+R2538:2538 lrust.util.basic <> c:74 var
+prf 2578:2590 <> negb_negb_orb
+binder 2592:2592 <> b:75
+binder 2594:2594 <> c:76
+R2616:2618 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2598:2601 Coq.Init.Datatypes <> negb def
+R2610:2613 Coq.Init.Datatypes <> ::bool_scope:x_'||'_x not
+R2604:2607 Coq.Init.Datatypes <> negb def
+R2609:2609 lrust.util.basic <> b:75 var
+R2614:2614 lrust.util.basic <> c:76 var
+R2620:2623 Coq.Init.Datatypes <> ::bool_scope:x_'&&'_x not
+R2619:2619 lrust.util.basic <> b:75 var
+R2624:2627 Coq.Init.Datatypes <> negb def
+R2629:2629 lrust.util.basic <> c:76 var
+prf 2698:2719 <> surjective_pairing_fun
+binder 2722:2722 <> A:77
+binder 2724:2724 <> B:78
+binder 2726:2726 <> C:79
+R2734:2738 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R2733:2733 lrust.util.basic <> A:77 var
+R2740:2742 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2739:2739 lrust.util.basic <> B:78 var
+R2743:2743 lrust.util.basic <> C:79 var
+binder 2730:2730 <> f:80
+R2749:2751 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2748:2748 lrust.util.basic <> f:80 var
+R2772:2777 lrust.util.basic <> :::x_'⊛'_x not
+R2787:2787 lrust.util.basic <> :::x_'⊛'_x not
+R2756:2761 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R2771:2771 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R2752:2755 Coq.Init.Datatypes <> pair constr
+R2765:2769 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R2762:2764 Coq.Init.Datatypes <> fst def
+R2770:2770 lrust.util.basic <> f:80 var
+R2781:2785 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R2778:2780 Coq.Init.Datatypes <> snd def
+R2786:2786 lrust.util.basic <> f:80 var
+R2824:2841 Coq.Init.Datatypes <> surjective_pairing thm
+R2824:2841 Coq.Init.Datatypes <> surjective_pairing thm
+R2824:2841 Coq.Init.Datatypes <> surjective_pairing thm
+def 2861:2870 <> prod_assoc
+binder 2873:2873 <> A:81
+binder 2875:2875 <> B:82
+binder 2877:2877 <> C:83
+R2881:2881 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2883:2884 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2891:2891 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2885:2885 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2887:2888 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2890:2890 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+binder 2889:2889 <> z:84
+binder 2886:2886 <> y:85
+binder 2882:2882 <> x:86
+binder 2881:2891 <> pat:87
+R2895:2895 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2901:2904 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2897:2899 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2896:2896 lrust.util.basic <> A:81 var
+R2900:2900 lrust.util.basic <> B:82 var
+R2905:2905 lrust.util.basic <> C:83 var
+R2910:2910 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2917:2918 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2920:2920 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2911:2911 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2913:2914 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2916:2916 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2912:2912 lrust.util.basic <> x:86 var
+R2915:2915 lrust.util.basic <> y:85 var
+R2919:2919 lrust.util.basic <> z:84 var
+def 2934:2944 <> prod_assoc'
+binder 2947:2947 <> A:88
+binder 2949:2949 <> B:89
+binder 2951:2951 <> C:90
+R2955:2955 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2962:2963 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2965:2965 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2956:2956 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2958:2959 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2961:2961 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+binder 2964:2964 <> z:91
+binder 2960:2960 <> y:92
+binder 2957:2957 <> x:93
+binder 2955:2965 <> pat:94
+R2970:2973 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2979:2979 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2969:2969 lrust.util.basic <> A:88 var
+R2975:2977 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R2974:2974 lrust.util.basic <> B:89 var
+R2978:2978 lrust.util.basic <> C:90 var
+R2984:2984 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2986:2987 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2994:2994 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2985:2985 lrust.util.basic <> x:93 var
+R2988:2988 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2990:2991 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2993:2993 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R2989:2989 lrust.util.basic <> y:92 var
+R2992:2992 lrust.util.basic <> z:91 var
+inst 3013:3026 <> prod_assoc_iso
+binder 3029:3029 <> A:95
+binder 3031:3031 <> B:96
+binder 3033:3033 <> C:97
+R3038:3040 lrust.util.basic <> Iso class
+R3062:3072 lrust.util.basic <> prod_assoc' def
+R3044:3053 lrust.util.basic <> prod_assoc def
+R3055:3055 lrust.util.basic <> A:95 var
+R3057:3057 lrust.util.basic <> B:96 var
+R3059:3059 lrust.util.basic <> C:97 var
+def 3151:3162 <> prod_left_id
+binder 3165:3165 <> A:98
+R3169:3169 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3172:3173 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3175:3175 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3170:3171 Coq.Program.Syntax <> :::'()' not
+binder 3174:3174 <> x:99
+binder 3169:3175 <> pat:100
+R3179:3179 lrust.util.basic <> A:98 var
+R3184:3184 lrust.util.basic <> x:99 var
+def 3198:3210 <> prod_left_id'
+binder 3213:3213 <> A:101
+R3220:3220 lrust.util.basic <> A:101 var
+binder 3217:3217 <> x:102
+R3226:3226 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3229:3230 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3232:3232 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3227:3228 Coq.Program.Syntax <> :::'()' not
+R3231:3231 lrust.util.basic <> x:102 var
+inst 3251:3266 <> prod_left_id_iso
+binder 3269:3269 <> A:103
+R3274:3276 lrust.util.basic <> Iso class
+R3296:3308 lrust.util.basic <> prod_left_id' def
+R3280:3291 lrust.util.basic <> prod_left_id def
+R3293:3293 lrust.util.basic <> A:103 var
+def 3371:3383 <> prod_right_id
+binder 3386:3386 <> A:104
+R3390:3390 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3392:3393 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3396:3396 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3394:3395 Coq.Program.Syntax <> :::'()' not
+binder 3391:3391 <> x:105
+binder 3390:3396 <> pat:106
+R3400:3400 lrust.util.basic <> A:104 var
+R3405:3405 lrust.util.basic <> x:105 var
+def 3419:3432 <> prod_right_id'
+binder 3435:3435 <> A:107
+R3442:3442 lrust.util.basic <> A:107 var
+binder 3439:3439 <> x:108
+R3448:3448 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3450:3451 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3454:3454 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R3449:3449 lrust.util.basic <> x:108 var
+R3452:3453 Coq.Program.Syntax <> :::'()' not
+inst 3473:3489 <> prod_right_id_iso
+binder 3492:3492 <> A:109
+R3497:3499 lrust.util.basic <> Iso class
+R3520:3533 lrust.util.basic <> prod_right_id' def
+R3503:3515 lrust.util.basic <> prod_right_id def
+R3517:3517 lrust.util.basic <> A:109 var
+prf 3619:3631 <> app_length_ex
+binder 3634:3634 <> A:110
+R3642:3645 Coq.Init.Datatypes <> list ind
+R3647:3647 lrust.util.basic <> A:110 var
+binder 3638:3639 <> xl:111
+binder 3650:3650 <> m:112
+binder 3652:3652 <> n:113
+R3675:3679 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R3667:3669 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3658:3663 Coq.Init.Datatypes <> length def
+R3665:3666 lrust.util.basic <> xl:111 var
+R3671:3673 Coq.Init.Peano <> ::nat_scope:x_'+'_x not
+R3670:3670 lrust.util.basic <> m:112 var
+R3674:3674 lrust.util.basic <> n:113 var
+R3680:3682 Coq.Unicode.Utf8_core <> ::type_scope:'∃'_x_'..'_x_','_x not
+R3688:3689 Coq.Unicode.Utf8_core <> ::type_scope:'∃'_x_'..'_x_','_x not
+binder 3683:3684 <> yl:114
+binder 3686:3687 <> zl:115
+R3703:3707 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R3692:3694 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3690:3691 lrust.util.basic <> xl:111 var
+R3697:3700 Coq.Init.Datatypes <> ::list_scope:x_'++'_x not
+R3695:3696 lrust.util.basic <> yl:114 var
+R3701:3702 lrust.util.basic <> zl:115 var
+R3721:3725 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R3717:3719 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3708:3713 Coq.Init.Datatypes <> length def
+R3715:3716 lrust.util.basic <> yl:114 var
+R3720:3720 lrust.util.basic <> m:112 var
+R3735:3737 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3726:3731 Coq.Init.Datatypes <> length def
+R3733:3734 lrust.util.basic <> zl:115 var
+R3738:3738 lrust.util.basic <> n:113 var
+R3768:3771 stdpp.list <> take abbrev
+R3781:3784 stdpp.list <> drop abbrev
+R3768:3771 stdpp.list <> take abbrev
+R3781:3784 stdpp.list <> drop abbrev
+R3803:3813 stdpp.list <> length_take thm
+R3815:3825 stdpp.list <> length_drop thm
+R3827:3835 stdpp.list <> take_drop def
+R3803:3813 stdpp.list <> length_take thm
+R3803:3813 stdpp.list <> length_take thm
+R3815:3825 stdpp.list <> length_drop thm
+R3815:3825 stdpp.list <> length_drop thm
+R3827:3835 stdpp.list <> take_drop def
+R3827:3835 stdpp.list <> take_drop def
+prf 3869:3883 <> zip_fst_snd_fun
+binder 3886:3886 <> A:116
+binder 3888:3888 <> B:117
+binder 3890:3890 <> C:118
+R3898:3902 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R3897:3897 lrust.util.basic <> C:118 var
+R3903:3906 Coq.Init.Datatypes <> list ind
+R3910:3912 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R3909:3909 lrust.util.basic <> A:116 var
+R3913:3913 lrust.util.basic <> B:117 var
+binder 3894:3894 <> f:119
+R3964:3966 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3944:3949 lrust.util.basic <> :::x_'⊛'_x not
+R3963:3963 lrust.util.basic <> :::x_'⊛'_x not
+R3924:3929 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R3943:3943 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R3921:3923 stdpp.base <> zip abbrev
+R3937:3941 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R3930:3932 Coq.Lists.List <> map def
+R3934:3936 Coq.Init.Datatypes <> fst def
+R3942:3942 lrust.util.basic <> f:119 var
+R3957:3961 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R3950:3952 Coq.Lists.List <> map def
+R3954:3956 Coq.Init.Datatypes <> snd def
+R3962:3962 lrust.util.basic <> f:119 var
+R3967:3967 lrust.util.basic <> f:119 var
+R3998:4008 stdpp.list <> zip_fst_snd thm
+R3998:4008 stdpp.list <> zip_fst_snd thm
+def 4028:4034 <> llookup
+binder 4037:4037 <> A:120
+R4045:4048 Coq.Init.Datatypes <> list ind
+R4050:4050 lrust.util.basic <> A:120 var
+binder 4041:4042 <> xl:121
+R4057:4059 stdpp.fin <> fin abbrev
+R4062:4067 Coq.Init.Datatypes <> length def
+R4069:4070 lrust.util.basic <> xl:121 var
+binder 4054:4054 <> i:122
+R4076:4076 lrust.util.basic <> A:120 var
+R4097:4101 stdpp.base <> ::stdpp_scope:x_'!!!'_x not
+R4102:4102 lrust.util.basic <> i:122 var
+R4083:4093 stdpp.vector <> list_to_vec abbrev
+R4095:4096 lrust.util.basic <> xl:121 var
+R4122:4128 lrust.util.basic <> llookup def
+not 4111:4111 <> :::x_'!!ₗ'_x
+def 4178:4183 <> lapply
+binder 4186:4186 <> A:123
+binder 4188:4188 <> B:124
+R4196:4199 Coq.Init.Datatypes <> list ind
+R4203:4207 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R4202:4202 lrust.util.basic <> B:124 var
+R4208:4208 lrust.util.basic <> A:123 var
+binder 4192:4193 <> fl:125
+R4216:4216 lrust.util.basic <> B:124 var
+binder 4213:4213 <> x:126
+R4221:4224 Coq.Init.Datatypes <> list ind
+R4226:4226 lrust.util.basic <> A:123 var
+R4237:4241 stdpp.base <> ::stdpp_scope:x_'<$>'_x not
+R4231:4234 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R4236:4236 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R4235:4235 lrust.util.basic <> x:126 var
+R4242:4243 lrust.util.basic <> fl:125 var
+prf 4253:4262 <> lapply_app
+binder 4265:4265 <> A:127
+binder 4267:4267 <> B:128
+R4278:4281 Coq.Init.Datatypes <> list ind
+R4285:4289 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R4284:4284 lrust.util.basic <> B:128 var
+R4290:4290 lrust.util.basic <> A:127 var
+binder 4271:4272 <> fl:129
+binder 4274:4275 <> gl:130
+binder 4294:4294 <> x:131
+R4319:4321 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R4300:4305 lrust.util.basic <> lapply def
+R4318:4318 lrust.util.basic <> x:131 var
+R4310:4313 Coq.Init.Datatypes <> ::list_scope:x_'++'_x not
+R4308:4309 lrust.util.basic <> fl:129 var
+R4314:4315 lrust.util.basic <> gl:130 var
+R4333:4336 Coq.Init.Datatypes <> ::list_scope:x_'++'_x not
+R4322:4327 lrust.util.basic <> lapply def
+R4332:4332 lrust.util.basic <> x:131 var
+R4329:4330 lrust.util.basic <> fl:129 var
+R4337:4342 lrust.util.basic <> lapply def
+R4347:4347 lrust.util.basic <> x:131 var
+R4344:4345 lrust.util.basic <> gl:130 var
+def 4443:4449 <> lforall
+binder 4452:4452 <> A:132
+R4461:4465 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R4460:4460 lrust.util.basic <> A:132 var
+binder 4456:4457 <> Φ:133
+R4477:4480 Coq.Init.Datatypes <> list ind
+R4482:4482 lrust.util.basic <> A:132 var
+binder 4473:4474 <> xl:134
+R4503:4504 lrust.util.basic <> xl:134 var
+R4511:4512 Coq.Lists.List ListNotations ::list_scope:'['_']' not
+R4517:4520 stdpp.base <> ::type_scope:'True' not
+R4525:4528 Coq.Init.Datatypes <> ::list_scope:x_'::'_x not
+R4540:4544 Coq.Unicode.Utf8_core <> ::type_scope:x_'∧'_x not
+R4536:4537 lrust.util.basic <> Φ:133 var
+R4545:4551 lrust.util.basic <> lforall:135 def
+R4553:4554 lrust.util.basic <> Φ:133 var
+sec 4574:4581 <> forall2b
+var  4593:4593 forall2b A
+var  4595:4595 forall2b B
+var  4599:4599 forall2b f
+R4603:4607 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R4602:4602 lrust.util.basic <> A:137 var
+R4609:4613 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R4608:4608 lrust.util.basic <> B:138 var
+R4614:4617 Coq.Init.Datatypes <> bool ind
+def 4630:4637 <> forall2b
+R4644:4647 Coq.Init.Datatypes <> list ind
+R4649:4649 lrust.util.basic <> forall2b.A var
+binder 4640:4641 <> xl:140
+R4657:4660 Coq.Init.Datatypes <> list ind
+R4662:4662 lrust.util.basic <> forall2b.B var
+binder 4653:4654 <> yl:141
+R4680:4681 lrust.util.basic <> yl:141 var
+R4676:4677 lrust.util.basic <> xl:140 var
+R4692:4693 Coq.Lists.List ListNotations ::list_scope:'['_']' not
+R4696:4697 Coq.Lists.List ListNotations ::list_scope:'['_']' not
+R4702:4705 Coq.Init.Datatypes <> true constr
+R4712:4715 Coq.Init.Datatypes <> ::list_scope:x_'::'_x not
+R4722:4725 Coq.Init.Datatypes <> ::list_scope:x_'::'_x not
+R4738:4741 Coq.Init.Datatypes <> ::bool_scope:x_'&&'_x not
+R4733:4733 lrust.util.basic <> forall2b.f var
+R4742:4749 lrust.util.basic <> forall2b:142 def
+R4771:4775 Coq.Init.Datatypes <> false constr
+R4788:4795 lrust.util.basic forall2b <> sec
+def 4850:4859 <> last_error
+binder 4862:4862 <> A:145
+R4870:4873 Coq.Init.Datatypes <> list ind
+R4875:4875 lrust.util.basic <> A:145 var
+binder 4866:4867 <> xl:146
+R4880:4885 Coq.Init.Datatypes <> option ind
+R4887:4887 lrust.util.basic <> A:145 var
+R4900:4901 lrust.util.basic <> xl:146 var
+R4908:4909 Coq.Lists.List ListNotations ::list_scope:'['_']' not
+R4914:4917 Coq.Init.Datatypes <> None constr
+R4921:4921 Coq.Lists.List ListNotations ::list_scope:'['_x_']' not
+R4923:4923 Coq.Lists.List ListNotations ::list_scope:'['_x_']' not
+R4928:4931 Coq.Init.Datatypes <> Some constr
+R4938:4941 Coq.Init.Datatypes <> ::list_scope:x_'::'_x not
+R4949:4958 lrust.util.basic <> last_error:147 def
+ind 5004:5010 <> IntoFin
+constr 5039:5046 <> into_fin
+rec 5004:5010 <> IntoFin
+proj 5039:5046 <> into_fin
+binder 5013:5013 <> n:149
+R5020:5022 Coq.Init.Datatypes <> nat ind
+binder 5017:5017 <> k:150
+R5029:5031 stdpp.fin <> fin abbrev
+R5033:5033 lrust.util.basic <> n:149 var
+binder 5026:5026 <> i:151
+R5050:5052 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R5049:5049 lrust.util.basic <> k:150 var
+R5053:5053 lrust.util.basic <> i:151 var
+inst 5073:5082 <> into_fin_0
+binder 5085:5085 <> n:154
+R5091:5097 lrust.util.basic <> IntoFin class
+R5100:5100 Coq.Init.Datatypes <> S constr
+R5102:5102 lrust.util.basic <> n:154 var
+inst 5149:5158 <> into_fin_S
+binder 5161:5161 <> n:155
+binder 5164:5164 <> k:156
+binder 5166:5166 <> i:157
+R5181:5185 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5170:5176 lrust.util.basic <> IntoFin class
+R5180:5180 lrust.util.basic <> i:157 var
+R5178:5178 lrust.util.basic <> k:156 var
+R5187:5193 lrust.util.basic <> IntoFin class
+R5196:5196 Coq.Init.Datatypes <> S constr
+R5198:5198 lrust.util.basic <> n:155 var
+R5202:5202 Coq.Init.Datatypes <> S constr
+R5204:5204 lrust.util.basic <> k:156 var
+R5208:5209 stdpp.fin <> FS abbrev
+R5211:5211 lrust.util.basic <> i:157 var
+def 5251:5259 <> fin_renew
+binder 5262:5262 <> m:158
+binder 5264:5264 <> n:159
+R5279:5283 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5269:5274 Coq.Arith.EqNat <> eq_nat def
+R5276:5276 lrust.util.basic <> m:158 var
+R5278:5278 lrust.util.basic <> n:159 var
+R5289:5293 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5284:5286 stdpp.fin <> fin abbrev
+R5288:5288 lrust.util.basic <> m:158 var
+R5294:5296 stdpp.fin <> fin abbrev
+R5298:5298 lrust.util.basic <> n:159 var
+R5314:5314 lrust.util.basic <> n:159 var
+R5311:5311 lrust.util.basic <> m:158 var
+R5333:5335 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5337:5338 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5339:5347 stdpp.fin <> fin_0_inv abbrev
+R5355:5355 Coq.Init.Datatypes <> S constr
+R5365:5370 lrust.util.basic <> absurd def
+R5376:5376 Coq.Init.Datatypes <> S constr
+R5382:5382 Coq.Init.Datatypes <> S constr
+R5390:5392 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5395:5396 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+binder 5393:5394 <> eq:163
+R5397:5405 stdpp.fin <> fin_S_inv def
+R5418:5422 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R5416:5417 stdpp.fin <> FS abbrev
+R5424:5432 lrust.util.basic <> fin_renew:160 def
+R5440:5441 lrust.util.basic <> eq:163 var
+prf 5458:5477 <> fin_to_nat_fin_renew
+binder 5480:5480 <> m:164
+binder 5482:5482 <> n:165
+R5490:5495 Coq.Arith.EqNat <> eq_nat def
+R5497:5497 lrust.util.basic <> m:164 var
+R5499:5499 lrust.util.basic <> n:165 var
+binder 5486:5487 <> eq:166
+binder 5502:5502 <> i:167
+R5535:5537 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R5508:5517 stdpp.fin <> fin_to_nat def
+R5520:5528 lrust.util.basic <> fin_renew def
+R5533:5533 lrust.util.basic <> i:167 var
+R5530:5531 lrust.util.basic <> eq:166 var
+R5538:5538 lrust.util.basic <> i:167 var
+def 5666:5673 <> big_sepN
+R5682:5683 iris.bi.interface <> bi rec
+binder 5676:5679 <> PROP:168
+R5690:5692 Coq.Init.Datatypes <> nat ind
+binder 5687:5687 <> n:169
+R5697:5697 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5712:5717 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5703:5707 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R5698:5700 stdpp.fin <> fin abbrev
+R5702:5702 lrust.util.basic <> n:169 var
+R5708:5711 lrust.util.basic <> PROP:168 var
+R5718:5721 lrust.util.basic <> PROP:168 var
+R5734:5734 lrust.util.basic <> n:169 var
+R5750:5752 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5754:5755 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5756:5759 iris.bi.interface <> ::bi_scope:'True' not
+R5765:5765 Coq.Init.Datatypes <> S constr
+R5772:5774 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5777:5778 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+binder 5775:5776 <> Φ:172
+R5787:5791 iris.bi.interface <> ::bi_scope:x_'∗'_x not
+R5779:5780 lrust.util.basic <> Φ:172 var
+R5792:5799 lrust.util.basic <> big_sepN:170 def
+R5804:5806 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5808:5809 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+binder 5807:5807 <> j:173
+R5810:5811 lrust.util.basic <> Φ:172 var
+R5814:5815 stdpp.fin <> FS abbrev
+R5817:5817 lrust.util.basic <> j:173 var
+R5866:5873 lrust.util.basic <> big_sepN def
+R5878:5880 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+R5882:5883 Coq.Unicode.Utf8_core <> :::'λ'_x_'..'_x_','_x not
+binder 5881:5881 <> i:174
+not 5840:5840 <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x
+prf 6015:6027 <> big_sepN_impl
+R6032:6039 iris.bi.extensions <> BiAffine class
+binder 6041:6044 <> PROP:175
+binder 6031:6044 <> BiAffine0:176
+binder 6047:6047 <> n:177
+R6058:6062 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R6063:6066 lrust.util.basic <> PROP:175 var
+binder 6050:6051 <> Φ:178
+binder 6053:6054 <> Ψ:179
+R6073:6073 iris.bi.interface <> ::stdpp_scope:x_'-∗'_x not
+R6095:6101 iris.bi.interface <> ::stdpp_scope:x_'-∗'_x not
+R6074:6083 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6085:6087 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6089:6090 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6088:6088 lrust.util.basic <> n:177 var
+binder 6084:6084 <> i:180
+R6091:6092 lrust.util.basic <> Φ:178 var
+R6094:6094 lrust.util.basic <> i:180 var
+R6128:6133 iris.bi.interface <> ::bi_scope:x_'-∗'_x not
+R6102:6106 iris.bi.derived_connectives <> ::bi_scope:'□'_x not
+R6127:6127 iris.bi.derived_connectives <> ::bi_scope:'□'_x not
+R6107:6109 iris.bi.interface <> ::bi_scope:'∀'_x_'..'_x_','_x not
+R6111:6112 iris.bi.interface <> ::bi_scope:'∀'_x_'..'_x_','_x not
+binder 6110:6110 <> i:181
+R6117:6122 iris.bi.interface <> ::bi_scope:x_'-∗'_x not
+R6113:6114 lrust.util.basic <> Φ:178 var
+R6116:6116 lrust.util.basic <> i:181 var
+R6123:6124 lrust.util.basic <> Ψ:179 var
+R6126:6126 lrust.util.basic <> i:181 var
+R6134:6143 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6145:6147 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6149:6150 lrust.util.basic <> ::bi_scope:'[∗'_'nat]'_x_'<'_x_','_x not
+R6148:6148 lrust.util.basic <> n:177 var
+binder 6144:6144 <> i:182
+R6151:6152 lrust.util.basic <> Ψ:179 var
+R6154:6154 lrust.util.basic <> i:182 var
