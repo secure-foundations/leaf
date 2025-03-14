@@ -1,0 +1,70 @@
+DIGEST 705f99fa3a41509a49a646dafa5f9b85
+Flrust.util.basic
+R15:22 Coq.Program.Equality <> <> lib
+R24:47 Coq.Logic.FunctionalExtensionality <> <> lib
+R83:85 iris.algebra.ofe <> <> lib
+R123:131 iris.proofmode.proofmode <> <> lib
+R196:220 Coq.Logic.FunctionalExtensionality <> functional_extensionality thm
+R249:277 Coq.Logic.FunctionalExtensionality <> functional_extensionality_dep prfax
+ind 287:293 <> SemiIso
+constr 330:337 <> semi_iso
+rec 287:293 <> SemiIso
+proj 330:337 <> semi_iso
+binder 296:296 <> A:1
+binder 298:298 <> B:2
+R306:310 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R305:305 lrust.util.basic <> A:1 var
+R311:311 lrust.util.basic <> B:2 var
+binder 302:302 <> f:3
+R319:323 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R318:318 lrust.util.basic <> B:2 var
+R324:324 lrust.util.basic <> A:1 var
+binder 315:315 <> g:4
+R347:349 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R341:345 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R340:340 lrust.util.basic <> g:4 var
+R346:346 lrust.util.basic <> f:3 var
+R350:351 Coq.Init.Datatypes <> id def
+prf 361:369 <> semi_iso'
+binder 372:372 <> A:7
+binder 374:374 <> B:8
+binder 377:377 <> f:9
+binder 379:379 <> g:10
+R385:391 lrust.util.basic <> SemiIso class
+R393:393 lrust.util.basic <> A:7 var
+R395:395 lrust.util.basic <> B:8 var
+R397:397 lrust.util.basic <> f:9 var
+R399:399 lrust.util.basic <> g:10 var
+binder 383:399 <> H:11
+binder 402:402 <> x:12
+R413:415 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R406:406 lrust.util.basic <> g:10 var
+R409:409 lrust.util.basic <> f:9 var
+R411:411 lrust.util.basic <> x:12 var
+R416:416 lrust.util.basic <> x:12 var
+R442:444 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R445:445 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R447:451 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R453:455 stdpp.base <> ::stdpp_scope:x_'∘'_x not
+R477:484 lrust.util.basic <> semi_iso def
+R477:484 lrust.util.basic <> semi_iso def
+R477:484 lrust.util.basic <> semi_iso def
+rec 499:501 <> Iso
+proj 542:555 <> iso_semi_iso_l
+proj 573:586 <> iso_semi_iso_r
+binder 504:504 <> A:13
+binder 506:506 <> B:14
+R514:518 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R513:513 lrust.util.basic <> A:13 var
+R519:519 lrust.util.basic <> B:14 var
+binder 510:510 <> f:15
+R527:531 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R526:526 lrust.util.basic <> B:14 var
+R532:532 lrust.util.basic <> A:13 var
+binder 523:523 <> g:16
+R560:566 lrust.util.basic <> SemiIso class
+R570:570 lrust.util.basic <> g:16 var
+R568:568 lrust.util.basic <> f:15 var
+R591:597 lrust.util.basic <> SemiIso class
+R601:601 lrust.util.basic <> f:15 var
+R599:599 lrust.util.basic <> g:16 var

@@ -1,0 +1,196 @@
+DIGEST bab6401a8d0a8647326c7ccfb7ad4c02
+Flrust.util.discrete_fun
+R33:36 iris.algebra.cmra <> <> lib
+R38:41 iris.algebra.auth <> <> lib
+R43:51 iris.algebra.functions <> <> lib
+R157:175 iris.algebra.functions <> discrete_fun_insert def
+not 137:137 <> :::'.<['_x_':='_x_']>'
+R253:274 iris.algebra.functions <> discrete_fun_singleton def
+not 233:233 <> :::'.{['_x_':='_x_']}'
+sec 332:336 <> ucmra
+var  365:365 ucmra B
+R350:359 stdpp.base <> EqDecision abbrev
+R369:373 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R368:368 lrust.util.discrete_fun <> A:1 var
+R374:378 iris.algebra.cmra <> ucmra rec
+R402:413 iris.algebra.ofe <> discrete_fun def
+R415:415 lrust.util.discrete_fun <> ucmra.B var
+R424:424 lrust.util.discrete_fun <> ucmra.A var
+prf 435:460 <> discrete_fun_insert_insert
+binder 462:462 <> f:4
+binder 464:464 <> x:5
+binder 466:466 <> a:6
+binder 468:468 <> b:7
+R497:501 stdpp.base <> ::stdpp_scope:x_'≡'_x not
+R483:485 stdpp.base <> ::stdpp_scope:x_'$'_x not
+R486:488 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R490:491 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R493:496 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R489:489 lrust.util.discrete_fun <> x:5 var
+R492:492 lrust.util.discrete_fun <> b:7 var
+R496:496 lrust.util.discrete_fun <> f:4 var
+R474:476 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R478:479 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R481:482 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R477:477 lrust.util.discrete_fun <> x:5 var
+R480:480 lrust.util.discrete_fun <> a:6 var
+R502:504 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R506:507 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R509:512 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R505:505 lrust.util.discrete_fun <> x:5 var
+R508:508 lrust.util.discrete_fun <> a:6 var
+R512:512 lrust.util.discrete_fun <> f:4 var
+R543:561 iris.algebra.functions <> discrete_fun_insert def
+R543:561 iris.algebra.functions <> discrete_fun_insert def
+R543:561 iris.algebra.functions <> discrete_fun_insert def
+R573:578 stdpp.base <> decide def
+R582:584 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R573:578 stdpp.base <> decide def
+R582:584 Coq.Init.Logic <> ::type_scope:x_'='_x not
+prf 610:637 <> discrete_fun_singleton_valid
+binder 639:639 <> x:8
+R645:645 lrust.util.discrete_fun <> ucmra.B var
+binder 642:642 <> a:9
+R665:669 Coq.Unicode.Utf8_core <> ::type_scope:x_'↔'_x not
+R652:655 iris.algebra.cmra <> ::stdpp_scope:'✓'_x not
+R656:658 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R660:661 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R663:664 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R659:659 lrust.util.discrete_fun <> x:8 var
+R662:662 lrust.util.discrete_fun <> a:9 var
+R670:673 iris.algebra.cmra <> ::stdpp_scope:'✓'_x not
+R674:674 lrust.util.discrete_fun <> a:9 var
+R702:705 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R707:707 stdpp.base <> ::stdpp_scope:'(.$'_x_')' not
+R721:749 iris.algebra.functions <> discrete_fun_lookup_singleton thm
+R721:749 iris.algebra.functions <> discrete_fun_lookup_singleton thm
+R721:749 iris.algebra.functions <> discrete_fun_lookup_singleton thm
+R777:798 iris.algebra.functions <> discrete_fun_singleton def
+R801:819 iris.algebra.functions <> discrete_fun_insert def
+R777:798 iris.algebra.functions <> discrete_fun_singleton def
+R777:798 iris.algebra.functions <> discrete_fun_singleton def
+R801:819 iris.algebra.functions <> discrete_fun_insert def
+R801:819 iris.algebra.functions <> discrete_fun_insert def
+R832:837 stdpp.base <> decide def
+R841:843 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R873:888 iris.algebra.cmra <> ucmra_unit_valid thm
+R832:837 stdpp.base <> decide def
+R841:843 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R873:888 iris.algebra.cmra <> ucmra_unit_valid thm
+prf 904:935 <> discrete_fun_insert_local_update
+binder 937:937 <> f:10
+binder 939:939 <> g:11
+binder 941:941 <> x:12
+binder 943:943 <> a:13
+binder 945:945 <> b:14
+R973:977 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R961:966 iris.algebra.local_updates <> :::x_'~l~>'_x not
+R951:951 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R955:956 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R960:960 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R952:952 lrust.util.discrete_fun <> f:10 var
+R954:954 lrust.util.discrete_fun <> x:12 var
+R957:957 lrust.util.discrete_fun <> g:11 var
+R959:959 lrust.util.discrete_fun <> x:12 var
+R967:967 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R969:970 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R972:972 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R968:968 lrust.util.discrete_fun <> a:13 var
+R971:971 lrust.util.discrete_fun <> b:14 var
+R984:989 iris.algebra.local_updates <> :::x_'~l~>'_x not
+R978:978 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R980:981 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R983:983 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R979:979 lrust.util.discrete_fun <> f:10 var
+R982:982 lrust.util.discrete_fun <> g:11 var
+R990:990 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1002:1003 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1015:1015 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R991:993 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R995:996 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R998:1001 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R994:994 lrust.util.discrete_fun <> x:12 var
+R997:997 lrust.util.discrete_fun <> a:13 var
+R1001:1001 lrust.util.discrete_fun <> f:10 var
+R1004:1006 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1008:1009 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1011:1014 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1007:1007 lrust.util.discrete_fun <> x:12 var
+R1010:1010 lrust.util.discrete_fun <> b:14 var
+R1014:1014 lrust.util.discrete_fun <> g:11 var
+R1035:1053 iris.algebra.local_updates <> local_update_unital thm
+R1068:1086 iris.algebra.local_updates <> local_update_unital thm
+R1068:1086 iris.algebra.local_updates <> local_update_unital thm
+R1068:1086 iris.algebra.local_updates <> local_update_unital thm
+R1198:1216 iris.algebra.functions <> discrete_fun_insert def
+R1198:1216 iris.algebra.functions <> discrete_fun_insert def
+R1198:1216 iris.algebra.functions <> discrete_fun_insert def
+R1229:1234 stdpp.base <> decide def
+R1238:1240 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1229:1234 stdpp.base <> decide def
+R1238:1240 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1289:1310 iris.algebra.cmra <> discrete_fun_lookup_op def
+R1313:1331 iris.algebra.functions <> discrete_fun_insert def
+R1289:1310 iris.algebra.cmra <> discrete_fun_lookup_op def
+R1289:1310 iris.algebra.cmra <> discrete_fun_lookup_op def
+R1313:1331 iris.algebra.functions <> discrete_fun_insert def
+R1313:1331 iris.algebra.functions <> discrete_fun_insert def
+R1344:1349 stdpp.base <> decide def
+R1353:1355 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1344:1349 stdpp.base <> decide def
+R1353:1355 Coq.Init.Logic <> ::type_scope:x_'='_x not
+prf 1403:1441 <> discrete_fun_singleton_local_update_any
+binder 1443:1443 <> f:15
+binder 1445:1445 <> x:16
+binder 1447:1447 <> b:17
+binder 1449:1450 <> a':18
+binder 1452:1453 <> b':19
+R1481:1485 Coq.Unicode.Utf8_core <> ::type_scope:x_'→'_x not
+R1467:1472 iris.algebra.local_updates <> :::x_'~l~>'_x not
+R1459:1459 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1463:1464 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1466:1466 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1460:1460 lrust.util.discrete_fun <> f:15 var
+R1462:1462 lrust.util.discrete_fun <> x:16 var
+R1465:1465 lrust.util.discrete_fun <> b:17 var
+R1473:1473 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1476:1477 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1480:1480 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1474:1475 lrust.util.discrete_fun <> a':18 var
+R1478:1479 lrust.util.discrete_fun <> b':19 var
+R1500:1505 iris.algebra.local_updates <> :::x_'~l~>'_x not
+R1486:1486 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1488:1489 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1499:1499 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1487:1487 lrust.util.discrete_fun <> f:15 var
+R1490:1492 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1494:1495 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1497:1498 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1493:1493 lrust.util.discrete_fun <> x:16 var
+R1496:1496 lrust.util.discrete_fun <> b:17 var
+R1506:1506 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1519:1520 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1531:1531 Coq.Init.Datatypes <> ::core_scope:'('_x_','_x_','_'..'_','_x_')' not
+R1507:1509 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1511:1512 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1515:1518 lrust.util.discrete_fun <> :::'.<['_x_':='_x_']>' not
+R1510:1510 lrust.util.discrete_fun <> x:16 var
+R1513:1514 lrust.util.discrete_fun <> a':18 var
+R1518:1518 lrust.util.discrete_fun <> f:15 var
+R1521:1523 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1525:1526 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1529:1530 lrust.util.discrete_fun <> :::'.{['_x_':='_x_']}' not
+R1524:1524 lrust.util.discrete_fun <> x:16 var
+R1527:1528 lrust.util.discrete_fun <> b':19 var
+R1564:1585 iris.algebra.functions <> discrete_fun_singleton def
+R1589:1614 lrust.util.discrete_fun <> discrete_fun_insert_insert thm
+R1564:1585 iris.algebra.functions <> discrete_fun_singleton def
+R1564:1585 iris.algebra.functions <> discrete_fun_singleton def
+R1589:1614 lrust.util.discrete_fun <> discrete_fun_insert_insert thm
+R1589:1614 lrust.util.discrete_fun <> discrete_fun_insert_insert thm
+R1635:1666 lrust.util.discrete_fun <> discrete_fun_insert_local_update thm
+R1635:1666 lrust.util.discrete_fun <> discrete_fun_insert_local_update thm
+R1680:1705 iris.algebra.functions <> discrete_fun_lookup_insert thm
+R1680:1705 iris.algebra.functions <> discrete_fun_lookup_insert thm
+R1680:1705 iris.algebra.functions <> discrete_fun_lookup_insert thm
+R1717:1721 lrust.util.discrete_fun ucmra <> sec
