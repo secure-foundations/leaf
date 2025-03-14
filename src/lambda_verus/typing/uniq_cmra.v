@@ -3,7 +3,8 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic Require Import invariants.
 From lrust.util Require Import discrete_fun.
 From lrust.prophecy Require Import prophecy.
-From lrust.lifetime Require Import lifetime_sig.
+
+From guarding.lib Require Import lifetime_full.
 
 Implicit Type (𝔄i: syn_typei) (𝔄: syn_type).
 
@@ -22,12 +23,12 @@ Local Definition add_line ξ q vπ d (S: uniq_smryUR) : uniq_smryUR :=
   .<[ξ.(pv_ty) := <[ξ.(pv_id) := item q vπ d]> (S ξ.(pv_ty))]> S.
 
 Definition uniqΣ: gFunctors := #[GFunctor uniqUR].
-Class uniqPreG Σ := UniqPreG { uniq_preG_inG :> inG Σ uniqUR }.
-Class uniqG Σ := UniqG { uniq_inG :> uniqPreG Σ; uniq_name: gname }.
+Class uniqPreG Σ := UniqPreG { #[global] uniq_preG_inG :: inG Σ uniqUR }.
+Class uniqG Σ := UniqG { #[global] uniq_inG :: uniqPreG Σ; uniq_name: gname }.
 Global Instance subG_uniqPreG Σ : subG uniqΣ Σ → uniqPreG Σ.
 Proof. solve_inG. Qed.
 
-Definition uniqN: namespace := lft_userN .@ "uniq".
+Definition uniqN: namespace := Nllft .@ "uniq".
 
 (** * Iris Propositions *)
 
@@ -74,13 +75,13 @@ Proof.
   iPureIntro. move: Val.
   rewrite -auth_frag_op auth_frag_valid discrete_fun_singleton_op
     discrete_fun_singleton_valid singleton_op singleton_valid.
-  by move/frac_agree_op_valid=> [?[=??]].
+  by move/frac_agree_op_valid=> [?[= ??]].
 Qed.
 
 Local Lemma vo_vo2 ξ vπ d : .VO[ξ] vπ d ∗ .VO[ξ] vπ d ⊣⊢ .VO2[ξ] vπ d.
 Proof.
   by rewrite -own_op -auth_frag_op discrete_fun_singleton_op singleton_op /item
-    -frac_agree_op Qp_half_half.
+    -frac_agree_op Qp.half_half.
 Qed.
 
 Local Lemma vo_pc ξ vπ d vπ' d' :
@@ -107,7 +108,7 @@ Lemma uniq_intro {𝔄} (vπ: proph 𝔄) d E :
     let ξ := PrVar (𝔄 ↾ prval_to_inh vπ) ξi in .VO[ξ] vπ d ∗ .PC[ξ] vπ d.
 Proof.
   iIntros (?) "PROPH ?". iInv uniqN as (S) ">●S".
-  set 𝔄i := 𝔄 ↾ prval_to_inh vπ. set I := dom (gset _) (S 𝔄i).
+  set 𝔄i := 𝔄 ↾ prval_to_inh vπ. set I := dom (S 𝔄i).
   iMod (proph_intro 𝔄i I with "PROPH") as (ξi NIn) "ξ"; [by solve_ndisj|].
   set ξ := PrVar 𝔄i ξi. set S' := add_line ξ 1 vπ d S.
   move: NIn=> /not_elem_of_dom ?.

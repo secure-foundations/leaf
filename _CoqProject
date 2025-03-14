@@ -52,6 +52,33 @@ src/examples/main.v
 src/examples/counting.v
 src/examples/heap_lang_wp_load_shared.v
 
+-Q src/lambda_verus lrust
+
+src/lambda_verus/util/basic.v
+src/lambda_verus/util/vector.v
+src/lambda_verus/util/update.v
+src/lambda_verus/util/discrete_fun.v
+src/lambda_verus/util/fancy_lists.v
+
+src/lambda_verus/prophecy/syn_type.v
+src/lambda_verus/prophecy/prophecy.v
+
+src/lambda_verus/lang/adequacy.v
+src/lambda_verus/lang/heap.v
+src/lambda_verus/lang/lang.v
+src/lambda_verus/lang/lifting.v
+src/lambda_verus/lang/notation.v
+src/lambda_verus/lang/proofmode.v
+src/lambda_verus/lang/races.v
+src/lambda_verus/lang/tactics.v
+src/lambda_verus/lang/time.v
+
+src/lambda_verus/lang/lib/new_delete.v
+
+src/lambda_verus/typing/base.v
+src/lambda_verus/typing/uniq_cmra.v
+
+
 -arg -w -arg -argument-scope-delimiter
 -arg -w -arg -notation-overridden
 -arg -w -arg -redundant-canonical-projection

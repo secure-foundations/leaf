@@ -409,7 +409,7 @@ Lemma shift_loc_0_nat l : l +ₗ 0%nat = l.
 Proof. destruct l as [b o]. rewrite /shift_loc /=. f_equal. lia. Qed.
 
 Global Instance shift_loc_inj l : Inj (=) (=) (shift_loc l).
-Proof. destruct l as [b o]; intros n n' [=?]; lia. Qed.
+Proof. destruct l as [b o]; intros n n' [= ?]; lia. Qed.
 
 Lemma shift_loc_block l n : (l +ₗ n).1 = l.1.
 Proof. done. Qed.
@@ -436,7 +436,7 @@ Proof.
 Qed.
 
 Definition fresh_block (σ : state) : block :=
-  let loclst : list loc := elements (dom _ σ : gset loc) in
+  let loclst : list loc := elements (dom σ : gset loc) in
   let blockset : gset block := foldr (λ l, ({[l.1]} ∪.)) ∅ loclst in
   fresh blockset.
 
@@ -622,7 +622,7 @@ Canonical Structure lrust_lang := LanguageOfEctx lrust_ectx_lang.
 Lemma stuck_irreducible K σ : irreducible (fill K stuck_term) σ.
 Proof.
   apply: (irreducible_fill (K:=ectx_language.fill K)); first done.
-  apply prim_head_irreducible.
+  apply prim_base_irreducible.
   - inversion 1.
   - apply ectxi_language_sub_redexes_are_values.
     intros [] ??; simplify_eq/=; eauto; discriminate_list.

@@ -13,7 +13,7 @@ Lemma semi_iso' {A B} f g `{!@SemiIso A B f g} x : g (f x) = x.
 Proof. have ->: g (f x) = (g ∘ f) x by done. by rewrite semi_iso. Qed.
 
 Class Iso {A B} (f: A → B) (g: B → A) :=
-  { iso_semi_iso_l :> SemiIso f g; iso_semi_iso_r :> SemiIso g f }.
+  { #[global] iso_semi_iso_l :: SemiIso f g; #[global] iso_semi_iso_r :: SemiIso g f }.
 
 Global Instance iso_id {A} : Iso (@id A) id.
 Proof. done. Qed.
@@ -101,7 +101,7 @@ Lemma app_length_ex {A} (xl: list A) m n :
   length xl = m + n → ∃yl zl, xl = yl ++ zl ∧ length yl = m ∧ length zl = n.
 Proof.
   move=> ?. exists (take m xl), (drop m xl).
-  rewrite take_length drop_length take_drop. split; [done|lia].
+  rewrite length_take length_drop take_drop. split; [done|lia].
 Qed.
 
 Lemma zip_fst_snd_fun {A B C} (f: C → list (A * B)) :

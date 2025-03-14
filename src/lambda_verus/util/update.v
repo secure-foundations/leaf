@@ -46,14 +46,17 @@ Global Instance frame_step_fupdN p R E n P Q :
   Frame p R P Q → Frame p R (|={E}▷=>^n P) (|={E}▷=>^n Q).
 Proof.
   rewrite /Frame=> <-. iIntros "[R Q]".
-  iDestruct (step_fupdN_full_intro with "R") as "R". by iCombine "R Q" as "?".
+  iApply step_fupdN_frame_l. iFrame "R". iFrame.
 Qed.
 
 Lemma step_fupdN_sep_max m n P Q E :
   (|={E}▷=>^m P) -∗ (|={E}▷=>^n Q) -∗ (|={E}▷=>^(m `max` n) (P ∗ Q)).
 Proof.
-  set l := m `max` n. rewrite !(step_fupdN_nmono _ l _); [|lia|lia].
-  apply step_fupdN_sep.
+  set l := m `max` n. iIntros "A B". 
+  iDestruct (step_fupdN_nmono _ l with "A") as "A". { lia. }
+  iDestruct (step_fupdN_nmono _ l with "B") as "B". { lia. }
+  iDestruct (step_fupdN_sep with "A B") as "X".
+  iFrame.
 Qed.
 
 Global Instance step_fupdN_from_sep_max m n P Q E :

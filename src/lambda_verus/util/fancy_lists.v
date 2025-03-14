@@ -70,9 +70,9 @@ End hlist.
 Ltac inv_hlist xl := let A := type of xl in
   match eval hnf in A with hlist _ ?Xl =>
     match eval hnf in Xl with
-    | [] => revert dependent xl;
+    | [] => generalize dependent xl;
         match goal with |- ∀xl, @?P xl => apply (hlist_nil_inv P) end
-    | _ :: _ => revert dependent xl;
+    | _ :: _ => generalize dependent xl;
         match goal with |- ∀xl, @?P xl => apply (hlist_cons_inv P) end;
         (* Try going on recursively. *)
         try (let x := fresh "x" in intros x xl; inv_hlist xl; revert x)
@@ -381,7 +381,7 @@ Qed.
 Global Instance pinj_Inj {Xl} i : Inj eq eq (@pinj Xl i).
 Proof.
   move: i. elim Xl; [move=> i; by inv_fin i|]=>/= ?? IH i.
-  inv_fin i. { by move=>/= ??[=?]. } by move=>/= ???[=/IH ?].
+  inv_fin i. { by move=>/= ??[]. } by move=>/= ???[=/IH ?].
 Qed.
 
 Fixpoint psum_map {Xl Yl} :
@@ -570,7 +570,9 @@ Proof.
   - rewrite /equiv /hlist_equiv HForallTwo_forall.
     split=> H; induction H; constructor=>//; by apply equiv_dist.
   - apply _.
-  - rewrite /dist /hlist_dist. apply HForallTwo_impl=> >. apply dist_S.
+  - rewrite /dist /hlist_dist. 
+    intros H Hlt. eapply HForallTwo_impl; last by apply H. intros.
+    eapply dist_le. apply H0. lia.
 Qed.
 
 Canonical Structure hlistO := Ofe (hlist F Xl) hlist_ofe_mixin.

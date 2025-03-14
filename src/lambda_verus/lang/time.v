@@ -7,16 +7,16 @@ Set Default Proof Using "Type".
 Import uPred.
 
 Class timeGS Σ := TimeG {
-  time_mono_nat_inG :> inG Σ mono_natR;
-  time_nat_inG :> inG Σ (authR natUR);
+  #[global] time_mono_nat_inG :: inG Σ mono_natR;
+  #[global] time_nat_inG :: inG Σ (authR natUR);
   time_global_name : gname;
   time_persistent_name : gname;
   time_cumulative_name : gname;
 }.
 
 Class timePreG Σ := TimePreG {
-  time_preG_mono_nat_inG :> inG Σ mono_natR;
-  time_preG_nat_inG :> inG Σ (authR natUR);
+  #[global] time_preG_mono_nat_inG :: inG Σ mono_natR;
+  #[global] time_preG_nat_inG :: inG Σ (authR natUR);
 }.
 
 Definition timeΣ : gFunctors :=
@@ -67,16 +67,16 @@ Section time.
   Proof. unfold cumulative_time_receipt. apply _. Qed.
 
   Lemma time_interp_step n :
-    time_interp n ==∗ time_interp (S n).
+    time_interp n ⊢ |==> time_interp (S n).
   Proof. eapply own_update, mono_nat_update. lia. Qed.
 
   Lemma persistent_time_receipt_mono n m :
-    (n ≤ m)%nat → ⧖m -∗ ⧖n.
+    (n ≤ m)%nat → ⧖m ⊢ ⧖n.
   Proof.
     intros ?. unfold persistent_time_receipt. by apply own_mono, mono_nat_lb_mono.
   Qed.
   Lemma cumulative_time_receipt_mono n m :
-    (n ≤ m)%nat → ⧗m -∗ ⧗n.
+    (n ≤ m)%nat → ⧗m ⊢ ⧗n.
   Proof.
     intros ?. unfold cumulative_time_receipt.
     by apply own_mono, auth_frag_mono, nat_included.
@@ -147,7 +147,7 @@ Section time.
     iDestruct (own_valid_2 with "Hm0 Hm") as %?%mono_nat_both_valid.
     iDestruct (own_valid_2 with "Hm'0 Hm'")
       as %[?%nat_included _]%auth_both_valid_discrete.
-    iModIntro. iFrame. iSplitL; auto with iFrame lia.
+    iModIntro. iFrame. auto with iFrame lia.
   Qed.
 End time.
 

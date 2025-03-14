@@ -6,10 +6,10 @@ From lrust.lang Require Import proofmode notation.
 Set Default Proof Using "Type".
 
 Class lrustGpreS Σ := HeapGpreS {
-  lrustGpreS_iris :> invGpreS Σ;
-  lrustGpreS_heap :> inG Σ (authR heapUR);
-  lrustGpreS_heap_freeable :> inG Σ (authR heap_freeableUR);
-  lrustGpreS_time :> timePreG Σ
+  #[global] lrustGpreS_iris :: invGpreS Σ;
+  #[global] lrustGpreS_heap :: inG Σ (authR heapUR);
+  #[global] lrustGpreS_heap_freeable :: inG Σ (authR heap_freeableUR);
+  #[global] lrustGpreS_time :: timePreG Σ
 }.
 
 Definition lrustΣ : gFunctors :=
@@ -31,7 +31,7 @@ Proof.
     first by apply auth_auth_valid.
   iMod time_init as (Htime) "[TIME Htime]"; [done|].
   set (Hheap := HeapGS _ _ _ vγ fγ).
-  iModIntro. iExists NotStuck, _, [_], _, _. simpl.
+  iModIntro. iExists _, [_], _, _. simpl.
   iDestruct (Hwp (LRustGS _ _ Hheap Htime) with "TIME") as "$".
   iSplitL; first by auto with iFrame. iIntros ([|e' [|]]? -> ??) "//".
   iIntros "[??] [?_] _". iApply fupd_mask_weaken; [|iIntros "_ !>"]; [done|].
